@@ -1,0 +1,100 @@
+NEXUS CORP — Q3 2025 BUSINESS PERFORMANCE REVIEW
+Prepared by: Business Intelligence Team | Date: October 15, 2025
+
+═══════════════════════════════════════════════
+
+EXECUTIVE SUMMARY
+
+Q3 2025 demonstrated strong overall performance with total revenue of $14.2M,
+representing 18.7% year-over-year growth. The East region led all markets with
+$4.1M in revenue. Enterprise segment continued its momentum, contributing 52%
+of total revenue. Key highlights include successful launch of the AI Analyst Pro
+product line and expansion into 3 new industry verticals.
+
+═══════════════════════════════════════════════
+
+SECTION 1: REVENUE PERFORMANCE
+
+1.1 Regional Breakdown
+- East Region:    $4,100,000  (+24.3% YoY)  — Best performer
+- North Region:   $3,600,000  (+15.2% YoY)  — Steady growth
+- Central Region: $2,800,000  (+18.9% YoY)  — Accelerating
+- West Region:    $2,200,000  (+8.1% YoY)   — Recovering
+- South Region:   $1,500,000  (-3.2% YoY)   — Requires attention
+
+Total Q3 Revenue: $14,200,000
+Prior Year Q3:    $11,961,000
+Growth:           +$2,239,000 (+18.7%)
+
+1.2 Revenue by Product Category
+Software Subscriptions: $7,200,000 (50.7%)
+Professional Services:  $3,800,000 (26.8%)
+Hardware Solutions:     $2,100,000 (14.8%)
+Training & Certification: $1,100,000 (7.7%)
+
+1.3 Revenue by Customer Segment
+Enterprise (>$50K):    $7,384,000 (52%)
+SMB ($5K-$50K):        $4,402,000 (31%)
+Startup (<$5K):        $1,704,000 (12%)
+Government/Education:  $710,000   (5%)
+
+═══════════════════════════════════════════════
+
+SECTION 2: CUSTOMER METRICS
+
+2.1 Customer Acquisition
+New customers acquired in Q3: 87
+Enterprise new logos: 12 (average contract value: $185,000)
+SMB new customers: 51 (average contract value: $18,500)
+Startup customers: 24 (average contract value: $4,200)
+
+2.2 Retention & Churn
+Overall retention rate: 94.2%
+Enterprise retention: 98.1%
+SMB retention: 91.3%
+Net Revenue Retention (NRR): 112%
+Churn rate: 5.8% (improved from 7.2% in Q2)
+
+2.3 Customer Health
+Active customers: 1,247
+At-risk accounts (churn score >0.7): 34
+Strategic accounts (tier 1): 89
+
+═══════════════════════════════════════════════
+
+SECTION 3: OPERATIONAL METRICS
+
+3.1 Sales Performance
+Total deals closed: 143
+Pipeline value: $42.5M
+Win rate: 31.2% (improved from 28.1% Q2)
+Average sales cycle: 47 days
+Sales headcount: 68
+
+3.2 Product & Engineering
+New features shipped: 23
+Critical bugs resolved: 47
+System uptime: 99.97%
+API response time P95: 142ms
+
+3.3 Customer Support
+Average response time: 2.1 hours (SLA: 4 hours)
+CSAT score: 4.6/5.0
+Tickets resolved same-day: 78%
+Escalation rate: 3.2%
+
+═══════════════════════════════════════════════
+
+SECTION 4: Q4 OUTLOOK
+
+Revenue target: $16.5M (+16.2% vs Q3)
+Focus areas:
+1. South region recovery program — dedicated sales pod
+2. AI Analyst Pro upsell campaign to existing enterprise accounts
+3. Partner channel expansion — 5 new SI partners
+4. Launch of NexusAgent platform (internal AI tool rollout)
+
+Key risks:
+- South region continues to underperform — mitigation plan in progress
+- Enterprise procurement cycles may slow in holiday period
+- Talent acquisition in Engineering remains competitive

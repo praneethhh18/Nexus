@@ -1,0 +1,87 @@
+NEXUS CORP — EMPLOYEE HANDBOOK & COMPANY POLICY
+Version 3.2 | Effective: January 2025
+
+═══════════════════════════════════════════════
+
+SECTION 1: REFUND & RETURNS POLICY
+
+1.1 Enterprise Client Refunds
+Enterprise clients (contracts above $50,000/year) are entitled to a full refund within
+30 calendar days of service activation. Refund requests must be submitted in writing to
+finance@nexuscorp.com with the contract reference number. All refunds are processed within
+10 business days. Professional services rendered are non-refundable once project milestones
+have been completed and signed off.
+
+1.2 SMB Client Refunds
+Small and medium business clients receive a 14-day refund window from the subscription
+start date. Partial refunds are calculated on a pro-rata basis for unused subscription
+periods. Hardware products are subject to a 20% restocking fee.
+
+1.3 Refund Exceptions
+Refunds will not be approved for: (a) services consumed beyond 50% of delivery,
+(b) custom development work once approved by the client, (c) third-party licenses
+already activated, (d) contracts with explicit non-refundable clauses.
+All exceptions require VP of Finance approval.
+
+═══════════════════════════════════════════════
+
+SECTION 2: LEAVE & TIME OFF POLICY
+
+2.1 Annual Leave Entitlement
+All full-time employees receive 20 days of paid annual leave per calendar year.
+Part-time employees (below 30 hours/week) receive 10 days. New employees receive
+leave on a prorated basis from their start date. Maximum carryover is 5 days into
+the next calendar year. All carryover days must be used by March 31.
+
+2.2 Sick Leave
+Employees are entitled to 12 sick days per year, non-accumulating. A medical
+certificate is required for absences exceeding 3 consecutive days. Mental health
+days are treated the same as physical sick leave under our wellness policy.
+
+2.3 Special Leave
+Bereavement leave: 5 days for immediate family, 3 days for extended family.
+Marriage leave: 3 days. Paternity/maternity leave: as per local labor law, minimum
+12 weeks for primary caregiver.
+
+2.4 Leave Request Process
+All leave requests must be submitted through the HR portal (portal.nexuscorp.com/leave)
+at least 3 business days in advance for planned leave. Emergency leave should be
+communicated to the direct manager within 2 hours of the work day starting.
+
+═══════════════════════════════════════════════
+
+SECTION 3: DATA SECURITY & COMPLIANCE
+
+3.1 Data Classification
+All data handled by Nexus Corp employees is classified as: Public, Internal,
+Confidential, or Restricted. Customer PII is always classified as Restricted.
+Employees must not store Restricted data on personal devices or unapproved cloud services.
+
+3.2 Access Control
+Production systems require multi-factor authentication (MFA). Database access
+is granted on a least-privilege basis and reviewed quarterly. All access attempts
+are logged and retained for 12 months.
+
+3.3 Incident Reporting
+Any suspected data breach must be reported to security@nexuscorp.com within 1 hour
+of discovery. The security team will initiate an incident response within 30 minutes.
+Client notification is required within 72 hours per GDPR/local regulations.
+
+═══════════════════════════════════════════════
+
+SECTION 4: CODE OF CONDUCT
+
+4.1 Professional Standards
+All employees must maintain professional conduct in client interactions, internal
+meetings, and digital communications. Harassment of any kind will result in
+immediate disciplinary action.
+
+4.2 Conflict of Interest
+Employees must disclose any potential conflicts of interest to HR. This includes
+investments in competing companies, family relationships with vendors, or personal
+relationships with clients.
+
+4.3 Expense Policy
+Business expenses must be approved in advance for amounts over $500. All receipts
+must be submitted within 30 days. Corporate cards are for business use only.
+International travel requires VP approval.

@@ -1,0 +1,174 @@
+NEXUS CORP — SALES PLAYBOOK 2025
+Sales Process, Client Handling & Escalation Procedures
+
+═══════════════════════════════════════════════
+
+SECTION 1: SALES PROCESS OVERVIEW
+
+1.1 The Nexus Sales Framework (5-Stage)
+
+STAGE 1 — PROSPECT (Days 0-7)
+Objective: Identify qualified opportunities
+Activities:
+  - ICP scoring (Ideal Customer Profile match)
+  - Initial outreach via email or LinkedIn
+  - Discovery call scheduling
+  - CRM record creation
+Qualification criteria (MEDDIC):
+  - Metrics: Can they quantify the business problem?
+  - Economic Buyer: Do we have access to the decision-maker?
+  - Decision Criteria: Do we know how they evaluate?
+  - Decision Process: What are their buying steps?
+  - Identify Pain: Is the pain urgent and significant?
+  - Champion: Do we have internal advocacy?
+
+STAGE 2 — DISCOVERY (Days 7-21)
+Objective: Understand the client's situation deeply
+Activities:
+  - 45-minute discovery call with structured questions
+  - Technical requirements gathering
+  - Stakeholder mapping
+  - Competitive landscape assessment
+Key discovery questions:
+  1. "What business outcome are you trying to achieve?"
+  2. "What happens if this problem isn't solved in 6 months?"
+  3. "Who else is involved in this decision?"
+  4. "What does your current solution cost you?"
+  5. "What would success look like in 12 months?"
+
+STAGE 3 — SOLUTION (Days 21-35)
+Objective: Present a tailored solution
+Activities:
+  - Demo tailored to discovered pain points
+  - Business case development
+  - Proof of concept (for enterprise deals)
+  - Proposal draft and internal review
+Do's:
+  - Lead with business outcomes, not features
+  - Use customer's language and metrics
+  - Involve technical champion early
+Don'ts:
+  - Do not show every feature — only what matters to them
+  - Do not discount before legal objections
+
+STAGE 4 — NEGOTIATION (Days 35-50)
+Objective: Agree on terms and close
+Activities:
+  - Legal and procurement engagement
+  - Contract review (standard or MSA)
+  - Discount approval (per approval matrix below)
+  - Final champion alignment
+Approval matrix:
+  - Up to 10% discount: Account Executive authority
+  - 10-20% discount: Sales Manager approval
+  - 20-30% discount: VP Sales approval
+  - >30% discount: CEO approval required
+
+STAGE 5 — CLOSE & HANDOFF (Days 50-60)
+Objective: Execute contract, begin onboarding
+Activities:
+  - Countersigned contract in DocuSign
+  - Welcome kit sent within 24 hours
+  - CSM assigned and introduced within 48 hours
+  - Kickoff call scheduled within 1 week
+  - Implementation plan shared within 3 days
+
+═══════════════════════════════════════════════
+
+SECTION 2: CLIENT HANDLING — DIFFICULT SITUATIONS
+
+2.1 Objection Handling Framework
+
+PRICE OBJECTION
+Client says: "It's too expensive."
+Response framework:
+  1. Acknowledge: "I understand cost is a key consideration."
+  2. Reframe: "Let's look at the ROI — our Enterprise clients average 3.2x return..."
+  3. Quantify: Help them calculate cost of NOT solving the problem
+  4. Options: Present tiered pricing or phased rollout
+  5. Flexibility: Explore payment terms, not just price
+
+COMPETITOR OBJECTION
+Client says: "Vendor X is cheaper / has more features."
+Response framework:
+  1. Clarify: "Which specific feature are you referring to?"
+  2. Differentiate: Focus on 3 areas where we clearly win
+  3. Risk: "How long has Vendor X been in this market? What's their support SLA?"
+  4. Reference: Offer to connect them with a mutual customer
+  Never attack competitors directly — focus on our value.
+
+TIMING OBJECTION
+Client says: "We're not ready to move forward yet."
+Response framework:
+  1. Understand: "What would need to be true for you to move forward?"
+  2. Create urgency: "Our Q4 pricing is only available until December 31"
+  3. Lower risk: Offer pilot program or phased implementation
+  4. Stay in touch: Monthly check-in cadence
+
+2.2 Escalation Procedures for Client Issues
+
+SEVERITY 1 — CRITICAL (Client at risk of churn, system down, SLA breach)
+Response time: 30 minutes
+Actions required:
+  1. Notify Account Manager immediately
+  2. AM notifies VP Customer Success within 30 min
+  3. Engineering Lead engaged if technical issue
+  4. Client executive contact made by VP CS within 1 hour
+  5. Status updates every 2 hours until resolved
+  6. Post-incident review within 48 hours
+  7. Written root cause analysis delivered to client within 5 days
+
+SEVERITY 2 — HIGH (Major functionality degraded, SLA at risk)
+Response time: 4 hours
+Actions required:
+  1. AM to contact client within 4 hours
+  2. Technical team assigned
+  3. Client updates every 4 hours
+  4. Resolution target: 24 hours
+
+SEVERITY 3 — MEDIUM (Minor issue, workaround exists)
+Response time: 1 business day
+Actions required:
+  1. Ticket created and assigned
+  2. Client acknowledgment sent
+  3. Resolution target: 5 business days
+
+═══════════════════════════════════════════════
+
+SECTION 3: REGIONAL PERFORMANCE & RECOVERY
+
+3.1 South Region Recovery Protocol
+When a region shows >10% revenue decline:
+  Step 1: Regional audit — review all accounts for health score
+  Step 2: Identify top 5 at-risk accounts — schedule executive engagement
+  Step 3: Form SWAT team: Senior AE + CSM + Solutions Engineer
+  Step 4: 30-day intensive outreach plan
+  Step 5: Weekly VP review until region recovers
+  Step 6: Root cause analysis — pricing? competition? product gaps?
+
+3.2 Regional Best Practices from East Region
+- Quarterly Business Reviews (QBRs) with all enterprise accounts
+- Local user group events build community and reduce churn
+- Technical workshops generate expansion opportunities
+- Executive sponsor program for top 20 accounts
+
+═══════════════════════════════════════════════
+
+SECTION 4: COMPENSATION & TARGETS
+
+4.1 Commission Structure
+Base salary: 50-60% of OTE
+Variable: 40-50% of OTE
+Accelerators:
+  - 100% of quota: 1x commission rate
+  - 110% of quota: 1.25x commission rate
+  - 125% of quota: 1.5x commission rate
+
+4.2 Q4 2025 Regional Targets
+- East: $5.2M (+26.8% vs Q3)
+- North: $4.1M (+13.9% vs Q3)
+- Central: $3.5M (+25% vs Q3)
+- West: $2.7M (+22.7% vs Q3)
+- South: $2.0M (+33.3% vs Q3) — recovery target
+
+Total Q4 Target: $17.5M
