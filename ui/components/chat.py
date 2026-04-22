@@ -47,12 +47,11 @@ def render_tool_badges(tools: list[str]) -> str:
     return " ".join(badges)
 
 
-def render_chat_history(messages: list[dict]) -> None:
+def render_chat_history(messages: list[dict], max_display: int = 50) -> None:
     """Render the full chat history with enhanced styling."""
-    # Show only last 50 messages to prevent session bloat
-    display_messages = messages[-50:]
-    if len(messages) > 50:
-        st.caption(f"Showing last 50 of {len(messages)} messages")
+    display_messages = messages[-max_display:]
+    if len(messages) > max_display:
+        st.caption(f"Showing last {max_display} of {len(messages)} messages")
 
     for msg in display_messages:
         role = msg.get("role", "user")

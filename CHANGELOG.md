@@ -7,6 +7,61 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased] - 2026-04-22
 
+### Changed
+- [architecture] Changes in stdole.py (`stdole.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Added
+- [feature] Changes in sidebar.py (`sidebar.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Changed
+- [enhancement] Changes in chat.py (`chat.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in app.py (`app.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in export_conversation.py (`export_conversation.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Changed
+- [enhancement] Changes in query_history_page.py (`query_history_page.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in settings_page.py (`settings_page.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in database_explorer.py (`database_explorer.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Added
+- Add data import functionality for CSV/Excel files (`data_import.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Changed
+- [enhancement] Changes in query_history.py (`query_history.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in conversation_store.py (`conversation_store.py`)
+
+## [Unreleased] - 2026-04-22
+
 ### Fixed
 - [bugfix] Changes in embedder.py (`embedder.py`)
 
@@ -370,3 +425,6 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - [bugfix] Changes in settings.py (`settings.py`)
 .py (`settings.py`)
+ugfix] Changes in settings.py (`settings.py`)
+.py (`settings.py`)
+gs.py`)
