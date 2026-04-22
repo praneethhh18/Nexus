@@ -17,3 +17,6 @@ venv/
 .venv/
 *.wav
 *.mp3
+.claude
+.qwen
+.vscode/
