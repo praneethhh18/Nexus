@@ -1,5 +1,5 @@
 """
-Sidebar component — system status, model info, document upload, monitor.
+Sidebar component — system status, conversations, document upload, monitor.
 """
 from __future__ import annotations
 
@@ -13,6 +13,37 @@ def render_sidebar() -> dict:
     with st.sidebar:
         st.markdown("## NexusAgent")
         st.caption("Multi-Agent AI Assistant")
+        st.divider()
+
+        # ── Conversations ─────────────────────────────────────────────────
+        st.markdown('<p class="sidebar-header">Conversations</p>', unsafe_allow_html=True)
+        try:
+            from memory.conversation_store import list_conversations, delete_conversation
+            conversations = list_conversations(limit=10)
+            if conversations:
+                for conv in conversations:
+                    conv_id = conv["conversation_id"]
+                    title = conv["title"]
+                    msg_count = conv["message_count"]
+                    # Truncate title
+                    display_title = title[:35] + "..." if len(title) > 35 else title
+                    col_btn, col_del = st.columns([5, 1])
+                    with col_btn:
+                        if st.button(
+                            f"{display_title} ({msg_count})",
+                            key=f"conv_{conv_id}",
+                            use_container_width=True,
+                        ):
+                            actions["load_conversation"] = conv_id
+                    with col_del:
+                        if st.button("x", key=f"del_{conv_id}"):
+                            delete_conversation(conv_id)
+                            st.rerun()
+            else:
+                st.caption("No saved conversations yet")
+        except Exception as e:
+            st.caption(f"Conversations: {e}")
+
         st.divider()
 
         # ── System Status ─────────────────────────────────────────────────

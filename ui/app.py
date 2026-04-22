@@ -36,25 +36,21 @@ def _bootstrap():
     ensure_directories()
     cfg = validate_config()
 
-    # Auto-create DB if missing
     from pathlib import Path as P
     from config.settings import DB_PATH
     if not P(DB_PATH).exists():
         from sql_agent.db_setup import setup_database
         setup_database()
 
-    # Auto-load sample documents if ChromaDB is empty
     from utils.sample_docs_generator import ensure_documents_loaded
     ensure_documents_loaded()
 
-    # Start proactive monitor
     try:
         from orchestrator.proactive_monitor import start_scheduler
         start_scheduler()
     except Exception as e:
         logger.warning(f"Monitor start failed: {e}")
 
-    # Start workflow scheduler
     try:
         from workflows.scheduler import sync_all_workflows
         sync_all_workflows()
@@ -74,6 +70,11 @@ _defaults = {
     "voice_text": None,
     "processing": False,
     "query_count": 0,
+    "conversation_id": None,
+    "voice_enabled": True,
+    "auto_speak": True,
+    "max_chat_display": 50,
+    "auto_chart": True,
 }
 for key, val in _defaults.items():
     if key not in st.session_state:
@@ -89,7 +90,7 @@ if "user_session_id" not in st.session_state:
 from ui.components.sidebar import render_sidebar
 sidebar_actions = render_sidebar()
 
-# Handle file uploads
+# Handle file uploads (documents for RAG)
 if sidebar_actions.get("uploaded_files"):
     with st.spinner("Ingesting uploaded documents..."):
         from rag.ingestion import ingest_file
@@ -126,6 +127,14 @@ if sidebar_actions.get("run_monitor"):
         else:
             st.sidebar.success("No anomalies detected.")
 
+# Handle conversation loading from sidebar
+if sidebar_actions.get("load_conversation"):
+    conv_id = sidebar_actions["load_conversation"]
+    from memory.conversation_store import load_messages
+    st.session_state.messages = load_messages(conv_id)
+    st.session_state.conversation_id = conv_id
+    st.session_state.last_state = {}
+
 
 # ── Header ────────────────────────────────────────────────────────────────────
 st.markdown(
@@ -140,7 +149,7 @@ st.markdown(
 # ── Page Navigation ───────────────────────────────────────────────────────────
 page = st.radio(
     "",
-    ["Chat", "What-If Simulator", "Reports", "Workflows"],
+    ["Chat", "Database", "What-If", "Reports", "History", "Workflows", "Settings"],
     horizontal=True,
     label_visibility="collapsed",
 )
@@ -165,7 +174,6 @@ if page == "Chat":
                 unsafe_allow_html=True,
             )
 
-            # Quick action suggestions
             quick_actions = [
                 ("Show me revenue by region", "Data Query"),
                 ("What does our company policy say about remote work?", "Document Search"),
@@ -188,7 +196,10 @@ if page == "Chat":
         else:
             # ── Render chat history ───────────────────────────────────────
             from ui.components.chat import render_chat_history
-            render_chat_history(st.session_state.messages)
+            render_chat_history(
+                st.session_state.messages,
+                max_display=st.session_state.max_chat_display,
+            )
 
         # ── Input Area ────────────────────────────────────────────────────
         input_col, voice_col = st.columns([10, 1])
@@ -224,6 +235,14 @@ if page == "Chat":
         # ── Process Query ─────────────────────────────────────────────────
         if user_text:
             timestamp = datetime.now().strftime("%H:%M")
+
+            # Auto-create conversation if needed
+            if st.session_state.conversation_id is None:
+                from memory.conversation_store import create_conversation, auto_title
+                conv_id = create_conversation()
+                st.session_state.conversation_id = conv_id
+                auto_title(conv_id, user_text)
+
             st.session_state.messages.append({
                 "role": "user",
                 "content": user_text,
@@ -232,6 +251,7 @@ if page == "Chat":
                 "timestamp": timestamp,
             })
 
+            query_start = time.time()
             with st.spinner("Thinking..."):
                 try:
                     from orchestrator.graph import run
@@ -247,6 +267,7 @@ if page == "Chat":
                         "tools_used": [],
                         "citations": [],
                     }
+            query_duration = int((time.time() - query_start) * 1000)
 
             answer = result_state.get("final_answer", "I couldn't generate a response.")
             tools = result_state.get("tools_used", [])
@@ -266,6 +287,30 @@ if page == "Chat":
             st.session_state.last_state = result_state
             st.session_state.query_count += 1
 
+            # ── Save to conversation store ────────────────────────────────
+            try:
+                from memory.conversation_store import save_full_conversation
+                save_full_conversation(
+                    st.session_state.conversation_id,
+                    st.session_state.messages,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to save conversation: {e}")
+
+            # ── Log to query history ──────────────────────────────────────
+            try:
+                from memory.query_history import log_query
+                log_query(
+                    query=user_text,
+                    intent=result_state.get("intent", {}).get("primary_intent", "unknown"),
+                    tools_used=tools,
+                    answer_preview=answer[:500],
+                    success="error" not in answer.lower()[:50],
+                    duration_ms=query_duration,
+                )
+            except Exception as e:
+                logger.warning(f"Failed to log query: {e}")
+
             # Tier 1: Log session query
             try:
                 from memory.user_memory import log_session_query
@@ -277,24 +322,66 @@ if page == "Chat":
             except Exception:
                 pass
 
-            # Speak the answer (non-blocking)
-            try:
-                from voice.speaker import speak
-                speak(answer)
-            except Exception:
-                pass
+            # Speak the answer if enabled
+            if st.session_state.voice_enabled and st.session_state.auto_speak:
+                try:
+                    from voice.speaker import speak
+                    speak(answer)
+                except Exception:
+                    pass
 
             st.rerun()
 
-        # ── Clear button ──────────────────────────────────────────────────
+        # ── Action buttons ────────────────────────────────────────────────
         if st.session_state.messages:
-            if st.button("Clear Conversation", type="secondary"):
-                st.session_state.messages = []
-                from memory.short_term import get_default_memory
-                get_default_memory().clear()
-                st.session_state.last_state = {}
-                st.session_state.query_count = 0
-                st.rerun()
+            btn_col1, btn_col2, btn_col3 = st.columns(3)
+            with btn_col1:
+                if st.button("New Chat", use_container_width=True):
+                    # Save current conversation first
+                    if st.session_state.conversation_id:
+                        try:
+                            from memory.conversation_store import save_full_conversation
+                            save_full_conversation(
+                                st.session_state.conversation_id,
+                                st.session_state.messages,
+                            )
+                        except Exception:
+                            pass
+                    st.session_state.messages = []
+                    st.session_state.conversation_id = None
+                    from memory.short_term import get_default_memory
+                    get_default_memory().clear()
+                    st.session_state.last_state = {}
+                    st.session_state.query_count = 0
+                    st.rerun()
+            with btn_col2:
+                # Export as Markdown
+                from utils.export_conversation import to_markdown
+                md_content = to_markdown(st.session_state.messages)
+                st.download_button(
+                    "Export Markdown",
+                    md_content,
+                    file_name=f"nexus_chat_{datetime.now().strftime('%Y%m%d_%H%M')}.md",
+                    mime="text/markdown",
+                    use_container_width=True,
+                )
+            with btn_col3:
+                # Export as PDF
+                if st.button("Export PDF", use_container_width=True):
+                    with st.spinner("Building PDF..."):
+                        from utils.export_conversation import to_pdf
+                        pdf_path = to_pdf(st.session_state.messages)
+                    if pdf_path and Path(pdf_path).exists():
+                        with open(pdf_path, "rb") as f:
+                            st.download_button(
+                                "Download PDF",
+                                f.read(),
+                                file_name=Path(pdf_path).name,
+                                mime="application/pdf",
+                                key="dl_conv_pdf",
+                            )
+                    else:
+                        st.warning("PDF export failed.")
 
     # ── Right Panel ───────────────────────────────────────────────────────
     with right_col:
@@ -308,7 +395,11 @@ if page == "Chat":
             fig = None
             chart_path = None
             sql_res = ls.get("sql_results", {})
-            if sql_res.get("success") and sql_res.get("dataframe") is not None:
+            if (
+                st.session_state.auto_chart
+                and sql_res.get("success")
+                and sql_res.get("dataframe") is not None
+            ):
                 df = sql_res["dataframe"]
                 if not df.empty:
                     try:
@@ -421,9 +512,17 @@ if page == "Chat":
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#   PAGE: DATABASE EXPLORER
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "Database":
+    from ui.pages.database_explorer import render
+    render()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #   PAGE: WHAT-IF SIMULATOR
 # ═══════════════════════════════════════════════════════════════════════════════
-elif page == "What-If Simulator":
+elif page == "What-If":
     st.markdown("### What-If Scenario Simulator")
     st.caption("Model business scenarios and get AI-powered impact analysis with critique.")
 
@@ -460,11 +559,11 @@ elif page == "What-If Simulator":
             if result.get("chart_path"):
                 st.image(result["chart_path"], use_column_width=True)
 
-            col_details_1, col_details_2 = st.columns(2)
-            with col_details_1:
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
                 with st.expander("Assumptions", expanded=True):
                     st.write(result.get("assumptions", "N/A"))
-            with col_details_2:
+            with col_d2:
                 with st.expander("CFO Critique", expanded=True):
                     st.write(result.get("critique", "N/A"))
 
@@ -537,6 +636,14 @@ elif page == "Reports":
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#   PAGE: QUERY HISTORY
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "History":
+    from ui.pages.query_history_page import render
+    render()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #   PAGE: WORKFLOWS
 # ═══════════════════════════════════════════════════════════════════════════════
 elif page == "Workflows":
@@ -544,10 +651,18 @@ elif page == "Workflows":
     render()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#   PAGE: SETTINGS
+# ═══════════════════════════════════════════════════════════════════════════════
+elif page == "Settings":
+    from ui.pages.settings_page import render
+    render()
+
+
 # ── Footer ────────────────────────────────────────────────────────────────────
 st.markdown(
     '<div class="nexus-footer">'
-    'NexusAgent &middot; 100% Local &middot; Zero API Cost &middot; '
+    'NexusAgent v2.0 &middot; 100% Local &middot; Zero API Cost &middot; '
     'Powered by Ollama + LangGraph'
     '</div>',
     unsafe_allow_html=True,
