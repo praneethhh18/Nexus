@@ -12,7 +12,24 @@ from loguru import logger
 
 _scheduler = None
 _lock = threading.Lock()
-_run_history: list = []   # last 50 run summaries (in-memory)
+
+# ── Persistent run history (SQLite) ──────────────────────────────────────────
+def _history_conn():
+    import sqlite3
+    from config.settings import DB_PATH
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""CREATE TABLE IF NOT EXISTS nexus_workflow_runs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, workflow_name TEXT, workflow_id TEXT,
+        run_id TEXT, status TEXT, finished_at TEXT, duration_ms INTEGER)""")
+    conn.commit()
+    return conn
+
+def _save_run(entry: dict):
+    conn = _history_conn()
+    conn.execute("INSERT INTO nexus_workflow_runs (workflow_name,workflow_id,run_id,status,finished_at,duration_ms) VALUES (?,?,?,?,?,?)",
+        (entry.get("workflow_name",""), entry.get("workflow_id",""), entry.get("run_id",""),
+         entry.get("status",""), entry.get("finished_at",""), entry.get("duration_ms",0)))
+    conn.commit(); conn.close()
 
 
 def _get_scheduler():
@@ -37,7 +54,7 @@ def _run_workflow_job(wf_id: str):
     logger.info(f"[WFScheduler] Scheduled run: '{wf.get('name')}' ({wf_id})")
     try:
         result = execute_workflow(wf)
-        _run_history.append({
+        _save_run({
             "workflow_name": wf.get("name"),
             "workflow_id": wf_id,
             "run_id": result.get("run_id"),
@@ -45,9 +62,6 @@ def _run_workflow_job(wf_id: str):
             "finished_at": result.get("finished_at"),
             "duration_ms": result.get("duration_ms"),
         })
-        # Keep last 50
-        if len(_run_history) > 50:
-            _run_history.pop(0)
     except Exception as e:
         logger.error(f"[WFScheduler] Run failed for {wf_id}: {e}")
 
@@ -170,4 +184,12 @@ def get_scheduled_jobs() -> list:
 
 
 def get_run_history(n: int = 20) -> list:
-    return _run_history[-n:][::-1]
+    import sqlite3
+    try:
+        conn = _history_conn()
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute("SELECT * FROM nexus_workflow_runs ORDER BY id DESC LIMIT ?", (n,)).fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []

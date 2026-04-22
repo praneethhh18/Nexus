@@ -1,6 +1,61 @@
 
 ## [Unreleased] - 2026-04-22
 
+### Changed
+- [enhancement] Changes in server.py (`server.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Added
+- [feature] Changes in Settings.jsx (`Settings.jsx`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in Chat.jsx (`Chat.jsx`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in scheduler.py (`scheduler.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in email_tool.py (`email_tool.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in server.py (`server.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in Workflows.jsx (`Workflows.jsx`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in templates.py (`templates.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
+- [bugfix] Changes in Workflows.jsx (`Workflows.jsx`)
+
+## [Unreleased] - 2026-04-22
+
+### Added
+- [feature] Changes in api.js (`api.js`)
+
+## [Unreleased] - 2026-04-22
+
+### Changed
+- [enhancement] Changes in server.py (`server.py`)
+
+## [Unreleased] - 2026-04-22
+
 ### Added
 - [feature] Changes in export_conversation.py (`export_conversation.py`)
 

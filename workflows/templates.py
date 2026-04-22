@@ -178,12 +178,173 @@ REVENUE_DROP_RESPONSE: Dict[str, Any] = {
 }
 
 
+# ── Template 6: Auto Email Sender ───────────────────────────────────────────
+AUTO_EMAIL_SENDER: Dict[str, Any] = {
+    "name": "Auto Email Sender",
+    "description": "Query data, have AI draft a professional email, review and send to a recipient.",
+    "enabled": False,
+    "tags": ["email", "communication", "ai-draft"],
+    "nodes": [
+        _node("n1", "manual_trigger", "Start Email Flow",
+              {"label": "Compose Email"}, 100, 200),
+        _node("n2", "sql_query", "Gather Context Data",
+              {"mode": "natural_language",
+               "question": "Show summary of key metrics: total revenue, top region, order count for this month",
+               "max_rows": 10}, 350, 200),
+        _node("n3", "llm_prompt", "Draft Email",
+              {"prompt": "Write a professional business email to the team summarizing these key metrics:\n\n{input}\n\nMake it concise, highlight wins and concerns. Sign off as NexusAgent.",
+               "max_words": 250}, 600, 200),
+        _node("n4", "send_email", "Send to Team",
+              {"to": "", "subject": "Monthly Business Update — {date}",
+               "body_mode": "use_previous_output", "require_approval": True}, 900, 200),
+    ],
+    "edges": [
+        _edge("n1", "n2"),
+        _edge("n2", "n3"),
+        _edge("n3", "n4"),
+    ],
+}
+
+# ── Template 7: Meeting Scheduler ────────────────────────────────────────────
+MEETING_SCHEDULER: Dict[str, Any] = {
+    "name": "Meeting Scheduler",
+    "description": "AI analyzes data to identify issues, drafts a meeting agenda, and sends a calendar invite email.",
+    "enabled": False,
+    "tags": ["meeting", "scheduling", "email", "ai"],
+    "nodes": [
+        _node("n1", "schedule_trigger", "Weekly Monday 08:30",
+              {"mode": "weekly", "weekly_day": "Monday", "weekly_time": "08:30"}, 100, 200),
+        _node("n2", "sql_query", "Pull Week's Data",
+              {"mode": "natural_language",
+               "question": "Show revenue by region, top issues, and any anomalies from the past 7 days",
+               "max_rows": 20}, 350, 200),
+        _node("n3", "llm_prompt", "Generate Meeting Agenda",
+              {"prompt": "Based on this week's business data:\n\n{input}\n\nCreate a structured meeting agenda with:\n1. Key metrics review\n2. Issues requiring attention\n3. Action items\n4. Open discussion topics\n\nFormat it professionally.",
+               "max_words": 300}, 600, 200),
+        _node("n4", "send_email", "Send Meeting Invite",
+              {"to": "", "subject": "Weekly Business Review — {date} | Agenda Attached",
+               "body_mode": "use_previous_output", "require_approval": True}, 900, 200),
+        _node("n5", "save_file", "Archive Agenda",
+              {"filename_template": "meeting_agenda_{date}", "format": "txt"}, 900, 350),
+    ],
+    "edges": [
+        _edge("n1", "n2"),
+        _edge("n2", "n3"),
+        _edge("n3", "n4"),
+        _edge("n3", "n5"),
+    ],
+}
+
+# ── Template 8: Call Scheduler & Prep ────────────────────────────────────────
+CALL_SCHEDULER: Dict[str, Any] = {
+    "name": "Call Scheduler & Prep",
+    "description": "Prepare for a client call: pull their data, search docs for context, draft talking points, and send a prep email.",
+    "enabled": False,
+    "tags": ["call", "scheduling", "client", "ai-prep"],
+    "nodes": [
+        _node("n1", "manual_trigger", "Prep for Call",
+              {"label": "Prepare Call Brief"}, 100, 200),
+        _node("n2", "sql_query", "Client's Order History",
+              {"mode": "natural_language",
+               "question": "Show the most recent 10 orders with amounts and status",
+               "max_rows": 10}, 350, 100),
+        _node("n3", "rag_search", "Search Relevant Docs",
+              {"query": "client communication guidelines and escalation procedures",
+               "top_k": 3}, 350, 300),
+        _node("n4", "llm_prompt", "Draft Talking Points",
+              {"prompt": "Prepare a call brief with talking points based on:\n\nCLIENT DATA:\n{input}\n\nInclude:\n1. Account summary\n2. Key talking points\n3. Potential concerns to address\n4. Recommended next steps\n5. Suggested call duration: 15-30 min",
+               "max_words": 350}, 650, 200),
+        _node("n5", "send_email", "Send Prep to Self",
+              {"to": "", "subject": "Call Prep Brief — {date}",
+               "body_mode": "use_previous_output", "require_approval": True}, 950, 200),
+    ],
+    "edges": [
+        _edge("n1", "n2"),
+        _edge("n1", "n3"),
+        _edge("n2", "n4"),
+        _edge("n3", "n4"),
+        _edge("n4", "n5"),
+    ],
+}
+
+# ── Template 9: Live Data Fetcher & Analyzer ─────────────────────────────────
+LIVE_DATA_ANALYZER: Dict[str, Any] = {
+    "name": "Live Data Fetcher & Analyzer",
+    "description": "Fetch data from a web source, analyze it with AI, classify importance, store insights in the database.",
+    "enabled": False,
+    "tags": ["web", "live-data", "analysis", "storage"],
+    "nodes": [
+        _node("n1", "schedule_trigger", "Every 6 Hours",
+              {"mode": "interval", "interval_minutes": 360}, 100, 200),
+        _node("n2", "web_search", "Fetch Latest Data",
+              {"query": "latest business trends market analysis 2025",
+               "max_results": 5}, 350, 200),
+        _node("n3", "llm_prompt", "Analyze & Extract Insights",
+              {"prompt": "Analyze these search results and extract key business insights:\n\n{input}\n\nFor each insight, provide:\n- Topic\n- Summary (1-2 sentences)\n- Relevance score (high/medium/low)\n- Recommended action",
+               "max_words": 400}, 600, 200),
+        _node("n4", "classify", "Classify Urgency",
+              {"categories": "urgent,important,informational",
+               "field": "input"}, 850, 200),
+        _node("n5", "save_file", "Store in DB",
+              {"filename_template": "market_intel_{date}_{time}", "format": "txt"}, 1100, 100),
+        _node("n6", "discord_notify", "Alert if Urgent",
+              {"title": "Urgent Market Intel",
+               "message": "{input}", "severity": "high"}, 1100, 300),
+    ],
+    "edges": [
+        _edge("n1", "n2"),
+        _edge("n2", "n3"),
+        _edge("n3", "n4"),
+        _edge("n4", "n5", "informational"),
+        _edge("n4", "n5", "important"),
+        _edge("n4", "n6", "urgent"),
+    ],
+}
+
+# ── Template 10: Customer Churn Early Warning ────────────────────────────────
+CUSTOMER_CHURN_WARNING: Dict[str, Any] = {
+    "name": "Customer Churn Early Warning",
+    "description": "Daily: identify customers with declining orders, analyze risk, alert sales team with action plan.",
+    "enabled": False,
+    "tags": ["customers", "churn", "ai-analysis", "alerts"],
+    "nodes": [
+        _node("n1", "schedule_trigger", "Daily 10:00",
+              {"mode": "daily", "daily_time": "10:00"}, 100, 200),
+        _node("n2", "sql_query", "Find At-Risk Customers",
+              {"mode": "natural_language",
+               "question": "Show customers whose order count this month is less than half their average monthly orders, with their total spend",
+               "max_rows": 20}, 350, 200),
+        _node("n3", "data_exists_condition", "Any At-Risk?",
+              {"min_rows": 1}, 600, 200),
+        _node("n4", "llm_prompt", "Analyze Churn Risk",
+              {"prompt": "These customers show declining engagement:\n\n{input}\n\nFor each, provide:\n1. Risk level (high/medium)\n2. Likely reason\n3. Recommended retention action\n4. Priority (1-5)\n\nFormat as a clear action plan for the sales team.",
+               "max_words": 400}, 850, 100),
+        _node("n5", "send_email", "Alert Sales Team",
+              {"to": "", "subject": "Customer Churn Alert — {date} — Action Required",
+               "body_mode": "use_previous_output", "require_approval": True}, 1100, 100),
+        _node("n6", "save_file", "Log Check",
+              {"filename_template": "churn_check_{date}", "format": "txt"}, 850, 350),
+    ],
+    "edges": [
+        _edge("n1", "n2"),
+        _edge("n2", "n3"),
+        _edge("n3", "n4", "has_data"),
+        _edge("n3", "n6", "empty"),
+        _edge("n4", "n5"),
+    ],
+}
+
 TEMPLATES: List[Dict[str, Any]] = [
     DAILY_SALES_REPORT,
     ANOMALY_ALERT_PIPELINE,
     WEEKLY_KPI_DIGEST,
     DOCUMENT_MONITOR,
     REVENUE_DROP_RESPONSE,
+    AUTO_EMAIL_SENDER,
+    MEETING_SCHEDULER,
+    CALL_SCHEDULER,
+    LIVE_DATA_ANALYZER,
+    CUSTOMER_CHURN_WARNING,
 ]
 
 

@@ -97,3 +97,16 @@ export const clearCache = () => request('/settings/clear-cache', { method: 'POST
 export const exportMarkdown = (messages) =>
   request('/export/markdown', { method: 'POST', body: JSON.stringify(messages) });
 export const exportPdfUrl = `${BASE}/export/pdf`;
+
+// Workflows
+export const getWorkflows = () => request('/workflows');
+export const getWorkflow = (id) => request(`/workflows/${id}`);
+export const saveWorkflow = (wf) => request('/workflows', { method: 'POST', body: JSON.stringify(wf) });
+export const deleteWorkflow = (id) => request(`/workflows/${id}`, { method: 'DELETE' });
+export const toggleWorkflow = (id, enabled) => request(`/workflows/${id}/toggle`, { method: 'POST', body: JSON.stringify({ enabled }) });
+export const runWorkflow = (id) => request(`/workflows/${id}/run`, { method: 'POST' });
+export const runWorkflowPreview = (wf) => request('/workflows/run-preview', { method: 'POST', body: JSON.stringify(wf) });
+export const getNodeTypes = () => request('/workflows/node-types');
+export const getWorkflowTemplates = () => request('/workflows/templates');
+export const getSchedulerJobs = () => request('/workflows/scheduler/jobs');
+export const getWorkflowHistory = (limit = 30) => request(`/workflows/scheduler/history?limit=${limit}`);

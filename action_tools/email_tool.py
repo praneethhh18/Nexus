@@ -134,18 +134,18 @@ def compose_and_send(
     print(draft_display)
 
     if test_mode:
-        approved = False  # In test mode, never actually send
-        logger.info("[Email] Test mode — email NOT sent")
+        approved = False  # In test mode, save draft only
+        logger.info("[Email] Test mode — email saved as draft")
     elif approval_callback:
         approved, feedback = approval_callback(draft)
         if not approved and feedback:
-            # Regenerate with feedback
             draft = _draft_email(recipient, subject_hint, context, feedback)
             approved, feedback = approval_callback(draft)
     else:
-        # Console fallback
-        answer = input("\nSend this email? (yes/no): ").strip().lower()
-        approved = answer in ("yes", "y")
+        # Auto-approve when called from workflow with require_approval=False
+        # (no interactive console — we're running inside a server)
+        approved = True
+        logger.info("[Email] Auto-approved (no approval callback, not test mode)")
 
     duration_ms = int((time.time() - start) * 1000)
     result: Dict[str, Any] = {

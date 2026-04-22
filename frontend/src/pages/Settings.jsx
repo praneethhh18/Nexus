@@ -60,6 +60,43 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Integrations */}
+        <div className="panel">
+          <h3>Integrations</h3>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Discord Webhook URL</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="field-input" placeholder="https://discord.com/api/webhooks/..." id="discord-url"
+                defaultValue={s.discord_enabled ? '(configured)' : ''} style={{ fontSize: 12 }} />
+              <button className="btn-ghost" onClick={async () => {
+                const url = document.getElementById('discord-url').value;
+                if (!url || url === '(configured)') return;
+                try {
+                  await fetch('/api/settings/update', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: 'DISCORD_WEBHOOK_URL', value: url }) });
+                  flash('Discord webhook saved.');
+                } catch (e) { flash('Failed: ' + e.message); }
+              }}>Save</button>
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Gmail App Password</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input className="field-input" type="password" placeholder="16-char app password" id="gmail-pw" style={{ fontSize: 12 }} />
+              <button className="btn-ghost" onClick={async () => {
+                const pw = document.getElementById('gmail-pw').value;
+                if (!pw) return;
+                try {
+                  await fetch('/api/settings/update', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ key: 'GMAIL_APP_PASSWORD', value: pw }) });
+                  flash('Gmail password saved.');
+                } catch (e) { flash('Failed: ' + e.message); }
+              }}>Save</button>
+            </div>
+            <p style={{ fontSize: 9, color: '#475569', marginTop: 4 }}>Get an app password from Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords</p>
+          </div>
+        </div>
+
         {/* Maintenance */}
         <div className="panel">
           <h3>Maintenance</h3>
@@ -71,7 +108,6 @@ export default function Settings() {
               <Trash2 size={14} /> Clear Cache
             </button>
           </div>
-          <p style={{ fontSize: 11, color: '#475569', marginTop: 8 }}>Edit .env to permanently change models or settings.</p>
         </div>
       </div>
     </div>

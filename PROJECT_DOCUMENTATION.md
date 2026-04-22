@@ -2,6 +2,682 @@
 
 ## Bug Fixes & Enhancements
 
+### [enhancement] Changes in server.py
+
+- **File**: `api\server.py`
+- **Captured**: 4/22/2026, 11:10:48 PM
+- **Category**: enhancement
+**Summary:** Modified server.py: 16 lines added, 0 lines removed.
+**Files Modified:**
+  - `api\server.py` (+16 / -0)
+**API Endpoints** (`server.py`):
+
+| Method | Route | Handler | Middleware |
+|--------|-------|---------|------------|
+| `GET` | `/{full_path:path}` | get | - |
+**Schema: `ChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+| `user_id` | `str` | ✓ | - |
+
+**Schema: `WhatIfRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `scenario` | `str` | ✓ | - |
+
+**Schema: `ReportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+
+**Schema: `DataImportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `table_name` | `str` | ✓ | - |
+| `if_exists` | `str` | ✓ | - |
+
+**Schema: `ConversationUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `title` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `healthy` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `kb` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `result_state` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `answer` | `unknown` | ✓ | - |
+| `tools` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `await` | `unknown` | ✓ | - |
+| `try` | `while True` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `req` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `update_title` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `dc` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `tables` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `cols` | `unknown` | ✓ | - |
+| `fks` | `unknown` | ✓ | - |
+| `row_count` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `stats` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `full_df` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `Path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `from sql_agent` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `Path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `intent` | `Optional[str]` | ✓ | - |
+| `starred` | `bool` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `delete_query` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `stats` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `content` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `docs` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+
+### [bugfix] Changes in Chat.jsx
+
+- **File**: `frontend\src\pages\Chat.jsx`
+- **Captured**: 4/22/2026, 11:09:50 PM
+- **Category**: bugfix
+**Summary:** Modified Chat.jsx: 291 lines added, 142 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Chat.jsx` (+291 / -142)
+
+### [bugfix] Changes in scheduler.py
+
+- **File**: `workflows\scheduler.py`
+- **Captured**: 4/22/2026, 11:07:54 PM
+- **Category**: bugfix
+**Summary:** Modified scheduler.py: 191 lines added, 0 lines removed.
+**Files Modified:**
+  - `workflows\scheduler.py` (+191 / -0)
+
+### [bugfix] Changes in email_tool.py
+
+- **File**: `action_tools\email_tool.py`
+- **Captured**: 4/22/2026, 11:07:40 PM
+- **Category**: bugfix
+**Summary:** Modified email_tool.py: 184 lines added, 0 lines removed.
+**Files Modified:**
+  - `action_tools\email_tool.py` (+184 / -0)
+
+### [bugfix] Changes in server.py
+
+- **File**: `api\server.py`
+- **Captured**: 4/22/2026, 11:07:11 PM
+- **Category**: bugfix
+**Summary:** Modified server.py: 149 lines added, 1 lines removed.
+**Files Modified:**
+  - `api\server.py` (+149 / -1)
+**API Endpoints** (`server.py`):
+
+| Method | Route | Handler | Middleware |
+|--------|-------|---------|------------|
+| `POST` | `/api/voice/transcribe` | post | - |
+| `POST` | `/api/email/send` | post | - |
+| `POST` | `/api/webhooks/{webhook_path:path}` | post | - |
+| `POST` | `/api/settings/update` | post | - |
+**Schema: `ChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+| `user_id` | `str` | ✓ | - |
+
+**Schema: `WhatIfRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `scenario` | `str` | ✓ | - |
+
+**Schema: `ReportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+
+**Schema: `DataImportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `table_name` | `str` | ✓ | - |
+| `if_exists` | `str` | ✓ | - |
+
+**Schema: `ConversationUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `title` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `healthy` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `kb` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `result_state` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `answer` | `unknown` | ✓ | - |
+| `tools` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `await` | `unknown` | ✓ | - |
+| `try` | `while True` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `req` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `update_title` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `dc` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `tables` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `cols` | `unknown` | ✓ | - |
+| `fks` | `unknown` | ✓ | - |
+| `row_count` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `stats` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `full_df` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `Path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `from sql_agent` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `Path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `intent` | `Optional[str]` | ✓ | - |
+| `starred` | `bool` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `delete_query` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `stats` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `content` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `docs` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+
+### [bugfix] Changes in Workflows.jsx
+
+- **File**: `frontend\src\pages\Workflows.jsx`
+- **Captured**: 4/22/2026, 10:18:39 PM
+- **Category**: bugfix
+**Summary:** Modified Workflows.jsx: 344 lines added, 292 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Workflows.jsx` (+344 / -292)
+
+### [bugfix] Changes in templates.py
+
+- **File**: `workflows\templates.py`
+- **Captured**: 4/22/2026, 10:17:07 PM
+- **Category**: bugfix
+**Summary:** Modified templates.py: 363 lines added, 0 lines removed.
+**Files Modified:**
+  - `workflows\templates.py` (+363 / -0)
+
+### [bugfix] Changes in Workflows.jsx
+
+- **File**: `frontend\src\pages\Workflows.jsx`
+- **Captured**: 4/22/2026, 10:05:35 PM
+- **Category**: bugfix
+**Summary:** Modified Workflows.jsx: 371 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Workflows.jsx` (+371 / -0)
+
+### [enhancement] Changes in server.py
+
+- **File**: `api\server.py`
+- **Captured**: 4/22/2026, 10:04:12 PM
+- **Category**: enhancement
+**Summary:** Modified server.py: 78 lines added, 1 lines removed.
+**Files Modified:**
+  - `api\server.py` (+78 / -1)
+**API Endpoints** (`server.py`):
+
+| Method | Route | Handler | Middleware |
+|--------|-------|---------|------------|
+| `GET` | `/api/workflows` | get | - |
+| `GET` | `/api/workflows/node-types` | get | - |
+| `GET` | `/api/workflows/templates` | get | - |
+| `GET` | `/api/workflows/{wf_id}` | get | - |
+| `POST` | `/api/workflows` | post | - |
+| `DELETE` | `/api/workflows/{wf_id}` | delete | - |
+| `POST` | `/api/workflows/{wf_id}/toggle` | post | - |
+| `POST` | `/api/workflows/{wf_id}/run` | post | - |
+| `POST` | `/api/workflows/run-preview` | post | - |
+| `GET` | `/api/workflows/scheduler/jobs` | get | - |
+| `GET` | `/api/workflows/scheduler/history` | get | - |
+**Schema: `ChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+| `user_id` | `str` | ✓ | - |
+
+**Schema: `WhatIfRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `scenario` | `str` | ✓ | - |
+
+**Schema: `ReportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+
+**Schema: `DataImportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `table_name` | `str` | ✓ | - |
+| `if_exists` | `str` | ✓ | - |
+
+**Schema: `ConversationUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `title` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `healthy` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `kb` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `result_state` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `answer` | `unknown` | ✓ | - |
+| `tools` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `await` | `unknown` | ✓ | - |
+| `try` | `while True` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `req` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `update_title` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `dc` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `tables` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `cols` | `unknown` | ✓ | - |
+| `fks` | `unknown` | ✓ | - |
+| `row_count` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `stats` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `full_df` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `Path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `from sql_agent` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `Path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `intent` | `Optional[str]` | ✓ | - |
+| `starred` | `bool` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `delete_query` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `stats` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `content` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `docs` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+
 ### [bugfix] Changes in data_import.py
 
 - **File**: `sql_agent\data_import.py`
@@ -434,6 +1110,34 @@ Changed keys: `plugins`, `server`, `port`, `proxy`, `api`, `http`, `localhost`, 
   - `venv\Lib\site-packages\fastapi\utils.py` (+137 / -0)
 
 ## Features & Implementation
+
+### [feature] Changes in Settings.jsx
+
+- **File**: `frontend\src\pages\Settings.jsx`
+- **Captured**: 4/22/2026, 11:10:10 PM
+- **Category**: feature
+**Summary:** Modified Settings.jsx: 46 lines added, 10 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Settings.jsx` (+46 / -10)
+
+### [feature] Changes in api.js
+
+- **File**: `frontend\src\services\api.js`
+- **Captured**: 4/22/2026, 10:04:24 PM
+- **Category**: feature
+**Summary:** Modified api.js: 13 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\services\api.js` (+13 / -0)
+
+### [UI] NexusAgent
+
+- **File**: `frontend\dist\index.html`
+- **Captured**: 4/22/2026, 9:57:27 PM
+- **Category**: feature
+**Summary:** **Page:** NexusAgent
+**Libraries:** `index-BsJbQkw1.js`
+**Files Modified:**
+  - `frontend\dist\index.html` (+17 / -0)
 
 ### [feature] Changes in export_conversation.py
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch } from 'lucide-react';
 import { getConversations, deleteConversation, getHealth } from '../services/api';
 
 const NAV = [
@@ -8,6 +8,7 @@ const NAV = [
   { to: '/database', icon: Database, label: 'Database' },
   { to: '/whatif', icon: TrendingUp, label: 'What-If' },
   { to: '/reports', icon: FileText, label: 'Reports' },
+  { to: '/workflows', icon: GitBranch, label: 'Workflows' },
   { to: '/history', icon: Clock, label: 'History' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];

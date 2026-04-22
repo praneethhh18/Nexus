@@ -16,9 +16,10 @@ from typing import Optional
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Query, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, UploadFile, File, Query, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from loguru import logger
 
@@ -609,3 +610,244 @@ def clear_cache():
     from sql_agent.query_generator import clear_cache as cc
     cc()
     return {"ok": True, "message": "SQL cache cleared"}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   WORKFLOWS
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/workflows")
+def list_workflows():
+    from workflows.storage import list_workflows as lw
+    return lw()
+
+@app.get("/api/workflows/node-types")
+def get_node_types():
+    from workflows.node_registry import NODE_TYPES
+    return NODE_TYPES
+
+@app.get("/api/workflows/templates")
+def get_workflow_templates():
+    from workflows.templates import get_all_templates
+    return get_all_templates()
+
+@app.get("/api/workflows/{wf_id}")
+def get_workflow(wf_id: str):
+    from workflows.storage import load_workflow
+    wf = load_workflow(wf_id)
+    if not wf:
+        raise HTTPException(404, "Workflow not found")
+    return wf
+
+@app.post("/api/workflows")
+def save_workflow(wf: dict):
+    from workflows.storage import save_workflow as sw
+    wf_id = sw(wf)
+    return {"id": wf_id}
+
+@app.delete("/api/workflows/{wf_id}")
+def delete_workflow_api(wf_id: str):
+    from workflows.storage import delete_workflow
+    delete_workflow(wf_id)
+    return {"ok": True}
+
+@app.post("/api/workflows/{wf_id}/toggle")
+def toggle_workflow(wf_id: str, body: dict):
+    from workflows.storage import toggle_enabled
+    enabled = body.get("enabled", False)
+    toggle_enabled(wf_id, enabled)
+    try:
+        from workflows.scheduler import sync_all_workflows
+        sync_all_workflows()
+    except Exception:
+        pass
+    return {"ok": True, "enabled": enabled}
+
+@app.post("/api/workflows/{wf_id}/run")
+def run_workflow(wf_id: str):
+    from workflows.storage import load_workflow
+    from workflows.executor import execute_workflow
+    wf = load_workflow(wf_id)
+    if not wf:
+        raise HTTPException(404, "Workflow not found")
+    result = execute_workflow(wf)
+    return result
+
+@app.post("/api/workflows/run-preview")
+def run_workflow_preview(wf: dict):
+    from workflows.executor import execute_workflow
+    result = execute_workflow(wf)
+    return result
+
+@app.get("/api/workflows/scheduler/jobs")
+def get_scheduler_jobs():
+    from workflows.scheduler import get_scheduled_jobs
+    return get_scheduled_jobs()
+
+@app.get("/api/workflows/scheduler/history")
+def get_workflow_history(limit: int = 30):
+    from workflows.scheduler import get_run_history
+    return get_run_history(limit)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   VOICE TRANSCRIPTION
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(file: UploadFile = File(...)):
+    """Receive an audio file (webm/wav) and return transcribed text."""
+    import tempfile
+    suffix = Path(file.filename or "audio.webm").suffix or ".webm"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        content = await file.read()
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        from voice.listener import _transcribe
+        # Convert webm to wav if needed
+        wav_path = tmp_path
+        if suffix.lower() in (".webm", ".ogg", ".mp4", ".m4a"):
+            try:
+                import subprocess
+                wav_path = tmp_path.replace(suffix, ".wav")
+                subprocess.run(
+                    ["ffmpeg", "-i", tmp_path, "-ar", "16000", "-ac", "1", wav_path, "-y"],
+                    capture_output=True, timeout=10,
+                )
+            except Exception:
+                wav_path = tmp_path  # Try raw file if ffmpeg unavailable
+
+        text = _transcribe(wav_path)
+        return {"text": text or "", "success": bool(text)}
+    except Exception as e:
+        logger.error(f"Transcription failed: {e}")
+        return {"text": "", "success": False, "error": str(e)}
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+        wav_check = tmp_path.replace(suffix, ".wav")
+        if wav_check != tmp_path:
+            Path(wav_check).unlink(missing_ok=True)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   EMAIL — MANUAL SEND APPROVAL
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/email/send")
+def send_email_now(body: dict):
+    """Actually send an email (after user approval in UI)."""
+    from config.settings import EMAIL_ENABLED, GMAIL_USER, GMAIL_APP_PASSWORD
+    if not EMAIL_ENABLED:
+        raise HTTPException(400, "Email not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD in .env")
+
+    to = body.get("to", "")
+    subject = body.get("subject", "")
+    email_body = body.get("body", "")
+
+    if not to or not subject or not email_body:
+        raise HTTPException(400, "Missing 'to', 'subject', or 'body'")
+
+    try:
+        import smtplib
+        from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
+
+        msg = MIMEMultipart()
+        msg["From"] = GMAIL_USER
+        msg["To"] = to
+        msg["Subject"] = subject
+        msg.attach(MIMEText(email_body, "plain"))
+
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
+
+        logger.success(f"[Email] Sent to {to}: {subject}")
+        return {"sent": True, "to": to, "subject": subject}
+    except Exception as e:
+        logger.error(f"[Email] Send failed: {e}")
+        raise HTTPException(500, f"Failed to send email: {e}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   WEBHOOK TRIGGER
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/webhooks/{webhook_path:path}")
+async def receive_webhook(webhook_path: str, request: Request):
+    """Receive a webhook POST and trigger matching workflows."""
+    payload = {}
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {"raw": (await request.body()).decode("utf-8", errors="replace")}
+
+    from workflows.storage import list_workflows as lw
+    from workflows.executor import execute_workflow
+
+    target_path = f"/webhook/{webhook_path}"
+    triggered = []
+
+    for wf in lw():
+        if not wf.get("enabled"):
+            continue
+        for node in wf.get("nodes", []):
+            if node.get("type") == "webhook_trigger":
+                if node.get("config", {}).get("path", "") == target_path:
+                    wf["_webhook_payload"] = payload
+                    result = execute_workflow(wf)
+                    triggered.append({"workflow": wf["name"], "status": result.get("status")})
+
+    if not triggered:
+        raise HTTPException(404, f"No enabled workflow found for path: {target_path}")
+
+    return {"triggered": triggered}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   RUNTIME SETTINGS UPDATE
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/settings/update")
+def update_runtime_setting(body: dict):
+    """Update a .env setting at runtime."""
+    key = body.get("key", "")
+    value = body.get("value", "")
+    allowed = {"DISCORD_WEBHOOK_URL", "GMAIL_USER", "GMAIL_APP_PASSWORD", "LOG_LEVEL", "ANOMALY_THRESHOLD"}
+
+    if key not in allowed:
+        raise HTTPException(400, f"Cannot update '{key}'. Allowed: {', '.join(allowed)}")
+
+    env_path = ROOT / ".env"
+    lines = env_path.read_text(encoding="utf-8").splitlines() if env_path.exists() else []
+
+    updated = False
+    for i, line in enumerate(lines):
+        if line.startswith(f"{key}="):
+            lines[i] = f"{key}={value}"
+            updated = True
+            break
+    if not updated:
+        lines.append(f"{key}={value}")
+
+    env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+    # Reload into os.environ
+    import os
+    os.environ[key] = value
+
+    return {"ok": True, "key": key}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   SERVE REACT FRONTEND (production only — when dist/ exists)
+# ═══════════════════════════════════════════════════════════════════════════════
+_frontend_dist = ROOT / "frontend" / "dist"
+if _frontend_dist.is_dir():
+    # Serve index.html for all non-API routes (SPA fallback)
+    @app.get("/{full_path:path}")
+    def serve_spa(full_path: str):
+        file_path = _frontend_dist / full_path
+        if file_path.is_file():
+            return FileResponse(str(file_path))
+        return FileResponse(str(_frontend_dist / "index.html"))
+
+    app.mount("/assets", StaticFiles(directory=str(_frontend_dist / "assets")), name="static")

@@ -5,6 +5,7 @@ import Database from './pages/Database';
 import WhatIf from './pages/WhatIf';
 import Reports from './pages/Reports';
 import History from './pages/History';
+import Workflows from './pages/Workflows';
 import Settings from './pages/Settings';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
           <Route path="/database" element={<Database />} />
           <Route path="/whatif" element={<WhatIf />} />
           <Route path="/reports" element={<Reports />} />
+          <Route path="/workflows" element={<Workflows />} />
           <Route path="/history" element={<History />} />
           <Route path="/settings" element={<Settings />} />
         </Route>
