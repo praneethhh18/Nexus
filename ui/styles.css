@@ -1,0 +1,597 @@
+/* ============================================================
+   NexusAgent — Modern Dark Theme Stylesheet
+   Professional, polished UI for a production-grade AI assistant
+   ============================================================ */
+
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+    --nexus-primary: #3b82f6;
+    --nexus-primary-dark: #2563eb;
+    --nexus-primary-light: #60a5fa;
+    --nexus-accent: #8b5cf6;
+    --nexus-surface: #0f172a;
+    --nexus-surface-2: #1e293b;
+    --nexus-surface-3: #334155;
+    --nexus-text: #e2e8f0;
+    --nexus-text-muted: #94a3b8;
+    --nexus-border: #334155;
+    --nexus-success: #22c55e;
+    --nexus-warning: #f59e0b;
+    --nexus-error: #ef4444;
+    --nexus-info: #3b82f6;
+    --nexus-glow: rgba(59, 130, 246, 0.15);
+    --nexus-radius: 12px;
+    --nexus-radius-sm: 8px;
+    --nexus-radius-lg: 16px;
+    --nexus-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    --nexus-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+    --nexus-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Global Overrides ──────────────────────────────────────── */
+.block-container {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+    max-width: 1400px !important;
+}
+
+/* Compact header spacing */
+h1, h2, h3, h4 {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+/* ── Header Banner ─────────────────────────────────────────── */
+.nexus-header {
+    text-align: center;
+    padding: 1.2rem 1rem 0.8rem;
+    margin-bottom: 0.5rem;
+}
+
+.nexus-header h1 {
+    font-size: 2rem !important;
+    font-weight: 700 !important;
+    background: linear-gradient(135deg, var(--nexus-primary-light) 0%, var(--nexus-accent) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.15rem !important;
+    letter-spacing: -0.02em;
+}
+
+.nexus-header .nexus-subtitle {
+    color: var(--nexus-text-muted);
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    font-weight: 400;
+}
+
+/* ── Navigation Tabs ───────────────────────────────────────── */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"] .stRadio > div {
+    gap: 0.25rem !important;
+}
+
+div[data-testid="stHorizontalBlock"] .stRadio > div > label {
+    padding: 0.5rem 1.2rem !important;
+    border-radius: var(--nexus-radius) !important;
+    font-weight: 500 !important;
+    font-size: 0.9rem !important;
+    transition: var(--nexus-transition) !important;
+    border: 1px solid transparent !important;
+}
+
+div[data-testid="stHorizontalBlock"] .stRadio > div > label:hover {
+    background: var(--nexus-surface-2) !important;
+    border-color: var(--nexus-border) !important;
+}
+
+div[data-testid="stHorizontalBlock"] .stRadio > div > label[data-checked="true"] {
+    background: var(--nexus-glow) !important;
+    border-color: var(--nexus-primary) !important;
+    color: var(--nexus-primary-light) !important;
+}
+
+/* ── Chat Messages ─────────────────────────────────────────── */
+.stChatMessage {
+    border-radius: var(--nexus-radius-lg) !important;
+    padding: 1rem 1.2rem !important;
+    margin-bottom: 0.6rem !important;
+    border: 1px solid var(--nexus-border) !important;
+    transition: var(--nexus-transition);
+}
+
+.stChatMessage:hover {
+    border-color: var(--nexus-surface-3) !important;
+}
+
+/* User messages */
+.stChatMessage[data-testid="chat-message-user"] {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(139, 92, 246, 0.06) 100%) !important;
+    border-left: 3px solid var(--nexus-primary) !important;
+}
+
+/* Assistant messages */
+.stChatMessage[data-testid="chat-message-assistant"] {
+    background: var(--nexus-surface-2) !important;
+    border-left: 3px solid var(--nexus-accent) !important;
+}
+
+/* ── Tool Badges ───────────────────────────────────────────── */
+.tool-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    margin: 2px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    transition: var(--nexus-transition);
+    box-shadow: var(--nexus-shadow-sm);
+}
+
+.tool-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--nexus-shadow);
+}
+
+.badge-rag        { background: #1e40af; color: #bfdbfe; }
+.badge-sql        { background: #166534; color: #bbf7d0; }
+.badge-action     { background: #9a3412; color: #fed7aa; }
+.badge-report     { background: #581c87; color: #e9d5ff; }
+.badge-whatif     { background: #155e75; color: #a5f3fc; }
+.badge-multi-doc  { background: #1e3a5f; color: #93c5fd; }
+.badge-multi-agent { background: #4c1d95; color: #c4b5fd; }
+
+/* ── Status Indicators ─────────────────────────────────────── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-online {
+    background: rgba(34, 197, 94, 0.12);
+    color: var(--nexus-success);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.status-offline {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--nexus-error);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.status-dot.online {
+    background: var(--nexus-success);
+    box-shadow: 0 0 8px var(--nexus-success);
+    animation: pulse-green 2s ease-in-out infinite;
+}
+
+.status-dot.offline {
+    background: var(--nexus-error);
+}
+
+@keyframes pulse-green {
+    0%, 100% { box-shadow: 0 0 4px var(--nexus-success); }
+    50% { box-shadow: 0 0 12px var(--nexus-success); }
+}
+
+/* ── Severity Indicators ───────────────────────────────────── */
+.severity-critical { color: var(--nexus-error); font-weight: 700; }
+.severity-warning  { color: var(--nexus-warning); font-weight: 600; }
+.severity-info     { color: var(--nexus-info); }
+.severity-success  { color: var(--nexus-success); }
+
+/* ── Alert Items ───────────────────────────────────────────── */
+.alert-item {
+    border-left: 3px solid;
+    padding: 10px 14px;
+    margin: 8px 0;
+    border-radius: 0 var(--nexus-radius-sm) var(--nexus-radius-sm) 0;
+    background: var(--nexus-surface-2);
+    transition: var(--nexus-transition);
+}
+
+.alert-item:hover {
+    background: var(--nexus-surface-3);
+}
+
+.alert-critical { border-color: var(--nexus-error); }
+.alert-warning  { border-color: var(--nexus-warning); }
+.alert-info     { border-color: var(--nexus-info); }
+.alert-success  { border-color: var(--nexus-success); }
+
+/* ── Sidebar ───────────────────────────────────────────────── */
+section[data-testid="stSidebar"] {
+    background: var(--nexus-surface) !important;
+    border-right: 1px solid var(--nexus-border) !important;
+}
+
+section[data-testid="stSidebar"] .sidebar-header {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--nexus-text-muted);
+    margin: 18px 0 6px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--nexus-border);
+    font-weight: 600;
+}
+
+/* ── Metric Cards ──────────────────────────────────────────── */
+div[data-testid="stMetric"] {
+    background: var(--nexus-surface-2) !important;
+    border: 1px solid var(--nexus-border) !important;
+    border-radius: var(--nexus-radius) !important;
+    padding: 12px 16px !important;
+    transition: var(--nexus-transition);
+}
+
+div[data-testid="stMetric"]:hover {
+    border-color: var(--nexus-primary) !important;
+    box-shadow: 0 0 12px var(--nexus-glow) !important;
+}
+
+div[data-testid="stMetric"] label {
+    color: var(--nexus-text-muted) !important;
+    font-size: 11px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: var(--nexus-text) !important;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.stButton > button {
+    border-radius: var(--nexus-radius) !important;
+    font-weight: 500 !important;
+    transition: var(--nexus-transition) !important;
+    border: 1px solid var(--nexus-border) !important;
+    font-size: 0.85rem !important;
+}
+
+.stButton > button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--nexus-shadow-sm) !important;
+}
+
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, var(--nexus-primary) 0%, var(--nexus-primary-dark) 100%) !important;
+    border-color: var(--nexus-primary) !important;
+    color: white !important;
+}
+
+.stButton > button[kind="primary"]:hover {
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.35) !important;
+}
+
+/* ── Voice Button ──────────────────────────────────────────── */
+.voice-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, var(--nexus-error) 0%, #dc2626 100%);
+    color: white;
+    font-weight: 600;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    transition: var(--nexus-transition);
+}
+
+.voice-btn:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.35);
+}
+
+.voice-btn.recording {
+    animation: recording-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes recording-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+}
+
+/* ── Expander ──────────────────────────────────────────────── */
+.streamlit-expanderHeader {
+    font-weight: 500 !important;
+    font-size: 0.85rem !important;
+    border-radius: var(--nexus-radius-sm) !important;
+}
+
+/* ── Loading Spinner ───────────────────────────────────────── */
+.processing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 18px;
+    border-radius: var(--nexus-radius);
+    background: var(--nexus-surface-2);
+    border: 1px solid var(--nexus-border);
+    margin: 8px 0;
+    animation: fadeIn 0.3s ease-in;
+}
+
+.processing-indicator .dot-flashing {
+    display: inline-flex;
+    gap: 4px;
+}
+
+.processing-indicator .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nexus-primary-light);
+    animation: dot-bounce 1.4s ease-in-out infinite;
+}
+
+.processing-indicator .dot:nth-child(2) { animation-delay: 0.2s; }
+.processing-indicator .dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+    40% { transform: translateY(-6px); opacity: 1; }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Info Cards ────────────────────────────────────────────── */
+.info-card {
+    background: var(--nexus-surface-2);
+    border: 1px solid var(--nexus-border);
+    border-radius: var(--nexus-radius);
+    padding: 16px 20px;
+    margin: 8px 0;
+    transition: var(--nexus-transition);
+}
+
+.info-card:hover {
+    border-color: var(--nexus-primary);
+}
+
+.info-card h4 {
+    margin: 0 0 6px 0;
+    font-size: 0.95rem;
+    color: var(--nexus-text);
+}
+
+.info-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--nexus-text-muted);
+}
+
+/* ── Welcome Screen ────────────────────────────────────────── */
+.welcome-container {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.welcome-container h3 {
+    color: var(--nexus-text);
+    margin-bottom: 0.5rem;
+}
+
+.welcome-container p {
+    color: var(--nexus-text-muted);
+    font-size: 0.9rem;
+}
+
+.quick-action-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 1.5rem;
+}
+
+.quick-action {
+    background: var(--nexus-surface-2);
+    border: 1px solid var(--nexus-border);
+    border-radius: var(--nexus-radius);
+    padding: 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: var(--nexus-transition);
+}
+
+.quick-action:hover {
+    border-color: var(--nexus-primary);
+    background: var(--nexus-glow);
+    transform: translateY(-2px);
+    box-shadow: var(--nexus-shadow);
+}
+
+.quick-action .qa-icon {
+    font-size: 1.5rem;
+    margin-bottom: 8px;
+}
+
+.quick-action .qa-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--nexus-text);
+    margin-bottom: 4px;
+}
+
+.quick-action .qa-desc {
+    font-size: 0.78rem;
+    color: var(--nexus-text-muted);
+    line-height: 1.4;
+}
+
+/* ── Dataframe ─────────────────────────────────────────────── */
+.stDataFrame {
+    border-radius: var(--nexus-radius) !important;
+    overflow: hidden;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px !important;
+}
+
+.stTabs [data-baseweb="tab"] {
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    padding: 6px 12px !important;
+    border-radius: var(--nexus-radius-sm) var(--nexus-radius-sm) 0 0 !important;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--nexus-surface-3);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--nexus-text-muted);
+}
+
+/* ── Divider ───────────────────────────────────────────────── */
+hr {
+    border-color: var(--nexus-border) !important;
+    opacity: 0.5 !important;
+}
+
+/* ── File Uploader ─────────────────────────────────────────── */
+.stFileUploader {
+    border-radius: var(--nexus-radius) !important;
+}
+
+.stFileUploader > div {
+    border-radius: var(--nexus-radius) !important;
+    border-style: dashed !important;
+    border-color: var(--nexus-border) !important;
+}
+
+/* ── Toast / Success / Error ───────────────────────────────── */
+.stAlert {
+    border-radius: var(--nexus-radius) !important;
+}
+
+/* ── Chat Input ────────────────────────────────────────────── */
+.stChatInput {
+    border-radius: var(--nexus-radius-lg) !important;
+}
+
+.stChatInput > div {
+    border-radius: var(--nexus-radius-lg) !important;
+    border-color: var(--nexus-border) !important;
+}
+
+.stChatInput > div:focus-within {
+    border-color: var(--nexus-primary) !important;
+    box-shadow: 0 0 0 2px var(--nexus-glow) !important;
+}
+
+/* ── Timestamp for messages ────────────────────────────────── */
+.msg-timestamp {
+    font-size: 10px;
+    color: var(--nexus-text-muted);
+    margin-top: 4px;
+    opacity: 0.6;
+}
+
+/* ── Agent Collaboration Badge ─────────────────────────────── */
+.agent-collab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: #c4b5fd;
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 6px;
+}
+
+/* ── Source Citation ────────────────────────────────────────── */
+.source-citation {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: var(--nexus-surface-2);
+    border-radius: var(--nexus-radius-sm);
+    border-left: 2px solid var(--nexus-primary);
+    margin: 4px 0;
+    font-size: 12px;
+    color: var(--nexus-text-muted);
+}
+
+/* ── Report Card ───────────────────────────────────────────── */
+.report-card {
+    background: var(--nexus-surface-2);
+    border: 1px solid var(--nexus-border);
+    border-radius: var(--nexus-radius);
+    padding: 12px 16px;
+    margin: 6px 0;
+    transition: var(--nexus-transition);
+}
+
+.report-card:hover {
+    border-color: var(--nexus-primary);
+}
+
+/* ── KB Document Entry ─────────────────────────────────────── */
+.kb-entry {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--nexus-surface-2);
+    border-radius: var(--nexus-radius-sm);
+    border: 1px solid var(--nexus-border);
+    margin: 4px 0;
+    font-size: 13px;
+    transition: var(--nexus-transition);
+}
+
+.kb-entry:hover {
+    border-color: var(--nexus-primary);
+}
+
+/* ── Footer ────────────────────────────────────────────────── */
+.nexus-footer {
+    text-align: center;
+    padding: 12px;
+    color: var(--nexus-text-muted);
+    font-size: 11px;
+    border-top: 1px solid var(--nexus-border);
+    margin-top: 2rem;
+}

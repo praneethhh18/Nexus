@@ -1,0 +1,50 @@
+# Core LLM + Orchestration
+langchain>=0.3.0
+langchain-community>=0.3.0
+langchain-core>=0.3.0
+langchain-ollama>=0.3.0
+langgraph>=0.2.0
+ollama>=0.3.0
+
+# RAG + Embeddings
+chromadb>=0.5.0
+sentence-transformers>=3.0.0
+PyMuPDF  # install with: pip install PyMuPDF --only-binary=PyMuPDF
+
+# Database
+sqlalchemy>=2.0.0
+duckdb>=1.1.0
+pandas>=2.2.0
+faker>=30.0.0
+
+# Voice (optional - app falls back to text if unavailable)
+faster-whisper>=1.0.0
+sounddevice>=0.5.0
+soundfile>=0.12.0
+pyttsx3>=2.90
+numpy>=1.26.0
+
+# Reports + Charts
+reportlab>=4.2.0
+plotly>=5.24.0
+matplotlib>=3.9.0
+kaleido>=0.2.1
+
+# UI
+streamlit>=1.39.0
+
+# Actions + Notifications
+discord-webhook>=1.3.0
+requests>=2.32.0
+plyer>=2.1.0
+
+# Scheduling + Utils
+apscheduler>=3.10.0
+python-dotenv>=1.0.0
+python-docx>=1.1.0
+pypdf>=5.0.0
+tqdm>=4.66.0
+loguru>=0.7.0
+
+# Note for Python 3.12+:
+# pip install PyMuPDF --only-binary=PyMuPDF
