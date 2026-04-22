@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(python -m py_compile workflows/nodes/triggers.py workflows/nodes/conditions.py workflows/nodes/data_nodes.py workflows/nodes/ai_nodes.py workflows/nodes/action_nodes.py)"
-    ]
-  }
-}
