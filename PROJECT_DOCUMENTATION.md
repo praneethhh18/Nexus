@@ -2,6 +2,24 @@
 
 ## Bug Fixes & Enhancements
 
+### [bugfix] Changes in app.py
+
+- **File**: `ui\app.py`
+- **Captured**: 4/22/2026, 8:55:23 PM
+- **Category**: bugfix
+**Summary:** Modified app.py: 554 lines added, 669 lines removed.
+**Files Modified:**
+  - `ui\app.py` (+554 / -669)
+
+### [bugfix] Changes in sidebar.py
+
+- **File**: `ui\components\sidebar.py`
+- **Captured**: 4/22/2026, 8:55:23 PM
+- **Category**: bugfix
+**Summary:** Modified sidebar.py: 112 lines added, 143 lines removed.
+**Files Modified:**
+  - `ui\components\sidebar.py` (+112 / -143)
+
 ### [bugfix] Changes in embedder.py
 
 - **File**: `rag\embedder.py`
@@ -44,3 +62,14 @@
 | Field | Type | Required | Attributes |
 |-------|------|----------|------------|
 | `Thinking` | `unknown` | ✓ | - |
+
+## Architecture Decisions
+
+### [architecture] Changes in chat.py
+
+- **File**: `ui\components\chat.py`
+- **Captured**: 4/22/2026, 8:55:23 PM
+- **Category**: architecture
+**Summary:** Modified chat.py: 123 lines added, 122 lines removed.
+**Files Modified:**
+  - `ui\components\chat.py` (+123 / -122)

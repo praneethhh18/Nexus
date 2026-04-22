@@ -8,6 +8,16 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased] - 2026-04-22
 
 ### Fixed
+- [bugfix] Changes in app.py (`app.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Changed
+- [architecture] Changes in chat.py (`chat.py`)
+
+## [Unreleased] - 2026-04-22
+
+### Fixed
 - [bugfix] Changes in embedder.py (`embedder.py`)
 
 ## [Unreleased] - 2026-04-22
@@ -370,3 +380,4 @@ All notable changes to this project will be documented in this file.
 ### Fixed
 - [bugfix] Changes in settings.py (`settings.py`)
 .py (`settings.py`)
+s.py`)
