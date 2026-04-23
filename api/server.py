@@ -380,6 +380,44 @@ def audit_log_list(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#   Agent personas — names + role tags for the 6 autonomous agents
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/agents/personas")
+def agents_list_personas(ctx: dict = Depends(get_current_context)):
+    """Return all 6 agent personas (name, role tag, description, last activity)."""
+    from agents.personas import list_personas
+    return list_personas(ctx["business_id"])
+
+
+class _PersonaPatch(BaseModel):
+    name: Optional[str] = None
+    enabled: Optional[bool] = None
+
+
+@app.patch("/api/agents/personas/{agent_key}")
+def agents_patch_persona(agent_key: str, body: _PersonaPatch,
+                         ctx: dict = Depends(get_current_context)):
+    """Rename an agent (empty string = reset to default) and/or toggle enabled.
+    Owner/admin only — names are a business-level setting."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can rename agents")
+    from agents.personas import set_name, set_enabled, get_persona
+    if body.name is not None:
+        try:
+            set_name(ctx["business_id"], agent_key, body.name)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except KeyError:
+            raise HTTPException(404, f"Unknown agent: {agent_key}")
+    if body.enabled is not None:
+        try:
+            set_enabled(ctx["business_id"], agent_key, body.enabled)
+        except KeyError:
+            raise HTTPException(404, f"Unknown agent: {agent_key}")
+    return get_persona(ctx["business_id"], agent_key)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #   Morning briefing — daily 1-page agent
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.get("/api/briefing/latest")

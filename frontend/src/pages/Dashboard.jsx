@@ -9,6 +9,7 @@ import { calendarStatus, calendarEvents } from '../services/calendar';
 import { getUser, getCurrentBusiness } from '../services/auth';
 import { seedSampleData } from '../services/seed';
 import { briefingLatest, briefingRun } from '../services/briefing';
+import { listPersonas } from '../services/agents';
 import ReactMarkdown from 'react-markdown';
 import { Sparkles, Loader2, Sun, Lock } from 'lucide-react';
 
@@ -64,6 +65,7 @@ export default function Dashboard() {
   const [briefing, setBriefing] = useState(null);
   const [briefingBusy, setBriefingBusy] = useState(false);
   const [briefingError, setBriefingError] = useState('');
+  const [briefingAgent, setBriefingAgent] = useState(null);
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -111,6 +113,10 @@ export default function Dashboard() {
       const b = await briefingLatest();
       setBriefing(b && b.id ? b : null);
     } catch { /* ignore — non-critical */ }
+    try {
+      const all = await listPersonas();
+      setBriefingAgent(all.find(p => p.agent_key === 'morning_briefing') || null);
+    } catch { /* ignore */ }
   }, []);
   useEffect(() => { loadBriefing(); }, [loadBriefing]);
 
@@ -187,8 +193,22 @@ export default function Dashboard() {
                   <Sun size={18} color="var(--color-accent)" />
                 </div>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     Morning briefing
+                    {briefingAgent && (
+                      <span style={{
+                        fontSize: 10, padding: '2px 8px', borderRadius: 'var(--r-pill)',
+                        background: 'var(--color-accent-soft)',
+                        color: 'var(--color-accent)',
+                        fontWeight: 600, letterSpacing: 0.3,
+                        border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
+                        cursor: 'pointer',
+                      }}
+                      title="View all agents"
+                      onClick={() => navigate('/agents')}>
+                        by {briefingAgent.name} · {briefingAgent.role_tag}
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     {briefing

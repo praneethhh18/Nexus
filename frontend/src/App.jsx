@@ -16,6 +16,7 @@ import Tasks from './pages/Tasks';
 import Invoices from './pages/Invoices';
 import Documents from './pages/Documents';
 import Approvals from './pages/Approvals';
+import Agents from './pages/Agents';
 import Memory from './pages/Memory';
 import Team from './pages/Team';
 import Analytics from './pages/Analytics';
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/documents" element={<Documents />} />
           <Route path="/approvals" element={<Approvals />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/team" element={<Team />} />
           <Route path="/analytics" element={<Analytics />} />
