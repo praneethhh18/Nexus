@@ -34,3 +34,6 @@ export const togglePersonaEnabled = (key, enabled) =>
 
 export const listActivity = ({ hours = 48, limit = 50 } = {}) =>
   req(`/api/agents/activity?hours=${hours}&limit=${limit}`);
+
+export const runAgent = (key) =>
+  req(`/api/agents/${encodeURIComponent(key)}/run`, { method: 'POST' });

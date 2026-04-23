@@ -404,6 +404,49 @@ class _PersonaPatch(BaseModel):
     enabled: Optional[bool] = None
 
 
+@app.post("/api/agents/{agent_key}/run")
+def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
+    """
+    On-demand trigger for a specific agent. Dispatches to each agent's own
+    per-business runner so the work mirrors what the scheduler does. Owner/admin only.
+    """
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can run agents on demand")
+
+    business_id = ctx["business_id"]
+    user_id = ctx["user"]["id"]
+
+    try:
+        if agent_key == "morning_briefing":
+            from agents.briefing import run_for_business
+            result = run_for_business(business_id)
+            return {"ok": True, "agent_key": agent_key,
+                    "detail": {"narrative_mode": result.get("mode"),
+                               "delivered": result.get("delivered_channels", [])}}
+        if agent_key == "invoice_reminder":
+            from agents.background.invoice_reminder import run_for_business
+            return {"ok": True, "agent_key": agent_key, "detail": run_for_business(business_id)}
+        if agent_key == "stale_deal_watcher":
+            from agents.background.stale_deal_watcher import run_for_business
+            return {"ok": True, "agent_key": agent_key, "detail": run_for_business(business_id)}
+        if agent_key == "meeting_prep":
+            from agents.background.meeting_prep import run_for_user
+            return {"ok": True, "agent_key": agent_key, "detail": run_for_user(user_id, business_id)}
+        if agent_key == "email_triage":
+            from agents.email_triage import run_for_business
+            return {"ok": True, "agent_key": agent_key, "detail": run_for_business(business_id)}
+        if agent_key == "memory_consolidate":
+            from agents.summarizer import consolidate_business_memory
+            return {"ok": True, "agent_key": agent_key,
+                    "detail": consolidate_business_memory(business_id, apply_changes=True)}
+    except Exception as e:
+        from loguru import logger
+        logger.exception(f"[AgentRun] {agent_key} failed: {e}")
+        raise HTTPException(500, f"{agent_key} failed: {e}")
+
+    raise HTTPException(404, f"Unknown agent: {agent_key}")
+
+
 @app.patch("/api/agents/personas/{agent_key}")
 def agents_patch_persona(agent_key: str, body: _PersonaPatch,
                          ctx: dict = Depends(get_current_context)):

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity } from 'lucide-react';
-import { listPersonas, renamePersona, listActivity } from '../services/agents';
+import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity, Play } from 'lucide-react';
+import { listPersonas, renamePersona, listActivity, runAgent } from '../services/agents';
 
 function formatWhen(iso) {
   if (!iso) return null;
@@ -23,11 +23,13 @@ function formatNextRun(iso) {
   } catch { return iso.slice(0, 16); }
 }
 
-function PersonaCard({ persona, onRenamed, onOpenSurface }) {
+function PersonaCard({ persona, onRenamed, onOpenSurface, onRanAgent }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(persona.name);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [running, setRunning] = useState(false);
+  const [runMsg, setRunMsg] = useState('');
 
   useEffect(() => { setValue(persona.name); }, [persona.name]);
 
@@ -43,6 +45,32 @@ function PersonaCard({ persona, onRenamed, onOpenSurface }) {
   };
 
   const reset = () => save('');  // empty name → backend clears override
+
+  const run = async () => {
+    if (running) return;
+    setRunning(true); setRunMsg(''); setErr('');
+    try {
+      const r = await runAgent(persona.agent_key);
+      const d = r.detail || {};
+      // Compose a short human-readable result line per agent
+      const parts = [];
+      if (d.queued !== undefined)           parts.push(`${d.queued} drafted`);
+      if (d.candidates !== undefined)       parts.push(`${d.candidates} invoice${d.candidates === 1 ? '' : 's'} checked`);
+      if (d.stale_deals !== undefined)      parts.push(`${d.stale_deals} stale`);
+      if (d.created !== undefined && d.created > 0) parts.push(`${d.created} follow-up task${d.created === 1 ? '' : 's'}`);
+      if (d.processed !== undefined)        parts.push(`${d.processed} email${d.processed === 1 ? '' : 's'} triaged`);
+      if (d.narrative_mode)                 parts.push(`briefing ${d.narrative_mode}`);
+      if (d.meetings !== undefined)         parts.push(`${d.meetings} meeting${d.meetings === 1 ? '' : 's'}`);
+      if (d.consolidated !== undefined)     parts.push(`memory updated`);
+      setRunMsg(parts.length ? `Done — ${parts.join(' · ')}` : 'Done.');
+      onRanAgent?.();
+    } catch (e) {
+      setErr(e.message || 'Run failed');
+    } finally {
+      setRunning(false);
+      setTimeout(() => setRunMsg(''), 6000);
+    }
+  };
 
   return (
     <div className="panel" style={{
@@ -129,6 +157,24 @@ function PersonaCard({ persona, onRenamed, onOpenSurface }) {
       <p style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55, margin: 0 }}>
         {persona.description}
       </p>
+
+      {/* Run Now + result line */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <button
+          onClick={run}
+          disabled={running}
+          className="btn-primary"
+          style={{ fontSize: 12, padding: '6px 14px' }}
+          title={`Run ${persona.name} right now`}
+        >
+          {running
+            ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Working…</>
+            : <><Play size={11} /> Run now</>}
+        </button>
+        {runMsg && (
+          <span style={{ fontSize: 11, color: 'var(--color-ok)' }}>{runMsg}</span>
+        )}
+      </div>
 
       {/* Activity strip */}
       <div style={{
@@ -305,6 +351,7 @@ export default function Agents() {
                 persona={p}
                 onRenamed={onRenamed}
                 onOpenSurface={(path) => navigate(path)}
+                onRanAgent={() => { loadActivity(); load(); }}
               />
             ))}
           </div>
