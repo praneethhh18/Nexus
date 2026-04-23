@@ -34,6 +34,10 @@ EMAIL_ENABLED: bool = bool(GMAIL_USER and GMAIL_APP_PASSWORD)
 DISCORD_WEBHOOK_URL: str = _get("DISCORD_WEBHOOK_URL", "")
 DISCORD_ENABLED: bool = bool(DISCORD_WEBHOOK_URL)
 
+# ── Slack ────────────────────────────────────────────────────────────────────
+SLACK_WEBHOOK_URL: str = _get("SLACK_WEBHOOK_URL", "")
+SLACK_ENABLED: bool = bool(SLACK_WEBHOOK_URL)
+
 # ── Database ─────────────────────────────────────────────────────────────────
 DB_PATH: str = str(_ROOT / _get("DB_PATH", "data/nexusagent.db"))
 CHROMA_PATH: str = str(_ROOT / "chroma_db")
@@ -51,6 +55,8 @@ ANOMALY_THRESHOLD: float = float(_get("ANOMALY_THRESHOLD", "0.15"))
 MONITOR_INTERVAL_MINUTES: int = int(_get("MONITOR_INTERVAL_MINUTES", "60"))
 MAX_SQL_RETRIES: int = int(_get("MAX_SQL_RETRIES", "3"))
 MAX_REFLECTION_RETRIES: int = int(_get("MAX_REFLECTION_RETRIES", "2"))
+SQL_QUERY_TIMEOUT_SECONDS: float = float(_get("SQL_QUERY_TIMEOUT_SECONDS", "30"))
+SQL_MAX_ROWS: int = int(_get("SQL_MAX_ROWS", "10000"))
 TOP_K_RETRIEVAL: int = int(_get("TOP_K_RETRIEVAL", "5"))
 CHUNK_SIZE: int = int(_get("CHUNK_SIZE", "500"))
 CHUNK_OVERLAP: int = int(_get("CHUNK_OVERLAP", "50"))

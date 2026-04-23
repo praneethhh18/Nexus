@@ -106,5 +106,53 @@
     "human_approved": true,
     "success": true,
     "error_message": ""
+  },
+  {
+    "event_id": "86f519a3",
+    "timestamp": "2026-04-22T23:51:33.778950",
+    "event_type": "tool_call",
+    "tool_name": "self_reflection",
+    "input_summary": "Q: hello what can you do?",
+    "output_summary": "PASS: The answer provides a clear and concise overview of the AI's capabilities, makin",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": true,
+    "error_message": ""
+  },
+  {
+    "event_id": "74c138f2",
+    "timestamp": "2026-04-22T23:54:32.607243",
+    "event_type": "tool_call",
+    "tool_name": "self_reflection",
+    "input_summary": "Q: hi",
+    "output_summary": "FAIL: The answer does not address the original question, which was a simple \"hi\" with ",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": false,
+    "error_message": ""
+  },
+  {
+    "event_id": "1d2d90de",
+    "timestamp": "2026-04-22T23:54:45.812473",
+    "event_type": "tool_call",
+    "tool_name": "self_reflection",
+    "input_summary": "Q: hi",
+    "output_summary": "PASS: The answer acknowledges the user's greeting, offers a friendly tone, and provide",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": true,
+    "error_message": ""
+  },
+  {
+    "event_id": "70e9f25d",
+    "timestamp": "2026-04-22T23:59:32.124230",
+    "event_type": "tool_call",
+    "tool_name": "self_reflection",
+    "input_summary": "Q: hi",
+    "output_summary": "PASS: The answer provides a clear and concise summary of the AI's capabilities and inv",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": true,
+    "error_message": ""
   }
 ]

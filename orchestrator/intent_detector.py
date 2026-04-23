@@ -8,7 +8,7 @@ from typing import Dict, Any, List
 
 from loguru import logger
 
-from config.llm_config import get_llm
+from config.llm_provider import invoke as llm_invoke
 
 INTENT_TYPES = [
     "document_query",   # answer from documents/RAG
@@ -54,36 +54,27 @@ def detect_intent(query: str, tone: Dict[str, Any] = None,
         urgency = "high"
 
     try:
-        llm = get_llm()
         history_block = f"\nRecent conversation context:\n{history}\n" if history else ""
 
-        prompt = f"""You are an intent classifier for a business AI assistant. Classify the user's request into exactly one primary intent and optionally secondary intents.
+        prompt = f"""Classify this user request into one intent.
 
-INTENT DEFINITIONS:
-- document_query: User wants to find information from uploaded documents, PDFs, policies, or text files
-- data_query: User wants numbers, metrics, charts, or analytics from the business database (revenue, sales, customers, orders, employees, budgets)
-- hybrid_query: User needs information from BOTH documents AND database to answer
-- action_request: User wants to send an email, notification, or trigger an external action
-- report_request: User explicitly asks for a PDF report or formatted document to be generated
-- whatif_query: User describes a hypothetical scenario ("what if X happens", "simulate", "model the impact")
-- chitchat: Greetings, help questions, general conversation not related to data or documents
+Intents: document_query, data_query, hybrid_query, action_request, report_request, whatif_query, chitchat
 
-EXAMPLES:
+Examples:
 "Show me revenue by region" -> PRIMARY: data_query
-"What does the company policy say about PTO?" -> PRIMARY: document_query
-"Compare Q3 report findings with actual sales data" -> PRIMARY: hybrid_query
-"Send a summary email to the team" -> PRIMARY: action_request
-"Generate a monthly sales report" -> PRIMARY: report_request
+"What does the policy say about PTO?" -> PRIMARY: document_query
+"Send a summary email" -> PRIMARY: action_request
+"Generate a sales report" -> PRIMARY: report_request
 "What if we cut prices by 15%?" -> PRIMARY: whatif_query
-"Hello, what can you do?" -> PRIMARY: chitchat
+"Hello" -> PRIMARY: chitchat
 {history_block}
-User request: "{query}"
+User: "{query}"
 
-Respond ONLY with this exact format (no extra text):
+Reply ONLY:
 PRIMARY: <intent>
-SECONDARY: <intent1>, <intent2> (or NONE)"""
+SECONDARY: <intent> (or NONE)"""
 
-        response = llm.invoke(prompt)
+        response = llm_invoke(prompt, max_tokens=50)
         lines = response.strip().split("\n")
 
         primary = "chitchat"

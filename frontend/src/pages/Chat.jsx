@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { sendMessage, getConversation, exportMarkdown } from '../services/api';
+import { sendMessage, getConversation, exportMarkdown, uploadDocument } from '../services/api';
+import { getToken, getBusinessId } from '../services/auth';
 
 const TOOL_CLASS = { rag: 'tool-rag', sql: 'tool-sql', action: 'tool-action', report: 'tool-report', whatif: 'tool-whatif' };
 
@@ -72,7 +73,8 @@ function DataChart({ sqlData }) {
 
 export default function Chat() {
   const [messages, setMessages] = useState([]);
-  const [chartData, setChartData] = useState(null); // SQL data for charts
+  const [streamingText, setStreamingText] = useState(''); // Live streaming tokens
+  const [chartData, setChartData] = useState(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [convId, setConvId] = useState(null);
@@ -80,8 +82,9 @@ export default function Chat() {
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
+  const wsRef = useRef(null);
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading, streamingText]);
 
   useEffect(() => {
     const onLoad = async (e) => {
@@ -140,15 +143,75 @@ export default function Chat() {
     const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     setMessages(prev => [...prev, { role: 'user', content: q, tools_used: [], timestamp: ts }]);
     setLoading(true);
+    setStreamingText('');
+
+    // Try WebSocket streaming first
+    try {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.hostname}:8000/ws/chat`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+      let ready = false;
+
+      ws.onopen = () => {
+        // Auth frame must come first
+        ws.send(JSON.stringify({
+          type: 'auth',
+          token: getToken() || '',
+          business_id: getBusinessId() || '',
+        }));
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'ready') {
+          ready = true;
+          ws.send(JSON.stringify({ query: q, conversation_id: convId }));
+        } else if (data.type === 'token') {
+          setStreamingText(prev => prev + data.token);
+        } else if (data.type === 'done') {
+          if (data.conversation_id && !convId) setConvId(data.conversation_id);
+          setMessages(prev => [...prev, data.message]);
+          if (data.state?.sql_results?.data?.length) setChartData(data.state.sql_results);
+          setStreamingText('');
+          setLoading(false);
+          ws.close();
+        } else if (data.type === 'error') {
+          ws.close();
+          if (!ready) {
+            // Auth failed — fall back to REST (which will 401 → redirect to login)
+            _sendRest(q, ts);
+          } else {
+            setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}`, tools_used: [], timestamp: ts }]);
+            setStreamingText('');
+            setLoading(false);
+          }
+        }
+      };
+
+      ws.onerror = () => {
+        ws.close();
+        _sendRest(q, ts);
+      };
+
+      ws.onclose = () => { wsRef.current = null; };
+
+    } catch {
+      _sendRest(q, ts);
+    }
+  };
+
+  const _sendRest = async (q, ts) => {
+    // REST fallback when WebSocket fails
     try {
       const res = await sendMessage(q, convId);
       if (!convId && res.conversation_id) setConvId(res.conversation_id);
       setMessages(prev => [...prev, res.message]);
-      // Store chart data if SQL results exist
       if (res.state?.sql_results?.data?.length) setChartData(res.state.sql_results);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}. Make sure the API server and Ollama are running.`, tools_used: [], timestamp: ts }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}`, tools_used: [], timestamp: ts }]);
     }
+    setStreamingText('');
     setLoading(false);
   };
 
@@ -164,11 +227,8 @@ export default function Chat() {
   const handleDocUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const form = new FormData();
-    form.append('file', file);
     try {
-      const res = await fetch('/api/knowledge/upload', { method: 'POST', body: form });
-      const data = await res.json();
+      const data = await uploadDocument(file);
       if (data.chunks_added) {
         send(`I just uploaded ${file.name}. What's in this document?`);
       }
@@ -242,7 +302,21 @@ export default function Chat() {
             </div>
           ))}
 
-          {loading && (
+          {/* Streaming response — tokens appear live */}
+          {streamingText && (
+            <div className="msg-row">
+              <div className="msg-avatar bot">N</div>
+              <div className="msg-bubble bot">
+                <div className="chat-markdown" style={{ fontSize: 13 }}>
+                  <ReactMarkdown>{streamingText}</ReactMarkdown>
+                  <span style={{ display: 'inline-block', width: 6, height: 14, background: '#3b82f6', marginLeft: 2, animation: 'pulse-dot 0.8s ease-in-out infinite', borderRadius: 1 }} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Thinking dots when waiting */}
+          {loading && !streamingText && (
             <div className="msg-row">
               <div className="msg-avatar bot">N</div>
               <div className="msg-bubble bot">

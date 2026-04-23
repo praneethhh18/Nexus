@@ -334,6 +334,32 @@ CUSTOMER_CHURN_WARNING: Dict[str, Any] = {
     ],
 }
 
+# ── Template 11: Slack Daily Standup Digest ──────────────────────────────────
+SLACK_DAILY_DIGEST: Dict[str, Any] = {
+    "name": "Slack Daily Digest",
+    "description": "Every weekday 09:00: post a summary of yesterday's key numbers to Slack.",
+    "enabled": False,
+    "tags": ["slack", "digest", "scheduled"],
+    "nodes": [
+        _node("n1", "schedule_trigger", "Weekdays 09:00",
+              {"mode": "daily", "daily_time": "09:00"}, 100, 100),
+        _node("n2", "sql_query", "Yesterday's Numbers",
+              {"mode": "natural_language",
+               "question": "Show yesterday's total sales, top 3 products, and top 3 regions",
+               "max_rows": 20}, 350, 100),
+        _node("n3", "summarize", "Build Digest",
+              {"style": "bullet_points", "max_points": 6}, 600, 100),
+        _node("n4", "slack_notify", "Post to Slack",
+              {"title": "Daily Digest", "message": "{input}", "severity": "info"}, 850, 100),
+    ],
+    "edges": [
+        _edge("n1", "n2"),
+        _edge("n2", "n3"),
+        _edge("n3", "n4"),
+    ],
+}
+
+
 TEMPLATES: List[Dict[str, Any]] = [
     DAILY_SALES_REPORT,
     ANOMALY_ALERT_PIPELINE,
@@ -341,6 +367,7 @@ TEMPLATES: List[Dict[str, Any]] = [
     DOCUMENT_MONITOR,
     REVENUE_DROP_RESPONSE,
     AUTO_EMAIL_SENDER,
+    SLACK_DAILY_DIGEST,
     MEETING_SCHEDULER,
     CALL_SCHEDULER,
     LIVE_DATA_ANALYZER,

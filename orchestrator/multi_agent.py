@@ -565,3 +565,9 @@ def run_multi_agent(query: str) -> Dict[str, Any]:
     """Convenience function to run multi-agent collaboration."""
     orchestrator = get_orchestrator()
     return orchestrator.execute(query)
+
+
+def multi_agent_node(state):
+    """Re-export for graph.py imports."""
+    from orchestrator.nodes import multi_agent_node as _node
+    return _node(state)

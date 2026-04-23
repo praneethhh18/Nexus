@@ -13,16 +13,33 @@ from typing import Dict, Any
 import pandas as pd
 from loguru import logger
 
-from config.settings import DB_PATH, MAX_SQL_RETRIES
-from config.llm_config import get_llm
+from config.settings import DB_PATH, MAX_SQL_RETRIES, SQL_QUERY_TIMEOUT_SECONDS, SQL_MAX_ROWS
+from config.llm_provider import invoke as llm_invoke
 from sql_agent.schema_reader import get_schema_string
 from sql_agent.query_generator import generate_sql, _validate_sql
+
+
+class QueryTimeout(Exception):
+    """Raised when a SQL query exceeds SQL_QUERY_TIMEOUT_SECONDS."""
+
+
+def _install_timeout(conn: sqlite3.Connection, deadline: float) -> None:
+    """
+    Install a SQLite progress handler that raises QueryTimeout when wall-clock
+    time exceeds `deadline`. The callback runs every N VM steps; returning
+    non-zero cancels the query.
+    """
+    def _check():
+        if time.time() > deadline:
+            return 1  # non-zero → interrupt
+        return 0
+    # Check every 1000 VM ops — low overhead, responsive cancellation
+    conn.set_progress_handler(_check, 1000)
 
 
 def _fix_sql_with_llm(original_question: str, broken_sql: str,
                        error_msg: str, schema: str, previous_errors: list[str] = None) -> str:
     """Ask LLM to fix a broken SQL query, aware of previous failed attempts."""
-    llm = get_llm()
 
     history_hint = ""
     if previous_errors:
@@ -52,7 +69,7 @@ RULES:
 - Write ONLY the corrected SQL query wrapped in ```sql ... ``` fences. No explanations."""
 
     try:
-        response = llm.invoke(prompt)
+        response = llm_invoke(prompt, max_tokens=512)
         from sql_agent.query_generator import _extract_sql
         return _extract_sql(response)
     except Exception as e:
@@ -62,25 +79,20 @@ RULES:
 
 def _explain_result(question: str, df: pd.DataFrame, intent_type: str) -> str:
     """Ask LLM to explain the query result in plain English."""
-    llm = get_llm()
     if df.empty:
         return "The query returned no results matching your criteria."
 
     sample = df.head(10).to_string(index=False)
     shape = f"{len(df)} rows x {len(df.columns)} columns"
 
-    prompt = f"""Given this business question and the SQL query result, write a clear 2-3 sentence answer in plain English.
-Use specific numbers from the data. Format monetary values with $ and commas (e.g. $1,234.56).
-Do not mention SQL or databases — just answer the question naturally.
+    prompt = f"""Answer this business question using the data below. Use specific numbers. Format money with $ and commas. 2-3 sentences.
 
-QUESTION: {question}
-RESULT ({shape}):
-{sample}
-
-Answer:"""
+Question: {question}
+Data ({shape}):
+{sample}"""
 
     try:
-        response = llm.invoke(prompt)
+        response = llm_invoke(prompt, max_tokens=256)
         return response.strip()
     except Exception as e:
         logger.warning(f"[Executor] Explanation LLM call failed: {e}")
@@ -134,17 +146,41 @@ def execute_query(
     error_history: list[str] = []  # Track distinct errors to avoid loops
 
     while retries <= MAX_SQL_RETRIES:
+        conn = None
         try:
             conn = sqlite3.connect(DB_PATH)
-            df = pd.read_sql_query(query_used, conn)
-            conn.close()
+            deadline = time.time() + SQL_QUERY_TIMEOUT_SECONDS
+            _install_timeout(conn, deadline)
+            # Enforce a hard row cap so a pathological query doesn't exhaust memory.
+            # We wrap the user's query in a subquery; only applied to SELECTs.
+            capped_sql = query_used
+            if SQL_MAX_ROWS > 0 and capped_sql.strip().lower().startswith("select"):
+                # Use a LIMIT on top; if the query already has LIMIT it will still be respected as an outer bound.
+                capped_sql = f"SELECT * FROM ({query_used}) AS _capped LIMIT {SQL_MAX_ROWS + 1}"
+            try:
+                df = pd.read_sql_query(capped_sql, conn)
+            except sqlite3.OperationalError as oe:
+                if "interrupted" in str(oe).lower():
+                    raise QueryTimeout(f"Query exceeded {SQL_QUERY_TIMEOUT_SECONDS}s timeout")
+                raise
+            finally:
+                if conn is not None:
+                    conn.close()
+            truncated = len(df) > SQL_MAX_ROWS
+            if truncated:
+                df = df.head(SQL_MAX_ROWS)
 
             duration_ms = int((time.time() - start_time) * 1000)
             explanation = _explain_result(question, df, intent_type)
+            if truncated:
+                explanation = (
+                    f"[Showing first {SQL_MAX_ROWS} rows — query result was larger.]\n\n"
+                    + explanation
+                )
 
             logger.success(
                 f"[Executor] '{question[:50]}' -> {len(df)} rows in {duration_ms}ms "
-                f"(retries: {retries})"
+                f"(retries: {retries}{', TRUNCATED' if truncated else ''})"
             )
 
             if log_to_audit:

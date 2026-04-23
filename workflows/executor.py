@@ -41,6 +41,7 @@ def _get_runner(node_type: str):
         # Actions
         "send_email":      action_nodes.run_send_email,
         "discord_notify":  action_nodes.run_discord_notify,
+        "slack_notify":    action_nodes.run_slack_notify,
         "http_request":    action_nodes.run_http_request,
         "save_file":       action_nodes.run_save_file,
         "desktop_notify":  action_nodes.run_desktop_notify,
@@ -128,12 +129,18 @@ def execute_workflow(workflow: Dict[str, Any]) -> Dict[str, Any]:
     exec_order = _topological_order(nodes, edges)
 
     # Execution context — flows through all nodes
+    business_id = workflow.get("business_id", "default")
+    created_by = workflow.get("created_by", "default")
     ctx: Dict[str, Any] = {
         "_workflow_name": wf_name,
         "_workflow_id": wf_id,
         "_run_id": run_id,
+        "_business_id": business_id,
+        "_user_id": created_by,
         "output": "",
     }
+    if "_webhook_payload" in workflow:
+        ctx["_webhook_payload"] = workflow["_webhook_payload"]
 
     steps = []
     final_output = ""
@@ -232,6 +239,8 @@ def execute_workflow(workflow: Dict[str, Any]) -> Dict[str, Any]:
             duration_ms=duration_ms,
             approved=True,
             success=(overall_status == "success"),
+            business_id=business_id,
+            user_id=created_by,
         )
     except Exception:
         pass

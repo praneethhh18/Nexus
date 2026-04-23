@@ -1,11 +1,12 @@
 """
-NexusAgent LLM Config — Ollama connection, model loading, health checks.
-All models run locally via Ollama. No external API calls.
-Includes retry logic, connection caching, and graceful degradation.
+NexusAgent LLM Config — Dual-model system for speed + power.
+Fast model (1.5-3B) for chat/classification. Power model (8B) for data/SQL/reports.
+Includes streaming support via Ollama API.
 """
 from __future__ import annotations
 
 import time
+import json
 import requests
 from loguru import logger
 from langchain_ollama import OllamaLLM as Ollama
@@ -18,167 +19,156 @@ from config.settings import (
     EMBED_MODEL,
 )
 
-# ── Module-level singletons (loaded once, reused) ────────────────────────────
-_llm_instance = None
+# ── Model instances ───────────────────────────────────────────────────────────
+_power_llm = None   # 8B model for SQL, RAG, reports
+_fast_llm = None    # Small model for chat, classification
 _embed_instance = None
-_last_health_check: dict | None = None
-_last_health_time: float = 0
-_HEALTH_CACHE_SECONDS = 30  # Cache health status to avoid hammering Ollama
+_last_health_check = None
+_last_health_time = 0
+_HEALTH_CACHE_SECONDS = 120
+
+# Auto-detect best fast model from what's available
+_FAST_MODEL_PREFERENCES = [
+    "qwen2.5:1.5b-instruct",
+    "qwen2.5:3b-instruct-q4_K_M",
+    "llama3.2:3b",
+    "llama3.2:1b",
+    "qwen2.5:0.5b-instruct",
+    "qwen3:0.6b",
+    "gemma:2b",
+    "tinyllama:latest",
+]
 
 
 def health_check(force: bool = False) -> tuple[bool, str]:
-    """
-    Ping the Ollama server. Returns (is_healthy, status_message).
-    Results are cached for 30 seconds to reduce overhead.
-    """
     global _last_health_check, _last_health_time
-
     if not force and _last_health_check and (time.time() - _last_health_time) < _HEALTH_CACHE_SECONDS:
         return _last_health_check["healthy"], _last_health_check["message"]
-
     try:
         resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
         if resp.status_code == 200:
             models = [m["name"] for m in resp.json().get("models", [])]
-            msg = f"Ollama online. Models: {', '.join(models) if models else 'none'}"
-            logger.info(f"[Ollama] Healthy. {len(models)} models available.")
+            msg = f"Ollama online. {len(models)} models."
             _last_health_check = {"healthy": True, "message": msg}
             _last_health_time = time.time()
             return True, msg
-        msg = f"Ollama returned HTTP {resp.status_code}"
+        msg = f"Ollama HTTP {resp.status_code}"
         _last_health_check = {"healthy": False, "message": msg}
         _last_health_time = time.time()
         return False, msg
     except requests.ConnectionError:
         msg = "Cannot reach Ollama. Run: ollama serve"
-        logger.error(f"[Ollama] {msg}")
         _last_health_check = {"healthy": False, "message": msg}
         _last_health_time = time.time()
         return False, msg
     except Exception as e:
-        msg = f"Ollama health check failed: {e}"
-        logger.error(f"[Ollama] {msg}")
+        msg = f"Health check failed: {e}"
         _last_health_check = {"healthy": False, "message": msg}
         _last_health_time = time.time()
         return False, msg
 
 
-def _model_available(model_name: str) -> bool:
-    """Check if a specific model is available in the local Ollama instance."""
+def _get_available_models() -> list[str]:
     try:
         resp = requests.get(f"{OLLAMA_BASE_URL}/api/tags", timeout=5)
         if resp.status_code == 200:
-            models = [m["name"] for m in resp.json().get("models", [])]
-            return any(model_name in m for m in models)
+            return [m["name"] for m in resp.json().get("models", [])]
     except Exception:
         pass
-    return False
+    return []
 
 
-def _wait_for_ollama(max_retries: int = 3, base_delay: float = 2.0) -> bool:
-    """
-    Wait for Ollama to become available with exponential backoff.
-    Returns True if connection established, False if all retries exhausted.
-    """
-    for attempt in range(max_retries):
-        healthy, _ = health_check(force=True)
-        if healthy:
-            return True
-        delay = base_delay * (2 ** attempt)
-        logger.warning(
-            f"[Ollama] Retry {attempt + 1}/{max_retries} — "
-            f"waiting {delay:.1f}s before next attempt"
-        )
-        time.sleep(delay)
+def _model_available(model_name: str) -> bool:
+    models = _get_available_models()
+    return any(model_name in m for m in models)
 
-    return False
+
+def _pick_fast_model() -> str:
+    """Auto-select the best small model available."""
+    available = _get_available_models()
+    for pref in _FAST_MODEL_PREFERENCES:
+        if any(pref in m for m in available):
+            logger.info(f"[LLM] Fast model selected: {pref}")
+            return pref
+    # Fallback to the main model
+    return OLLAMA_FALLBACK_MODEL
 
 
 def get_llm(temperature: float = 0.1) -> Ollama:
-    """
-    Return the LangChain Ollama LLM instance.
-    Falls back to OLLAMA_FALLBACK_MODEL if primary is not available.
-    Retries connection if Ollama is temporarily unavailable.
-    Caches the instance in memory after first load.
-    """
-    global _llm_instance
-    if _llm_instance is not None:
-        return _llm_instance
+    """Return the POWER model (8B) for SQL, RAG, reports, synthesis."""
+    global _power_llm
+    if _power_llm is not None:
+        return _power_llm
 
-    # Check connection with retry
-    healthy, msg = health_check(force=True)
+    healthy, _ = health_check(force=True)
     if not healthy:
-        logger.warning("[LLM] Ollama not ready, attempting retry...")
-        if not _wait_for_ollama(max_retries=3):
-            raise RuntimeError(
-                "Could not connect to Ollama after multiple attempts. "
-                "Make sure Ollama is running: ollama serve"
-            )
+        # One retry
+        time.sleep(2)
+        healthy, _ = health_check(force=True)
+        if not healthy:
+            raise RuntimeError("Cannot connect to Ollama. Run: ollama serve")
 
-    # Select model
-    chosen_model = OLLAMA_MODEL
+    chosen = OLLAMA_MODEL
     if not _model_available(OLLAMA_MODEL):
-        logger.warning(
-            f"[LLM] Primary model '{OLLAMA_MODEL}' not found. "
-            f"Trying fallback '{OLLAMA_FALLBACK_MODEL}'."
-        )
-        chosen_model = OLLAMA_FALLBACK_MODEL
-        if not _model_available(OLLAMA_FALLBACK_MODEL):
-            logger.error(
-                f"[LLM] Fallback model '{OLLAMA_FALLBACK_MODEL}' also not found. "
-                f"Attempting to use primary anyway."
-            )
-            chosen_model = OLLAMA_MODEL
+        chosen = OLLAMA_FALLBACK_MODEL
 
-    logger.info(f"[LLM] Loading model: {chosen_model}")
-    try:
-        _llm_instance = Ollama(
-            base_url=OLLAMA_BASE_URL,
-            model=chosen_model,
-            temperature=temperature,
-        )
-        logger.success(f"[LLM] Model '{chosen_model}' ready.")
-        return _llm_instance
-    except Exception as e:
-        logger.error(f"[LLM] Failed to load model: {e}")
-        raise RuntimeError(
-            f"Could not load LLM '{chosen_model}'. "
-            "Make sure Ollama is running (ollama serve) and the model is pulled "
-            f"(ollama pull {chosen_model})."
-        ) from e
+    logger.info(f"[LLM] Loading power model: {chosen}")
+    _power_llm = Ollama(base_url=OLLAMA_BASE_URL, model=chosen, temperature=temperature)
+    logger.success(f"[LLM] Power model '{chosen}' ready.")
+    return _power_llm
+
+
+def get_fast_llm(temperature: float = 0.1) -> Ollama:
+    """Return the FAST model (1.5-3B) for chat, classification, intent detection."""
+    global _fast_llm
+    if _fast_llm is not None:
+        return _fast_llm
+
+    fast_model = _pick_fast_model()
+    logger.info(f"[LLM] Loading fast model: {fast_model}")
+    _fast_llm = Ollama(base_url=OLLAMA_BASE_URL, model=fast_model, temperature=temperature)
+    logger.success(f"[LLM] Fast model '{fast_model}' ready.")
+    return _fast_llm
 
 
 def get_embedder() -> OllamaEmbeddings:
-    """
-    Return the Ollama embedding model instance.
-    Uses nomic-embed-text by default (local, no API needed).
-    """
     global _embed_instance
     if _embed_instance is not None:
         return _embed_instance
+    _embed_instance = OllamaEmbeddings(base_url=OLLAMA_BASE_URL, model=EMBED_MODEL)
+    logger.success(f"[Embedder] '{EMBED_MODEL}' ready.")
+    return _embed_instance
 
-    logger.info(f"[Embedder] Loading embedding model: {EMBED_MODEL}")
+
+def stream_generate(prompt: str, model: str = None) -> iter:
+    """Stream tokens from Ollama. Yields text chunks as they arrive.
+    This is the key to low-latency chat — first token in <1 second."""
+    if model is None:
+        model = _pick_fast_model()
+
     try:
-        _embed_instance = OllamaEmbeddings(
-            base_url=OLLAMA_BASE_URL,
-            model=EMBED_MODEL,
+        resp = requests.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json={"model": model, "prompt": prompt, "stream": True},
+            stream=True, timeout=120,
         )
-        logger.success(f"[Embedder] Model '{EMBED_MODEL}' ready.")
-        return _embed_instance
+        for line in resp.iter_lines():
+            if line:
+                data = json.loads(line)
+                token = data.get("response", "")
+                if token:
+                    yield token
+                if data.get("done"):
+                    break
     except Exception as e:
-        logger.error(f"[Embedder] Failed to load embedder: {e}")
-        raise RuntimeError(
-            f"Could not load embedding model '{EMBED_MODEL}'. "
-            "Make sure Ollama is running and the model is pulled: "
-            f"ollama pull {EMBED_MODEL}"
-        ) from e
+        yield f"\n[Error: {e}]"
 
 
 def reset_instances():
-    """Force reload of LLM/embedder instances (useful for model switching)."""
-    global _llm_instance, _embed_instance, _last_health_check, _last_health_time
-    _llm_instance = None
+    global _power_llm, _fast_llm, _embed_instance, _last_health_check, _last_health_time
+    _power_llm = None
+    _fast_llm = None
     _embed_instance = None
     _last_health_check = None
     _last_health_time = 0
-    logger.info("[LLM] Model instances reset.")
+    logger.info("[LLM] All instances reset.")

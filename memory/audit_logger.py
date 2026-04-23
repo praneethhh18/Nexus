@@ -19,6 +19,12 @@ from config.settings import AUDIT_LOG_PATH, DB_PATH, OUTPUTS_DIR
 AUDIT_TABLE = "nexus_audit_log"
 
 
+def _ensure_column(conn, table, column, decl):
+    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+
+
 def _get_conn() -> sqlite3.Connection:
     Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -33,8 +39,13 @@ def _get_conn() -> sqlite3.Connection:
         duration_ms INTEGER,
         human_approved INTEGER DEFAULT 0,
         success INTEGER DEFAULT 1,
-        error_message TEXT
+        error_message TEXT,
+        business_id TEXT DEFAULT 'default',
+        user_id TEXT DEFAULT 'default'
     )""")
+    _ensure_column(conn, AUDIT_TABLE, "business_id", "TEXT DEFAULT 'default'")
+    _ensure_column(conn, AUDIT_TABLE, "user_id", "TEXT DEFAULT 'default'")
+    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_audit_biz ON {AUDIT_TABLE}(business_id, timestamp)")
     conn.commit()
     return conn
 
@@ -68,6 +79,8 @@ def log_tool_call(
     success: bool = True,
     error: Optional[str] = None,
     event_type: str = "tool_call",
+    business_id: str = "default",
+    user_id: str = "default",
 ) -> str:
     """
     Log a tool call to both JSON and SQLite.
@@ -87,17 +100,23 @@ def log_tool_call(
         "human_approved": approved,
         "success": success,
         "error_message": error or "",
+        "business_id": business_id,
+        "user_id": user_id,
     }
 
     # SQLite
     try:
         conn = _get_conn()
         conn.execute(f"""
-        INSERT INTO {AUDIT_TABLE} VALUES (?,?,?,?,?,?,?,?,?,?)
+        INSERT INTO {AUDIT_TABLE}
+        (event_id, timestamp, event_type, tool_name, input_summary, output_summary,
+         duration_ms, human_approved, success, error_message, business_id, user_id)
+        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
         """, (
             event_id, timestamp, event_type, tool,
             entry["input_summary"], entry["output_summary"],
-            duration_ms, int(approved), int(success), error or ""
+            duration_ms, int(approved), int(success), error or "",
+            business_id, user_id,
         ))
         conn.commit()
         conn.close()
@@ -114,14 +133,20 @@ def log_tool_call(
     return event_id
 
 
-def get_recent_logs(n: int = 20) -> List[Dict[str, Any]]:
-    """Return the n most recent audit log entries."""
+def get_recent_logs(n: int = 20, business_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Return the n most recent audit log entries, optionally scoped by business."""
     try:
         conn = _get_conn()
         conn.row_factory = sqlite3.Row
-        rows = conn.execute(
-            f"SELECT * FROM {AUDIT_TABLE} ORDER BY timestamp DESC LIMIT ?", (n,)
-        ).fetchall()
+        if business_id:
+            rows = conn.execute(
+                f"SELECT * FROM {AUDIT_TABLE} WHERE business_id = ? ORDER BY timestamp DESC LIMIT ?",
+                (business_id, n),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f"SELECT * FROM {AUDIT_TABLE} ORDER BY timestamp DESC LIMIT ?", (n,)
+            ).fetchall()
         conn.close()
         return [dict(row) for row in rows]
     except Exception:
@@ -136,23 +161,29 @@ def get_recent_logs(n: int = 20) -> List[Dict[str, Any]]:
         return []
 
 
-def get_stats() -> Dict[str, Any]:
-    """Return aggregate audit statistics."""
+def get_stats(business_id: Optional[str] = None) -> Dict[str, Any]:
+    """Return aggregate audit statistics, optionally scoped by business."""
     try:
         conn = _get_conn()
         c = conn.cursor()
+        where = "WHERE business_id = ?" if business_id else ""
+        params = (business_id,) if business_id else ()
 
-        c.execute(f"SELECT COUNT(*) FROM {AUDIT_TABLE}")
+        c.execute(f"SELECT COUNT(*) FROM {AUDIT_TABLE} {where}", params)
         total = c.fetchone()[0]
 
-        c.execute(f"SELECT AVG(success) FROM {AUDIT_TABLE}")
+        c.execute(f"SELECT AVG(success) FROM {AUDIT_TABLE} {where}", params)
         success_rate = round((c.fetchone()[0] or 0) * 100, 1)
 
-        c.execute(f"SELECT tool_name, COUNT(*) as cnt FROM {AUDIT_TABLE} GROUP BY tool_name ORDER BY cnt DESC LIMIT 1")
+        c.execute(
+            f"SELECT tool_name, COUNT(*) as cnt FROM {AUDIT_TABLE} {where} "
+            f"GROUP BY tool_name ORDER BY cnt DESC LIMIT 1",
+            params,
+        )
         top_row = c.fetchone()
         most_used = top_row[0] if top_row else "none"
 
-        c.execute(f"SELECT AVG(duration_ms) FROM {AUDIT_TABLE}")
+        c.execute(f"SELECT AVG(duration_ms) FROM {AUDIT_TABLE} {where}", params)
         avg_duration = round(c.fetchone()[0] or 0, 1)
 
         conn.close()

@@ -1,0 +1,120 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { login, signup, forgotPassword } from '../services/auth';
+
+export default function Login() {
+  const [mode, setMode] = useState('login');
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(''); setInfo(''); setLoading(true);
+    try {
+      if (mode === 'signup') await signup(email, name, password);
+      else await login(email, password);
+      navigate('/');
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  const handleForgot = async () => {
+    if (!email.trim()) { setError('Enter your email first'); return; }
+    setError(''); setInfo(''); setLoading(true);
+    try {
+      const r = await forgotPassword(email);
+      setInfo(r.message || 'If that email is registered, a reset link has been sent.');
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#06080f' }}>
+      <div style={{ width: 380, padding: 32, borderRadius: 16, background: '#0f172a', border: '1px solid #1e293b' }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 12 }}>N</div>
+          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 4 }}>NexusAgent</h1>
+          <p style={{ fontSize: 12, color: '#64748b' }}>AI Business Assistant</p>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ display: 'flex', marginBottom: 20, background: '#1e293b', borderRadius: 8, padding: 3 }}>
+          {['login', 'signup'].map(m => (
+            <button key={m} onClick={() => { setMode(m); setError(''); }}
+              style={{
+                flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
+                fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
+                background: mode === m ? '#3b82f6' : 'transparent',
+                color: mode === m ? 'white' : '#64748b',
+              }}>
+              {m === 'login' ? 'Sign In' : 'Sign Up'}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          {mode === 'signup' && (
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Full Name</label>
+              <input className="field-input" value={name} onChange={e => setName(e.target.value)}
+                placeholder="John Doe" required />
+            </div>
+          )}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Email</label>
+            <input className="field-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="you@company.com" required />
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Password</label>
+            <input className="field-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="Enter password" required minLength={3} />
+          </div>
+
+          {error && (
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#ef444415', color: '#f87171', fontSize: 12, marginBottom: 12, border: '1px solid #ef444425' }}>
+              {error}
+            </div>
+          )}
+          {info && (
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#22c55e15', color: '#4ade80', fontSize: 12, marginBottom: 12, border: '1px solid #22c55e25' }}>
+              {info}
+            </div>
+          )}
+
+          <button type="submit" className="btn-primary" disabled={loading}
+            style={{ width: '100%', justifyContent: 'center', padding: '10px 0', fontSize: 14 }}>
+            {loading ? 'Please wait...' : mode === 'login' ? 'Sign In' : 'Create Account'}
+          </button>
+        </form>
+
+        {mode === 'login' && (
+          <p style={{ textAlign: 'center', fontSize: 11, marginTop: 12 }}>
+            <button
+              type="button"
+              onClick={handleForgot}
+              disabled={loading}
+              style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: 11, textDecoration: 'underline' }}
+            >
+              Forgot password?
+            </button>
+          </p>
+        )}
+
+        <p style={{ textAlign: 'center', fontSize: 11, color: '#475569', marginTop: 16 }}>
+          {mode === 'login' ? 'Default: admin@nexusagent.local / admin1234' : ''}
+        </p>
+      </div>
+    </div>
+  );
+}

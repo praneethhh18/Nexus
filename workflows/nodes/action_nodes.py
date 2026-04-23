@@ -71,6 +71,30 @@ def run_send_email(config: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any
     return ctx
 
 
+def run_slack_notify(config: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
+    title = _resolve(config.get("title", "NexusAgent Alert"), ctx)
+    message = _resolve(config.get("message", "{input}"), ctx)
+    severity = config.get("severity", "info")
+
+    try:
+        from action_tools.slack_tool import send_alert
+        sent = send_alert(
+            title, message[:2900], severity,
+            business_id=ctx.get("_business_id", "default"),
+            user_id=ctx.get("_user_id", "default"),
+        )
+        ctx["output"] = (
+            f"Slack notification sent: [{severity}] {title}"
+            if sent
+            else "Slack not configured — set SLACK_WEBHOOK_URL to enable"
+        )
+        logger.info(f"[Action] slack_notify: {title} (sent={sent})")
+    except Exception as e:
+        ctx["output"] = f"Slack notification failed: {e}"
+
+    return ctx
+
+
 def run_discord_notify(config: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]:
     title = _resolve(config.get("title", "NexusAgent Alert"), ctx)
     message = _resolve(config.get("message", "{input}"), ctx)

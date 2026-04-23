@@ -77,7 +77,7 @@ def rag_node(state: State) -> State:
 
 
 def sql_node(state: State) -> State:
-    """Run SQL agent for data queries."""
+    """Run SQL agent for data queries. Sets final_answer directly from SQL explanation."""
     from sql_agent.executor import execute_query
 
     query = state.get("query", "")
@@ -88,6 +88,12 @@ def sql_node(state: State) -> State:
         if "sql" not in tools_used:
             tools_used.append("sql")
         state["tools_used"] = tools_used
+
+        # If SQL succeeded, use its explanation directly as the answer
+        # This skips the synthesizer LLM call for pure data queries
+        if result.get("success") and result.get("explanation"):
+            state["final_answer"] = result["explanation"]
+
         logger.info(f"[SQL Node] Query returned {len(result.get('dataframe', []))} rows")
     except Exception as e:
         logger.error(f"[SQL Node] Error: {e}")
@@ -123,7 +129,7 @@ def report_node(state: State) -> State:
     from report_generator.chart_selector import select_chart_type
     from report_generator.chart_builder import build_chart
     from report_generator.pdf_builder import build_pdf
-    from config.llm_config import get_llm
+    from config.llm_provider import invoke as llm_invoke
 
     query = state.get("query", "")
     sql_results = state.get("sql_results", {})
@@ -141,9 +147,9 @@ def report_node(state: State) -> State:
         chart_type, _ = select_chart_type(df, query) if df is not None and not df.empty else ("table", "")
         fig, png_path = build_chart(df, chart_type, query[:60]) if df is not None else (None, None)
 
-        llm = get_llm()
-        summary = llm.invoke(
-            f"Write a 3-sentence executive summary for a business report about: {query}"
+        summary = llm_invoke(
+            f"Write a 3-sentence executive summary for a business report about: {query}",
+            max_tokens=256,
         )
         insights = [
             "Data sourced from live NexusAgent database",
@@ -197,7 +203,7 @@ def whatif_node(state: State) -> State:
 
 def chitchat_node(state: State) -> State:
     """Handle general conversation with memory context."""
-    from config.llm_config import get_llm
+    from config.llm_provider import invoke as llm_invoke
     from memory.short_term import get_default_memory
     from memory.long_term import build_memory_context
 
@@ -228,15 +234,11 @@ def chitchat_node(state: State) -> State:
     prompt_parts.append(f"User: {query}\nNexusAgent:")
 
     try:
-        llm = get_llm()
-        response = llm.invoke("\n\n".join(prompt_parts))
+        response = llm_invoke("\n\n".join(prompt_parts), max_tokens=512)
         state["chitchat_answer"] = response.strip()
     except Exception as e:
         logger.error(f"[Chitchat Node] Error: {e}")
-        state["chitchat_answer"] = (
-            "I'm having trouble connecting to the language model right now. "
-            "Please make sure Ollama is running (`ollama serve`) and try again."
-        )
+        state["chitchat_answer"] = f"Connection error: {e}"
     return state
 
 
@@ -276,8 +278,19 @@ def multi_agent_node(state: State) -> State:
 
 
 def synthesizer_node(state: State) -> State:
-    """Combine all tool results into a coherent final answer."""
-    from config.llm_config import get_llm
+    """Combine all tool results into a coherent final answer.
+    SKIPS LLM call if answer is already set by SQL/RAG/chitchat nodes."""
+    from config.llm_provider import invoke as llm_invoke
+
+    # If a tool node already set the answer, skip synthesis LLM call
+    existing_answer = state.get("final_answer", "")
+    if existing_answer and len(existing_answer) > 20:
+        # Just add citations and return — no extra LLM call needed
+        sql_results = state.get("sql_results", {})
+        rag_results = state.get("rag_results", [])
+        citations = [{"source": r.get("source","?"), "page": r.get("page","?"), "confidence": r.get("confidence",0)} for r in rag_results[:5]] if rag_results else []
+        state["citations"] = citations
+        return state
 
     query = state.get("query", "")
     rag_results = state.get("rag_results", [])
@@ -379,8 +392,7 @@ AVAILABLE INFORMATION:
 Answer:"""
 
     try:
-        llm = get_llm()
-        answer = llm.invoke(prompt)
+        answer = llm_invoke(prompt, max_tokens=1024)
         state["final_answer"] = answer.strip()
     except Exception as e:
         logger.error(f"[Synthesizer] LLM failed: {e}")

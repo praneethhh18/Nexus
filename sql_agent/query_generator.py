@@ -8,7 +8,7 @@ import re
 from typing import Dict, Any
 from loguru import logger
 
-from config.llm_config import get_llm
+from config.llm_provider import invoke as llm_invoke
 from sql_agent.schema_reader import get_schema_string
 
 INTENT_TYPES = ["aggregation", "trend", "comparison", "lookup", "mixed"]
@@ -105,45 +105,19 @@ def generate_sql(question: str, schema: str = None) -> Dict[str, Any]:
     if schema is None:
         schema = get_schema_string()
 
-    llm = get_llm()
+    prompt = f"""Write a SQLite query to answer this question. Output ONLY the SQL in ```sql``` fences.
 
-    prompt = f"""You are an expert SQL analyst working with a SQLite business database. Given the schema below, write a valid SQLite query to answer the question.
-
-RULES:
-1. Output ONLY the SQL query inside ```sql ... ``` fences
-2. Use ONLY SELECT statements (no INSERT, UPDATE, DELETE, DROP)
-3. Use table aliases for readability (e.g., SELECT c.name FROM customers c)
-4. LIMIT results to 50 rows unless the question asks for "all"
-5. Use DATE() or strftime() for date operations in SQLite
-6. For monetary values, use ROUND() to 2 decimal places
-7. Use ORDER BY to make results meaningful (e.g., DESC for "top", ASC for "bottom")
-8. Join tables when needed to get complete information
+Rules: SELECT only, use aliases, LIMIT 50, ROUND monetary values, ORDER BY meaningfully.
 
 SCHEMA:
 {schema}
 
-EXAMPLES:
-Q: "Show revenue by region"
-```sql
-SELECT region, ROUND(SUM(revenue), 2) as total_revenue FROM sales_metrics GROUP BY region ORDER BY total_revenue DESC LIMIT 50;
-```
-
-Q: "Who are our top 5 customers?"
-```sql
-SELECT c.name, ROUND(SUM(oi.quantity * oi.unit_price), 2) as total_spent FROM customers c JOIN orders o ON c.id = o.customer_id JOIN order_items oi ON o.id = oi.order_id GROUP BY c.id, c.name ORDER BY total_spent DESC LIMIT 5;
-```
-
-Q: "Show monthly revenue trend"
-```sql
-SELECT strftime('%Y-%m', order_date) as month, ROUND(SUM(total_amount), 2) as revenue FROM orders GROUP BY month ORDER BY month LIMIT 50;
-```
-
 QUESTION: {question}
 
-SQL QUERY:"""
+```sql"""
 
     try:
-        response = llm.invoke(prompt)
+        response = llm_invoke(prompt, max_tokens=512)
         sql = _extract_sql(response)
 
         if not _validate_sql(sql):

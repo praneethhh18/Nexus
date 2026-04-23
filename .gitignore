@@ -8,6 +8,9 @@ outputs/*.png
 outputs/reports/
 outputs/email_drafts/
 data/nexusagent.db
+data/.jwt_secret
+workflows/saved/
+workflows/api_keys.json
 chroma_db/
 *.egg-info/
 dist/

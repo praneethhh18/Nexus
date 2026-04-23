@@ -1,14 +1,39 @@
+import { getToken, getBusinessId } from './auth';
+
 const BASE = '/api';
 
+function buildHeaders(extra = {}) {
+  const headers = { 'Content-Type': 'application/json', ...extra };
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const biz = getBusinessId();
+  if (biz) headers['X-Business-Id'] = biz;
+  return headers;
+}
+
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-    ...options,
-  });
+  const res = await fetch(`${BASE}${path}`, { ...options, headers: buildHeaders(options.headers) });
+  if (res.status === 401 && !path.includes('/auth/')) {
+    window.location.href = '/login';
+    throw new Error('Session expired');
+  }
   if (!res.ok) {
     const err = await res.text();
     throw new Error(err || `HTTP ${res.status}`);
   }
+  return res.json();
+}
+
+// Shared helper for multipart requests (file uploads) — must also send auth + business headers
+async function formRequest(path, form) {
+  const token = getToken();
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const biz = getBusinessId();
+  if (biz) headers['X-Business-Id'] = biz;
+  const res = await fetch(`${BASE}${path}`, { method: 'POST', body: form, headers });
+  if (res.status === 401) { window.location.href = '/login'; throw new Error('Session expired'); }
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
@@ -37,18 +62,12 @@ export const getTableDetail = (name, limit = 50) => request(`/database/tables/${
 export const importData = async (file, tableName, ifExists = 'fail') => {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${BASE}/database/import?table_name=${tableName}&if_exists=${ifExists}`, {
-    method: 'POST', body: form,
-  });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return formRequest(`/database/import?table_name=${encodeURIComponent(tableName)}&if_exists=${ifExists}`, form);
 };
 export const previewImport = async (file) => {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${BASE}/database/import/preview`, { method: 'POST', body: form });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return formRequest('/database/import/preview', form);
 };
 
 // Reports
@@ -79,9 +98,7 @@ export const getKnowledge = () => request('/knowledge');
 export const uploadDocument = async (file) => {
   const form = new FormData();
   form.append('file', file);
-  const res = await fetch(`${BASE}/knowledge/upload`, { method: 'POST', body: form });
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
+  return formRequest('/knowledge/upload', form);
 };
 
 // Monitor
@@ -110,3 +127,20 @@ export const getNodeTypes = () => request('/workflows/node-types');
 export const getWorkflowTemplates = () => request('/workflows/templates');
 export const getSchedulerJobs = () => request('/workflows/scheduler/jobs');
 export const getWorkflowHistory = (limit = 30) => request(`/workflows/scheduler/history?limit=${limit}`);
+
+// Notifications
+export const getNotifications = (unread = false) => request(`/notifications?unread=${unread}`);
+export const markNotificationRead = (id) => request(`/notifications/${id}/read`, { method: 'POST' });
+export const markAllNotificationsRead = () => request('/notifications/read-all', { method: 'POST' });
+
+// SQL Editor
+export const runRawSQL = (sql) => {
+  return request('/database/tables/__raw_query', { method: 'POST', body: JSON.stringify({ sql }) })
+    .catch(() => request('/chat', { method: 'POST', body: JSON.stringify({ query: sql }) }));
+};
+
+// Businesses (re-exported for convenience)
+export {
+  listBusinesses, createBusiness, getBusiness, updateBusiness, deleteBusiness,
+  listMembers, addMember, removeMember,
+} from './businesses';

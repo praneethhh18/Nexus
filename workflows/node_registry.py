@@ -414,6 +414,31 @@ NODE_TYPES: dict = {
         "outputs": ["notified"],
     },
 
+    "slack_notify": {
+        "category": "action",
+        "name": "Slack Message",
+        "icon": "💬",
+        "color": "#4a148c",
+        "description": "Post a message to Slack via incoming webhook",
+        "config": {
+            "title": {
+                "type": "text", "label": "Message title",
+                "default": "NexusAgent Alert",
+            },
+            "message": {
+                "type": "textarea",
+                "label": "Message body (use {input} for dynamic content, supports Slack mrkdwn)",
+                "default": "{input}",
+            },
+            "severity": {
+                "type": "select", "label": "Severity",
+                "options": ["info", "warning", "critical", "success"],
+                "default": "info",
+            },
+        },
+        "outputs": ["notified"],
+    },
+
     "http_request": {
         "category": "action",
         "name": "HTTP Request",

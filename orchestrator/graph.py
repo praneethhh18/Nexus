@@ -127,9 +127,6 @@ def _run_fallback_pipeline(state: Dict[str, Any]) -> Dict[str, Any]:
         from orchestrator.multi_agent import multi_agent_node
         state = multi_agent_node(state)
         state = synthesizer_node(state)
-        state = reflection_node(state)
-        if not state.get("reflection_passed") and state.get("reflection_attempts", 0) < 2:
-            state = synthesizer_node(state)
         return state
 
     tools = state.get("intent", {}).get("tools_needed", [])
@@ -152,9 +149,8 @@ def _run_fallback_pipeline(state: Dict[str, Any]) -> Dict[str, Any]:
             state = chitchat_node(state)
 
     state = synthesizer_node(state)
-    state = reflection_node(state)
-    if not state.get("reflection_passed") and state.get("reflection_attempts", 0) < 2:
-        state = synthesizer_node(state)
+    # Skip reflection — saves 1 LLM call (30-60s) per query
+    state["reflection_passed"] = True
 
     return state
 
@@ -231,32 +227,99 @@ def get_graph():
     return _compiled_graph
 
 
+def _is_just_chitchat(query: str) -> bool:
+    """Check if query is ONLY casual chat (greeting, thanks, etc).
+    Everything else goes through the full pipeline.
+    Only truly trivial messages skip the pipeline."""
+    q = query.lower().strip()
+
+    # Very short greetings
+    if len(q) < 15 and any(q.startswith(g) for g in [
+        "hi", "hello", "hey", "yo", "sup", "thanks", "thank you",
+        "ok", "okay", "cool", "nice", "good", "great", "bye",
+        "good morning", "good night", "what's up", "whats up",
+    ]):
+        return True
+
+    # Questions about capabilities
+    if any(k in q for k in ["what can you do", "help me", "who are you", "your name"]):
+        return True
+
+    # Everything else → use the full pipeline
+    return False
+
+
+def _fast_chat(query: str, user_id: str = "default") -> Dict[str, Any]:
+    """Single LLM call for simple chat. Uses Claude if available, else fast local model."""
+    from config.llm_provider import invoke
+    from memory.short_term import get_default_memory
+    import time
+
+    start = time.time()
+    mem = get_default_memory()
+    history = mem.get_context_string(max_chars=300)
+
+    history_block = f"\nRecent chat:\n{history}\n" if history else ""
+
+    system = "You are NexusAgent, an AI business assistant. Be concise and helpful. You can query databases, search documents, generate reports, send emails, and run what-if simulations."
+    prompt = f"""{history_block}User: {query}"""
+
+    try:
+        answer = invoke(prompt, system=system, max_tokens=512).strip()
+    except Exception as e:
+        answer = f"Connection error: {e}"
+
+    duration_ms = int((time.time() - start) * 1000)
+
+    mem.add_turn("user", query)
+    mem.add_turn("assistant", answer, tools_used=[])
+
+    logger.info(f"[FastChat] '{query[:50]}' -> {len(answer)} chars in {duration_ms}ms")
+
+    return {
+        **INITIAL_STATE,
+        "query": query,
+        "final_answer": answer,
+        "tools_used": [],
+        "citations": [],
+        "intent": {"primary_intent": "chitchat", "tools_needed": []},
+    }
+
+
 def run(query: str, tone: Dict[str, Any] = None, user_id: str = "default") -> Dict[str, Any]:
     """
-    Main entry point — run a query through the full NexusAgent pipeline.
+    Main entry point — run a query through the NexusAgent pipeline.
 
-    Returns the final state dict.
+    Uses FAST PATH (1 LLM call) for simple chat.
+    Uses FULL PIPELINE (multi-step) only when tools are needed.
     """
+    import time
+
+    # ── Fast path: ONLY for greetings/chitchat → 1 LLM call ────────
+    if _is_just_chitchat(query):
+        return _fast_chat(query, user_id)
+
+    # ── Full pipeline: needs data/docs/actions ────────────────────────
     from voice.tone_analyzer import analyze_tone
     from memory.short_term import get_default_memory
     from memory.long_term import auto_extract_facts
     from memory.user_memory import (
         get_user_profile, build_personalized_context, start_session,
-        learn_from_interaction, increment_interaction_count,
+        learn_from_interaction,
     )
     from orchestrator.multi_agent import get_orchestrator
-    import time
 
     start = time.time()
-    if tone is None:
-        tone = analyze_tone(query)
 
-    # ── Tier 1: User Memory & Personalization ──────────────────────────
+    # Skip tone analysis — use default casual tone to save 1 LLM call
+    if tone is None:
+        tone = {"tone": "casual", "confidence": 0.8, "suggested_response_style": ""}
+
     profile = get_user_profile(user_id)
     personalized_context = build_personalized_context(user_id, query)
     session_id = start_session(user_id)
 
-    # ── Tier 1: Multi-Agent Collaboration Detection ────────────────────
+    # Quick multi-agent check (heuristic, no LLM)
     orchestrator = get_orchestrator()
     use_multi_agent = orchestrator.planner.should_use_multi_agent(query)
 
@@ -282,7 +345,6 @@ def run(query: str, tone: Dict[str, Any] = None, user_id: str = "default") -> Di
 
     duration_ms = int((time.time() - start) * 1000)
 
-    # Update short-term memory
     mem = get_default_memory()
     mem.add_turn("user", query)
     mem.add_turn(
@@ -291,17 +353,14 @@ def run(query: str, tone: Dict[str, Any] = None, user_id: str = "default") -> Di
         tools_used=final_state.get("tools_used", []),
     )
 
-    # Auto-extract facts every 5 turns
     if mem.turn_count % 10 == 0:
         auto_extract_facts(mem.get_context_string())
 
-    # ── Tier 1: Learn from interaction ─────────────────────────────────
     try:
         learn_from_interaction(user_id, query, final_state)
     except Exception as e:
         logger.warning(f"[Graph] User learning failed: {e}")
 
-    # End session
     try:
         from memory.user_memory import end_session
         end_session(session_id)
