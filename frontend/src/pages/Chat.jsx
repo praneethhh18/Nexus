@@ -2,7 +2,9 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { sendMessage, getConversation, exportMarkdown, uploadDocument } from '../services/api';
+import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
+import { Zap } from 'lucide-react';
 
 const TOOL_CLASS = { rag: 'tool-rag', sql: 'tool-sql', action: 'tool-action', report: 'tool-report', whatif: 'tool-whatif' };
 
@@ -79,6 +81,10 @@ export default function Chat() {
   const [loading, setLoading] = useState(false);
   const [convId, setConvId] = useState(null);
   const [recording, setRecording] = useState(false);
+  const [agentMode, setAgentMode] = useState(() => {
+    const saved = localStorage.getItem('nexus_agent_mode');
+    return saved === null ? true : saved === '1';
+  });
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
@@ -137,6 +143,12 @@ export default function Chat() {
     if (mediaRecRef.current?.state === 'recording') mediaRecRef.current.stop();
   };
 
+  const toggleAgentMode = () => {
+    const next = !agentMode;
+    setAgentMode(next);
+    localStorage.setItem('nexus_agent_mode', next ? '1' : '0');
+  };
+
   const send = async (text = input) => {
     if (!text.trim() || loading) return;
     const q = text.trim(); setInput('');
@@ -144,6 +156,23 @@ export default function Chat() {
     setMessages(prev => [...prev, { role: 'user', content: q, tools_used: [], timestamp: ts }]);
     setLoading(true);
     setStreamingText('');
+
+    // Agent mode — tool-using (no streaming, returns complete turn)
+    if (agentMode) {
+      try {
+        const res = await agentChat(q, convId);
+        if (!convId && res.conversation_id) setConvId(res.conversation_id);
+        setMessages(prev => [...prev, res.message]);
+      } catch (err) {
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: `Error: ${err.message}`,
+          tools_used: [], timestamp: ts,
+        }]);
+      }
+      setLoading(false);
+      setStreamingText('');
+      return;
+    }
 
     // Try WebSocket streaming first
     try {
@@ -242,8 +271,24 @@ export default function Chat() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div><h1>Chat</h1><p>Ask about your business data, documents, or operations</p></div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div>
+          <h1>Chat {agentMode && <span style={{ fontSize: 10, fontWeight: 600, color: '#22c55e', background: '#22c55e15', border: '1px solid #22c55e40', padding: '2px 8px', borderRadius: 10, verticalAlign: 'middle', marginLeft: 8 }}>AGENT</span>}</h1>
+          <p>{agentMode ? 'Ask me to do things — create tasks, add contacts, draft invoices, send emails (with approval)' : 'Ask about your business data, documents, or operations'}</p>
+        </div>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button
+            onClick={toggleAgentMode}
+            title={agentMode ? 'Switch to passive chat (answers only, no actions)' : 'Switch to agent mode (can take actions)'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '5px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
+              border: `1px solid ${agentMode ? '#22c55e60' : '#334155'}`,
+              background: agentMode ? '#22c55e15' : 'transparent',
+              color: agentMode ? '#4ade80' : '#94a3b8',
+            }}
+          >
+            <Zap size={12} /> {agentMode ? 'Agent ON' : 'Agent OFF'}
+          </button>
           {/* Document upload button */}
           <label className="action-btn" style={{ cursor: 'pointer' }}>
             <Upload size={13} /> Upload Doc
@@ -283,7 +328,35 @@ export default function Chat() {
               {msg.role === 'assistant' && <div className="msg-avatar bot">N</div>}
               <div className={`msg-bubble ${msg.role === 'user' ? 'user' : 'bot'}`}>
                 <div className="chat-markdown"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
-                {msg.tools_used?.length > 0 && (
+                {/* Agent tool calls */}
+                {msg.tool_calls?.length > 0 && (
+                  <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                    {msg.tool_calls.map((tc, j) => (
+                      <div key={j} style={{
+                        fontSize: 10, padding: '4px 10px', borderRadius: 6,
+                        background: tc.pending_approval ? '#f59e0b15' : (tc.error ? '#ef444415' : '#22c55e15'),
+                        border: `1px solid ${tc.pending_approval ? '#f59e0b40' : (tc.error ? '#ef444440' : '#22c55e40')}`,
+                        color: tc.pending_approval ? '#fbbf24' : (tc.error ? '#f87171' : '#4ade80'),
+                      }}>
+                        {tc.pending_approval ? '⏸ ' : tc.error ? '✗ ' : '✓ '}
+                        <code style={{ fontSize: 10 }}>{tc.name}</code>
+                        {tc.pending_approval && <span> — waiting for your approval</span>}
+                        {tc.error && <span> — {tc.error}</span>}
+                        {tc.summary && <span style={{ color: '#94a3b8' }}> · {tc.summary}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {msg.pending_approvals?.length > 0 && (
+                  <div style={{
+                    marginTop: 8, padding: '8px 12px', borderRadius: 8,
+                    background: '#f59e0b15', border: '1px solid #f59e0b40',
+                    fontSize: 11, color: '#fbbf24',
+                  }}>
+                    {msg.pending_approvals.length} action{msg.pending_approvals.length > 1 ? 's' : ''} queued. Review on the <a href="/approvals" style={{ color: '#60a5fa', textDecoration: 'underline' }}>Approvals page</a>.
+                  </div>
+                )}
+                {msg.tools_used?.length > 0 && !msg.tool_calls && (
                   <div className="msg-tools">
                     {msg.tools_used.map((t, j) => <span key={j} className={`tool-badge ${TOOL_CLASS[t] || ''}`}>{t.replace(/_/g, ' ')}</span>)}
                   </div>

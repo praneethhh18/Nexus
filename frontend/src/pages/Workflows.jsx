@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, addEdge, useNodesState, useEdgesState, Handle, Position, MarkerType } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Play, Plus, Trash2, Power, Save, GitBranch, Zap, Sparkles, Clock, Edit3, Code2, ArrowLeft, Check } from 'lucide-react';
-import { getWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, toggleWorkflow, runWorkflow, getNodeTypes, getWorkflowTemplates, getWorkflowHistory } from '../services/api';
+import { getWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, toggleWorkflow, runWorkflow, getNodeTypes, getWorkflowTemplates, getWorkflowHistory, generateWorkflowFromText } from '../services/api';
 
 const CAT_COLORS = { trigger: '#2563eb', condition: '#7c3aed', data: '#16a34a', ai: '#ea580c', action: '#dc2626', control: '#475569' };
 const CAT_ICONS = { trigger: 'T', condition: '?', data: 'D', ai: 'AI', action: 'A', control: 'C' };
@@ -79,6 +79,8 @@ export default function Workflows() {
   const [runResult, setRunResult] = useState(null);
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
+  const [nlPrompt, setNlPrompt] = useState('');
+  const [nlBusy, setNlBusy] = useState(false);
 
   const refresh = useCallback(() => {
     getWorkflows().then(setWorkflows).catch(() => {});
@@ -299,8 +301,61 @@ export default function Workflows() {
       {/* GALLERY */}
       {view === 'gallery' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          {/* AI-assisted builder */}
+          <div className="panel" style={{ padding: 16, marginBottom: 16, background: 'linear-gradient(135deg, #0c1222, #151e36)', border: '1px solid #22c55e30' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Sparkles size={16} color="#22c55e" />
+              <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Describe an automation in plain English</span>
+            </div>
+            <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 10px' }}>
+              e.g. <em>"Every Monday at 9am, post a Slack summary of last week's sales"</em> or
+              <em> "When a new deal reaches proposal stage, create a follow-up task for me in 3 days"</em>
+            </p>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input
+                className="field-input"
+                placeholder="Describe what you want..."
+                value={nlPrompt}
+                onChange={(e) => setNlPrompt(e.target.value)}
+                onKeyDown={async (e) => {
+                  if (e.key !== 'Enter' || !nlPrompt.trim() || nlBusy) return;
+                  setNlBusy(true);
+                  try {
+                    const wf = await generateWorkflowFromText(nlPrompt);
+                    openBuilderFromTemplate(wf);
+                    setNlPrompt('');
+                    flash('Generated — review and save.');
+                  } catch (err) {
+                    flash(`Failed: ${err.message}`);
+                  }
+                  setNlBusy(false);
+                }}
+                style={{ flex: 1, fontSize: 12 }}
+                disabled={nlBusy}
+              />
+              <button
+                className="btn-primary"
+                disabled={nlBusy || !nlPrompt.trim()}
+                onClick={async () => {
+                  setNlBusy(true);
+                  try {
+                    const wf = await generateWorkflowFromText(nlPrompt);
+                    openBuilderFromTemplate(wf);
+                    setNlPrompt('');
+                    flash('Generated — review and save.');
+                  } catch (err) {
+                    flash(`Failed: ${err.message}`);
+                  }
+                  setNlBusy(false);
+                }}
+              >
+                {nlBusy ? 'Thinking...' : 'Generate'}
+              </button>
+            </div>
+          </div>
+
           <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
-            Ready-made automations. Click <strong style={{ color: '#22c55e' }}>Use this</strong> to turn one on with one click,
+            Or pick a ready-made template. Click <strong style={{ color: '#22c55e' }}>Use this</strong> to turn one on with one click,
             or <strong style={{ color: '#e2e8f0' }}>Customize</strong> to tweak it first.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>

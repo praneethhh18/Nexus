@@ -154,5 +154,47 @@
     "human_approved": true,
     "success": true,
     "error_message": ""
+  },
+  {
+    "event_id": "92e8f4aa",
+    "timestamp": "2026-04-23T13:09:25.399275",
+    "event_type": "tool_call",
+    "tool_name": "discord_tool",
+    "input_summary": "critical: Revenue Anomaly: South Region",
+    "output_summary": "sent=True",
+    "duration_ms": 287,
+    "human_approved": true,
+    "success": true,
+    "error_message": "",
+    "business_id": "default",
+    "user_id": "default"
+  },
+  {
+    "event_id": "08b4027d",
+    "timestamp": "2026-04-23T13:09:46.218151",
+    "event_type": "tool_call",
+    "tool_name": "discord_tool",
+    "input_summary": "success: Report Ready",
+    "output_summary": "sent=True",
+    "duration_ms": 1,
+    "human_approved": true,
+    "success": true,
+    "error_message": "",
+    "business_id": "default",
+    "user_id": "default"
+  },
+  {
+    "event_id": "92e605a5",
+    "timestamp": "2026-04-23T13:09:46.280487",
+    "event_type": "tool_call",
+    "tool_name": "proactive_monitor",
+    "input_summary": "scheduled anomaly check",
+    "output_summary": "1 anomalies found",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": true,
+    "error_message": "",
+    "business_id": "default",
+    "user_id": "default"
   }
 ]

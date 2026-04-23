@@ -27,6 +27,8 @@ INTERACTIONS_TABLE = "nexus_interactions"
 DEAL_STAGES = ("lead", "qualified", "proposal", "negotiation", "won", "lost")
 INTERACTION_TYPES = ("call", "email", "meeting", "note")
 
+DEAL_STAGE_EVENTS_TABLE = "nexus_deal_stage_events"
+
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
@@ -105,8 +107,32 @@ def _get_conn() -> sqlite3.Connection:
     )""")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_interactions_biz ON {INTERACTIONS_TABLE}(business_id, occurred_at)")
 
+    conn.execute(f"""
+    CREATE TABLE IF NOT EXISTS {DEAL_STAGE_EVENTS_TABLE} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        business_id TEXT NOT NULL,
+        deal_id TEXT NOT NULL,
+        from_stage TEXT,
+        to_stage TEXT NOT NULL,
+        at TEXT NOT NULL
+    )""")
+    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_stage_events_biz ON {DEAL_STAGE_EVENTS_TABLE}(business_id, deal_id, at)")
+
     conn.commit()
     return conn
+
+
+def _log_stage_event(business_id: str, deal_id: str, from_stage: Optional[str], to_stage: str) -> None:
+    conn = _get_conn()
+    try:
+        conn.execute(
+            f"INSERT INTO {DEAL_STAGE_EVENTS_TABLE} (business_id, deal_id, from_stage, to_stage, at) "
+            f"VALUES (?,?,?,?,?)",
+            (business_id, deal_id, from_stage, to_stage, _now()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _validate_email(email: str) -> str:
@@ -399,6 +425,8 @@ def create_deal(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
         conn.commit()
     finally:
         conn.close()
+    # Initial stage event so analytics has a floor
+    _log_stage_event(business_id, did, None, stage)
     return get_deal(business_id, did)
 
 
@@ -454,7 +482,7 @@ def get_deal(business_id: str, deal_id: str) -> Dict:
 
 
 def update_deal(business_id: str, deal_id: str, updates: Dict[str, Any]) -> Dict:
-    get_deal(business_id, deal_id)
+    current = get_deal(business_id, deal_id)
     allowed = {"name", "value", "currency", "stage", "probability_pct",
                "contact_id", "company_id", "notes", "expected_close"}
     fields = {k: v for k, v in updates.items() if k in allowed and v is not None}
@@ -489,6 +517,11 @@ def update_deal(business_id: str, deal_id: str, updates: Dict[str, Any]) -> Dict
         conn.commit()
     finally:
         conn.close()
+
+    # Track stage transitions so analytics can compute time-in-stage
+    if "stage" in fields and fields["stage"] != current.get("stage"):
+        _log_stage_event(business_id, deal_id, current.get("stage"), fields["stage"])
+
     return get_deal(business_id, deal_id)
 
 
@@ -558,6 +591,18 @@ def create_interaction(business_id: str, user_id: str, data: Dict[str, Any]) -> 
         conn.commit()
     finally:
         conn.close()
+
+    # @mentions in interaction summaries notify the mentioned teammates
+    try:
+        from api.team import process_mentions
+        process_mentions(
+            business_id=business_id, author_id=user_id,
+            text=f"{data.get('subject', '')}\n{data.get('summary', '')}",
+            context_label=f"{data.get('type', 'interaction')} note",
+        )
+    except Exception:
+        pass
+
     return get_interaction(business_id, iid)
 
 

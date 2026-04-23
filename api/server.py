@@ -52,6 +52,13 @@ try:
 except Exception as e:
     logger.warning(f"Monitor start failed: {e}")
 
+# Start autonomous agent scheduler (stale deals, invoice reminders, meeting prep)
+try:
+    from agents.background.scheduler import start_agent_scheduler
+    start_agent_scheduler()
+except Exception as e:
+    logger.warning(f"Agent scheduler start failed: {e}")
+
 # ── FastAPI App ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="NexusAgent API",
@@ -733,6 +740,264 @@ def calendar_events(days: int = 14, limit: int = 20, user: dict = Depends(get_cu
 def calendar_disconnect(user: dict = Depends(get_current_user)):
     _cal.disconnect(user["id"])
     return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   AGENT — tool-using chat, approvals, memory
+# ═══════════════════════════════════════════════════════════════════════════════
+from agents import agent_loop as _agent_loop
+from agents import approval_queue as _approvals
+from agents import business_memory as _mem
+from agents import tool_registry as _tool_registry
+
+
+class AgentChatRequest(BaseModel):
+    query: str = Field(..., min_length=1, max_length=10000)
+    conversation_id: Optional[str] = None
+
+
+@app.get("/api/agent/tools")
+def list_agent_tools(ctx: dict = Depends(get_current_context)):
+    """Return the list of tools the agent can use (for display in the UI)."""
+    return _tool_registry.list_tools(for_llm=False)
+
+
+@app.post("/api/agent/chat")
+async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_context)):
+    """
+    Tool-using chat. Streams the LLM + tool loop; when the loop ends, persists
+    the turn to the conversation and returns the final answer.
+    """
+    from memory.conversation_store import (
+        create_conversation, auto_title, save_full_conversation,
+        load_messages, assert_conversation_access,
+    )
+    from memory.query_history import log_query
+    from api.businesses import get_business
+
+    user = ctx["user"]
+    business_id = ctx["business_id"]
+    biz = get_business(business_id) or {}
+    business_name = biz.get("name", "this business")
+
+    conv_id = req.conversation_id
+    if not conv_id:
+        conv_id = create_conversation(user_id=user["id"], business_id=business_id)
+        auto_title(conv_id, req.query)
+    else:
+        assert_conversation_access(conv_id, business_id)
+
+    # Rebuild the conversation history in tool-calling format.
+    prior = load_messages(conv_id)
+    agent_messages = []
+    for m in prior[-20:]:  # last 20 turns is plenty
+        role = m.get("role")
+        if role in ("user", "assistant"):
+            agent_messages.append({"role": role, "content": m.get("content", "")})
+    agent_messages.append({"role": "user", "content": req.query})
+
+    start = time.time()
+    loop = asyncio.get_event_loop()
+    try:
+        result = await loop.run_in_executor(
+            None,
+            lambda: _agent_loop.run_agent(
+                messages=agent_messages,
+                business_id=business_id,
+                business_name=business_name,
+                user_id=user["id"],
+                user_name=user.get("name") or user.get("email", "User"),
+                user_role=ctx["business_role"],
+            ),
+        )
+    except Exception as e:
+        logger.exception("[AgentChat] Run failed")
+        result = {
+            "answer": f"Sorry, I hit an unexpected error: {e}",
+            "tool_calls": [], "pending_approvals": [], "steps": 0,
+            "stop_reason": "error",
+        }
+
+    duration_ms = int((time.time() - start) * 1000)
+    ts = datetime.now().strftime("%H:%M")
+
+    tools_used = [tc.get("name") for tc in result.get("tool_calls", [])]
+    user_msg = {"role": "user", "content": req.query, "tools_used": [], "timestamp": ts}
+    assistant_msg = {
+        "role": "assistant",
+        "content": result.get("answer", ""),
+        "tools_used": tools_used,
+        "tool_calls": result.get("tool_calls", []),
+        "pending_approvals": result.get("pending_approvals", []),
+        "stop_reason": result.get("stop_reason"),
+        "steps": result.get("steps"),
+        "timestamp": ts,
+    }
+
+    existing = load_messages(conv_id)
+    existing.extend([user_msg, assistant_msg])
+    save_full_conversation(conv_id, existing)
+
+    try:
+        log_query(
+            query=req.query, intent="agent",
+            tools_used=tools_used,
+            answer_preview=result.get("answer", "")[:500],
+            success=result.get("stop_reason") == "end_turn",
+            duration_ms=duration_ms,
+            user_id=user["id"], business_id=business_id,
+        )
+    except Exception:
+        pass
+
+    return {
+        "conversation_id": conv_id,
+        "message": assistant_msg,
+        "duration_ms": duration_ms,
+    }
+
+
+# ── Approvals ────────────────────────────────────────────────────────────────
+@app.get("/api/approvals")
+def list_approvals(status: Optional[str] = None, limit: int = 100,
+                   ctx: dict = Depends(get_current_context)):
+    return {
+        "actions": _approvals.list_actions(ctx["business_id"], status=status, limit=limit),
+        "pending_count": _approvals.pending_count(ctx["business_id"]),
+    }
+
+
+@app.get("/api/approvals/pending-count")
+def approvals_pending_count(ctx: dict = Depends(get_current_context)):
+    return {"pending_count": _approvals.pending_count(ctx["business_id"])}
+
+
+@app.get("/api/approvals/{action_id}")
+def get_approval(action_id: str, ctx: dict = Depends(get_current_context)):
+    return _approvals.get_action(ctx["business_id"], action_id)
+
+
+@app.post("/api/approvals/{action_id}/approve")
+def approve_action(action_id: str, ctx: dict = Depends(get_current_context)):
+    return _approvals.approve_action(ctx["business_id"], ctx["user"]["id"], action_id)
+
+
+@app.post("/api/approvals/{action_id}/reject")
+def reject_action(action_id: str, body: dict = None, ctx: dict = Depends(get_current_context)):
+    reason = (body or {}).get("reason", "")
+    return _approvals.reject_action(ctx["business_id"], ctx["user"]["id"], action_id, reason=reason)
+
+
+# ── Background agents ───────────────────────────────────────────────────────
+from agents.background import scheduler as _agent_sched
+
+
+@app.get("/api/agents/background")
+def list_background_agents(ctx: dict = Depends(get_current_context)):
+    return {"jobs": _agent_sched.list_jobs()}
+
+
+@app.post("/api/agents/background/stale-deals/run")
+def run_stale_deals_now(ctx: dict = Depends(get_current_context)):
+    from agents.background.stale_deal_watcher import run_for_business
+    return run_for_business(ctx["business_id"])
+
+
+@app.post("/api/agents/background/invoice-reminders/run")
+def run_invoice_reminders_now(ctx: dict = Depends(get_current_context)):
+    from agents.background.invoice_reminder import run_for_business
+    return run_for_business(ctx["business_id"])
+
+
+@app.post("/api/agents/background/meeting-prep/run")
+def run_meeting_prep_now(ctx: dict = Depends(get_current_context)):
+    from agents.background.meeting_prep import run_for_user
+    return run_for_user(ctx["user"]["id"], ctx["business_id"])
+
+
+# ── Email triage ─────────────────────────────────────────────────────────────
+from agents import email_triage as _email_triage
+
+
+@app.get("/api/email-triage/account")
+def email_triage_account(ctx: dict = Depends(get_current_context)):
+    return _email_triage.get_account(ctx["business_id"]) or {"connected": False}
+
+
+@app.post("/api/email-triage/account")
+def save_email_triage_account(body: dict, ctx: dict = Depends(get_current_context)):
+    # Only owner/admin can configure the shared inbox
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can configure email triage")
+    return _email_triage.save_account(
+        business_id=ctx["business_id"],
+        imap_host=(body.get("imap_host") or "").strip(),
+        imap_port=int(body.get("imap_port", 993)),
+        username=(body.get("username") or "").strip(),
+        password=body.get("password") or "",
+        folder=(body.get("folder") or "INBOX"),
+        enabled=bool(body.get("enabled", True)),
+        auto_draft_reply=bool(body.get("auto_draft_reply", True)),
+    )
+
+
+@app.delete("/api/email-triage/account")
+def delete_email_triage_account(ctx: dict = Depends(get_current_context)):
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can disconnect email triage")
+    _email_triage.disconnect_account(ctx["business_id"])
+    return {"ok": True}
+
+
+@app.post("/api/email-triage/run")
+def run_email_triage(ctx: dict = Depends(get_current_context)):
+    return _email_triage.run_for_business(ctx["business_id"])
+
+
+@app.get("/api/email-triage/log")
+def email_triage_log(limit: int = 50, ctx: dict = Depends(get_current_context)):
+    return _email_triage.get_recent_log(ctx["business_id"], limit=limit)
+
+
+# ── Business memory ─────────────────────────────────────────────────────────
+@app.get("/api/memory")
+def list_memory_api(search: Optional[str] = None, limit: int = 100,
+                    ctx: dict = Depends(get_current_context)):
+    return _mem.list_memory(ctx["business_id"], search=search, limit=limit)
+
+
+@app.post("/api/memory")
+def add_memory_api(body: dict, ctx: dict = Depends(get_current_context)):
+    return _mem.add_memory(
+        ctx["business_id"], ctx["user"]["id"],
+        content=body.get("content", ""),
+        kind=body.get("kind", "fact"),
+        tags=body.get("tags", ""),
+        is_pinned=bool(body.get("is_pinned", False)),
+    )
+
+
+@app.patch("/api/memory/{memory_id}")
+def update_memory_api(memory_id: str, body: dict, ctx: dict = Depends(get_current_context)):
+    return _mem.update_memory(ctx["business_id"], memory_id, body)
+
+
+@app.delete("/api/memory/{memory_id}")
+def delete_memory_api(memory_id: str, ctx: dict = Depends(get_current_context)):
+    _mem.delete_memory(ctx["business_id"], memory_id)
+    return {"ok": True}
+
+
+@app.post("/api/memory/consolidate")
+def consolidate_memory_api(body: dict = None, ctx: dict = Depends(get_current_context)):
+    """Dry-run (apply=false) or apply the consolidation plan for this business."""
+    from agents.summarizer import consolidate_business_memory
+    body = body or {}
+    return consolidate_business_memory(
+        ctx["business_id"],
+        apply_changes=bool(body.get("apply", False)),
+        preserve_pinned=bool(body.get("preserve_pinned", True)),
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1479,6 +1744,44 @@ def get_workflow_templates(ctx: dict = Depends(get_current_context)):
     return get_all_templates()
 
 
+@app.post("/api/workflows/generate-from-text")
+def generate_workflow_from_text(body: dict, ctx: dict = Depends(get_current_context)):
+    """Take a natural-language description and return a workflow draft (not saved)."""
+    description = (body.get("description") or "").strip()
+    if not description:
+        raise HTTPException(400, "description is required")
+    if len(description) > 2000:
+        raise HTTPException(400, "description too long (max 2000 chars)")
+    from agents.workflow_builder import build_workflow
+    try:
+        wf = build_workflow(description)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return wf
+
+
+@app.post("/api/agent/research")
+def agent_research(body: dict, ctx: dict = Depends(get_current_context)):
+    """Run the research agent directly (outside the chat loop)."""
+    from agents.research_agent import research
+    subject = (body.get("subject") or "").strip()
+    if not subject:
+        raise HTTPException(400, "subject is required")
+    try:
+        return research(
+            subject=subject,
+            context=body.get("context", ""),
+            save_as_interaction=bool(body.get("save_as_interaction", False)),
+            business_id=ctx["business_id"],
+            user_id=ctx["user"]["id"],
+            contact_id=body.get("contact_id"),
+            company_id=body.get("company_id"),
+            deal_id=body.get("deal_id"),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/workflows/{wf_id}")
 def get_workflow(wf_id: str, ctx: dict = Depends(get_current_context)):
     from workflows.storage import load_workflow
@@ -1717,12 +2020,181 @@ def update_runtime_setting(body: dict, user: dict = Depends(get_current_user)):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#   ANALYTICS & FORECASTING
+# ═══════════════════════════════════════════════════════════════════════════════
+from api import analytics as _analytics
+
+
+@app.get("/api/analytics/pipeline-velocity")
+def analytics_pipeline_velocity(ctx: dict = Depends(get_current_context)):
+    return _analytics.pipeline_velocity(ctx["business_id"])
+
+
+@app.get("/api/analytics/revenue-forecast")
+def analytics_revenue_forecast(horizon_months: int = 6, ctx: dict = Depends(get_current_context)):
+    horizon_months = max(1, min(12, horizon_months))
+    return _analytics.revenue_forecast(ctx["business_id"], horizon_months=horizon_months)
+
+
+@app.get("/api/analytics/agent-impact")
+def analytics_agent_impact(days: int = 30, ctx: dict = Depends(get_current_context)):
+    days = max(1, min(180, days))
+    return _analytics.agent_impact(ctx["business_id"], days=days)
+
+
+@app.get("/api/analytics/churn-risk")
+def analytics_churn_risk(max_deals: int = 15, ctx: dict = Depends(get_current_context)):
+    max_deals = max(1, min(50, max_deals))
+    return _analytics.churn_risk(ctx["business_id"], max_deals=max_deals)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   TEAM — invites, activity feed
+# ═══════════════════════════════════════════════════════════════════════════════
+from api import team as _team
+
+
+class InviteCreate(BaseModel):
+    email: str
+    role: str = "member"
+
+
+@app.get("/api/team/invites")
+def list_team_invites(include_accepted: bool = False, ctx: dict = Depends(get_current_context)):
+    from api.businesses import assert_member
+    assert_member(ctx["business_id"], ctx["user"]["id"])
+    return _team.list_invites(ctx["business_id"], include_accepted=include_accepted)
+
+
+@app.post("/api/team/invites")
+def create_team_invite(req: InviteCreate, ctx: dict = Depends(get_current_context)):
+    return _team.create_invite(
+        ctx["business_id"], ctx["user"]["id"],
+        email=req.email, role=req.role,
+    )
+
+
+@app.delete("/api/team/invites/{token}")
+def revoke_team_invite(token: str, ctx: dict = Depends(get_current_context)):
+    _team.revoke_invite(ctx["business_id"], ctx["user"]["id"], token)
+    return {"ok": True}
+
+
+# Public — no auth, so someone without an account can see what they're joining
+@app.get("/api/team/invites/preview")
+def preview_invite(token: str):
+    return _team.get_invite_preview(token)
+
+
+class AcceptInvite(BaseModel):
+    token: str
+
+
+@app.post("/api/team/invites/accept")
+def accept_team_invite(body: AcceptInvite, user: dict = Depends(get_current_user)):
+    return _team.accept_invite(body.token, user["id"], user["email"])
+
+
+@app.get("/api/team/activity")
+def activity_feed_api(limit: int = 60, ctx: dict = Depends(get_current_context)):
+    return _team.activity_feed(ctx["business_id"], limit=limit)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   WHATSAPP — bridge webhook, link flow, status
+# ═══════════════════════════════════════════════════════════════════════════════
+from api import whatsapp as _wa
+
+
+@app.post("/api/whatsapp/link/generate")
+def whatsapp_generate_link(ctx: dict = Depends(get_current_context)):
+    """Issue a 6-char code the user will text to the WhatsApp bot to link their phone."""
+    return _wa.generate_link_token(ctx["user"]["id"], ctx["business_id"])
+
+
+@app.get("/api/whatsapp/account")
+def whatsapp_account(ctx: dict = Depends(get_current_context)):
+    acc = _wa.get_account_for_user(ctx["user"]["id"])
+    return acc or {"linked": False}
+
+
+@app.delete("/api/whatsapp/account")
+def whatsapp_unlink(ctx: dict = Depends(get_current_context)):
+    _wa.unlink_account(ctx["user"]["id"])
+    return {"ok": True}
+
+
+@app.get("/api/whatsapp/bridge-secret")
+def whatsapp_bridge_secret(user: dict = Depends(get_current_user)):
+    """The shared secret the Node bridge needs. Owner/admin only."""
+    if user["role"] != "admin":
+        raise HTTPException(403, "Admin only")
+    return {"secret": _wa.get_bridge_secret()}
+
+
+@app.post("/api/whatsapp/inbound")
+async def whatsapp_inbound(request: Request):
+    """
+    Receive an incoming WhatsApp message from the local Node bridge.
+    Protected by X-Nexus-Secret header (the same value the bridge reads from
+    its .env). Returns a JSON reply the bridge sends back over WhatsApp.
+    """
+    secret = request.headers.get("X-Nexus-Secret", "")
+    _wa.verify_bridge_secret(secret)
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    phone = (body.get("from") or "").strip()
+    text = (body.get("text") or "").strip()
+    message_id = (body.get("message_id") or "").strip()
+
+    if len(text) > 4000:
+        text = text[:4000]
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, lambda: _wa.handle_inbound(phone, text, message_id))
+    return result
+
+
+@app.get("/api/whatsapp/attachment")
+def whatsapp_attachment(path: str, request: Request):
+    """
+    Serve a generated file to the bridge so it can forward it over WhatsApp.
+    Protected by X-Nexus-Secret. Only files inside outputs/ are served.
+    """
+    _wa.verify_bridge_secret(request.headers.get("X-Nexus-Secret", ""))
+
+    from config.settings import OUTPUTS_DIR
+    try:
+        absolute = Path(path).resolve()
+        absolute.relative_to(Path(OUTPUTS_DIR).resolve())
+    except (ValueError, OSError):
+        raise HTTPException(400, "Path outside of outputs/")
+    if not absolute.is_file():
+        raise HTTPException(404, "File not found")
+
+    ext = absolute.suffix.lower()
+    mime = "application/pdf" if ext == ".pdf" \
+        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document" \
+        if ext == ".docx" else "application/octet-stream"
+    return FileResponse(str(absolute), filename=absolute.name, media_type=mime)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #   SERVE REACT FRONTEND (production only — when dist/ exists)
 # ═══════════════════════════════════════════════════════════════════════════════
 _frontend_dist = ROOT / "frontend" / "dist"
 if _frontend_dist.is_dir():
     @app.get("/{full_path:path}")
     def serve_spa(full_path: str):
+        # Never shadow API or WS routes — return a proper 404 so the JSON
+        # client in the browser surfaces a real error instead of silently
+        # receiving index.html and choking on "<!doctype".
+        if full_path.startswith("api/") or full_path.startswith("ws/"):
+            raise HTTPException(404, f"Not found: /{full_path}")
         file_path = _frontend_dist / full_path
         if file_path.is_file():
             return FileResponse(str(file_path))

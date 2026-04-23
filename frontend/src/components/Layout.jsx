@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2 } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3 } from 'lucide-react';
 import { getConversations, deleteConversation, getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
+import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
 import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
 
@@ -13,7 +14,11 @@ const NAV_MAIN = [
   { to: '/invoices', icon: Receipt, label: 'Invoices' },
   { to: '/documents', icon: FileType2, label: 'Documents' },
   { to: '/reports', icon: FileText, label: 'Reports' },
+  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
+  { to: '/approvals', icon: ShieldCheck, label: 'Approvals', badge: 'approvals' },
+  { to: '/team', icon: Users, label: 'Team' },
+  { to: '/memory', icon: Brain, label: 'Memory' },
   { to: '/history', icon: Clock, label: 'History' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -39,6 +44,7 @@ export default function Layout() {
   const [newBizIndustry, setNewBizIndustry] = useState('');
   const [devMode, setDevMode] = useState(localStorage.getItem('nexus_dev_mode') === '1');
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding());
+  const [pendingApprovals, setPendingApprovals] = useState(0);
   const bizRef = useRef(null);
   const user = getUser();
   const navigate = useNavigate();
@@ -48,6 +54,7 @@ export default function Layout() {
     getConversations().then(setConversations).catch(() => {});
     getNotifications().then(setNotifData).catch(() => {});
     getHealth().then(setHealth).catch(() => {});
+    approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -56,6 +63,7 @@ export default function Layout() {
     const iv = setInterval(() => {
       getConversations().then(setConversations).catch(() => {});
       getNotifications().then(setNotifData).catch(() => {});
+      approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
     }, 15000);
     const onBizChange = (e) => {
       setCurrentBizId(e.detail);
@@ -208,13 +216,22 @@ export default function Layout() {
         )}
 
         <nav className="nav-section">
-          {NAV_MAIN.map(({ to, icon: Icon, label }) => (
-            <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-              style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}>
-              <Icon size={18} />
-              {!collapsed && <span>{label}</span>}
-            </NavLink>
-          ))}
+          {NAV_MAIN.map(({ to, icon: Icon, label, badge }) => {
+            const count = badge === 'approvals' ? pendingApprovals : 0;
+            return (
+              <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}>
+                <Icon size={18} />
+                {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
+                {count > 0 && !collapsed && (
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#f59e0b', color: '#0c1222', minWidth: 18, textAlign: 'center' }}>{count}</span>
+                )}
+                {count > 0 && collapsed && (
+                  <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
+                )}
+              </NavLink>
+            );
+          })}
           {devMode && (
             <>
               {!collapsed && (

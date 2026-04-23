@@ -9,8 +9,12 @@ outputs/reports/
 outputs/email_drafts/
 data/nexusagent.db
 data/.jwt_secret
+data/.whatsapp_secret
 workflows/saved/
 workflows/api_keys.json
+whatsapp_bridge/auth/
+whatsapp_bridge/node_modules/
+whatsapp_bridge/.env
 chroma_db/
 *.egg-info/
 dist/

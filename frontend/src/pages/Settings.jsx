@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X } from 'lucide-react';
+import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy } from 'lucide-react';
 import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusiness, deleteBusiness } from '../services/api';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
+import { getToken as getTok, getBusinessId as getBiz } from '../services/auth';
+
+function etFetch(path, init = {}) {
+  const h = { 'Content-Type': 'application/json', ...(init.headers || {}) };
+  const t = getTok(); if (t) h['Authorization'] = `Bearer ${t}`;
+  const b = getBiz(); if (b) h['X-Business-Id'] = b;
+  return fetch(path, { ...init, headers: h });
+}
 
 function authFetch(path, init = {}) {
   const h = { 'Content-Type': 'application/json', ...(init.headers || {}) };
@@ -23,6 +31,29 @@ export default function Settings() {
   const [bizIndustry, setBizIndustry] = useState('');
   const [bizDescription, setBizDescription] = useState('');
   const [calStatus, setCalStatus] = useState(null);
+  const [etAccount, setEtAccount] = useState(null);
+  const [etForm, setEtForm] = useState({ imap_host: 'imap.gmail.com', imap_port: 993, username: '', password: '', folder: 'INBOX', enabled: true, auto_draft_reply: true });
+  const [waAccount, setWaAccount] = useState(null);
+  const [waCode, setWaCode] = useState(null);
+  const [waSecret, setWaSecret] = useState(null);
+  const isAdmin = (() => {
+    try { return (JSON.parse(localStorage.getItem('nexus_user')) || {}).role === 'admin'; } catch { return false; }
+  })();
+
+  const loadWaAccount = async () => {
+    try {
+      const r = await etFetch('/api/whatsapp/account');
+      if (r.ok) setWaAccount(await r.json());
+    } catch {}
+  };
+  useEffect(() => { loadWaAccount(); }, []);
+
+  useEffect(() => {
+    etFetch('/api/email-triage/account').then(r => r.json()).then((a) => {
+      setEtAccount(a);
+      if (a?.username) setEtForm((p) => ({ ...p, imap_host: a.imap_host || p.imap_host, imap_port: a.imap_port || 993, username: a.username, folder: a.folder || 'INBOX', enabled: !!a.enabled, auto_draft_reply: !!a.auto_draft_reply, password: '' }));
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     calendarStatus().then(setCalStatus).catch(() => {});
@@ -132,6 +163,199 @@ export default function Settings() {
             )}
           </div>
         )}
+
+        {/* WhatsApp */}
+        <div className="panel">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <MessageCircle size={16} color="#25D366" /> WhatsApp
+          </h3>
+          <p style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>
+            Text the agent on WhatsApp to get tasks, reports, and updates on the go.
+            Open-source bridge using Baileys — no Twilio, no Meta business verification.
+            See <code>whatsapp_bridge/README.md</code> for bridge setup.
+          </p>
+
+          {waAccount?.phone ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <Check size={14} color="#22c55e" />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: '#e2e8f0' }}>Linked: <strong>+{waAccount.phone}</strong></div>
+                <div style={{ fontSize: 10, color: '#64748b' }}>
+                  Since {waAccount.linked_at?.substring(0, 16)} · {waAccount.messages_count || 0} messages
+                </div>
+              </div>
+              <button className="btn-ghost" style={{ color: '#f87171' }} onClick={async () => {
+                if (!confirm('Unlink this phone from your account?')) return;
+                await etFetch('/api/whatsapp/account', { method: 'DELETE' });
+                await loadWaAccount();
+                flash('Unlinked.');
+              }}>
+                <X size={12} /> Unlink
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: 12, background: '#0f172a', borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>
+                <strong style={{ color: '#e2e8f0' }}>Not linked yet.</strong> To link your phone:
+              </div>
+              <ol style={{ fontSize: 11, color: '#94a3b8', marginLeft: 18, lineHeight: 1.7 }}>
+                <li>Click <em>Generate link code</em> below</li>
+                <li>Text the 6-character code to the WhatsApp number running your bridge</li>
+                <li>You're linked — ask the bot anything</li>
+              </ol>
+
+              {waCode ? (
+                <div style={{ marginTop: 10, padding: 12, background: '#0c1222', border: '1px dashed #22c55e50', borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>Send this code to the WhatsApp bot now:</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 6, color: '#22c55e', fontFamily: 'monospace' }}>{waCode.code}</div>
+                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                    Expires in {waCode.ttl_minutes} minutes · The phone you text from becomes your linked number.
+                  </div>
+                  <button className="btn-ghost" style={{ marginTop: 8 }} onClick={async () => {
+                    await navigator.clipboard.writeText(waCode.code);
+                    flash('Copied.');
+                  }}>
+                    <Copy size={11} /> Copy
+                  </button>
+                  <button className="btn-ghost" style={{ marginTop: 8, marginLeft: 6 }} onClick={async () => {
+                    await loadWaAccount();
+                    flash(waAccount?.phone ? 'Linked!' : 'Not linked yet — send the code on WhatsApp.');
+                  }}>
+                    Check status
+                  </button>
+                </div>
+              ) : (
+                <button className="btn-primary" style={{ marginTop: 8 }} onClick={async () => {
+                  try {
+                    const r = await etFetch('/api/whatsapp/link/generate', { method: 'POST' });
+                    if (!r.ok) throw new Error(await r.text());
+                    setWaCode(await r.json());
+                  } catch (e) { flash(`Failed: ${e.message}`); }
+                }}>
+                  Generate link code
+                </button>
+              )}
+            </div>
+          )}
+
+          {isAdmin && (
+            <div style={{ padding: 10, background: '#0c1222', border: '1px solid #334155', borderRadius: 6 }}>
+              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+                Bridge secret (admin only)
+              </div>
+              <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>
+                Paste this into <code>whatsapp_bridge/.env</code> as <code>NEXUS_WEBHOOK_SECRET</code>.
+              </p>
+              {waSecret ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <code style={{ flex: 1, padding: 6, background: '#060a14', borderRadius: 4, fontSize: 10, color: '#cbd5e1', overflow: 'auto', whiteSpace: 'nowrap' }}>
+                    {waSecret}
+                  </code>
+                  <button className="btn-ghost" onClick={async () => {
+                    await navigator.clipboard.writeText(waSecret);
+                    flash('Copied to clipboard.');
+                  }}><Copy size={12} /></button>
+                  <button className="btn-ghost" onClick={() => setWaSecret(null)}>Hide</button>
+                </div>
+              ) : (
+                <button className="btn-ghost" onClick={async () => {
+                  try {
+                    const r = await etFetch('/api/whatsapp/bridge-secret');
+                    if (!r.ok) throw new Error(await r.text());
+                    const data = await r.json();
+                    setWaSecret(data.secret);
+                  } catch (e) { flash(`Failed: ${e.message}`); }
+                }}>Show bridge secret</button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Email triage */}
+        <div className="panel">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>📬 Email Triage Agent</h3>
+          <p style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>
+            Connect an IMAP inbox. Every 15 minutes the agent reads unread messages, classifies each as
+            lead/invoice/support/noise, auto-logs CRM interactions for known contacts, and queues reply drafts
+            for your approval. Nothing is ever sent without your OK.
+          </p>
+          {etAccount?.username ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+              <Check size={14} color={etAccount.enabled ? '#22c55e' : '#64748b'} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: '#e2e8f0' }}>
+                  {etAccount.username} @ {etAccount.imap_host}:{etAccount.imap_port} · {etAccount.folder}
+                </div>
+                <div style={{ fontSize: 10, color: '#64748b' }}>
+                  {etAccount.enabled ? 'Enabled' : 'Disabled'} · {etAccount.auto_draft_reply ? 'auto-drafts replies' : 'classify only'}
+                </div>
+              </div>
+              <button className="btn-ghost" onClick={async () => {
+                const r = await etFetch('/api/email-triage/run', { method: 'POST' });
+                const d = await r.json();
+                flash(`Processed ${d.processed || 0} messages.`);
+              }}>Run now</button>
+              <button className="btn-ghost" style={{ color: '#f87171' }} onClick={async () => {
+                if (!confirm('Disconnect email triage? Saved message logs will remain.')) return;
+                await etFetch('/api/email-triage/account', { method: 'DELETE' });
+                setEtAccount(null);
+                flash('Disconnected.');
+              }}>
+                <X size={12} /> Disconnect
+              </button>
+            </div>
+          ) : null}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <label style={{ fontSize: 10, color: '#64748b' }}>IMAP host</label>
+              <input className="field-input" value={etForm.imap_host} onChange={(e) => setEtForm({ ...etForm, imap_host: e.target.value })} placeholder="imap.gmail.com" />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: '#64748b' }}>Port</label>
+              <input className="field-input" type="number" value={etForm.imap_port} onChange={(e) => setEtForm({ ...etForm, imap_port: parseInt(e.target.value) || 993 })} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: '#64748b' }}>Username (email)</label>
+              <input className="field-input" value={etForm.username} onChange={(e) => setEtForm({ ...etForm, username: e.target.value })} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: '#64748b' }}>Password (app-specific)</label>
+              <input className="field-input" type="password" value={etForm.password} onChange={(e) => setEtForm({ ...etForm, password: e.target.value })} placeholder={etAccount?.username ? '(leave blank to keep)' : ''} />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: '#64748b' }}>Folder</label>
+              <input className="field-input" value={etForm.folder} onChange={(e) => setEtForm({ ...etForm, folder: e.target.value })} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 16 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+                <input type="checkbox" checked={etForm.enabled} onChange={(e) => setEtForm({ ...etForm, enabled: e.target.checked })} />
+                Enabled
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+                <input type="checkbox" checked={etForm.auto_draft_reply} onChange={(e) => setEtForm({ ...etForm, auto_draft_reply: e.target.checked })} />
+                Auto-draft replies
+              </label>
+            </div>
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <button className="btn-primary" onClick={async () => {
+              if (!etForm.username || (!etForm.password && !etAccount?.username)) {
+                flash('Username and password are required.');
+                return;
+              }
+              const body = { ...etForm };
+              if (!body.password && etAccount?.username) delete body.password;
+              const r = await etFetch('/api/email-triage/account', { method: 'POST', body: JSON.stringify(body) });
+              if (!r.ok) { flash(`Failed: ${await r.text()}`); return; }
+              const saved = await r.json();
+              setEtAccount(saved);
+              setEtForm((p) => ({ ...p, password: '' }));
+              flash('Saved. Click "Run now" to test.');
+            }}>
+              {etAccount?.username ? 'Update' : 'Connect'}
+            </button>
+          </div>
+        </div>
 
         {/* Google Calendar */}
         <div className="panel">

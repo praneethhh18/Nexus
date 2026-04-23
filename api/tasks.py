@@ -132,6 +132,18 @@ def create_task(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
         conn.commit()
     finally:
         conn.close()
+
+    # Fire-and-forget mention processing on title + description
+    try:
+        from api.team import process_mentions
+        mention_text = f"{title}\n{data.get('description', '') or ''}"
+        process_mentions(
+            business_id=business_id, author_id=user_id, text=mention_text,
+            context_label=f"task '{title[:60]}'",
+        )
+    except Exception:
+        pass
+
     return get_task(business_id, tid)
 
 

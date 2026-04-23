@@ -15,6 +15,11 @@ import CRM from './pages/CRM';
 import Tasks from './pages/Tasks';
 import Invoices from './pages/Invoices';
 import Documents from './pages/Documents';
+import Approvals from './pages/Approvals';
+import Memory from './pages/Memory';
+import Team from './pages/Team';
+import Analytics from './pages/Analytics';
+import AcceptInvite from './pages/AcceptInvite';
 import ResetPassword from './pages/ResetPassword';
 
 function ProtectedRoute({ children }) {
@@ -27,6 +32,7 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/chat" element={<Chat />} />
@@ -34,6 +40,10 @@ export default function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/documents" element={<Documents />} />
+          <Route path="/approvals" element={<Approvals />} />
+          <Route path="/memory" element={<Memory />} />
+          <Route path="/team" element={<Team />} />
+          <Route path="/analytics" element={<Analytics />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/workflows" element={<Workflows />} />
           <Route path="/history" element={<History />} />

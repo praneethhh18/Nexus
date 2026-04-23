@@ -127,6 +127,8 @@ export const getNodeTypes = () => request('/workflows/node-types');
 export const getWorkflowTemplates = () => request('/workflows/templates');
 export const getSchedulerJobs = () => request('/workflows/scheduler/jobs');
 export const getWorkflowHistory = (limit = 30) => request(`/workflows/scheduler/history?limit=${limit}`);
+export const generateWorkflowFromText = (description) =>
+  request('/workflows/generate-from-text', { method: 'POST', body: JSON.stringify({ description }) });
 
 // Notifications
 export const getNotifications = (unread = false) => request(`/notifications?unread=${unread}`);
