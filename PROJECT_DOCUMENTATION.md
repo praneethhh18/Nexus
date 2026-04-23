@@ -4169,6 +4169,625 @@
 
 ## Bug Fixes & Enhancements
 
+### [New] [bugfix] Changes in numeric.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\arrays\numeric.py`
+- **Captured**: 4/23/2026, 9:38:45 PM
+- **Category**: bugfix
+**Summary:** Modified numeric.py: 306 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\arrays\numeric.py` (+306 / -0)
+**Schema: `NumericDtype`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_checker` | `Callable[[Any], bool]` | ✓ | - |
+| `checker` | `unknown` | ✓ | - |
+| `mask` | `unknown` | ✓ | - |
+| `inferred_type` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `cls` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `original` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `values` | ✓ | - |
+| `inferred_type` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `assert len` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `dtype` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `values` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in accessor.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\arrays\sparse\accessor.py`
+- **Captured**: 4/23/2026, 9:38:43 PM
+- **Category**: bugfix
+**Summary:** Modified accessor.py: 489 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\arrays\sparse\accessor.py` (+489 / -0)
+**Schema: `SparseAccessor`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Accessor` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `data` | `Series or DataFrame` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `Series` | `unknown` | ✓ | - |
+| `Series` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `0` | `unknown` | ✓ | - |
+| `array` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in string_arrow.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\arrays\string_arrow.py`
+- **Captured**: 4/23/2026, 9:38:39 PM
+- **Category**: bugfix
+**Summary:** Modified string_arrow.py: 598 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\arrays\string_arrow.py` (+598 / -0)
+**Schema: `ArrowStringArray`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Extension` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `values` | `pyarrow` | ✓ | - |
+| `dtype` | `StringDtype` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `None` | `unknown` | ✓ | - |
+| `None` | `unknown` | ✓ | - |
+| `Series` | `unknown` | ✓ | - |
+| `Notes` | `unknown` | ✓ | - |
+| `ArrowStringArray` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `Length` | `4, dtype` | ✓ | - |
+| `_dtype` | `StringDtype` | ✓ | - |
+| `_str_isalnum` | `unknown` | ✓ | - |
+| `_str_isalpha` | `unknown` | ✓ | - |
+| `_str_isdecimal` | `unknown` | ✓ | - |
+| `_str_isdigit` | `unknown` | ✓ | - |
+| `_str_islower` | `unknown` | ✓ | - |
+| `_str_isnumeric` | `unknown` | ✓ | - |
+| `_str_isspace` | `unknown` | ✓ | - |
+| `_str_istitle` | `unknown` | ✓ | - |
+| `_str_isupper` | `unknown` | ✓ | - |
+| `_str_map` | `unknown` | ✓ | - |
+| `_str_startswith` | `unknown` | ✓ | - |
+| `_str_endswith` | `unknown` | ✓ | - |
+| `_str_pad` | `unknown` | ✓ | - |
+| `_str_lower` | `unknown` | ✓ | - |
+| `_str_upper` | `unknown` | ✓ | - |
+| `_str_strip` | `unknown` | ✓ | - |
+| `_str_lstrip` | `unknown` | ✓ | - |
+| `_str_rstrip` | `unknown` | ✓ | - |
+| `_str_removesuffix` | `unknown` | ✓ | - |
+| `_str_removeprefix` | `unknown` | ✓ | - |
+| `_str_find` | `unknown` | ✓ | - |
+| `_str_get` | `unknown` | ✓ | - |
+| `_str_capitalize` | `unknown` | ✓ | - |
+| `_str_title` | `unknown` | ✓ | - |
+| `_str_swapcase` | `unknown` | ✓ | - |
+| `_str_slice_replace` | `unknown` | ✓ | - |
+| `_str_len` | `unknown` | ✓ | - |
+| `_str_slice` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_nanochat.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nanochat\modeling_nanochat.py`
+- **Captured**: 4/23/2026, 9:38:35 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_nanochat.py: 519 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nanochat\modeling_nanochat.py` (+519 / -0)
+**Schema: `NanoChatPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `NanoChatConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in stage.py
+
+- **File**: `venv\Lib\site-packages\torch\distributed\pipelining\stage.py`
+- **Captured**: 4/23/2026, 9:38:32 PM
+- **Category**: bugfix
+**Summary:** Modified stage.py: 1605 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\distributed\pipelining\stage.py` (+1605 / -0)
+**Schema: `_PipelineStage`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `stage_module` | `torch` | ✓ | - |
+| `stage_index` | `int,` | ✓ | - |
+| `pipe_info` | `PipeInfo,` | ✓ | - |
+| `device` | `torch` | ✓ | - |
+| `group` | `dist` | ✓ | - |
+| `Create` | `unknown` | ✓ | - |
+| `and` | `unknown` | ✓ | - |
+| `Args` | `stage_module` | ✓ | - |
+| `Returns` | `_PipelineStage` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in pytables.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\computation\pytables.py`
+- **Captured**: 4/23/2026, 9:38:29 PM
+- **Category**: bugfix
+**Summary:** Modified pytables.py: 682 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\computation\pytables.py` (+682 / -0)
+**Schema: `PyTablesExprVisitor`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `const_type` | `ClassVar[type[ops` | ✓ | - |
+| `term_type` | `ClassVar[type[Term]]` | ✓ | - |
+| `Validate` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `w` | `String term expression, Expr, or list` | ✓ | - |
+| `Returns` | `unknown` | ✓ | - |
+| `where` | `The original where clause if the check was successful` | ✓ | - |
+| `Raises` | `unknown` | ✓ | - |
+| `TypeError` | `An invalid data type was passed in for w` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_nemotron.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nemotron\modeling_nemotron.py`
+- **Captured**: 4/23/2026, 9:38:27 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_nemotron.py: 732 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nemotron\modeling_nemotron.py` (+732 / -0)
+**Schema: `NemotronPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `NemotronConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `NemotronModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+
+**Schema: `NemotronForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `NemotronForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in dtypes.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\dtypes\dtypes.py`
+- **Captured**: 4/23/2026, 9:38:23 PM
+- **Category**: bugfix
+**Summary:** Modified dtypes.py: 2481 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\dtypes\dtypes.py` (+2481 / -0)
+**Schema: `PeriodDtype`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `freq` | `str or DateOffset` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `freq` | `unknown` | ✓ | - |
+| `None` | `unknown` | ✓ | - |
+| `Period` | `Represents a single time period` | ✓ | - |
+| `PeriodIndex` | `Immutable index for period data` | ✓ | - |
+| `date_range` | `Return a fixed frequency DatetimeIndex` | ✓ | - |
+| `Series` | `One` | ✓ | - |
+| `DataFrame` | `Two` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `period` | `unknown` | ✓ | - |
+| `period` | `unknown` | ✓ | - |
+| `type` | `type[Period]` | ✓ | - |
+| `kind` | `str_type` | ✓ | - |
+| `str` | `unknown` | ✓ | - |
+| `base` | `unknown` | ✓ | - |
+| `num` | `unknown` | ✓ | - |
+| `_metadata` | `unknown` | ✓ | - |
+| `_match` | `unknown` | ✓ | - |
+| `_cache_dtypes` | `dict[BaseOffset, int]` | ✓ | - |
+| `_freq` | `BaseOffset` | ✓ | - |
+| `_supports_2d` | `unknown` | ✓ | - |
+| `_can_fast_transpose` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_nemotron_h.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nemotron_h\modular_nemotron_h.py`
+- **Captured**: 4/23/2026, 9:38:16 PM
+- **Category**: bugfix
+**Summary:** Modified modular_nemotron_h.py: 522 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nemotron_h\modular_nemotron_h.py` (+522 / -0)
+**Schema: `NemotronHPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `NemotronHConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flash_attn_2` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_is_stateful` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules_strict` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in ops.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\groupby\ops.py`
+- **Captured**: 4/23/2026, 9:38:13 PM
+- **Category**: bugfix
+**Summary:** Modified ops.py: 1282 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\groupby\ops.py` (+1282 / -0)
+**Schema: `BinGrouper`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `bins` | `the split index of binlabels to group the item of axis` | ✓ | - |
+| `binlabels` | `the label list` | ✓ | - |
+| `indexer` | `np` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `bins` | `[2, 4, 6, 8, 10]` | ✓ | - |
+| `binlabels` | `DatetimeIndex` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `axis` | `unknown` | ✓ | - |
+| `means` | `unknown` | ✓ | - |
+| `labels` | `unknown` | ✓ | - |
+| `third` | `unknown` | ✓ | - |
+| `bins` | `npt` | ✓ | - |
+| `binlabels` | `Index` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in objects.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\indexers\objects.py`
+- **Captured**: 4/23/2026, 9:38:09 PM
+- **Category**: bugfix
+**Summary:** Modified objects.py: 690 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\indexers\objects.py` (+690 / -0)
+**Schema: `CustomIndexer`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `0` | `unknown` | ✓ | - |
+| `1` | `unknown` | ✓ | - |
+| `2` | `unknown` | ✓ | - |
+| `3` | `unknown` | ✓ | - |
+| `4` | `unknown` | ✓ | - |
+
+**Schema: `VariableOffsetWindowIndexer`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Calculate` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `index_array` | `np` | ✓ | - |
+| `window_size` | `int, optional, default 0` | ✓ | - |
+| `index` | `DatetimeIndex, optional` | ✓ | - |
+| `offset` | `BaseOffset, optional` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `api` | `unknown` | ✓ | - |
+| `DataFrame` | `unknown` | ✓ | - |
+| `offsets` | `Module providing various time offset classes` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+| `2020` | `unknown` | ✓ | - |
+
+**Schema: `FixedForwardWindowIndexer`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Creates` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `index_array` | `np` | ✓ | - |
+| `window_size` | `int, default 0` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `DataFrame` | `unknown` | ✓ | - |
+| `api` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `0` | `unknown` | ✓ | - |
+| `1` | `unknown` | ✓ | - |
+| `2` | `unknown` | ✓ | - |
+| `3` | `unknown` | ✓ | - |
+| `4` | `unknown` | ✓ | - |
+| `0` | `unknown` | ✓ | - |
+| `1` | `unknown` | ✓ | - |
+| `2` | `unknown` | ✓ | - |
+| `3` | `unknown` | ✓ | - |
+| `4` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_nllb_moe.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nllb_moe\modeling_nllb_moe.py`
+- **Captured**: 4/23/2026, 9:38:06 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_nllb_moe.py: 1144 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nllb_moe\modeling_nllb_moe.py` (+1144 / -0)
+**Schema: `NllbMoePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `NllbMoeConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+
+**Schema: `NllbMoeEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `NllbMoeDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `NllbMoeModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `gate_logits` | `torch` | ✓ | - |
+| `num_experts` | `int` | ✓ | - |
+| `top_k` | `unknown` | ✓ | - |
+| `attention_mask` | `torch` | ✓ | - |
+| `r` | `unknown` | ✓ | - |
+| `Computes` | `unknown` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `function` | `unknown` | ✓ | - |
+| `experts` | `unknown` | ✓ | - |
+| `Args` | `gate_logits` | ✓ | - |
+| `Returns` | `The auxiliary loss` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `routing_weights` | `unknown` | ✓ | - |
+| `_` | `unknown` | ✓ | - |
+| `expert_mask` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `batch_size, sequence_length` | ✓ | - |
+| `overall_loss` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Shift` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_nomic_bert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nomic_bert\modeling_nomic_bert.py`
+- **Captured**: 4/23/2026, 9:38:01 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_nomic_bert.py: 722 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nomic_bert\modeling_nomic_bert.py` (+722 / -0)
+**Schema: `NomicBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+
+**Schema: `NomicBertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `NomicBertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `NomicBert` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_nomic_bert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nomic_bert\modular_nomic_bert.py`
+- **Captured**: 4/23/2026, 9:37:59 PM
+- **Category**: bugfix
+**Summary:** Modified modular_nomic_bert.py: 300 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nomic_bert\modular_nomic_bert.py` (+300 / -0)
+**Schema: `NomicBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in multi.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\indexes\multi.py`
+- **Captured**: 4/23/2026, 9:37:57 PM
+- **Category**: bugfix
+**Summary:** Modified multi.py: 4808 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\indexes\multi.py` (+4808 / -0)
+**Schema: `MultiIndexUInt64Engine`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `_base` | `unknown` | ✓ | - |
+| `_codes_dtype` | `unknown` | ✓ | - |
+
+**Schema: `MultiIndexUInt32Engine`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `_base` | `unknown` | ✓ | - |
+| `_codes_dtype` | `unknown` | ✓ | - |
+
+**Schema: `MultiIndexUInt16Engine`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `_base` | `unknown` | ✓ | - |
+| `_codes_dtype` | `unknown` | ✓ | - |
+
+**Schema: `MultiIndexUInt8Engine`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `_base` | `unknown` | ✓ | - |
+| `_codes_dtype` | `unknown` | ✓ | - |
+
+**Schema: `MultiIndexPyIntEngine`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `label` | `unknown` | ✓ | - |
+| `containing` | `unknown` | ✓ | - |
+| `_base` | `unknown` | ✓ | - |
+| `_codes_dtype` | `unknown` | ✓ | - |
+| `A` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_nystromformer.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\nystromformer\modeling_nystromformer.py`
+- **Captured**: 4/23/2026, 9:37:50 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_nystromformer.py: 945 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nystromformer\modeling_nystromformer.py` (+945 / -0)
+**Schema: `NystromformerPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `NystromformerConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `NystromformerForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_olmo.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\olmo\modeling_olmo.py`
+- **Captured**: 4/23/2026, 9:37:45 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_olmo.py: 500 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\olmo\modeling_olmo.py` (+500 / -0)
+**Schema: `OlmoPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `OlmoConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
 ### [New] [bugfix] Changes in modeling_olmo2.py
 
 - **File**: `venv\Lib\site-packages\transformers\models\olmo2\modeling_olmo2.py`
@@ -58121,6 +58740,37 @@
   - `venv\Lib\site-packages\openpyxl\descriptors\container.py` (+42 / -0)(+13 / -0) / -0) -0)0)(+13 / -0) / -0) -0)0) -0)
 
 ## Features & Implementation
+
+### [New] Add NemotronH model implementation and helper methods
+
+- **File**: `venv\Lib\site-packages\transformers\models\nemotron_h\modeling_nemotron_h.py`
+- **Captured**: 4/23/2026, 9:38:21 PM
+- **Category**: feature
+**Summary:** Introduces the NemotronH model implementation with necessary imports, licensing, and a helper method for tensor padding.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\nemotron_h\modeling_nemotron_h.py` (+1213 / -0)
+**Schema: `NemotronHPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `NemotronHConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flash_attn_2` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_is_stateful` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules_strict` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+
+**Schema: `NemotronHForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
 
 ### [UI] index-Fmob6spP
 
