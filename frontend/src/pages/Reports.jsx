@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Loader } from 'lucide-react';
-import { generateReport, getReports, getReportUrl } from '../services/api';
+import { generateReport, getReports, downloadReport } from '../services/api';
 
 export default function Reports() {
   const [query, setQuery] = useState('');
@@ -51,9 +51,15 @@ export default function Reports() {
                 <p style={{ fontSize: 11, color: '#64748b' }}>{r.size_kb} KB &middot; {r.modified}</p>
               </div>
             </div>
-            <a href={getReportUrl(r.name)} target="_blank" rel="noreferrer" className="btn-ghost">
+            <button
+              className="btn-ghost"
+              onClick={async () => {
+                try { await downloadReport(r.name); }
+                catch (err) { alert(`Download failed: ${err.message}`); }
+              }}
+            >
               <Download size={13} /> Download
-            </a>
+            </button>
           </div>
         ))}
       </div>

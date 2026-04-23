@@ -7,6 +7,8 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [needs2fa, setNeeds2fa] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,9 +18,18 @@ export default function Login() {
     e.preventDefault();
     setError(''); setInfo(''); setLoading(true);
     try {
-      if (mode === 'signup') await signup(email, name, password);
-      else await login(email, password);
-      navigate('/');
+      if (mode === 'signup') {
+        await signup(email, name, password);
+        navigate('/');
+      } else {
+        const res = await login(email, password, needs2fa ? totpCode : null);
+        if (res.requires_2fa) {
+          setNeeds2fa(true);
+          setInfo(res.message || 'Enter the 6-digit code from your authenticator app.');
+        } else {
+          navigate('/');
+        }
+      }
     } catch (err) {
       setError(err.message);
     }
@@ -80,6 +91,17 @@ export default function Login() {
             <input className="field-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="Enter password" required minLength={3} />
           </div>
+          {needs2fa && (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>
+                Authenticator code (or recovery code)
+              </label>
+              <input className="field-input" autoFocus value={totpCode}
+                onChange={(e) => setTotpCode(e.target.value)}
+                placeholder="123456"
+                style={{ letterSpacing: 4, textAlign: 'center', fontSize: 16 }} />
+            </div>
+          )}
 
           {error && (
             <div style={{ padding: '8px 12px', borderRadius: 8, background: '#ef444415', color: '#f87171', fontSize: 12, marginBottom: 12, border: '1px solid #ef444425' }}>

@@ -49,6 +49,14 @@ EMAIL_DRAFTS_DIR: str = str(_ROOT / "outputs" / "email_drafts")
 DOCUMENTS_DIR: str = str(_ROOT / "data" / "documents")
 AUDIT_LOG_PATH: str = str(_ROOT / "outputs" / "audit_log.json")
 
+# ── Privacy / cloud LLM guardrails ────────────────────────────────────────────
+# Consumed by config/privacy.py via os.getenv (kept here so .env loading applies
+# and so all settings are visible in one place).
+ALLOW_CLOUD_LLM: bool = _get("ALLOW_CLOUD_LLM", "true").strip().lower() in ("1", "true", "yes", "on")
+REDACT_PII: bool = _get("REDACT_PII", "true").strip().lower() in ("1", "true", "yes", "on")
+AUDIT_CLOUD_CALLS: bool = _get("AUDIT_CLOUD_CALLS", "true").strip().lower() in ("1", "true", "yes", "on")
+CLOUD_AUDIT_LOG_PATH: str = str(_ROOT / "outputs" / "cloud_audit.jsonl")
+
 # ── App behaviour ─────────────────────────────────────────────────────────────
 LOG_LEVEL: str = _get("LOG_LEVEL", "INFO")
 ANOMALY_THRESHOLD: float = float(_get("ANOMALY_THRESHOLD", "0.15"))
@@ -136,3 +144,41 @@ def ensure_directories():
             CHROMA_PATH, str(Path(DB_PATH).parent)]
     for d in dirs:
         Path(d).mkdir(parents=True, exist_ok=True)
+
+
+def enable_sqlite_production_mode():
+    """
+    One-time setup: enable WAL mode + sane pragmas on the SQLite database.
+    WAL (Write-Ahead Logging) allows concurrent readers while a writer is active
+    and boosts write throughput ~10×. Safe to call on every boot; the settings
+    persist on the database file itself.
+
+    Effects:
+      journal_mode=WAL     — concurrent reads, much faster writes
+      synchronous=NORMAL   — still safe with WAL, no full fsync per commit
+      foreign_keys=ON      — enforce FK constraints
+      temp_store=MEMORY    — temp tables in RAM
+      mmap_size=134217728  — 128MB memory-mapped I/O (read speedup)
+      busy_timeout=10000   — wait up to 10s on lock contention
+    """
+    import sqlite3
+    if not Path(DB_PATH).exists():
+        return  # will be created by first connect; settings applied then
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        try:
+            for pragma in (
+                "PRAGMA journal_mode = WAL",
+                "PRAGMA synchronous = NORMAL",
+                "PRAGMA foreign_keys = ON",
+                "PRAGMA temp_store = MEMORY",
+                "PRAGMA mmap_size = 134217728",
+                "PRAGMA busy_timeout = 10000",
+            ):
+                conn.execute(pragma)
+            conn.commit()
+        finally:
+            conn.close()
+        logger.info("[SQLite] WAL mode + production pragmas applied")
+    except Exception as e:
+        logger.warning(f"[SQLite] Could not apply production pragmas: {e}")

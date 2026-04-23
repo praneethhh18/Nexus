@@ -57,8 +57,14 @@ export async function signup(email, name, password) {
   return data;
 }
 
-export async function login(email, password) {
-  const data = await authRequest('/login', { email, password });
+export async function login(email, password, totpCode = null) {
+  const body = { email, password };
+  if (totpCode) body.totp_code = totpCode;
+  const data = await authRequest('/login', body);
+  if (data.requires_2fa) {
+    // Don't call setSession — no token yet. Caller shows 2FA prompt.
+    return data;
+  }
   setSession(data);
   return data;
 }

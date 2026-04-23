@@ -196,5 +196,47 @@
     "error_message": "",
     "business_id": "default",
     "user_id": "default"
+  },
+  {
+    "event_id": "835c4299",
+    "timestamp": "2026-04-23T15:05:53.871662",
+    "event_type": "tool_call",
+    "tool_name": "agent.agent_impact",
+    "input_summary": "agent_impact(days=30)",
+    "output_summary": "{'window_days': 30, 'total_tool_calls': 0, 'avg_duration_ms': 0, 'success_rate_pct': 0, 'by_tool': [], 'approvals': {'pending': 0, 'executed': 0, 'rejected': 0, 'expired': 0, 'failed': 0}, 'estimated_minutes_saved': 0}",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": true,
+    "error_message": "",
+    "business_id": "biz-9222dc7036",
+    "user_id": "2083b9a5-9d1"
+  },
+  {
+    "event_id": "23259a53",
+    "timestamp": "2026-04-23T15:34:15.742293",
+    "event_type": "tool_call",
+    "tool_name": "sql_executor",
+    "input_summary": "Q: What is the total sales?",
+    "output_summary": "1 rows returned",
+    "duration_ms": 125,
+    "human_approved": true,
+    "success": true,
+    "error_message": "",
+    "business_id": "default",
+    "user_id": "default"
+  },
+  {
+    "event_id": "a2ca9f4b",
+    "timestamp": "2026-04-23T15:34:18.952429",
+    "event_type": "tool_call",
+    "tool_name": "agent.generate_data_report",
+    "input_summary": "Report: Total Sales Report \u2192 pdf+xlsx",
+    "output_summary": "{'success': True, 'explanation': 'The total sales amount to $7,510,064.00. This figure represents the cumulative revenue generated from all sales activities.', 'query_used': \"SELECT SUM(ROUND(oi.unit_price * oi.quantity)) AS total_sales\\nFROM order_items oi\\nJOIN orders o ON oi.order_id = o.id\\nWHERE o.status = 'completed'\\nLIMIT 50\", 'row_count': 1, 'preview_rows': [{'total_sales': 7510064.0}], 'files': [{'path': 'C:\\\\Users\\\\Praneeth p\\\\OneDrive\\\\Desktop\\\\NexusAgent\\\\outputs\\\\reports\\\\report_To",
+    "duration_ms": 0,
+    "human_approved": true,
+    "success": true,
+    "error_message": "",
+    "business_id": "biz-9222dc7036",
+    "user_id": "2083b9a5-9d1"
   }
 ]

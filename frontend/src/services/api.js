@@ -75,6 +75,27 @@ export const generateReport = (query) =>
   request('/reports/generate', { method: 'POST', body: JSON.stringify({ query }) });
 export const getReports = () => request('/reports');
 export const getReportUrl = (filename) => `${BASE}/reports/download/${filename}`;
+export const downloadReport = async (filename) => {
+  const token = getToken();
+  const biz = getBusinessId();
+  const h = {};
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  if (biz) h['X-Business-Id'] = biz;
+  const res = await fetch(`${BASE}/reports/download/${encodeURIComponent(filename)}`, { headers: h });
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(txt || `HTTP ${res.status}`);
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+};
 
 // What-If
 export const runWhatIf = (scenario) =>

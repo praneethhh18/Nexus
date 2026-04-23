@@ -19,6 +19,8 @@ import Approvals from './pages/Approvals';
 import Memory from './pages/Memory';
 import Team from './pages/Team';
 import Analytics from './pages/Analytics';
+import Security from './pages/Security';
+import AuditLog from './pages/AuditLog';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetPassword from './pages/ResetPassword';
 
@@ -44,6 +46,8 @@ export default function App() {
           <Route path="/memory" element={<Memory />} />
           <Route path="/team" element={<Team />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/security" element={<Security />} />
+          <Route path="/audit" element={<AuditLog />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/workflows" element={<Workflows />} />
           <Route path="/history" element={<History />} />

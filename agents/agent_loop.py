@@ -57,6 +57,15 @@ independent and small.
 answer the user. If not, take one more step.
   5. If a tool returns many rows, summarize — don't echo raw dumps.
 
+Output format:
+- Reply to the user in plain text or markdown. Do NOT wrap your answer in \
+<thinking>, <response>, or any other XML tags. Do not narrate your reasoning \
+out loud — just give the answer directly.
+- When a tool produces downloadable files, DO NOT embed the raw server file \
+paths (e.g. 'C:\\…\\report.pdf') in your answer — the UI renders proper \
+download buttons from the tool output. Just confirm the file was generated \
+and briefly describe what's in it.
+
 Important rules:
 - All data you access is scoped to this business only. You cannot see other businesses.
 - Some tools require user approval (emails, deletions, sending invoices). \
@@ -190,6 +199,13 @@ def run_agent(
                     user_id=user_id,
                     user_role=user_role,
                 )
+                # Surface downloadable files produced by any tool. The chat UI
+                # turns these into download buttons; the WhatsApp bridge
+                # auto-attaches them to the reply.
+                produced_files: List[Dict[str, Any]] = []
+                if isinstance(outcome.get("result"), dict):
+                    produced_files = outcome["result"].get("files") or []
+
                 if outcome.get("pending_approval"):
                     pending_approval_ids.append(outcome["approval_id"])
                     result_for_llm = {
@@ -206,11 +222,14 @@ def run_agent(
                     })
                 else:
                     result_for_llm = outcome.get("result")
-                    tool_calls_record.append({
+                    record = {
                         "name": tool_name, "args": args,
                         "pending_approval": False,
                         "result_preview": str(result_for_llm)[:300],
-                    })
+                    }
+                    if produced_files:
+                        record["files"] = produced_files
+                    tool_calls_record.append(record)
                 consecutive_errors = 0
             except Exception as e:
                 any_error = True

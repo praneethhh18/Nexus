@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { sendMessage, getConversation, exportMarkdown, uploadDocument } from '../services/api';
+import { sendMessage, getConversation, exportMarkdown, uploadDocument, downloadReport } from '../services/api';
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { Zap } from 'lucide-react';
@@ -332,17 +332,42 @@ export default function Chat() {
                 {msg.tool_calls?.length > 0 && (
                   <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {msg.tool_calls.map((tc, j) => (
-                      <div key={j} style={{
-                        fontSize: 10, padding: '4px 10px', borderRadius: 6,
-                        background: tc.pending_approval ? '#f59e0b15' : (tc.error ? '#ef444415' : '#22c55e15'),
-                        border: `1px solid ${tc.pending_approval ? '#f59e0b40' : (tc.error ? '#ef444440' : '#22c55e40')}`,
-                        color: tc.pending_approval ? '#fbbf24' : (tc.error ? '#f87171' : '#4ade80'),
-                      }}>
-                        {tc.pending_approval ? '⏸ ' : tc.error ? '✗ ' : '✓ '}
-                        <code style={{ fontSize: 10 }}>{tc.name}</code>
-                        {tc.pending_approval && <span> — waiting for your approval</span>}
-                        {tc.error && <span> — {tc.error}</span>}
-                        {tc.summary && <span style={{ color: '#94a3b8' }}> · {tc.summary}</span>}
+                      <div key={j}>
+                        <div style={{
+                          fontSize: 10, padding: '4px 10px', borderRadius: 6,
+                          background: tc.pending_approval ? '#f59e0b15' : (tc.error ? '#ef444415' : '#22c55e15'),
+                          border: `1px solid ${tc.pending_approval ? '#f59e0b40' : (tc.error ? '#ef444440' : '#22c55e40')}`,
+                          color: tc.pending_approval ? '#fbbf24' : (tc.error ? '#f87171' : '#4ade80'),
+                        }}>
+                          {tc.pending_approval ? '⏸ ' : tc.error ? '✗ ' : '✓ '}
+                          <code style={{ fontSize: 10 }}>{tc.name}</code>
+                          {tc.pending_approval && <span> — waiting for your approval</span>}
+                          {tc.error && <span> — {tc.error}</span>}
+                          {tc.summary && <span style={{ color: '#94a3b8' }}> · {tc.summary}</span>}
+                        </div>
+                        {/* Downloadable files produced by this tool */}
+                        {tc.files?.length > 0 && (
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 4, marginLeft: 14 }}>
+                            {tc.files.map((f, k) => (
+                              <button
+                                key={k}
+                                onClick={async () => {
+                                  try { await downloadReport(f.filename); }
+                                  catch (err) { alert(`Download failed: ${err.message}`); }
+                                }}
+                                style={{
+                                  fontSize: 11, padding: '4px 10px', borderRadius: 6,
+                                  background: '#1e293b', border: '1px solid #334155',
+                                  color: '#60a5fa', cursor: 'pointer',
+                                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                                }}
+                                title={`Download ${f.filename}`}
+                              >
+                                <Download size={11} /> {f.filename}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

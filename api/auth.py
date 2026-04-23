@@ -139,12 +139,15 @@ def _validate_name(name: str) -> str:
 
 # ── JWT Tokens ────────────────────────────────────────────────────────────────
 def create_access_token(user_id: str, email: str, role: str) -> str:
+    jti = uuid.uuid4().hex
+    exp = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     payload = {
         "sub": user_id,
         "email": email,
         "role": role,
-        "exp": datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS),
+        "exp": exp,
         "iat": datetime.utcnow(),
+        "jti": jti,
         "type": "access",
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -400,9 +403,25 @@ async def get_current_user(
     if payload.get("type") != "access":
         raise HTTPException(401, "Invalid token type")
 
+    # Session revocation check (only if the token carries a jti — legacy tokens
+    # issued before session tracking still work)
+    jti = payload.get("jti")
+    if jti:
+        try:
+            from api.security import is_session_valid, touch_session
+            if not is_session_valid(jti):
+                raise HTTPException(401, "Session has been revoked")
+            touch_session(jti)
+        except HTTPException:
+            raise
+        except Exception:
+            # Don't block auth if the session table itself has a problem
+            pass
+
     user = get_user_by_id(payload["sub"])
     if not user:
         raise HTTPException(401, "User not found or deactivated")
+    user["_jti"] = jti  # expose to downstream endpoints that want to revoke-other
     return user
 
 

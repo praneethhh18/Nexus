@@ -23,7 +23,8 @@ from typing import List, Dict, Any, Optional
 
 from loguru import logger
 
-from config.llm_provider import USE_CLAUDE, _get_claude, CLAUDE_MODEL, invoke as plain_invoke
+from config.llm_provider import USE_CLAUDE, USE_BEDROCK, _get_claude, CLAUDE_MODEL, invoke as plain_invoke
+from config import privacy
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -33,6 +34,8 @@ def invoke_with_tools(
     system: str = "",
     max_tokens: int = 2048,
     temperature: float = 0.1,
+    fast: bool = False,
+    sensitive: bool = False,
 ) -> Dict[str, Any]:
     """
     Run a single LLM turn with tool use enabled.
@@ -43,10 +46,56 @@ def invoke_with_tools(
           matching Claude's message format.
 
     tools: list of {name, description, input_schema} — same format Claude uses.
+
+    sensitive: when True, forces the local Ollama tool-use path even if a cloud
+    provider is configured. Use for agents that handle raw DB rows, customer
+    records, or internal business data.
     """
-    if USE_CLAUDE:
+    use_cloud = privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+    if use_cloud and USE_CLAUDE:
         return _invoke_claude_tools(messages, tools, system, max_tokens, temperature)
+    if use_cloud and USE_BEDROCK:
+        from config import llm_bedrock
+        return llm_bedrock.invoke_with_tools(
+            messages=messages, tools=tools, system=system,
+            max_tokens=max_tokens, temperature=temperature, fast=fast,
+        )
     return _invoke_ollama_tools(messages, tools, system, max_tokens)
+
+
+def _redact_messages(messages: List[Dict[str, Any]]) -> tuple[List[Dict[str, Any]], Dict[str, str]]:
+    """Walk Claude-format messages and redact every string/text/tool_result payload."""
+    mapping: Dict[str, str] = {}
+
+    def _red(txt: str) -> str:
+        red, m = privacy.redact(txt or "")
+        mapping.update(m)
+        return red
+
+    redacted: List[Dict[str, Any]] = []
+    for msg in messages:
+        content = msg.get("content", "")
+        if isinstance(content, str):
+            redacted.append({**msg, "content": _red(content)})
+        elif isinstance(content, list):
+            new_blocks = []
+            for block in content:
+                btype = block.get("type")
+                if btype == "text":
+                    new_blocks.append({**block, "text": _red(block.get("text", ""))})
+                elif btype == "tool_result":
+                    raw = block.get("content", "")
+                    if isinstance(raw, str):
+                        new_blocks.append({**block, "content": _red(raw)})
+                    else:
+                        # tool results can be a list of content blocks too
+                        new_blocks.append({**block, "content": _red(json.dumps(raw))})
+                else:
+                    new_blocks.append(block)
+            redacted.append({**msg, "content": new_blocks})
+        else:
+            redacted.append(msg)
+    return redacted, mapping
 
 
 # ── Claude native tool use ───────────────────────────────────────────────────
@@ -58,16 +107,25 @@ def _invoke_claude_tools(
     temperature: float,
 ) -> Dict[str, Any]:
     client = _get_claude()
+    red_messages, mapping = _redact_messages(messages)
+    red_system, sys_map = privacy.redact(system or "")
+    mapping.update(sys_map)
+    privacy.audit_cloud_call(
+        "claude", CLAUDE_MODEL,
+        prompt=json.dumps(red_messages)[:4000],
+        redactions=len(mapping),
+        metadata={"mode": "tools", "tool_count": len(tools)},
+    )
     try:
         kwargs = {
             "model": CLAUDE_MODEL,
             "max_tokens": max_tokens,
             "temperature": temperature,
-            "messages": messages,
+            "messages": red_messages,
             "tools": tools,
         }
-        if system:
-            kwargs["system"] = system
+        if red_system:
+            kwargs["system"] = red_system
         response = client.messages.create(**kwargs)
 
         text_parts = []
@@ -75,12 +133,16 @@ def _invoke_claude_tools(
         for block in response.content:
             btype = getattr(block, "type", None)
             if btype == "text":
-                text_parts.append(block.text)
+                text_parts.append(privacy.restore(block.text, mapping))
             elif btype == "tool_use":
+                args = dict(block.input) if block.input else {}
+                # Restore any tokens the model echoed back inside tool arguments
+                args = {k: (privacy.restore(v, mapping) if isinstance(v, str) else v)
+                        for k, v in args.items()}
                 tool_calls.append({
                     "id": block.id,
                     "name": block.name,
-                    "arguments": dict(block.input) if block.input else {},
+                    "arguments": args,
                 })
 
         return {
@@ -88,7 +150,7 @@ def _invoke_claude_tools(
             "text": "\n".join(text_parts).strip(),
             "tool_calls": tool_calls,
             # Keep raw assistant content blocks for conversation replay
-            "assistant_content": [_serialize_block(b) for b in response.content],
+            "assistant_content": [_serialize_block(b, mapping) for b in response.content],
         }
     except Exception as e:
         logger.error(f"[Tools/Claude] Call failed: {e}")
@@ -100,16 +162,20 @@ def _invoke_claude_tools(
         }
 
 
-def _serialize_block(block) -> Dict[str, Any]:
+def _serialize_block(block, mapping: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
     btype = getattr(block, "type", None)
+    mapping = mapping or {}
     if btype == "text":
-        return {"type": "text", "text": block.text}
+        return {"type": "text", "text": privacy.restore(block.text, mapping)}
     if btype == "tool_use":
+        raw = dict(block.input) if block.input else {}
+        restored = {k: (privacy.restore(v, mapping) if isinstance(v, str) else v)
+                    for k, v in raw.items()}
         return {
             "type": "tool_use",
             "id": block.id,
             "name": block.name,
-            "input": dict(block.input) if block.input else {},
+            "input": restored,
         }
     return {"type": btype or "unknown"}
 

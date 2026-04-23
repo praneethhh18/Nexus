@@ -98,6 +98,92 @@ FastAPI Server (api/server.py)
 
 ---
 
+## Privacy Architecture — 360° Automation Without 360° Exposure
+
+NexusAgent is built for end-to-end business automation, which means every
+outbound communication, invoice, report, and email workflow touches real data:
+customer names, revenue, emails, internal metrics. The moment you add a cloud
+LLM to the stack for higher-quality reasoning, that data becomes at risk of
+leaving the machine. **NexusAgent's privacy layer is the gate that prevents
+this**, with zero impact on feature depth or latency.
+
+### The four defenses (in order)
+
+```
+User chat ──► Intent detector ──► Agent node
+                                      │
+                                      ▼
+                           ┌───────────────────────┐
+                           │   1.  Kill switch     │   ALLOW_CLOUD_LLM=false
+                           │        (if on)        │ → force all calls local
+                           ├───────────────────────┤
+                           │   2.  Sensitivity     │   sensitive=True flags
+                           │        routing        │ → force local for DB/PII
+                           ├───────────────────────┤
+                           │   3.  Local           │   SQL, row explanation,
+                           │        aggregation    │ → email triage stay here
+                           ├───────────────────────┤
+                           │   4.  PII redaction   │   emails, phones, IDs,
+                           │        + audit log    │ → secrets → tokens
+                           └───────────────────────┘
+                                      │
+                              Only then, if at all,
+                              does the payload leave.
+```
+
+### What goes where
+
+| Data type | Path | Why |
+|---|---|---|
+| **Raw DB rows** (customers, invoices, transactions) | Never leaves — local Ollama only | `sensitive=True` enforced in `sql_agent/executor.py` and `query_generator.py` |
+| **Email bodies** (triage, classification) | Never leaves — local Ollama only | `sensitive=True` in `agents/email_triage.py` |
+| **RAG embeddings** (your docs) | Always local | `config/llm_provider.get_embedder` locked to `nomic-embed-text` |
+| **Aggregates** (totals, means, top-5) | Redacted, then cloud (optional) | `report_generator/narrative.py` computes locally first |
+| **Chit-chat / generic reasoning** | Redacted, then cloud (optional) | Not business-specific, PII still stripped before send |
+
+### Aggregate-then-cloud for reports — why it's the safest and best-quality approach
+
+When you ask for a report, NexusAgent does not send your database to a cloud
+LLM. The flow is:
+
+1. **Local SQL** — the agent generates SQL against your schema using local
+   Ollama (schema context stays on your machine) and executes on local SQLite.
+2. **Local aggregation** — `report_generator/narrative.compute_aggregates`
+   reduces the DataFrame to totals, means, min/max, and top-5 category
+   breakdowns. Nothing row-level is kept.
+3. **PII redaction** — category labels (which can contain customer/vendor
+   names) are scrubbed via `config/privacy.redact` with a reversible map.
+4. **Cloud narrative** — only the redacted aggregate dict goes to Nova Pro /
+   Claude, which writes the executive prose. Because the payload is small,
+   latency is low (~1-2s vs. 10s+ for a full-row prompt).
+5. **Local restore** — the response is un-redacted locally before you see it.
+6. **Audit log** — `outputs/cloud_audit.jsonl` records every cloud call with
+   a SHA-256 of the (already-redacted) payload, never the raw content.
+
+**Why this beats "all local" and "all cloud":**
+
+- *All local (Ollama only):* safe but produces weaker prose on large tabular
+  reports; the 8B model struggles with multi-paragraph reasoning.
+- *All cloud (send rows to Nova):* high quality but leaks every record in the
+  report payload to a third party.
+- *Aggregate-then-cloud (this design):* cloud-quality narrative with an
+  input 20-50× smaller → lower latency, lower cost, and zero row-level
+  exposure. Your customers never appear in an outbound packet.
+
+### Privacy controls (all in `.env`)
+
+```bash
+ALLOW_CLOUD_LLM=true      # master kill switch; false = Ollama only
+REDACT_PII=true           # scrub emails/phones/IDs/secrets before cloud calls
+AUDIT_CLOUD_CALLS=true    # log every cloud call to outputs/cloud_audit.jsonl
+```
+
+Verified by `tests/test_privacy.py` (9 tests). See `config/privacy.py` for the
+redaction patterns and `report_generator/narrative.py` for the aggregation
+pipeline.
+
+---
+
 ## Tech Stack
 
 | Component | Tool | Why |
@@ -105,7 +191,8 @@ FastAPI Server (api/server.py)
 | Frontend | React + Vite + Tailwind CSS | Fast, modern, no full-page reruns |
 | Workflow Canvas | React Flow (@xyflow/react) | Drag-and-drop node editor |
 | Backend API | FastAPI + Uvicorn | Async, fast, auto-docs |
-| LLM | Ollama + llama3.1:8b | Local, free, powerful |
+| LLM (local) | Ollama + llama3.1:8b | Private reasoning on raw business data |
+| LLM (cloud, optional) | Claude Sonnet / Amazon Nova Pro | Polished narratives on *aggregates only* |
 | Embeddings | Ollama + nomic-embed-text | Local, no API needed |
 | Vector DB | ChromaDB | Local, persistent |
 | Orchestrator | LangGraph | Production-grade agent graph |

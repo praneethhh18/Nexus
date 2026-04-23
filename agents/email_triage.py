@@ -296,7 +296,9 @@ def _classify(sender: str, subject: str, body: str) -> Dict[str, Any]:
     from config.llm_provider import invoke as llm_invoke
     prompt = _CLASSIFY_PROMPT.format(sender=sender[:200], subject=subject[:200], body=body[:MAX_BODY_CHARS])
     try:
-        raw = llm_invoke(prompt, system="You classify business emails.", max_tokens=500, temperature=0.0)
+        # Email bodies contain sender PII and confidential content — stay local.
+        raw = llm_invoke(prompt, system="You classify business emails.",
+                         max_tokens=500, temperature=0.0, fast=True, sensitive=True)
     except Exception as e:
         return {"classification": "noise", "urgency": "low", "summary": f"LLM error: {e}",
                 "suggested_action": "ignore", "draft_reply": ""}

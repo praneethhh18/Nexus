@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search } from 'lucide-react';
 import { getConversations, deleteConversation, getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
 import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
+import CommandPalette from './CommandPalette';
 
 const NAV_MAIN = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -19,6 +20,8 @@ const NAV_MAIN = [
   { to: '/approvals', icon: ShieldCheck, label: 'Approvals', badge: 'approvals' },
   { to: '/team', icon: Users, label: 'Team' },
   { to: '/memory', icon: Brain, label: 'Memory' },
+  { to: '/security', icon: Shield, label: 'Security' },
+  { to: '/audit', icon: Activity, label: 'Audit log' },
   { to: '/history', icon: Clock, label: 'History' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
@@ -117,7 +120,8 @@ export default function Layout() {
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); navigate('/chat'); }
+      // Ctrl+K is owned by the CommandPalette component
+      // (it opens a global search overlay — more useful than "jump to chat")
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); navigate('/chat'); window.dispatchEvent(new Event('nexus-new-chat')); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); navigate('/'); }
       if (e.key === 'Escape') { setShowNotifs(false); }
@@ -374,6 +378,8 @@ export default function Layout() {
 
       {showOnboarding && <OnboardingWizard onClose={() => setShowOnboarding(false)} />}
 
+      <CommandPalette />
+
       {/* Main */}
       <main className="main-content">
         <Outlet />
@@ -381,8 +387,8 @@ export default function Layout() {
 
       {/* Keyboard shortcut hint */}
       <div style={{ position: 'fixed', bottom: 8, right: 12, display: 'flex', gap: 8, opacity: 0.3 }}>
-        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+K Chat</span>
-        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+N New</span>
+        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+K Search</span>
+        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+N New chat</span>
         <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+D Dashboard</span>
       </div>
     </>

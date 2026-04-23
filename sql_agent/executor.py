@@ -92,7 +92,8 @@ Data ({shape}):
 {sample}"""
 
     try:
-        response = llm_invoke(prompt, max_tokens=256)
+        # Result rows contain real business data — keep this on the local model.
+        response = llm_invoke(prompt, max_tokens=256, sensitive=True)
         return response.strip()
     except Exception as e:
         logger.warning(f"[Executor] Explanation LLM call failed: {e}")

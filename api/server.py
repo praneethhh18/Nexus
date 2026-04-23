@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 # ── Bootstrap NexusAgent ──────────────────────────────────────────────────────
-from config.settings import ensure_directories, validate_config, VERSION
+from config.settings import ensure_directories, validate_config, VERSION, enable_sqlite_production_mode
 ensure_directories()
 
 # Auto-create DB if missing
@@ -40,6 +40,9 @@ from config.settings import DB_PATH
 if not Path(DB_PATH).exists():
     from sql_agent.db_setup import setup_database
     setup_database()
+
+# Enable WAL mode + production pragmas — 10× write throughput, concurrent reads
+enable_sqlite_production_mode()
 
 # Auto-load sample docs
 from utils.sample_docs_generator import ensure_documents_loaded
@@ -103,6 +106,7 @@ class SignupRequest(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+    totp_code: Optional[str] = None  # required if 2FA is enabled
 
 
 class BusinessCreate(BaseModel):
@@ -163,10 +167,41 @@ def login(req: LoginRequest, request: Request):
     user = authenticate_user(req.email, req.password, request=request)
     if not user:
         raise HTTPException(401, "Invalid email or password")
-    # Ensure user has at least one business
+
+    # 2FA gate — if the user has enrolled, require a valid code
+    from api.security import is_2fa_required, verify_login_factor, record_session
+    if is_2fa_required(user["id"]):
+        if not req.totp_code:
+            # Signal to the client: password OK, now we need the code.
+            # Don't issue a token yet.
+            return {
+                "requires_2fa": True,
+                "email": user["email"],
+                "message": "Enter the 6-digit code from your authenticator app.",
+            }
+        if not verify_login_factor(user["id"], req.totp_code):
+            raise HTTPException(401, "Invalid 2FA code")
+
     biz_id = ensure_business_for_user(user["id"], user["name"])
     access = create_access_token(user["id"], user["email"], user["role"])
     refresh = create_refresh_token(user["id"])
+
+    # Record this session for visibility + revocation
+    try:
+        from datetime import timedelta as _td
+        payload = decode_token(access)
+        jti = payload.get("jti", "")
+        if jti:
+            record_session(
+                jti=jti, user_id=user["id"],
+                user_agent=(request.headers.get("user-agent") or "")[:300],
+                ip=(request.client.host if request.client else "") or "",
+                expires_at=datetime.utcfromtimestamp(payload["exp"]) if isinstance(payload.get("exp"), (int, float))
+                else datetime.utcnow() + _td(hours=24),
+            )
+    except Exception as e:
+        logger.debug(f"[Auth] session recording skipped: {e}")
+
     return {
         "user": user,
         "access_token": access,
@@ -214,6 +249,173 @@ def change_password_api(req: ChangePasswordRequest, user: dict = Depends(get_cur
     from api.auth import change_password
     change_password(user["id"], req.current_password, req.new_password)
     return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   2FA — TOTP enrollment, verify, disable, recovery codes
+# ═══════════════════════════════════════════════════════════════════════════════
+from api import security as _sec
+
+
+class TotpCode(BaseModel):
+    code: str
+
+
+@app.get("/api/auth/2fa/status")
+def twofa_status(user: dict = Depends(get_current_user)):
+    return _sec.get_2fa_state(user["id"])
+
+
+@app.post("/api/auth/2fa/enroll")
+def twofa_enroll(user: dict = Depends(get_current_user)):
+    """Start enrollment. Returns the secret + QR code. 2FA is NOT active yet."""
+    return _sec.start_2fa_enrollment(user["id"], user["email"])
+
+
+@app.post("/api/auth/2fa/verify")
+def twofa_verify(req: TotpCode, user: dict = Depends(get_current_user)):
+    """Verify the first code to finalize enrollment. Returns recovery codes ONCE."""
+    recovery = _sec.verify_and_enable_2fa(user["id"], req.code)
+    return {"enabled": True, "recovery_codes": recovery,
+            "message": "2FA is now active. Save these recovery codes somewhere safe — they won't be shown again."}
+
+
+@app.post("/api/auth/2fa/disable")
+def twofa_disable(req: TotpCode, user: dict = Depends(get_current_user)):
+    _sec.disable_2fa(user["id"], req.code)
+    return {"ok": True}
+
+
+@app.post("/api/auth/2fa/regenerate-codes")
+def twofa_regenerate_codes(req: TotpCode, user: dict = Depends(get_current_user)):
+    codes = _sec.regenerate_recovery_codes(user["id"], req.code)
+    return {"recovery_codes": codes}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Sessions — view & revoke active logins
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/auth/sessions")
+def sessions_list(user: dict = Depends(get_current_user)):
+    sessions = _sec.list_sessions(user["id"])
+    current_jti = user.get("_jti")
+    for s in sessions:
+        s["is_current"] = (s["jti"] == current_jti)
+    return sessions
+
+
+@app.delete("/api/auth/sessions/{jti}")
+def revoke_session(jti: str, user: dict = Depends(get_current_user)):
+    if jti == user.get("_jti"):
+        raise HTTPException(400, "Use /logout to end your current session")
+    _sec.revoke_session(user["id"], jti)
+    return {"ok": True}
+
+
+@app.post("/api/auth/sessions/revoke-all-other")
+def revoke_all_other(user: dict = Depends(get_current_user)):
+    current = user.get("_jti", "")
+    count = _sec.revoke_all_other_sessions(user["id"], current)
+    return {"ok": True, "revoked": count}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Audit log — admin-only browse
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/audit")
+def audit_log_list(
+    limit: int = 100,
+    tool: Optional[str] = None,
+    user_id_filter: Optional[str] = None,
+    success: Optional[bool] = None,
+    search: Optional[str] = None,
+    ctx: dict = Depends(get_current_context),
+):
+    """Admin/owner can view the full audit log for the current business."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can view the audit log")
+
+    import sqlite3 as _sq
+    from config.settings import DB_PATH
+    limit = max(1, min(limit, 1000))
+    conn = _sq.connect(DB_PATH)
+    conn.row_factory = _sq.Row
+    try:
+        sql = ("SELECT event_id, timestamp, event_type, tool_name, input_summary, "
+               "output_summary, duration_ms, human_approved, success, error_message, "
+               "business_id, user_id FROM nexus_audit_log WHERE business_id = ?")
+        params: list = [ctx["business_id"]]
+        if tool:
+            sql += " AND tool_name LIKE ?"; params.append(f"%{tool}%")
+        if user_id_filter:
+            sql += " AND user_id = ?"; params.append(user_id_filter)
+        if success is not None:
+            sql += " AND success = ?"; params.append(1 if success else 0)
+        if search:
+            sql += " AND (input_summary LIKE ? OR output_summary LIKE ?)"
+            params.extend([f"%{search}%", f"%{search}%"])
+        sql += " ORDER BY timestamp DESC LIMIT ?"
+        params.append(limit)
+        rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
+    finally:
+        conn.close()
+    # Enrich with actor name
+    user_ids = {r["user_id"] for r in rows if r.get("user_id")}
+    names: dict = {}
+    if user_ids:
+        conn = _sq.connect(DB_PATH)
+        conn.row_factory = _sq.Row
+        try:
+            placeholders = ",".join("?" for _ in user_ids)
+            for r in conn.execute(
+                f"SELECT id, name, email FROM nexus_users WHERE id IN ({placeholders})",
+                tuple(user_ids),
+            ).fetchall():
+                names[r["id"]] = r["name"] or r["email"]
+        finally:
+            conn.close()
+    for r in rows:
+        r["actor_name"] = names.get(r.get("user_id"), r.get("user_id") or "system")
+    return rows
+
+
+@app.get("/api/audit/export")
+def audit_log_export_csv(
+    limit: int = 5000,
+    ctx: dict = Depends(get_current_context),
+):
+    """CSV export of the audit log. Admin/owner only."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can export the audit log")
+
+    import csv, io
+    import sqlite3 as _sq
+    from config.settings import DB_PATH
+    from fastapi.responses import Response
+    limit = max(1, min(limit, 100000))
+    conn = _sq.connect(DB_PATH)
+    conn.row_factory = _sq.Row
+    try:
+        rows = conn.execute(
+            "SELECT event_id, timestamp, event_type, tool_name, user_id, "
+            "input_summary, output_summary, duration_ms, human_approved, success, "
+            "error_message FROM nexus_audit_log WHERE business_id = ? "
+            "ORDER BY timestamp DESC LIMIT ?",
+            (ctx["business_id"], limit),
+        ).fetchall()
+    finally:
+        conn.close()
+    buf = io.StringIO()
+    if rows:
+        w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
+        w.writeheader()
+        for r in rows:
+            w.writerow(dict(r))
+    return Response(
+        content=buf.getvalue(),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=audit_log.csv"},
+    )
 
 
 class ForgotPasswordRequest(BaseModel):
@@ -1036,13 +1238,22 @@ def health():
     from config.settings import OLLAMA_MODEL, EMBED_MODEL, EMAIL_ENABLED, DISCORD_ENABLED
     ph = provider_health()
     provider = get_provider()
-    online = ph.get("claude", {}).get("online", False) if provider == "claude" else ph.get("ollama", {}).get("online", False)
+    if provider == "claude":
+        online = ph.get("claude", {}).get("online", False)
+        model = CLAUDE_MODEL
+    elif provider == "bedrock":
+        online = ph.get("bedrock", {}).get("online", False)
+        model = ph.get("bedrock", {}).get("primary_model", "")
+    else:
+        online = ph.get("ollama", {}).get("online", False)
+        model = OLLAMA_MODEL
     return {
         "status": "ok" if online else "degraded",
         "provider": provider,
         "ollama": ph.get("ollama", {}),
         "claude": ph.get("claude", {}) if provider == "claude" else None,
-        "model": CLAUDE_MODEL if provider == "claude" else OLLAMA_MODEL,
+        "bedrock": ph.get("bedrock", {}) if provider == "bedrock" else None,
+        "model": model,
         "features": {"email": EMAIL_ENABLED, "discord": DISCORD_ENABLED},
         "version": VERSION,
     }
@@ -1258,7 +1469,8 @@ async def ws_chat(websocket: WebSocket):
                 loop = asyncio.get_event_loop()
 
                 def _stream():
-                    return list(stream(prompt, system=system, max_tokens=512))
+                    # Chitchat path — route to the cheap/fast model tier
+                    return list(stream(prompt, system=system, max_tokens=512, fast=True))
 
                 tokens = await loop.run_in_executor(None, _stream)
                 for token in tokens:
@@ -1532,7 +1744,14 @@ def download_report(filename: str, ctx: dict = Depends(get_current_context)):
     path = Path(REPORTS_DIR) / filename
     if not path.exists() or not path.is_file():
         raise HTTPException(404, "Report not found")
-    return FileResponse(str(path), filename=filename, media_type="application/pdf")
+    ext = path.suffix.lower()
+    media = {
+        ".pdf": "application/pdf",
+        ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ".csv": "text/csv",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }.get(ext, "application/octet-stream")
+    return FileResponse(str(path), filename=filename, media_type=media)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2181,6 +2400,139 @@ def whatsapp_attachment(path: str, request: Request):
         else "application/vnd.openxmlformats-officedocument.wordprocessingml.document" \
         if ext == ".docx" else "application/octet-stream"
     return FileResponse(str(absolute), filename=absolute.name, media_type=mime)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   GLOBAL SEARCH — Ctrl+K omnibox
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/search")
+def global_search(q: str, limit: int = 8, ctx: dict = Depends(get_current_context)):
+    """
+    Search across contacts, companies, deals, tasks, invoices, documents,
+    memory, and recent conversations. Everything business-scoped.
+    Returns grouped results for fast keyboard navigation.
+    """
+    q = (q or "").strip()
+    if len(q) < 2:
+        return {"groups": []}
+    limit = max(1, min(limit, 20))
+    like = f"%{q}%"
+    biz = ctx["business_id"]
+
+    import sqlite3 as _sq
+    from config.settings import DB_PATH
+    conn = _sq.connect(DB_PATH)
+    conn.row_factory = _sq.Row
+    groups: list = []
+
+    def _g(kind, rows, key_fields, route_fn):
+        items = []
+        for r in rows:
+            d = dict(r)
+            items.append({
+                "id": d.get("id") or d.get(key_fields[0]),
+                "title": " ".join(str(d.get(k) or "") for k in key_fields if d.get(k)).strip() or "(untitled)",
+                "subtitle": d.get("email") or d.get("company_name") or d.get("stage") or d.get("status") or "",
+                "route": route_fn(d),
+                "kind": kind,
+            })
+        if items:
+            groups.append({"kind": kind, "items": items})
+
+    try:
+        # Contacts
+        rows = conn.execute(
+            "SELECT id, first_name, last_name, email, phone, title "
+            "FROM nexus_contacts WHERE business_id = ? "
+            "AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR tags LIKE ?) "
+            "LIMIT ?",
+            (biz, like, like, like, like, limit),
+        ).fetchall()
+        _g("contact", rows, ["first_name", "last_name"], lambda d: "/crm")
+
+        # Companies
+        rows = conn.execute(
+            "SELECT id, name, industry, website FROM nexus_companies "
+            "WHERE business_id = ? AND (name LIKE ? OR industry LIKE ? OR tags LIKE ?) LIMIT ?",
+            (biz, like, like, like, limit),
+        ).fetchall()
+        _g("company", rows, ["name"], lambda d: "/crm")
+
+        # Deals
+        rows = conn.execute(
+            "SELECT id, name, stage, value, currency FROM nexus_deals "
+            "WHERE business_id = ? AND (name LIKE ? OR notes LIKE ?) LIMIT ?",
+            (biz, like, like, limit),
+        ).fetchall()
+        _g("deal", rows, ["name"], lambda d: "/crm")
+
+        # Tasks
+        rows = conn.execute(
+            "SELECT id, title, status, priority, due_date FROM nexus_tasks "
+            "WHERE business_id = ? AND (title LIKE ? OR description LIKE ? OR tags LIKE ?) LIMIT ?",
+            (biz, like, like, like, limit),
+        ).fetchall()
+        _g("task", rows, ["title"], lambda d: "/tasks")
+
+        # Invoices
+        rows = conn.execute(
+            "SELECT id, number, customer_name, status, total, currency FROM nexus_invoices "
+            "WHERE business_id = ? AND (number LIKE ? OR customer_name LIKE ? OR customer_email LIKE ?) LIMIT ?",
+            (biz, like, like, like, limit),
+        ).fetchall()
+        _g("invoice", rows, ["number", "customer_name"], lambda d: "/invoices")
+
+        # Documents
+        try:
+            rows = conn.execute(
+                "SELECT id, title, template_key, format FROM nexus_documents "
+                "WHERE business_id = ? AND title LIKE ? LIMIT ?",
+                (biz, like, limit),
+            ).fetchall()
+            _g("document", rows, ["title"], lambda d: "/documents")
+        except _sq.OperationalError:
+            pass
+
+        # Memory
+        try:
+            rows = conn.execute(
+                "SELECT id, content, kind FROM nexus_business_memory "
+                "WHERE business_id = ? AND content LIKE ? LIMIT ?",
+                (biz, like, limit),
+            ).fetchall()
+            # Hand-build items with shorter titles (memory is free text)
+            items = [{
+                "id": r["id"],
+                "title": (r["content"] or "")[:80],
+                "subtitle": r["kind"] or "",
+                "route": "/memory",
+                "kind": "memory",
+            } for r in rows]
+            if items:
+                groups.append({"kind": "memory", "items": items})
+        except _sq.OperationalError:
+            pass
+
+        # Recent conversations (title match)
+        rows = conn.execute(
+            "SELECT conversation_id, title, updated_at FROM nexus_conversations "
+            "WHERE business_id = ? AND title LIKE ? ORDER BY updated_at DESC LIMIT ?",
+            (biz, like, limit),
+        ).fetchall()
+        items = [{
+            "id": r["conversation_id"],
+            "title": r["title"] or "(untitled chat)",
+            "subtitle": (r["updated_at"] or "")[:16],
+            "route": f"/chat?conv={r['conversation_id']}",
+            "kind": "conversation",
+        } for r in rows]
+        if items:
+            groups.append({"kind": "conversation", "items": items})
+
+    finally:
+        conn.close()
+
+    return {"groups": groups, "query": q}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

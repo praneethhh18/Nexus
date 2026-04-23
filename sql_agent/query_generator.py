@@ -117,7 +117,8 @@ QUESTION: {question}
 ```sql"""
 
     try:
-        response = llm_invoke(prompt, max_tokens=512)
+        # Schema and question can reference internal tables — keep local.
+        response = llm_invoke(prompt, max_tokens=512, sensitive=True)
         sql = _extract_sql(response)
 
         if not _validate_sql(sql):

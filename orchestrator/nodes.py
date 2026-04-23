@@ -125,11 +125,19 @@ def action_node(state: State) -> State:
 
 
 def report_node(state: State) -> State:
-    """Generate a PDF report from available data."""
+    """
+    Generate a PDF report from available data.
+
+    Pipeline:
+      1. DataFrame comes from local SQL (already private).
+      2. `narrative.generate_narrative` aggregates locally, then sends ONLY
+         aggregates to the cloud LLM for polished prose. Raw rows never leave.
+      3. Chart + full DataFrame are rendered into the PDF locally.
+    """
     from report_generator.chart_selector import select_chart_type
     from report_generator.chart_builder import build_chart
     from report_generator.pdf_builder import build_pdf
-    from config.llm_provider import invoke as llm_invoke
+    from report_generator.narrative import generate_narrative
 
     query = state.get("query", "")
     sql_results = state.get("sql_results", {})
@@ -147,14 +155,16 @@ def report_node(state: State) -> State:
         chart_type, _ = select_chart_type(df, query) if df is not None and not df.empty else ("table", "")
         fig, png_path = build_chart(df, chart_type, query[:60]) if df is not None else (None, None)
 
-        summary = llm_invoke(
-            f"Write a 3-sentence executive summary for a business report about: {query}",
-            max_tokens=256,
-        )
+        # Aggregate locally, then let the cloud LLM write the narrative from
+        # aggregates only. `mode` tells us where the prose came from.
+        narrative = generate_narrative(query, df)
+        summary = narrative["narrative"]
+        agg = narrative["aggregates"]
+
         insights = [
-            "Data sourced from live NexusAgent database",
-            f"Report generated on {__import__('datetime').datetime.now().strftime('%Y-%m-%d')}",
-            "All figures are based on current data",
+            f"Based on {agg.get('row_count', 0)} records across {agg.get('column_count', 0)} fields",
+            f"Narrative generated via {narrative['mode']} path — raw rows never left the machine",
+            f"Report generated on {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M')}",
         ]
 
         pdf_path = build_pdf(
