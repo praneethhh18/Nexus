@@ -8,7 +8,9 @@ import { invoiceSummary } from '../services/invoices';
 import { calendarStatus, calendarEvents } from '../services/calendar';
 import { getUser, getCurrentBusiness } from '../services/auth';
 import { seedSampleData } from '../services/seed';
-import { Sparkles, Loader2 } from 'lucide-react';
+import { briefingLatest, briefingRun } from '../services/briefing';
+import ReactMarkdown from 'react-markdown';
+import { Sparkles, Loader2, Sun, Lock } from 'lucide-react';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
@@ -59,6 +61,9 @@ export default function Dashboard() {
   const [events, setEvents] = useState([]);
   const [seeding, setSeeding] = useState(false);
   const [seedError, setSeedError] = useState('');
+  const [briefing, setBriefing] = useState(null);
+  const [briefingBusy, setBriefingBusy] = useState(false);
+  const [briefingError, setBriefingError] = useState('');
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -101,6 +106,27 @@ export default function Dashboard() {
     return () => window.removeEventListener('nexus-business-changed', h);
   }, [reload]);
 
+  const loadBriefing = useCallback(async () => {
+    try {
+      const b = await briefingLatest();
+      setBriefing(b && b.id ? b : null);
+    } catch { /* ignore — non-critical */ }
+  }, []);
+  useEffect(() => { loadBriefing(); }, [loadBriefing]);
+
+  const handleRunBriefing = async () => {
+    if (briefingBusy) return;
+    setBriefingBusy(true); setBriefingError('');
+    try {
+      const b = await briefingRun();
+      setBriefing(b);
+    } catch (e) {
+      setBriefingError(e.message || 'Briefing failed.');
+    } finally {
+      setBriefingBusy(false);
+    }
+  };
+
   // Find top pipeline value stage
   const pipelineTotal = pipe
     ? Object.values(pipe.by_stage).reduce((s, v) => s + (v.total || 0), 0) -
@@ -142,6 +168,59 @@ export default function Dashboard() {
       </div>
 
       <div className="page-body">
+        {/* Morning briefing card — the daily-use moment */}
+        {!isEmptyBusiness && (
+          <div className="panel" style={{
+            marginBottom: 14,
+            borderColor: briefing ? 'color-mix(in srgb, var(--color-accent) 28%, transparent)' : 'var(--color-border)',
+            background: briefing
+              ? 'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-2)), var(--color-surface-2))'
+              : 'var(--color-surface-2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: briefing ? 12 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 'var(--r-md)',
+                  background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Sun size={18} color="var(--color-accent)" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                    Morning briefing
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {briefing
+                      ? <>Generated {new Date(briefing.created_at + 'Z').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · <span style={{ color: briefing.narrative_mode === 'cloud' ? 'var(--color-info)' : 'var(--color-text-dim)' }}>{briefing.narrative_mode === 'cloud' ? 'cloud narrative' : 'local'}</span></>
+                      : 'Not generated yet today — runs automatically each morning at 08:00 UTC.'}
+                    {briefing && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Lock size={10} /> aggregates only</span>}
+                  </div>
+                </div>
+              </div>
+              <button className="btn-ghost" onClick={handleRunBriefing} disabled={briefingBusy}
+                style={{ flexShrink: 0 }}>
+                {briefingBusy
+                  ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</>
+                  : (briefing ? <><Sparkles size={12} /> Re-run</> : <><Sparkles size={12} /> Run now</>)}
+              </button>
+            </div>
+
+            {briefingError && (
+              <div style={{ fontSize: 11, color: 'var(--color-err)', marginTop: 6 }}>{briefingError}</div>
+            )}
+
+            {briefing && (
+              <div className="chat-markdown" style={{
+                fontSize: 13, color: 'var(--color-text)', lineHeight: 1.65,
+                borderTop: '1px solid var(--color-border)', paddingTop: 12,
+              }}>
+                <ReactMarkdown>{briefing.narrative}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Empty-state banner — gives a one-click path to a working demo */}
         {isEmptyBusiness && (
           <div style={{

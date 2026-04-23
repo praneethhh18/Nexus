@@ -106,6 +106,19 @@ def start_agent_scheduler():
             replace_existing=True,
         )
 
+    if "agent-morning-briefing" not in existing_ids:
+        from apscheduler.triggers.cron import CronTrigger
+        def _run_briefing_all():
+            from agents.briefing import run_for_all_businesses
+            return run_for_all_businesses()
+        # 08:00 UTC — shift by TZ env var if needed later
+        sched.add_job(
+            lambda: _safe_run(_run_briefing_all, "morning_briefing"),
+            CronTrigger(hour=8, minute=0),
+            id="agent-morning-briefing",
+            replace_existing=True,
+        )
+
     if "agent-email-triage" not in existing_ids:
         from apscheduler.triggers.interval import IntervalTrigger
         def _run_email_triage_all():
@@ -164,3 +177,8 @@ def run_invoice_reminder_now():
 def run_meeting_prep_now():
     from agents.background.meeting_prep import run_for_all
     return run_for_all()
+
+
+def run_briefing_now(business_id: str):
+    from agents.briefing import run_for_business
+    return run_for_business(business_id)

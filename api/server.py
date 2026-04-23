@@ -380,6 +380,25 @@ def audit_log_list(
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#   Morning briefing — daily 1-page agent
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/briefing/latest")
+def briefing_latest(ctx: dict = Depends(get_current_context)):
+    """Return today's briefing for this business, or null if none yet."""
+    from agents.briefing import latest
+    return latest(ctx["business_id"]) or {}
+
+
+@app.post("/api/briefing/run")
+def briefing_run_now(ctx: dict = Depends(get_current_context)):
+    """Generate a briefing right now (owner/admin only)."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can trigger a briefing")
+    from agents.briefing import run_for_business
+    return run_for_business(ctx["business_id"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #   Sample data — fills a new business with realistic records for demo/testing
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.post("/api/seed/sample-data")
