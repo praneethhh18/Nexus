@@ -9,9 +9,9 @@ import { calendarStatus, calendarEvents } from '../services/calendar';
 import { getUser, getCurrentBusiness } from '../services/auth';
 import { seedSampleData } from '../services/seed';
 import { briefingLatest, briefingRun } from '../services/briefing';
-import { listPersonas } from '../services/agents';
+import { listPersonas, listNudges, dismissNudge, acceptNudge } from '../services/agents';
 import ReactMarkdown from 'react-markdown';
-import { Sparkles, Loader2, Sun, Lock } from 'lucide-react';
+import { Sparkles, Loader2, Sun, Lock, ChevronRight, X as XIcon, Bot } from 'lucide-react';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
@@ -66,6 +66,8 @@ export default function Dashboard() {
   const [briefingBusy, setBriefingBusy] = useState(false);
   const [briefingError, setBriefingError] = useState('');
   const [briefingAgent, setBriefingAgent] = useState(null);
+  const [nudges, setNudges] = useState([]);
+  const [nudgeBusy, setNudgeBusy] = useState(null); // id of the nudge currently executing
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -119,6 +121,35 @@ export default function Dashboard() {
     } catch { /* ignore */ }
   }, []);
   useEffect(() => { loadBriefing(); }, [loadBriefing]);
+
+  const loadNudges = useCallback(async () => {
+    try { setNudges(await listNudges()); }
+    catch { /* non-critical */ }
+  }, []);
+  useEffect(() => { loadNudges(); }, [loadNudges]);
+
+  const handleAcceptNudge = async (n) => {
+    if (nudgeBusy) return;
+    setNudgeBusy(n.id);
+    try {
+      const r = await acceptNudge(n.id);
+      setNudges(r.next_nudges || []);
+      // If action was navigate, send the user there. Else refresh dashboard data.
+      if (r.result?.kind === 'navigate' && r.result.path) {
+        navigate(r.result.path);
+      } else {
+        reload();
+        loadBriefing();
+      }
+    } catch (e) {
+      alert(`Failed: ${e.message}`);
+    } finally { setNudgeBusy(null); }
+  };
+
+  const handleDismissNudge = async (n) => {
+    try { setNudges(await dismissNudge(n.id)); }
+    catch { /* non-critical */ }
+  };
 
   const handleRunBriefing = async () => {
     if (briefingBusy) return;
@@ -174,6 +205,81 @@ export default function Dashboard() {
       </div>
 
       <div className="page-body">
+        {/* Proactive nudges — your team raising a hand */}
+        {nudges.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            <div style={{
+              fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.8,
+              color: 'var(--color-text-dim)', marginBottom: 8, padding: '0 4px',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <Bot size={12} color="var(--color-accent)" />
+              Your team suggests
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {nudges.map(n => {
+                const busy = nudgeBusy === n.id;
+                return (
+                  <div key={n.id} className="panel" style={{
+                    padding: 14, display: 'flex', alignItems: 'center', gap: 12,
+                    borderColor: 'color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                    background: 'color-mix(in srgb, var(--color-accent) 4%, var(--color-surface-2))',
+                  }}>
+                    <div style={{
+                      width: 36, height: 36, borderRadius: 'var(--r-md)',
+                      background: 'color-mix(in srgb, var(--color-accent) 16%, transparent)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, flexShrink: 0,
+                    }}>
+                      {n.agent_emoji || <Bot size={16} color="var(--color-accent)" />}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: 10, padding: '2px 8px', borderRadius: 'var(--r-pill)',
+                          color: 'var(--color-accent)',
+                          background: 'var(--color-accent-soft)',
+                          border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                          fontWeight: 600, letterSpacing: 0.3,
+                        }}>
+                          {n.agent_name} · {n.agent_role_tag}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>
+                          {n.title}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 3 }}>
+                        {n.detail}
+                      </div>
+                    </div>
+                    <button
+                      className="btn-primary"
+                      onClick={() => handleAcceptNudge(n)}
+                      disabled={busy}
+                      style={{ flexShrink: 0, fontSize: 12, padding: '7px 14px' }}
+                    >
+                      {busy
+                        ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Working…</>
+                        : <>{n.cta_label} <ChevronRight size={12} /></>}
+                    </button>
+                    <button
+                      onClick={() => handleDismissNudge(n)}
+                      title="Not now"
+                      style={{
+                        background: 'none', border: 'none',
+                        color: 'var(--color-text-dim)', cursor: 'pointer',
+                        padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0,
+                      }}
+                    >
+                      <XIcon size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Morning briefing card — the daily-use moment */}
         {!isEmptyBusiness && (
           <div className="panel" style={{

@@ -37,3 +37,9 @@ export const listActivity = ({ hours = 48, limit = 50 } = {}) =>
 
 export const runAgent = (key) =>
   req(`/api/agents/${encodeURIComponent(key)}/run`, { method: 'POST' });
+
+export const listNudges = () => req('/api/agents/nudges');
+export const dismissNudge = (id) =>
+  req(`/api/agents/nudges/${encodeURIComponent(id)}/dismiss`, { method: 'POST' });
+export const acceptNudge = (id) =>
+  req(`/api/agents/nudges/${encodeURIComponent(id)}/accept`, { method: 'POST' });

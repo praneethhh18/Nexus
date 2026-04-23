@@ -404,6 +404,69 @@ class _PersonaPatch(BaseModel):
     enabled: Optional[bool] = None
 
 
+@app.get("/api/agents/nudges")
+def agents_list_nudges(ctx: dict = Depends(get_current_context)):
+    """Active proactive nudges — things the team noticed and wants permission to act on."""
+    from agents.nudges import list_active
+    return list_active(ctx["business_id"])
+
+
+@app.post("/api/agents/nudges/{nudge_id}/dismiss")
+def agents_dismiss_nudge(nudge_id: str, ctx: dict = Depends(get_current_context)):
+    """Hide this nudge for the rest of today (UTC). Returns fresh nudge list."""
+    from agents.nudges import dismiss, list_active
+    dismiss(ctx["business_id"], nudge_id)
+    return list_active(ctx["business_id"])
+
+
+@app.post("/api/agents/nudges/{nudge_id}/accept")
+def agents_accept_nudge(nudge_id: str, ctx: dict = Depends(get_current_context)):
+    """
+    Act on a nudge. Looks up the current nudge by id, executes its action
+    (run_agent or navigate), and returns {result, next_nudges}.
+    """
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can act on nudges")
+
+    from agents.nudges import list_active, dismiss
+    nudges = list_active(ctx["business_id"])
+    nudge = next((n for n in nudges if n["id"] == nudge_id), None)
+    if not nudge:
+        raise HTTPException(404, "Nudge not active (already handled or dismissed)")
+
+    action = nudge.get("action") or {}
+    result: dict = {"kind": action.get("kind")}
+
+    if action.get("kind") == "run_agent":
+        agent_key = action.get("agent_key")
+        if agent_key == "morning_briefing":
+            from agents.briefing import run_for_business
+            result["detail"] = run_for_business(ctx["business_id"])
+        elif agent_key == "invoice_reminder":
+            from agents.background.invoice_reminder import run_for_business
+            result["detail"] = run_for_business(ctx["business_id"])
+        elif agent_key == "stale_deal_watcher":
+            from agents.background.stale_deal_watcher import run_for_business
+            result["detail"] = run_for_business(ctx["business_id"])
+        elif agent_key == "meeting_prep":
+            from agents.background.meeting_prep import run_for_user
+            result["detail"] = run_for_user(ctx["user"]["id"], ctx["business_id"])
+        elif agent_key == "email_triage":
+            from agents.email_triage import run_for_business
+            result["detail"] = run_for_business(ctx["business_id"])
+        else:
+            raise HTTPException(400, f"Unknown agent in nudge action: {agent_key}")
+    elif action.get("kind") == "navigate":
+        result["path"] = action.get("path")
+    else:
+        raise HTTPException(400, f"Unknown action kind: {action.get('kind')}")
+
+    # After running, dismiss so the user doesn't see the same nudge again today
+    dismiss(ctx["business_id"], nudge_id)
+
+    return {"result": result, "next_nudges": list_active(ctx["business_id"])}
+
+
 @app.post("/api/agents/{agent_key}/run")
 def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
     """
