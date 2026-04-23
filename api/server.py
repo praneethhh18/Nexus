@@ -382,6 +382,16 @@ def audit_log_list(
 # ═══════════════════════════════════════════════════════════════════════════════
 #   Agent personas — names + role tags for the 6 autonomous agents
 # ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/agents/activity")
+def agents_activity(hours: int = 48, limit: int = 50,
+                    ctx: dict = Depends(get_current_context)):
+    """Unified timeline of what every agent did in the last `hours` hours."""
+    from agents.activity import recent
+    hours = max(1, min(hours, 720))  # cap at 30 days
+    limit = max(1, min(limit, 200))
+    return recent(ctx["business_id"], hours=hours, limit=limit)
+
+
 @app.get("/api/agents/personas")
 def agents_list_personas(ctx: dict = Depends(get_current_context)):
     """Return all 6 agent personas (name, role tag, description, last activity)."""

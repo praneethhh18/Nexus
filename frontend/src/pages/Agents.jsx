@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot } from 'lucide-react';
-import { listPersonas, renamePersona } from '../services/agents';
+import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity } from 'lucide-react';
+import { listPersonas, renamePersona, listActivity } from '../services/agents';
 
 function formatWhen(iso) {
   if (!iso) return null;
@@ -166,10 +166,100 @@ function PersonaCard({ persona, onRenamed, onOpenSurface }) {
   );
 }
 
+function groupByDay(events) {
+  const groups = new Map();
+  for (const e of events) {
+    const d = e.ts ? new Date(e.ts.endsWith('Z') ? e.ts : e.ts + 'Z') : null;
+    const key = d ? d.toDateString() : 'Unknown';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(e);
+  }
+  return [...groups.entries()];
+}
+
+function dayLabel(dateStr) {
+  if (!dateStr || dateStr === 'Unknown') return 'Earlier';
+  const d = new Date(dateStr);
+  const today = new Date();
+  const yday = new Date(Date.now() - 86400000);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function ActivityRow({ event, onOpen }) {
+  const time = event.ts
+    ? new Date(event.ts.endsWith('Z') ? event.ts : event.ts + 'Z')
+        .toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : '';
+  const statusColor = {
+    pending:  'var(--color-warn)',
+    approved: 'var(--color-ok)',
+    denied:   'var(--color-err)',
+    expired:  'var(--color-text-dim)',
+    done:     'var(--color-accent)',
+  }[event.status] || 'var(--color-text-dim)';
+
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 12,
+      padding: '10px 12px',
+      borderRadius: 'var(--r-md)',
+      transition: 'background var(--dur-fast) var(--ease-out)',
+      cursor: event.surface ? 'pointer' : 'default',
+    }}
+      onClick={() => event.surface && onOpen(event.surface)}
+      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--color-surface-3)'; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+    >
+      <div style={{
+        width: 32, height: 32, borderRadius: 'var(--r-sm)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 15, flexShrink: 0,
+      }}>
+        {event.agent_emoji || <Bot size={14} color="var(--color-text-dim)" />}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 2 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>
+            {event.agent_name}
+          </span>
+          <span style={{
+            fontSize: 9, padding: '1px 7px', borderRadius: 'var(--r-pill)',
+            color: 'var(--color-accent)',
+            background: 'var(--color-accent-soft)',
+            border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+            letterSpacing: 0.3,
+          }}>
+            {event.agent_role_tag}
+          </span>
+          <span style={{ fontSize: 10, color: statusColor, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {event.status}
+          </span>
+          <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--color-text-dim)', whiteSpace: 'nowrap' }}>
+            {time}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: 'var(--color-text)' }}>{event.title}</div>
+        {event.summary && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2, lineHeight: 1.5 }}>
+            {event.summary}
+          </div>
+        )}
+      </div>
+      {event.surface && <ExternalLink size={12} color="var(--color-text-dim)" style={{ flexShrink: 0, alignSelf: 'center' }} />}
+    </div>
+  );
+}
+
 export default function Agents() {
   const [personas, setPersonas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
+  const [activity, setActivity] = useState([]);
+  const [activityLoading, setActivityLoading] = useState(true);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -179,7 +269,14 @@ export default function Agents() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadActivity = useCallback(async () => {
+    setActivityLoading(true);
+    try { setActivity(await listActivity({ hours: 48, limit: 50 })); }
+    catch { /* non-critical */ }
+    finally { setActivityLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); loadActivity(); }, [load, loadActivity]);
 
   const onRenamed = (updated) => {
     setPersonas(prev => prev.map(p => p.agent_key === updated.agent_key ? { ...p, ...updated } : p));
@@ -212,6 +309,53 @@ export default function Agents() {
             ))}
           </div>
         )}
+
+        {/* Activity timeline */}
+        <div style={{ marginTop: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: 14, color: 'var(--color-text)' }}>
+              <Activity size={16} color="var(--color-accent)" />
+              Recent activity
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)', fontWeight: 400 }}>
+                last 48 hours
+              </span>
+            </h3>
+            <button className="btn-ghost" onClick={loadActivity} disabled={activityLoading}>
+              <RotateCcw size={11} style={{ animation: activityLoading ? 'spin 1s linear infinite' : 'none' }} />
+              Refresh
+            </button>
+          </div>
+
+          {activityLoading && activity.length === 0 && (
+            <div style={{ color: 'var(--color-text-dim)', fontSize: 12, padding: 12 }}>Loading…</div>
+          )}
+
+          {!activityLoading && activity.length === 0 && (
+            <div className="panel" style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
+              No activity in the last 48 hours. Agents will appear here as they run — Atlas writes the
+              briefing each morning, Iris triages email every 15 minutes, Kira and Arjun run daily.
+            </div>
+          )}
+
+          {activity.length > 0 && (
+            <div className="panel" style={{ padding: 12 }}>
+              {groupByDay(activity).map(([day, events]) => (
+                <div key={day} style={{ marginBottom: 8 }}>
+                  <div style={{
+                    fontSize: 10, fontWeight: 600, textTransform: 'uppercase',
+                    letterSpacing: 0.8, color: 'var(--color-text-dim)',
+                    padding: '6px 12px 4px',
+                  }}>
+                    {dayLabel(day)}
+                  </div>
+                  {events.map(e => (
+                    <ActivityRow key={e.id} event={e} onOpen={(path) => navigate(path)} />
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div style={{
           marginTop: 18, padding: 14,

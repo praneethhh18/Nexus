@@ -31,3 +31,6 @@ export const togglePersonaEnabled = (key, enabled) =>
     method: 'PATCH',
     body: JSON.stringify({ enabled }),
   });
+
+export const listActivity = ({ hours = 48, limit = 50 } = {}) =>
+  req(`/api/agents/activity?hours=${hours}&limit=${limit}`);

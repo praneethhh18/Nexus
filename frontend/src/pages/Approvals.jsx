@@ -1,6 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ShieldCheck, Check, X, AlertTriangle, Clock, ChevronDown, ChevronRight } from 'lucide-react';
 import { listApprovals, approveAction, rejectAction } from '../services/agent';
+import { listPersonas } from '../services/agents';
+
+// Maps the tool_name on an approval row to the agent_key of the persona that created it.
+// For tools invoked from user chat (no owning agent), the value is null and no badge renders.
+const TOOL_TO_AGENT = {
+  send_invoice_email:     'invoice_reminder',   // Kira
+  send_triage_reply:      'email_triage',       // Iris
+  draft_reply:            'email_triage',       // Iris
+  classify_and_reply:     'email_triage',       // Iris
+};
 
 const STATUS_COLORS = {
   pending: 'var(--color-warn)', approved: 'var(--color-info)', rejected: 'var(--color-text-dim)',
@@ -15,9 +25,11 @@ function formatWhen(iso) {
   } catch { return iso.substring(0, 16); }
 }
 
-function ActionRow({ action, onApprove, onReject, expanded, onToggle }) {
+function ActionRow({ action, onApprove, onReject, expanded, onToggle, personaByKey }) {
   const color = STATUS_COLORS[action.status] || 'var(--color-text-dim)';
   const isPending = action.status === 'pending';
+  const agentKey = TOOL_TO_AGENT[action.tool_name];
+  const persona = agentKey ? personaByKey[agentKey] : null;
   return (
     <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
       <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -25,7 +37,7 @@ function ActionRow({ action, onApprove, onReject, expanded, onToggle }) {
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {action.summary || action.tool_name}
             </span>
@@ -35,6 +47,22 @@ function ActionRow({ action, onApprove, onReject, expanded, onToggle }) {
             }}>
               {action.status}
             </span>
+            {persona && (
+              <span
+                title={`Drafted by ${persona.name} — ${persona.description}`}
+                style={{
+                  fontSize: 9, padding: '2px 8px', borderRadius: 'var(--r-pill)',
+                  fontWeight: 600, letterSpacing: 0.3,
+                  color: 'var(--color-accent)',
+                  background: 'var(--color-accent-soft)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <span style={{ fontSize: 10 }}>{persona.emoji}</span>
+                by {persona.name} · {persona.role_tag}
+              </span>
+            )}
           </div>
           <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
             tool: <code style={{ color: 'var(--color-text-muted)' }}>{action.tool_name}</code> · requested {formatWhen(action.created_at)}
@@ -85,6 +113,15 @@ export default function Approvals() {
   const [expanded, setExpanded] = useState({});
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [personaByKey, setPersonaByKey] = useState({});
+
+  useEffect(() => {
+    listPersonas().then(list => {
+      const map = {};
+      for (const p of list) map[p.agent_key] = p;
+      setPersonaByKey(map);
+    }).catch(() => {});
+  }, []);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -168,6 +205,7 @@ export default function Approvals() {
             <ActionRow
               key={a.id}
               action={a}
+              personaByKey={personaByKey}
               expanded={!!expanded[a.id]}
               onToggle={() => setExpanded((p) => ({ ...p, [a.id]: !p[a.id] }))}
               onApprove={handleApprove}
