@@ -7,12 +7,14 @@ import { taskSummary, listTasks } from '../services/tasks';
 import { invoiceSummary } from '../services/invoices';
 import { calendarStatus, calendarEvents } from '../services/calendar';
 import { getUser, getCurrentBusiness } from '../services/auth';
+import { seedSampleData } from '../services/seed';
+import { Sparkles, Loader2 } from 'lucide-react';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
 const STAGE_COLORS = {
-  lead: '#60a5fa', qualified: '#a78bfa', proposal: '#f59e0b',
-  negotiation: '#ec4899', won: '#22c55e', lost: '#6b7280',
+  lead: 'var(--color-info)', qualified: '#a78bfa', proposal: 'var(--color-warn)',
+  negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
 function KpiCard({ icon: Icon, label, value, sub, color, onClick }) {
@@ -35,9 +37,9 @@ function KpiCard({ icon: Icon, label, value, sub, color, onClick }) {
         <Icon size={20} />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: '#64748b' }}>{label}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: '#e2e8f0' }}>{value}</div>
-        {sub && <div style={{ fontSize: 10, color: '#64748b', marginTop: 1 }}>{sub}</div>}
+        <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{label}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>{value}</div>
+        {sub && <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 1 }}>{sub}</div>}
       </div>
     </div>
   );
@@ -55,6 +57,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [calConn, setCalConn] = useState(null);
   const [events, setEvents] = useState([]);
+  const [seeding, setSeeding] = useState(false);
+  const [seedError, setSeedError] = useState('');
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -103,6 +107,29 @@ export default function Dashboard() {
       ((pipe.by_stage?.won?.total || 0) + (pipe.by_stage?.lost?.total || 0))
     : 0;
 
+  // Detect "fresh business" — nothing created yet
+  const isEmptyBusiness =
+    crm && tasks && invoices &&
+    (crm.contacts || 0) === 0 &&
+    (tasks.open_total || 0) === 0 &&
+    (invoices.outstanding?.count || 0) === 0 &&
+    (invoices.paid?.count || 0) === 0 &&
+    (invoices.draft?.count || 0) === 0;
+
+  const handleSeed = async () => {
+    if (seeding) return;
+    setSeeding(true); setSeedError('');
+    try {
+      const r = await seedSampleData();
+      if (!r.seeded) setSeedError(r.reason || 'Could not seed.');
+      await reload();
+    } catch (e) {
+      setSeedError(e.message || 'Seed failed.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const now = new Date();
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
@@ -111,32 +138,70 @@ export default function Dashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header">
         <h1>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
-        <p>Overview for <strong style={{ color: '#e2e8f0' }}>{current?.name || 'your business'}</strong></p>
+        <p>Overview for <strong style={{ color: 'var(--color-text)' }}>{current?.name || 'your business'}</strong></p>
       </div>
 
       <div className="page-body">
+        {/* Empty-state banner — gives a one-click path to a working demo */}
+        {isEmptyBusiness && (
+          <div style={{
+            padding: '18px 20px', marginBottom: 14,
+            borderRadius: 'var(--r-lg)',
+            background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 12%, transparent), color-mix(in srgb, var(--color-info) 10%, transparent))',
+            border: '1px solid color-mix(in srgb, var(--color-accent) 28%, transparent)',
+            display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+          }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 'var(--r-md)',
+              background: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>
+              <Sparkles size={22} color="var(--color-accent)" />
+            </div>
+            <div style={{ flex: 1, minWidth: 260 }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', marginBottom: 2 }}>
+                Your workspace is empty
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                Load sample data to see NexusAgent in action — 4 companies, 5 deals across the pipeline,
+                6 tasks, and 4 invoices. You can delete it anytime. Nothing leaves your machine.
+              </div>
+              {seedError && (
+                <div style={{ fontSize: 11, color: 'var(--color-err)', marginTop: 6 }}>{seedError}</div>
+              )}
+            </div>
+            <button className="btn-primary" onClick={handleSeed} disabled={seeding}
+              style={{ flexShrink: 0 }}>
+              {seeding
+                ? <><Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} /> Loading…</>
+                : <><Sparkles size={13} /> Load sample data</>}
+            </button>
+          </div>
+        )}
+
         {/* Top KPI row — the numbers that matter */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
           <KpiCard
-            icon={Briefcase} label="Open pipeline" color="#f59e0b"
+            icon={Briefcase} label="Open pipeline" color="var(--color-warn)"
             value={money(pipelineTotal)}
             sub={`${(pipe?.by_stage?.lead?.count || 0) + (pipe?.by_stage?.qualified?.count || 0) + (pipe?.by_stage?.proposal?.count || 0) + (pipe?.by_stage?.negotiation?.count || 0)} deals`}
             onClick={() => navigate('/crm')}
           />
           <KpiCard
-            icon={TrendingUp} label="Won this month" color="#22c55e"
+            icon={TrendingUp} label="Won this month" color="var(--color-ok)"
             value={money(crm?.won_this_month || 0)}
             sub={`${pipe?.by_stage?.won?.count || 0} closed`}
             onClick={() => navigate('/crm')}
           />
           <KpiCard
-            icon={Receipt} label="Outstanding invoices" color="#60a5fa"
+            icon={Receipt} label="Outstanding invoices" color="var(--color-info)"
             value={money(invoices?.outstanding?.total || 0)}
             sub={`${invoices?.outstanding?.count || 0} unpaid`}
             onClick={() => navigate('/invoices')}
           />
           <KpiCard
-            icon={AlertTriangle} label="Overdue" color="#ef4444"
+            icon={AlertTriangle} label="Overdue" color="var(--color-err)"
             value={(tasks?.overdue || 0) + (invoices?.overdue?.count || 0)}
             sub={`${tasks?.overdue || 0} tasks · ${invoices?.overdue?.count || 0} invoices`}
             onClick={() => navigate('/tasks')}
@@ -150,19 +215,19 @@ export default function Dashboard() {
             <div className="panel">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                  <CheckSquare size={15} color="#22c55e" /> Today's tasks
+                  <CheckSquare size={15} color="var(--color-ok)" /> Today's tasks
                 </h3>
                 <button className="btn-ghost" style={{ fontSize: 10 }} onClick={() => navigate('/tasks')}>View all</button>
               </div>
               {todayTasks.length === 0 ? (
-                <p style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: 16 }}>Nothing due today. Clean slate.</p>
+                <p style={{ fontSize: 12, color: 'var(--color-text-dim)', textAlign: 'center', padding: 16 }}>Nothing due today. Clean slate.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {todayTasks.map((t) => (
-                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: '#0f172a', borderRadius: 6 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: { urgent: '#ef4444', high: '#f59e0b', normal: '#60a5fa', low: '#64748b' }[t.priority] || '#64748b' }} />
-                      <span style={{ fontSize: 12, color: '#e2e8f0', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
-                      <span style={{ fontSize: 10, color: '#64748b' }}>{t.priority}</span>
+                    <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: 'var(--color-surface-1)', borderRadius: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: { urgent: 'var(--color-err)', high: 'var(--color-warn)', normal: 'var(--color-info)', low: 'var(--color-text-dim)' }[t.priority] || 'var(--color-text-dim)' }} />
+                      <span style={{ fontSize: 12, color: 'var(--color-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.title}</span>
+                      <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{t.priority}</span>
                     </div>
                   ))}
                 </div>
@@ -174,19 +239,19 @@ export default function Dashboard() {
               <div className="panel">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                    <Calendar size={15} color="#60a5fa" /> Upcoming meetings
+                    <Calendar size={15} color="var(--color-info)" /> Upcoming meetings
                   </h3>
                   {calConn.connected
-                    ? <span style={{ fontSize: 10, color: '#64748b' }}>{calConn.connection?.account_email}</span>
+                    ? <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{calConn.connection?.account_email}</span>
                     : <button className="btn-ghost" style={{ fontSize: 10 }} onClick={() => navigate('/settings')}>Connect</button>
                   }
                 </div>
                 {!calConn.connected ? (
-                  <p style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: 12 }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-dim)', textAlign: 'center', padding: 12 }}>
                     Connect Google Calendar in Settings to show your next meetings here.
                   </p>
                 ) : events.length === 0 ? (
-                  <p style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: 12 }}>
+                  <p style={{ fontSize: 12, color: 'var(--color-text-dim)', textAlign: 'center', padding: 12 }}>
                     Nothing scheduled in the next 14 days.
                   </p>
                 ) : (
@@ -197,14 +262,14 @@ export default function Dashboard() {
                         ? start.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                         : 'No date';
                       return (
-                        <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: '#0f172a', borderRadius: 6 }}>
-                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#60a5fa', flexShrink: 0 }} />
+                        <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: 8, background: 'var(--color-surface-1)', borderRadius: 6 }}>
+                          <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-info)', flexShrink: 0 }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 12, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.summary}</div>
-                            <div style={{ fontSize: 10, color: '#64748b' }}>{label}{e.location ? ` · ${e.location}` : ''}</div>
+                            <div style={{ fontSize: 12, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.summary}</div>
+                            <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{label}{e.location ? ` · ${e.location}` : ''}</div>
                           </div>
                           {e.html_link && (
-                            <a href={e.html_link} target="_blank" rel="noreferrer" style={{ color: '#64748b' }}>
+                            <a href={e.html_link} target="_blank" rel="noreferrer" style={{ color: 'var(--color-text-dim)' }}>
                               <ExternalLink size={12} />
                             </a>
                           )}
@@ -220,7 +285,7 @@ export default function Dashboard() {
             <div className="panel">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                  <Briefcase size={15} color="#f59e0b" /> Deal pipeline
+                  <Briefcase size={15} color="var(--color-warn)" /> Deal pipeline
                 </h3>
                 <button className="btn-ghost" style={{ fontSize: 10 }} onClick={() => navigate('/crm')}>Open CRM</button>
               </div>
@@ -232,17 +297,17 @@ export default function Dashboard() {
                     return (
                       <div key={stage}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
-                          <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>{stage} · {s.count}</span>
+                          <span style={{ color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>{stage} · {s.count}</span>
                           <span style={{ color: STAGE_COLORS[stage], fontWeight: 600 }}>{money(s.total)}</span>
                         </div>
-                        <div style={{ height: 5, background: '#0f172a', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: 5, background: 'var(--color-surface-1)', borderRadius: 3, overflow: 'hidden' }}>
                           <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: STAGE_COLORS[stage], transition: 'width 0.3s' }} />
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              ) : <p style={{ fontSize: 12, color: '#64748b' }}>No deals yet.</p>}
+              ) : <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>No deals yet.</p>}
             </div>
 
             {/* Quick actions */}
@@ -272,7 +337,7 @@ export default function Dashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div className="panel">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 10px' }}>
-                <Users size={15} color="#60a5fa" /> Business at a glance
+                <Users size={15} color="var(--color-info)" /> Business at a glance
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 {[
@@ -283,9 +348,9 @@ export default function Dashboard() {
                   { label: 'Done today', value: tasks?.done_today ?? 0 },
                   { label: 'Draft invoices', value: invoices?.draft?.count ?? 0 },
                 ].map((row, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: '#0f172a', borderRadius: 6 }}>
-                    <span style={{ fontSize: 11, color: '#94a3b8' }}>{row.label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{row.value}</span>
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-surface-1)', borderRadius: 6 }}>
+                    <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{row.label}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>{row.value}</span>
                   </div>
                 ))}
               </div>
@@ -293,7 +358,7 @@ export default function Dashboard() {
 
             <div className="panel">
               <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 10px' }}>
-                <Activity size={15} color="#22c55e" /> System
+                <Activity size={15} color="var(--color-ok)" /> System
               </h3>
               {[
                 { label: 'LLM', ok: health?.ollama?.online, detail: health?.model || 'offline' },
@@ -302,9 +367,9 @@ export default function Dashboard() {
                 { label: 'Discord', ok: health?.features?.discord, detail: health?.features?.discord ? 'configured' : 'disabled' },
               ].map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.ok ? '#22c55e' : '#64748b' }} />
-                  <span style={{ fontSize: 11, color: '#e2e8f0', flex: 1 }}>{r.label}</span>
-                  <span style={{ fontSize: 10, color: '#64748b' }}>{r.detail}</span>
+                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.ok ? 'var(--color-ok)' : 'var(--color-text-dim)' }} />
+                  <span style={{ fontSize: 11, color: 'var(--color-text)', flex: 1 }}>{r.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{r.detail}</span>
                 </div>
               ))}
             </div>
@@ -312,20 +377,20 @@ export default function Dashboard() {
             <div className="panel">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: 0 }}>
-                  <AlertTriangle size={15} color="#f59e0b" /> Recent alerts
+                  <AlertTriangle size={15} color="var(--color-warn)" /> Recent alerts
                 </h3>
               </div>
               {notifs.length === 0 ? (
-                <p style={{ fontSize: 11, color: '#64748b', padding: '8px 0' }}>No new alerts.</p>
+                <p style={{ fontSize: 11, color: 'var(--color-text-dim)', padding: '8px 0' }}>No new alerts.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {notifs.map((n, i) => (
                     <div key={i} style={{
-                      padding: '8px 10px', background: '#0f172a', borderRadius: 6,
-                      borderLeft: `3px solid ${{ critical: '#ef4444', warning: '#f59e0b', success: '#22c55e', info: '#60a5fa' }[n.severity] || '#64748b'}`,
+                      padding: '8px 10px', background: 'var(--color-surface-1)', borderRadius: 6,
+                      borderLeft: `3px solid ${{ critical: 'var(--color-err)', warning: 'var(--color-warn)', success: 'var(--color-ok)', info: 'var(--color-info)' }[n.severity] || 'var(--color-text-dim)'}`,
                     }}>
-                      <div style={{ fontSize: 11, fontWeight: 500, color: '#e2e8f0' }}>{n.title}</div>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>{n.message}</div>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: 'var(--color-text)' }}>{n.title}</div>
+                      <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{n.message}</div>
                     </div>
                   ))}
                 </div>

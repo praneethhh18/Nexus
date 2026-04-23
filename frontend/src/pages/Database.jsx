@@ -62,14 +62,14 @@ export default function Database() {
               {dataTables.map(t => (
                 <div key={t.name} onClick={() => loadDetail(t.name)}
                   className={`conv-item ${selected === t.name ? 'active' : ''}`}
-                  style={selected === t.name ? { background: '#3b82f615', color: '#60a5fa' } : {}}>
-                  <Table size={14} /><span style={{ flex: 1 }}>{t.name}</span><span style={{ fontSize: 10, color: '#475569' }}>{t.row_count}</span>
+                  style={selected === t.name ? { background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)', color: 'var(--color-info)' } : {}}>
+                  <Table size={14} /><span style={{ flex: 1 }}>{t.name}</span><span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{t.row_count}</span>
                 </div>
               ))}
               {sysTables.length > 0 && <>
                 <div className="conv-label" style={{ marginTop: 12 }}>System</div>
                 {sysTables.map(t => (
-                  <div key={t.name} onClick={() => loadDetail(t.name)} className="conv-item" style={{ fontSize: 11, color: '#475569' }}>
+                  <div key={t.name} onClick={() => loadDetail(t.name)} className="conv-item" style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
                     <span style={{ fontSize: 10 }}>{t.row_count}</span>
                   </div>
@@ -80,14 +80,14 @@ export default function Database() {
               {detail ? (<>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>{detail.name}</h3>
-                  <span style={{ fontSize: 12, color: '#64748b' }}>{detail.row_count.toLocaleString()} rows</span>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>{detail.row_count.toLocaleString()} rows</span>
                 </div>
                 <div className="table-panel">
                   <div className="table-panel-header">Schema</div>
                   <table className="data-table">
                     <thead><tr><th>Column</th><th>Type</th><th>PK</th></tr></thead>
                     <tbody>{detail.columns.map((c, i) => (
-                      <tr key={i}><td style={{ fontWeight: 500 }}>{c.name}</td><td>{c.type || 'TEXT'}</td><td style={{ color: '#60a5fa' }}>{c.pk > 0 ? 'PK' : ''}</td></tr>
+                      <tr key={i}><td style={{ fontWeight: 500 }}>{c.name}</td><td>{c.type || 'TEXT'}</td><td style={{ color: 'var(--color-info)' }}>{c.pk > 0 ? 'PK' : ''}</td></tr>
                     ))}</tbody>
                   </table>
                 </div>
@@ -105,7 +105,7 @@ export default function Database() {
                   </div>
                 )}
               </>) : (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#475569', fontSize: 13 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-dim)', fontSize: 13 }}>
                   <DbIcon size={18} style={{ marginRight: 8 }} /> Select a table to explore
                 </div>
               )}
@@ -114,15 +114,15 @@ export default function Database() {
         ) : (
           <div style={{ maxWidth: 520, margin: '0 auto' }}>
             <div className="upload-zone">
-              <Upload size={28} color="#475569" style={{ margin: '0 auto 10px' }} />
-              <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 10 }}>Drop a CSV or Excel file, or click to browse</p>
-              <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ fontSize: 12, color: '#94a3b8' }} />
+              <Upload size={28} color="var(--color-text-dim)" style={{ margin: '0 auto 10px' }} />
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 10 }}>Drop a CSV or Excel file, or click to browse</p>
+              <input type="file" accept=".csv,.xlsx,.xls" onChange={handleFile} style={{ fontSize: 12, color: 'var(--color-text-muted)' }} />
             </div>
             {preview && (
               <div style={{ marginTop: 16 }}>
-                <div className="panel"><p style={{ fontSize: 13, color: 'white', fontWeight: 500 }}>{importFile?.name}</p><p style={{ fontSize: 11, color: '#64748b' }}>{preview.total_rows?.toLocaleString()} rows, {preview.total_columns} columns</p></div>
+                <div className="panel"><p style={{ fontSize: 13, color: 'white', fontWeight: 500 }}>{importFile?.name}</p><p style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{preview.total_rows?.toLocaleString()} rows, {preview.total_columns} columns</p></div>
                 <div style={{ marginBottom: 10 }}>
-                  <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Table Name</label>
+                  <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Table Name</label>
                   <input className="field-input" value={importName} onChange={e => setImportName(e.target.value)} />
                 </div>
                 <button className="btn-primary" onClick={handleImport} disabled={importing} style={{ width: '100%', justifyContent: 'center' }}>
@@ -130,7 +130,7 @@ export default function Database() {
                 </button>
               </div>
             )}
-            {msg && <div className="panel" style={{ marginTop: 12, color: '#60a5fa', fontSize: 13 }}>{msg}</div>}
+            {msg && <div className="panel" style={{ marginTop: 12, color: 'var(--color-info)', fontSize: 13 }}>{msg}</div>}
           </div>
         )}
       </div>

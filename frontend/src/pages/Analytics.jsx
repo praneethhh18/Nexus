@@ -7,13 +7,13 @@ const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', {
 }).format(v || 0);
 
 const STAGE_COLORS = {
-  lead: '#60a5fa', qualified: '#a78bfa', proposal: '#f59e0b',
-  negotiation: '#ec4899', won: '#22c55e', lost: '#6b7280',
+  lead: 'var(--color-info)', qualified: '#a78bfa', proposal: 'var(--color-warn)',
+  negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
-const RISK_COLORS = { high: '#ef4444', medium: '#f59e0b', low: '#22c55e' };
+const RISK_COLORS = { high: 'var(--color-err)', medium: 'var(--color-warn)', low: 'var(--color-ok)' };
 
-function Panel({ icon: Icon, title, action, children, color = '#60a5fa' }) {
+function Panel({ icon: Icon, title, action, children, color = 'var(--color-info)' }) {
   return (
     <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -28,16 +28,16 @@ function Panel({ icon: Icon, title, action, children, color = '#60a5fa' }) {
 }
 
 function Velocity({ data }) {
-  if (!data) return <p style={{ color: '#64748b', fontSize: 11 }}>Loading…</p>;
+  if (!data) return <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>Loading…</p>;
   if (data.total_deals_tracked === 0) {
-    return <p style={{ color: '#64748b', fontSize: 12 }}>No deals tracked yet — create some to see velocity.</p>;
+    return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No deals tracked yet — create some to see velocity.</p>;
   }
   const stages = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
   const maxDays = Math.max(1, ...stages.map(s => data.by_stage[s]?.avg_days || 0));
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>
-        Overall lead → won rate: <strong style={{ color: '#22c55e' }}>{data.overall_win_rate_pct ?? '—'}%</strong>
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+        Overall lead → won rate: <strong style={{ color: 'var(--color-ok)' }}>{data.overall_win_rate_pct ?? '—'}%</strong>
         {' · '}{data.total_deals_tracked} deals tracked
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -47,7 +47,7 @@ function Velocity({ data }) {
           return (
             <div key={s}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
-                <span style={{ color: '#94a3b8', textTransform: 'capitalize' }}>
+                <span style={{ color: 'var(--color-text-muted)', textTransform: 'capitalize' }}>
                   {s} · entered {row.entered_count || 0}
                   {row.win_rate_pct !== null && row.win_rate_pct !== undefined && s !== 'won' && s !== 'lost' &&
                     <> · {row.win_rate_pct}% reach won</>}
@@ -56,7 +56,7 @@ function Velocity({ data }) {
                   {row.avg_days === null || row.avg_days === undefined ? '—' : `${row.avg_days}d avg`}
                 </span>
               </div>
-              <div style={{ height: 5, background: '#0f172a', borderRadius: 3, overflow: 'hidden' }}>
+              <div style={{ height: 5, background: 'var(--color-surface-1)', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', background: STAGE_COLORS[s], transition: 'width 0.3s' }} />
               </div>
             </div>
@@ -68,29 +68,29 @@ function Velocity({ data }) {
 }
 
 function Forecast({ data }) {
-  if (!data) return <p style={{ color: '#64748b', fontSize: 11 }}>Loading…</p>;
-  if (!data.months?.length) return <p style={{ color: '#64748b', fontSize: 12 }}>No upcoming forecast data — add expected-close dates to your deals.</p>;
+  if (!data) return <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>Loading…</p>;
+  if (!data.months?.length) return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No upcoming forecast data — add expected-close dates to your deals.</p>;
   const maxW = Math.max(1, ...data.months.map(m => m.weighted));
   return (
     <div>
-      <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>
-        <div>Weighted: <strong style={{ color: '#22c55e', fontSize: 13 }}>{money(data.totals.weighted, data.currency)}</strong></div>
-        <div>Unweighted: <strong style={{ color: '#e2e8f0' }}>{money(data.totals.unweighted, data.currency)}</strong></div>
-        <div>Deals: <strong style={{ color: '#e2e8f0' }}>{data.totals.deal_count}</strong></div>
+      <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+        <div>Weighted: <strong style={{ color: 'var(--color-ok)', fontSize: 13 }}>{money(data.totals.weighted, data.currency)}</strong></div>
+        <div>Unweighted: <strong style={{ color: 'var(--color-text)' }}>{money(data.totals.unweighted, data.currency)}</strong></div>
+        <div>Deals: <strong style={{ color: 'var(--color-text)' }}>{data.totals.deal_count}</strong></div>
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 120 }}>
         {data.months.map(m => {
           const h = (m.weighted / maxW) * 100;
           return (
             <div key={m.month} style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
-              <div style={{ fontSize: 9, color: '#64748b', marginBottom: 4 }}>{money(m.weighted, data.currency)}</div>
-              <div style={{ height: `${Math.max(h, 2)}%`, background: 'linear-gradient(180deg, #22c55e, #0f766e)', borderRadius: '4px 4px 0 0', minHeight: 2 }} />
-              <div style={{ fontSize: 9, color: '#94a3b8', marginTop: 4 }}>{m.month.substring(5)}</div>
+              <div style={{ fontSize: 9, color: 'var(--color-text-dim)', marginBottom: 4 }}>{money(m.weighted, data.currency)}</div>
+              <div style={{ height: `${Math.max(h, 2)}%`, background: 'linear-gradient(180deg, var(--color-ok), #0f766e)', borderRadius: '4px 4px 0 0', minHeight: 2 }} />
+              <div style={{ fontSize: 9, color: 'var(--color-text-muted)', marginTop: 4 }}>{m.month.substring(5)}</div>
             </div>
           );
         })}
       </div>
-      <div style={{ marginTop: 12, padding: 8, background: '#0f172a', borderRadius: 6, fontSize: 10, color: '#64748b' }}>
+      <div style={{ marginTop: 12, padding: 8, background: 'var(--color-surface-1)', borderRadius: 6, fontSize: 10, color: 'var(--color-text-dim)' }}>
         Last 90 days won: {money(data.last_90_won?.total_value || 0, data.currency)} · {data.last_90_won?.deal_count || 0} deals
       </div>
     </div>
@@ -98,19 +98,19 @@ function Forecast({ data }) {
 }
 
 function Impact({ data, days, onDaysChange }) {
-  if (!data) return <p style={{ color: '#64748b', fontSize: 11 }}>Loading…</p>;
+  if (!data) return <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>Loading…</p>;
   const topTools = (data.by_tool || []).slice(0, 8);
   const maxCount = Math.max(1, ...topTools.map(t => t.count));
   return (
     <div>
-      <div style={{ display: 'flex', gap: 16, fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>
-        <div>Tool calls: <strong style={{ color: '#e2e8f0' }}>{data.total_tool_calls}</strong></div>
-        <div>Success: <strong style={{ color: '#22c55e' }}>{data.success_rate_pct}%</strong></div>
-        <div>Approvals executed: <strong style={{ color: '#e2e8f0' }}>{data.approvals.executed}</strong></div>
+      <div style={{ display: 'flex', gap: 16, fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 10 }}>
+        <div>Tool calls: <strong style={{ color: 'var(--color-text)' }}>{data.total_tool_calls}</strong></div>
+        <div>Success: <strong style={{ color: 'var(--color-ok)' }}>{data.success_rate_pct}%</strong></div>
+        <div>Approvals executed: <strong style={{ color: 'var(--color-text)' }}>{data.approvals.executed}</strong></div>
         <div>Minutes saved (est.): <strong style={{ color: '#a78bfa' }}>~{data.estimated_minutes_saved}</strong></div>
       </div>
       {topTools.length === 0 ? (
-        <p style={{ color: '#64748b', fontSize: 11 }}>No agent activity in this window yet.</p>
+        <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>No agent activity in this window yet.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           {topTools.map(t => {
@@ -118,10 +118,10 @@ function Impact({ data, days, onDaysChange }) {
             return (
               <div key={t.tool}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
-                  <code style={{ color: '#e2e8f0' }}>{t.tool}</code>
-                  <span style={{ color: '#94a3b8' }}>{t.count} · {t.avg_duration_ms}ms avg</span>
+                  <code style={{ color: 'var(--color-text)' }}>{t.tool}</code>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{t.count} · {t.avg_duration_ms}ms avg</span>
                 </div>
-                <div style={{ height: 4, background: '#0f172a', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ height: 4, background: 'var(--color-surface-1)', borderRadius: 2, overflow: 'hidden' }}>
                   <div style={{ width: `${pct}%`, height: '100%', background: '#a78bfa' }} />
                 </div>
               </div>
@@ -134,33 +134,33 @@ function Impact({ data, days, onDaysChange }) {
 }
 
 function Churn({ data }) {
-  if (!data) return <p style={{ color: '#64748b', fontSize: 11 }}>Loading…</p>;
-  if (!data.deals?.length) return <p style={{ color: '#64748b', fontSize: 12 }}>No open deals to score.</p>;
+  if (!data) return <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>Loading…</p>;
+  if (!data.deals?.length) return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No open deals to score.</p>;
   return (
     <div>
-      <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 10 }}>
+      <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 10 }}>
         {data.total_high} high-risk · {data.total_medium} medium-risk · looking at top {data.deals.length} by value
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 320, overflow: 'auto' }}>
         {data.deals.map(d => {
           const color = RISK_COLORS[d.risk_level];
           return (
-            <div key={d.deal_id} style={{ padding: 10, background: '#0f172a', borderRadius: 6, borderLeft: `3px solid ${color}` }}>
+            <div key={d.deal_id} style={{ padding: 10, background: 'var(--color-surface-1)', borderRadius: 6, borderLeft: `3px solid ${color}` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 12, fontWeight: 500, color: '#e2e8f0', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {d.name}
                   </div>
-                  <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>
                     {d.stage} · {money(d.value, d.currency)} · {d.probability_pct || 0}%
                   </div>
                   {d.factors?.length > 0 && (
-                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 4 }}>
                       {d.factors.join(' · ')}
                     </div>
                   )}
                   {d.suggested_action && (
-                    <div style={{ fontSize: 11, color: '#fbbf24', marginTop: 6, padding: 6, background: '#f59e0b15', borderRadius: 4 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-warn)', marginTop: 6, padding: 6, background: 'color-mix(in srgb, var(--color-warn) 8%, transparent)', borderRadius: 4 }}>
                       💡 {d.suggested_action}
                     </div>
                   )}
@@ -213,21 +213,21 @@ export default function Analytics() {
         <p>Pipeline velocity, revenue forecast, agent impact, and deal churn risk</p>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
       <div className="page-body">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-          <Panel icon={Clock} title="Pipeline velocity" color="#60a5fa">
+          <Panel icon={Clock} title="Pipeline velocity" color="var(--color-info)">
             <Velocity data={velocity} />
           </Panel>
 
           <Panel
             icon={TrendingUp}
             title="Revenue forecast"
-            color="#22c55e"
+            color="var(--color-ok)"
             action={
               <select value={horizonMonths} onChange={(e) => setHorizonMonths(parseInt(e.target.value))}
-                style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, color: '#e2e8f0', fontSize: 11, padding: '4px 8px' }}>
+                style={{ background: 'var(--color-surface-1)', border: '1px solid var(--color-surface-2)', borderRadius: 6, color: 'var(--color-text)', fontSize: 11, padding: '4px 8px' }}>
                 {[3, 6, 9, 12].map(m => <option key={m} value={m}>{m} months</option>)}
               </select>
             }
@@ -241,7 +241,7 @@ export default function Analytics() {
             color="#a78bfa"
             action={
               <select value={impactDays} onChange={(e) => setImpactDays(parseInt(e.target.value))}
-                style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 6, color: '#e2e8f0', fontSize: 11, padding: '4px 8px' }}>
+                style={{ background: 'var(--color-surface-1)', border: '1px solid var(--color-surface-2)', borderRadius: 6, color: 'var(--color-text)', fontSize: 11, padding: '4px 8px' }}>
                 {[7, 14, 30, 60, 90].map(d => <option key={d} value={d}>last {d} days</option>)}
               </select>
             }
@@ -249,7 +249,7 @@ export default function Analytics() {
             <Impact data={impact} days={impactDays} onDaysChange={setImpactDays} />
           </Panel>
 
-          <Panel icon={AlertTriangle} title="Deal churn risk" color="#ef4444">
+          <Panel icon={AlertTriangle} title="Deal churn risk" color="var(--color-err)">
             <Churn data={churn} />
           </Panel>
         </div>

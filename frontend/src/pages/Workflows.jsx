@@ -4,29 +4,29 @@ import '@xyflow/react/dist/style.css';
 import { Play, Plus, Trash2, Power, Save, GitBranch, Zap, Sparkles, Clock, Edit3, Code2, ArrowLeft, Check } from 'lucide-react';
 import { getWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, toggleWorkflow, runWorkflow, getNodeTypes, getWorkflowTemplates, getWorkflowHistory, generateWorkflowFromText } from '../services/api';
 
-const CAT_COLORS = { trigger: '#2563eb', condition: '#7c3aed', data: '#16a34a', ai: '#ea580c', action: '#dc2626', control: '#475569' };
+const CAT_COLORS = { trigger: 'var(--color-accent-hover)', condition: '#7c3aed', data: 'var(--color-ok)', ai: 'var(--color-warn)', action: 'var(--color-err)', control: 'var(--color-text-dim)' };
 const CAT_ICONS = { trigger: 'T', condition: '?', data: 'D', ai: 'AI', action: 'A', control: 'C' };
 const CAT_LABELS = { trigger: 'Triggers', condition: 'Conditions', data: 'Data', ai: 'AI', action: 'Actions', control: 'Control' };
 
 // ── Custom node renderer for React Flow ──────────────────────────────────────
 function WorkflowNode({ data, selected }) {
-  const color = CAT_COLORS[data.category] || '#475569';
+  const color = CAT_COLORS[data.category] || 'var(--color-text-dim)';
   const icon = CAT_ICONS[data.category] || 'N';
   return (
     <div style={{
       padding: '10px 16px', borderRadius: 12, minWidth: 160,
-      background: selected ? `${color}18` : '#1e293b',
-      border: `2px solid ${selected ? color : '#334155'}`,
+      background: selected ? `${color}18` : 'var(--color-surface-2)',
+      border: `2px solid ${selected ? color : 'var(--color-border-strong)'}`,
       boxShadow: selected ? `0 0 16px ${color}30` : '0 2px 8px #00000030',
     }}>
-      <Handle type="target" position={Position.Left} style={{ background: color, width: 8, height: 8, border: '2px solid #0f172a' }} />
+      <Handle type="target" position={Position.Left} style={{ background: color, width: 8, height: 8, border: '2px solid var(--color-surface-1)' }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
         <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: color, padding: '2px 7px', borderRadius: 6 }}>{icon}</span>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>{data.label}</span>
       </div>
-      <div style={{ fontSize: 10, color: '#64748b' }}>{data.nodeType}</div>
-      {data.description && <div style={{ fontSize: 9, color: '#475569', marginTop: 3, maxWidth: 180 }}>{data.description}</div>}
-      <Handle type="source" position={Position.Right} style={{ background: color, width: 8, height: 8, border: '2px solid #0f172a' }} />
+      <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{data.nodeType}</div>
+      {data.description && <div style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 3, maxWidth: 180 }}>{data.description}</div>}
+      <Handle type="source" position={Position.Right} style={{ background: color, width: 8, height: 8, border: '2px solid var(--color-surface-1)' }} />
     </div>
   );
 }
@@ -39,12 +39,12 @@ function TemplateCard({ tmpl, onEnable, onOpen }) {
   return (
     <div className="panel" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
-        <p style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>{tmpl.name}</p>
-        <p style={{ fontSize: 11, color: '#94a3b8', margin: '4px 0 0' }}>{tmpl.description}</p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{tmpl.name}</p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{tmpl.description}</p>
       </div>
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {tags.map((t, i) => (
-          <span key={i} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 4, background: '#0f172a', color: '#64748b' }}>{t}</span>
+          <span key={i} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 4, background: 'var(--color-surface-1)', color: 'var(--color-text-dim)' }}>{t}</span>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 6, marginTop: 'auto' }}>
@@ -115,7 +115,7 @@ export default function Workflows() {
 
   // ── Builder: React Flow state helpers ───────────────────────────────────────
   const onConnect = useCallback((params) => {
-    setRfEdges(eds => addEdge({ ...params, animated: true, style: { stroke: '#3b82f6', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' } }, eds));
+    setRfEdges(eds => addEdge({ ...params, animated: true, style: { stroke: 'var(--color-accent)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-accent)' } }, eds));
     setDirty(true);
   }, [setRfEdges]);
 
@@ -133,9 +133,9 @@ export default function Workflows() {
     const edges = (wf.edges || []).map((e, i) => ({
       id: `e-${i}`, source: e.source, target: e.target,
       label: e.label || '', animated: true,
-      style: { stroke: '#3b82f680', strokeWidth: 2 },
-      markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' },
-      labelStyle: { fill: '#94a3b8', fontSize: 10, fontWeight: 500 },
+      style: { stroke: 'color-mix(in srgb, var(--color-accent) 50%, transparent)', strokeWidth: 2 },
+      markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-accent)' },
+      labelStyle: { fill: 'var(--color-text-muted)', fontSize: 10, fontWeight: 500 },
     }));
     return { nodes, edges };
   };
@@ -276,11 +276,11 @@ export default function Workflows() {
         )}
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
       {/* Tab bar (hidden in builder) */}
       {view !== 'builder' && (
-        <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid #1e293b' }}>
+        <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)' }}>
           {[
             ['gallery', 'Templates', Sparkles],
             ['my', `My Workflows (${workflows.length})`, GitBranch],
@@ -302,12 +302,12 @@ export default function Workflows() {
       {view === 'gallery' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
           {/* AI-assisted builder */}
-          <div className="panel" style={{ padding: 16, marginBottom: 16, background: 'linear-gradient(135deg, #0c1222, #151e36)', border: '1px solid #22c55e30' }}>
+          <div className="panel" style={{ padding: 16, marginBottom: 16, background: 'linear-gradient(135deg, var(--color-bg), var(--color-surface-2))', border: '1px solid color-mix(in srgb, var(--color-ok) 19%, transparent)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Sparkles size={16} color="#22c55e" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>Describe an automation in plain English</span>
+              <Sparkles size={16} color="var(--color-ok)" />
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Describe an automation in plain English</span>
             </div>
-            <p style={{ fontSize: 11, color: '#94a3b8', margin: '0 0 10px' }}>
+            <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
               e.g. <em>"Every Monday at 9am, post a Slack summary of last week's sales"</em> or
               <em> "When a new deal reaches proposal stage, create a follow-up task for me in 3 days"</em>
             </p>
@@ -354,9 +354,9 @@ export default function Workflows() {
             </div>
           </div>
 
-          <p style={{ fontSize: 12, color: '#64748b', marginBottom: 16 }}>
-            Or pick a ready-made template. Click <strong style={{ color: '#22c55e' }}>Use this</strong> to turn one on with one click,
-            or <strong style={{ color: '#e2e8f0' }}>Customize</strong> to tweak it first.
+          <p style={{ fontSize: 12, color: 'var(--color-text-dim)', marginBottom: 16 }}>
+            Or pick a ready-made template. Click <strong style={{ color: 'var(--color-ok)' }}>Use this</strong> to turn one on with one click,
+            or <strong style={{ color: 'var(--color-text)' }}>Customize</strong> to tweak it first.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
             {templates.map((t, i) => (
@@ -368,7 +368,7 @@ export default function Workflows() {
               />
             ))}
             {enablingName && (
-              <div className="panel" style={{ gridColumn: '1/-1', color: '#60a5fa', fontSize: 12 }}>
+              <div className="panel" style={{ gridColumn: '1/-1', color: 'var(--color-info)', fontSize: 12 }}>
                 Enabling "{enablingName}"...
               </div>
             )}
@@ -380,7 +380,7 @@ export default function Workflows() {
       {view === 'my' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
           {workflows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
               <GitBranch size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
               <p style={{ fontSize: 14, marginBottom: 4 }}>No workflows yet</p>
               <p style={{ fontSize: 11 }}>Head to the <strong>Templates</strong> tab to enable one with one click, or click <strong>Build custom</strong> above.</p>
@@ -391,16 +391,16 @@ export default function Workflows() {
                 <div key={wf.id} className="panel" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{wf.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{wf.name}</span>
                       <span style={{
                         fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 600,
-                        background: wf.enabled ? '#22c55e22' : '#334155',
-                        color: wf.enabled ? '#4ade80' : '#94a3b8',
+                        background: wf.enabled ? 'color-mix(in srgb, var(--color-ok) 13%, transparent)' : 'var(--color-border-strong)',
+                        color: wf.enabled ? 'var(--color-ok)' : 'var(--color-text-muted)',
                       }}>
                         {wf.enabled ? 'ON' : 'OFF'}
                       </span>
                     </div>
-                    <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>
                       {wf.nodes?.length || 0} steps
                       {wf.last_run && <> · last run: {wf.last_run.substring(0, 16)} ({wf.last_status})</>}
                       {wf.run_count > 0 && <> · runs: {wf.run_count}</>}
@@ -413,7 +413,7 @@ export default function Workflows() {
                     <button className="btn-ghost" onClick={() => openBuilderForWorkflow(wf.id)}>
                       <Edit3 size={13} /> Edit
                     </button>
-                    <button className="btn-ghost" style={{ color: '#f87171' }} onClick={() => handleDelete(wf.id, wf.name)}>
+                    <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={() => handleDelete(wf.id, wf.name)}>
                       <Trash2 size={13} />
                     </button>
                   </div>
@@ -428,7 +428,7 @@ export default function Workflows() {
       {view === 'history' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
           {history.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40, color: '#475569', fontSize: 13 }}>No run history yet</div>
+            <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)', fontSize: 13 }}>No run history yet</div>
           ) : (
             <div className="table-panel">
               <div className="table-panel-header">Recent Runs</div>
@@ -437,7 +437,7 @@ export default function Workflows() {
                 <tbody>{history.map((h, i) => (
                   <tr key={i}>
                     <td style={{ fontWeight: 500 }}>{h.workflow_name}</td>
-                    <td style={{ color: h.status === 'success' ? '#4ade80' : '#f87171' }}>{h.status}</td>
+                    <td style={{ color: h.status === 'success' ? 'var(--color-ok)' : 'var(--color-err)' }}>{h.status}</td>
                     <td>{h.duration_ms}ms</td>
                     <td>{h.finished_at?.substring(0, 16)}</td>
                   </tr>
@@ -451,7 +451,7 @@ export default function Workflows() {
       {/* BUILDER (advanced) */}
       {view === 'builder' && (
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <div style={{ width: 220, borderRight: '1px solid #1e293b', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
+          <div style={{ width: 220, borderRight: '1px solid var(--color-surface-2)', display: 'flex', flexDirection: 'column', overflow: 'hidden', flexShrink: 0 }}>
             <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
               <div className="conv-label">Add a step</div>
               {Object.entries(categories).map(([cat, nodes]) => (
@@ -463,9 +463,9 @@ export default function Workflows() {
                   {nodes.map(n => (
                     <button key={n.type} onClick={() => addNode(n.type)}
                       title={n.description}
-                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px', fontSize: 11, color: '#94a3b8', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 6 }}
-                      onMouseOver={e => { e.target.style.background = '#1e293b'; e.target.style.color = 'white'; }}
-                      onMouseOut={e => { e.target.style.background = 'transparent'; e.target.style.color = '#94a3b8'; }}>
+                      style={{ display: 'block', width: '100%', textAlign: 'left', padding: '5px 8px', fontSize: 11, color: 'var(--color-text-muted)', background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: 6 }}
+                      onMouseOver={e => { e.target.style.background = 'var(--color-surface-2)'; e.target.style.color = 'white'; }}
+                      onMouseOut={e => { e.target.style.background = 'transparent'; e.target.style.color = 'var(--color-text-muted)'; }}>
                       {n.name || n.type}
                     </button>
                   ))}
@@ -475,9 +475,9 @@ export default function Workflows() {
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderBottom: '1px solid #1e293b' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderBottom: '1px solid var(--color-surface-2)' }}>
               <input value={wfName} onChange={e => { setWfName(e.target.value); setDirty(true); }}
-                style={{ background: 'transparent', border: '1px solid #334155', borderRadius: 6, padding: '4px 10px', color: 'white', fontSize: 13, fontWeight: 500, flex: 1, outline: 'none' }}
+                style={{ background: 'transparent', border: '1px solid var(--color-border-strong)', borderRadius: 6, padding: '4px 10px', color: 'white', fontSize: 13, fontWeight: 500, flex: 1, outline: 'none' }}
                 placeholder="Workflow name" />
               {wfId && (
                 <button className="btn-ghost" onClick={() => handleToggleEnabled(wfId, !wfEnabled).then(() => setWfEnabled(!wfEnabled))}>
@@ -487,7 +487,7 @@ export default function Workflows() {
             </div>
 
             {rfNodes.length === 0 ? (
-              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: '#475569' }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', color: 'var(--color-text-dim)' }}>
                 <Zap size={36} style={{ marginBottom: 12, opacity: 0.4 }} />
                 <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Empty workflow</p>
                 <p style={{ fontSize: 12, textAlign: 'center' }}>Add steps from the left panel, connect them by dragging between handles.</p>
@@ -503,59 +503,59 @@ export default function Workflows() {
                   onPaneClick={() => setSelectedNodeId(null)}
                   nodeTypes={nodeTypes}
                   fitView
-                  style={{ background: '#0a0e1a' }}
-                  defaultEdgeOptions={{ animated: true, style: { stroke: '#3b82f680', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: '#3b82f6' } }}
+                  style={{ background: 'var(--color-bg)' }}
+                  defaultEdgeOptions={{ animated: true, style: { stroke: 'color-mix(in srgb, var(--color-accent) 50%, transparent)', strokeWidth: 2 }, markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-accent)' } }}
                 >
-                  <Background color="#1e293b" gap={20} size={1} />
-                  <Controls showInteractive={false} style={{ background: '#1e293b', borderRadius: 8, border: '1px solid #334155' }} />
-                  <MiniMap nodeColor={(n) => CAT_COLORS[n.data?.category] || '#475569'} style={{ background: '#0f172a', border: '1px solid #1e293b', borderRadius: 8 }} />
+                  <Background color="var(--color-surface-2)" gap={20} size={1} />
+                  <Controls showInteractive={false} style={{ background: 'var(--color-surface-2)', borderRadius: 8, border: '1px solid var(--color-border-strong)' }} />
+                  <MiniMap nodeColor={(n) => CAT_COLORS[n.data?.category] || 'var(--color-text-dim)'} style={{ background: 'var(--color-surface-1)', border: '1px solid var(--color-surface-2)', borderRadius: 8 }} />
                 </ReactFlow>
               </div>
             )}
 
             {runResult && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid #1e293b', background: '#0c1222', maxHeight: 150, overflow: 'auto' }}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: runResult.status === 'success' ? '#4ade80' : '#f87171', marginBottom: 4 }}>
+              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--color-surface-2)', background: 'var(--color-bg)', maxHeight: 150, overflow: 'auto' }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: runResult.status === 'success' ? 'var(--color-ok)' : 'var(--color-err)', marginBottom: 4 }}>
                   Run: {runResult.status?.toUpperCase()} — {runResult.duration_ms}ms
                 </div>
                 {runResult.steps?.map((s, i) => (
-                  <div key={i} style={{ display: 'flex', gap: 10, fontSize: 10, padding: '2px 0', color: '#94a3b8' }}>
+                  <div key={i} style={{ display: 'flex', gap: 10, fontSize: 10, padding: '2px 0', color: 'var(--color-text-muted)' }}>
                     <span style={{ minWidth: 100, fontWeight: 500 }}>{s.node_name}</span>
-                    <span style={{ color: s.status === 'success' ? '#4ade80' : '#f87171', minWidth: 50 }}>{s.status}</span>
-                    <span style={{ color: '#475569', minWidth: 50 }}>{s.duration_ms}ms</span>
-                    <span style={{ color: '#475569', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(s.output || '').substring(0, 100)}</span>
+                    <span style={{ color: s.status === 'success' ? 'var(--color-ok)' : 'var(--color-err)', minWidth: 50 }}>{s.status}</span>
+                    <span style={{ color: 'var(--color-text-dim)', minWidth: 50 }}>{s.duration_ms}ms</span>
+                    <span style={{ color: 'var(--color-text-dim)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{String(s.output || '').substring(0, 100)}</span>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div style={{ width: 260, borderLeft: '1px solid #1e293b', padding: 12, overflow: 'auto', flexShrink: 0 }}>
+          <div style={{ width: 260, borderLeft: '1px solid var(--color-surface-2)', padding: 12, overflow: 'auto', flexShrink: 0 }}>
             {selectedNode ? (() => {
               const nd = selectedNode.data;
               const typeDef = nodeTypeDefs[nd.nodeType] || {};
-              const color = CAT_COLORS[nd.category] || '#475569';
+              const color = CAT_COLORS[nd.category] || 'var(--color-text-dim)';
               return (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                     <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', background: color, padding: '2px 7px', borderRadius: 6 }}>{CAT_ICONS[nd.category]}</span>
                     <span style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Step Settings</span>
                   </div>
-                  <div style={{ fontSize: 10, color: '#475569', marginBottom: 8 }}>Type: {nd.nodeType}</div>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 8 }}>Type: {nd.nodeType}</div>
 
-                  <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Name</label>
+                  <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Name</label>
                   <input className="field-input" value={nd.label} style={{ marginBottom: 10, fontSize: 12 }}
                     onChange={e => updateNodeData(selectedNode.id, { label: e.target.value })} />
 
                   {typeDef.description && (
-                    <div style={{ fontSize: 10, color: '#475569', marginBottom: 10, padding: 8, background: '#0f172a', borderRadius: 6 }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 10, padding: 8, background: 'var(--color-surface-1)', borderRadius: 6 }}>
                       {typeDef.description}
                     </div>
                   )}
 
                   {Object.entries(typeDef.config || {}).map(([key, def]) => (
                     <div key={key} style={{ marginBottom: 8 }}>
-                      <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>{def.label || key}</label>
+                      <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>{def.label || key}</label>
                       {def.type === 'select' ? (
                         <select className="field-select" style={{ width: '100%' }}
                           value={nd.config?.[key] ?? def.default ?? ''}
@@ -563,7 +563,7 @@ export default function Workflows() {
                           {(def.options || []).map(o => <option key={o} value={o}>{o}</option>)}
                         </select>
                       ) : def.type === 'boolean' ? (
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
                           <input type="checkbox" checked={!!nd.config?.[key]}
                             onChange={e => updateNodeData(selectedNode.id, { config: { ...nd.config, [key]: e.target.checked } })} />
                           {nd.config?.[key] ? 'Enabled' : 'Disabled'}
@@ -585,13 +585,13 @@ export default function Workflows() {
                   ))}
 
                   {typeDef.outputs?.length > 0 && (
-                    <div style={{ fontSize: 10, color: '#475569', marginTop: 6, padding: 6, background: '#0f172a', borderRadius: 4 }}>
+                    <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 6, padding: 6, background: 'var(--color-surface-1)', borderRadius: 4 }}>
                       Outputs: {typeDef.outputs.join(', ')}
                     </div>
                   )}
 
-                  <div style={{ borderTop: '1px solid #1e293b', paddingTop: 10, marginTop: 10 }}>
-                    <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center', color: '#f87171' }}
+                  <div style={{ borderTop: '1px solid var(--color-surface-2)', paddingTop: 10, marginTop: 10 }}>
+                    <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center', color: 'var(--color-err)' }}
                       onClick={() => removeNode(selectedNode.id)}>
                       <Trash2 size={13} /> Delete step
                     </button>
@@ -599,7 +599,7 @@ export default function Workflows() {
                 </>
               );
             })() : (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#475569', textAlign: 'center', padding: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-dim)', textAlign: 'center', padding: 16 }}>
                 <Check size={24} style={{ marginBottom: 8, opacity: 0.4 }} />
                 <p style={{ fontSize: 12, fontWeight: 500, marginBottom: 4 }}>Step Inspector</p>
                 <p style={{ fontSize: 11 }}>Click a step on the canvas to configure it.</p>

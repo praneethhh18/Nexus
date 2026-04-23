@@ -17,12 +17,12 @@ function Modal({ title, onClose, children }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12,
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
         padding: 20, width: 440, boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={16} /></button>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><X size={16} /></button>
         </div>
         {children}
       </div>
@@ -91,16 +91,16 @@ export default function Team() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>Team</h1>
-          <p>Members, invites, and recent activity for <strong style={{ color: '#e2e8f0' }}>{current?.name}</strong></p>
+          <p>Members, invites, and recent activity for <strong style={{ color: 'var(--color-text)' }}>{current?.name}</strong></p>
         </div>
         {canManage && tab !== 'activity' && (
           <button className="btn-primary" onClick={() => setShowInvite(true)}><UserPlus size={13} /> Invite</button>
         )}
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
-      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid #1e293b' }}>
+      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)' }}>
         {[
           ['members', `Members (${members.length})`, Users],
           ['invites', `Invites (${pendingInvites.length})`, Mail],
@@ -126,8 +126,8 @@ export default function Team() {
                       <span style={{
                         fontSize: 9, fontWeight: 700, textTransform: 'uppercase',
                         padding: '2px 8px', borderRadius: 10,
-                        background: m.role === 'owner' ? '#f59e0b22' : m.role === 'admin' ? '#3b82f622' : '#33415522',
-                        color: m.role === 'owner' ? '#fbbf24' : m.role === 'admin' ? '#60a5fa' : '#94a3b8',
+                        background: m.role === 'owner' ? 'color-mix(in srgb, var(--color-warn) 13%, transparent)' : m.role === 'admin' ? 'color-mix(in srgb, var(--color-accent) 13%, transparent)' : 'color-mix(in srgb, var(--color-border-strong) 13%, transparent)',
+                        color: m.role === 'owner' ? 'var(--color-warn)' : m.role === 'admin' ? 'var(--color-info)' : 'var(--color-text-muted)',
                       }}>{m.role}</span>
                     </td>
                     <td>{formatWhen(m.joined_at)}</td>
@@ -140,7 +140,7 @@ export default function Team() {
 
         {tab === 'invites' && (
           invites.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
               <Mail size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
               <p style={{ fontSize: 13 }}>No invites yet. Click "Invite" to add a teammate.</p>
             </div>
@@ -148,13 +148,13 @@ export default function Team() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {invites.map(inv => {
                 const status = inv.accepted_at ? 'accepted' : inv.revoked_at ? 'revoked' : 'pending';
-                const color = { pending: '#f59e0b', accepted: '#22c55e', revoked: '#64748b' }[status];
+                const color = { pending: 'var(--color-warn)', accepted: 'var(--color-ok)', revoked: 'var(--color-text-dim)' }[status];
                 return (
                   <div key={inv.token} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Mail size={14} style={{ color: '#64748b' }} />
+                    <Mail size={14} style={{ color: 'var(--color-text-dim)' }} />
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 13, fontWeight: 500, color: '#e2e8f0' }}>{inv.email}</div>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)' }}>{inv.email}</div>
+                      <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
                         {inv.role} · invited {formatWhen(inv.created_at)}
                         {status === 'pending' && ` · expires ${formatWhen(inv.expires_at)}`}
                         {status === 'accepted' && ` · accepted ${formatWhen(inv.accepted_at)}`}
@@ -171,7 +171,7 @@ export default function Team() {
                           await navigator.clipboard.writeText(link);
                           flash('Invite link copied.');
                         }} title="Copy link"><Link2 size={12} /></button>
-                        <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={async () => {
+                        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={async () => {
                           if (!confirm(`Revoke invite for ${inv.email}?`)) return;
                           await revokeInvite(inv.token);
                           flash('Revoked.');
@@ -188,30 +188,30 @@ export default function Team() {
 
         {tab === 'activity' && (
           activity.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: 12, textAlign: 'center', padding: 48 }}>No activity yet.</p>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: 12, textAlign: 'center', padding: 48 }}>No activity yet.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {activity.map((a, i) => {
                 const tint = {
-                  tool_call: '#60a5fa', approval: '#f59e0b',
-                  interaction: '#22c55e', notification: '#a78bfa',
-                }[a.kind] || '#64748b';
+                  tool_call: 'var(--color-info)', approval: 'var(--color-warn)',
+                  interaction: 'var(--color-ok)', notification: '#a78bfa',
+                }[a.kind] || 'var(--color-text-dim)';
                 return (
                   <div key={a.id || i} style={{
-                    padding: '8px 12px', background: '#0f172a', borderRadius: 6, borderLeft: `3px solid ${tint}`,
+                    padding: '8px 12px', background: 'var(--color-surface-1)', borderRadius: 6, borderLeft: `3px solid ${tint}`,
                     display: 'flex', alignItems: 'flex-start', gap: 10,
                   }}>
                     <span style={{
                       fontSize: 9, fontWeight: 700, textTransform: 'uppercase', color: tint, minWidth: 70,
                     }}>{a.kind.replace('_', ' ')}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: '#e2e8f0' }}>{a.title}</div>
-                      {a.summary && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.summary}</div>}
-                      <div style={{ fontSize: 9, color: '#475569', marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: 'var(--color-text)' }}>{a.title}</div>
+                      {a.summary && <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.summary}</div>}
+                      <div style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 2 }}>
                         {a.actor_name || 'system'} · {formatWhen(a.ts)}
                       </div>
                     </div>
-                    {a.success === false && <span style={{ color: '#f87171', fontSize: 10 }}>failed</span>}
+                    {a.success === false && <span style={{ color: 'var(--color-err)', fontSize: 10 }}>failed</span>}
                   </div>
                 );
               })}
@@ -224,15 +224,15 @@ export default function Team() {
         <Modal title="Invite a teammate" onClose={() => setShowInvite(false)}>
           <form onSubmit={handleInvite}>
             <div style={{ marginBottom: 10 }}>
-              <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Email *</label>
+              <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Email *</label>
               <input className="field-input" type="email" required autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
             </div>
             <div style={{ marginBottom: 10 }}>
-              <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Role</label>
+              <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Role</label>
               <select className="field-select" value={newRole} onChange={(e) => setNewRole(e.target.value)} style={{ width: '100%' }}>
                 {ROLE_OPTIONS.map(r => <option key={r}>{r}</option>)}
               </select>
-              <p style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+              <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 4 }}>
                 viewer = read-only · member = normal access · admin = can invite others and manage business
               </p>
             </div>

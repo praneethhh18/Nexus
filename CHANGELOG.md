@@ -2,6 +2,111 @@
 ## [Unreleased] - 2026-04-23
 
 ### Fixed
+- [bugfix] Changes in index-0prIQnl3.js (`index-0prIQnl3.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in FlowBanner.jsx (`FlowBanner.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in Dashboard.jsx (`Dashboard.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in seed.js (`seed.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Changed
+- [enhancement] Changes in server.py (`server.py`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in seed_data.py (`seed_data.py`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in index-DTX9_5Cl.js (`index-DTX9_5Cl.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Added
+- [feature] Changes in Chat.jsx (`Chat.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Changed
+- [unknown] Changes in Layout.jsx (`Layout.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in index-C-Zf_tbo.js (`index-C-Zf_tbo.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in Settings.jsx (`Settings.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in index-BPcOfiXj.js (`index-BPcOfiXj.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in index-CTD2iEwV.js (`index-CTD2iEwV.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Added
+- Add SQL Editor with query execution and result handling (`SQLEditor.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in Documents.jsx (`Documents.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in OnboardingWizard.jsx (`OnboardingWizard.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in migrate_colors.py (`migrate_colors.py`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in index-BXjNyZs5.js (`index-BXjNyZs5.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in Security.jsx (`Security.jsx`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in security.js (`security.js`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
+- [bugfix] Changes in server.py (`server.py`)
+
+## [Unreleased] - 2026-04-23
+
+### Fixed
 - [bugfix] Changes in index-Caa-ntLc.js (`index-Caa-ntLc.js`)
 
 ## [Unreleased] - 2026-04-23

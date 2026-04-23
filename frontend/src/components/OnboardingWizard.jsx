@@ -77,7 +77,7 @@ export default function OnboardingWizard({ onClose }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{
-        background: '#0c1222', border: '1px solid #1e293b', borderRadius: 14,
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 14,
         padding: 32, width: 480, boxShadow: '0 20px 60px rgba(0,0,0,0.7)',
       }}>
         {/* Progress bar */}
@@ -85,22 +85,22 @@ export default function OnboardingWizard({ onClose }) {
           {steps.map((_, i) => (
             <div key={i} style={{
               flex: 1, height: 3, borderRadius: 2,
-              background: i <= step ? '#22c55e' : '#1e293b',
+              background: i <= step ? 'var(--color-ok)' : 'var(--color-surface-2)',
               transition: 'background 0.2s',
             }} />
           ))}
         </div>
 
-        <button onClick={finish} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+        <button onClick={finish} style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}>
           <X size={16} />
         </button>
 
         {step === 0 && (
           <>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <Sparkles size={40} color="#22c55e" style={{ marginBottom: 12 }} />
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>Welcome to NexusAgent</h2>
-              <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 8 }}>Your 360° business assistant. Let's get you set up in under a minute.</p>
+              <Sparkles size={40} color="var(--color-ok)" style={{ marginBottom: 12 }} />
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)', margin: 0 }}>Welcome to NexusAgent</h2>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8 }}>Your 360° business assistant. Let's get you set up in under a minute.</p>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 20 }}>
               {[
@@ -109,10 +109,10 @@ export default function OnboardingWizard({ onClose }) {
                 { icon: CheckSquare, label: 'Tasks', desc: 'Track what needs doing' },
                 { icon: Receipt, label: 'Invoices', desc: 'Create & track payments' },
               ].map(({ icon: Icon, label, desc }, i) => (
-                <div key={i} style={{ padding: 12, background: '#0f172a', borderRadius: 8 }}>
-                  <Icon size={16} color="#60a5fa" style={{ marginBottom: 6 }} />
-                  <div style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0' }}>{label}</div>
-                  <div style={{ fontSize: 10, color: '#64748b' }}>{desc}</div>
+                <div key={i} style={{ padding: 12, background: 'var(--color-surface-1)', borderRadius: 8 }}>
+                  <Icon size={16} color="var(--color-info)" style={{ marginBottom: 6 }} />
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>{label}</div>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{desc}</div>
                 </div>
               ))}
             </div>
@@ -125,9 +125,9 @@ export default function OnboardingWizard({ onClose }) {
 
         {step === 1 && (
           <>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0', marginBottom: 6 }}>Your business</h2>
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>
-              You already have <strong style={{ color: '#e2e8f0' }}>{current?.name || 'a business'}</strong>.
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>Your business</h2>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>
+              You already have <strong style={{ color: 'var(--color-text)' }}>{current?.name || 'a business'}</strong>.
               Want to rename it or create another? Leave blank to keep things as they are.
             </p>
             <input
@@ -148,8 +148,8 @@ export default function OnboardingWizard({ onClose }) {
 
         {step === 2 && (
           <>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0', marginBottom: 6 }}>Add your first contact</h2>
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>This is optional — you can add contacts any time from the CRM tab.</p>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>Add your first contact</h2>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>This is optional — you can add contacts any time from the CRM tab.</p>
             <input
               className="field-input" placeholder="Full name" value={contactName}
               onChange={(e) => setContactName(e.target.value)} maxLength={160}
@@ -168,8 +168,8 @@ export default function OnboardingWizard({ onClose }) {
 
         {step === 3 && (
           <>
-            <h2 style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0', marginBottom: 6 }}>Your first task</h2>
-            <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 16 }}>What's something on your plate right now?</p>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>Your first task</h2>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>What's something on your plate right now?</p>
             <input
               className="field-input" placeholder="e.g. Call Acme on Friday"
               value={firstTask} onChange={(e) => setFirstTask(e.target.value)} maxLength={200}
@@ -186,14 +186,14 @@ export default function OnboardingWizard({ onClose }) {
           <>
             <div style={{ textAlign: 'center', marginBottom: 20 }}>
               <div style={{
-                width: 56, height: 56, borderRadius: '50%', background: '#22c55e22', color: '#22c55e',
+                width: 56, height: 56, borderRadius: '50%', background: 'color-mix(in srgb, var(--color-ok) 13%, transparent)', color: 'var(--color-ok)',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
               }}>
                 <CheckSquare size={28} />
               </div>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>You're all set</h2>
-              <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 8 }}>
-                Open the Chat tab and try asking: <em style={{ color: '#60a5fa' }}>"What are my tasks today?"</em>
+              <h2 style={{ fontSize: 18, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>You're all set</h2>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)', marginTop: 8 }}>
+                Open the Chat tab and try asking: <em style={{ color: 'var(--color-info)' }}>"What are my tasks today?"</em>
                 <br />or head to Workflows to enable a ready-made automation.
               </p>
             </div>

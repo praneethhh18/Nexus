@@ -32,12 +32,12 @@ export default function Reports() {
               {loading ? 'Generating...' : 'Generate'}
             </button>
           </div>
-          {msg && <p style={{ fontSize: 12, color: '#60a5fa', marginTop: 8 }}>{msg}</p>}
+          {msg && <p style={{ fontSize: 12, color: 'var(--color-info)', marginTop: 8 }}>{msg}</p>}
         </div>
 
         <h3 style={{ fontSize: 13, fontWeight: 600, color: 'white', marginBottom: 10 }}>Recent Reports</h3>
         {reports.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: '#475569' }}>
+          <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)' }}>
             <FileText size={28} style={{ margin: '0 auto 8px' }} /><p style={{ fontSize: 13 }}>No reports yet. Generate one above.</p>
           </div>
         ) : reports.map((r, i) => (
@@ -48,7 +48,7 @@ export default function Reports() {
               </div>
               <div>
                 <p style={{ fontSize: 13, color: 'white', fontWeight: 500 }}>{r.name}</p>
-                <p style={{ fontSize: 11, color: '#64748b' }}>{r.size_kb} KB &middot; {r.modified}</p>
+                <p style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{r.size_kb} KB &middot; {r.modified}</p>
               </div>
             </div>
             <button

@@ -33,31 +33,31 @@ export default function ResetPassword() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#06080f' }}>
-      <div style={{ width: 380, padding: 32, borderRadius: 16, background: '#0f172a', border: '1px solid #1e293b' }}>
+    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+      <div style={{ width: 380, padding: 32, borderRadius: 16, background: 'var(--color-surface-1)', border: '1px solid var(--color-surface-2)' }}>
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 12 }}>N</div>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, var(--color-accent), #8b5cf6)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 12 }}>N</div>
           <h1 style={{ fontSize: 18, fontWeight: 600, color: 'white', marginBottom: 4 }}>Reset your password</h1>
-          <p style={{ fontSize: 12, color: '#64748b' }}>Enter a new password below.</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>Enter a new password below.</p>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>New password</label>
+            <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>New password</label>
             <input className="field-input" type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} required minLength={8} />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Confirm new password</label>
+            <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Confirm new password</label>
             <input className="field-input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required minLength={8} />
           </div>
 
           {error && (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#ef444415', color: '#f87171', fontSize: 12, marginBottom: 12, border: '1px solid #ef444425' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'color-mix(in srgb, var(--color-err) 8%, transparent)', color: 'var(--color-err)', fontSize: 12, marginBottom: 12, border: '1px solid color-mix(in srgb, var(--color-err) 15%, transparent)' }}>
               {error}
             </div>
           )}
           {info && (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#22c55e15', color: '#4ade80', fontSize: 12, marginBottom: 12, border: '1px solid #22c55e25' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)', color: 'var(--color-ok)', fontSize: 12, marginBottom: 12, border: '1px solid color-mix(in srgb, var(--color-ok) 15%, transparent)' }}>
               {info}
             </div>
           )}
@@ -68,8 +68,8 @@ export default function ResetPassword() {
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: '#475569', marginTop: 16 }}>
-          <a href="/login" style={{ color: '#60a5fa' }}>Back to sign in</a>
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-text-dim)', marginTop: 16 }}>
+          <a href="/login" style={{ color: 'var(--color-info)' }}>Back to sign in</a>
         </p>
       </div>
     </div>

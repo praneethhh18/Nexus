@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare } from 'lucide-react';
+import FlowBanner from '../components/FlowBanner';
 import {
   crmOverview, pipeline,
   listCompanies, createCompany, updateCompany, deleteCompany,
@@ -10,8 +11,8 @@ import {
 } from '../services/crm';
 
 const STAGE_COLORS = {
-  lead: '#60a5fa', qualified: '#a78bfa', proposal: '#f59e0b',
-  negotiation: '#ec4899', won: '#22c55e', lost: '#6b7280',
+  lead: 'var(--color-info)', qualified: '#a78bfa', proposal: 'var(--color-warn)',
+  negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
@@ -21,13 +22,13 @@ function Modal({ title, onClose, children, wide = false }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12,
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
         padding: 20, width: wide ? 560 : 420, maxHeight: '90vh', overflow: 'auto',
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={16} /></button>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><X size={16} /></button>
         </div>
         {children}
       </div>
@@ -38,7 +39,7 @@ function Modal({ title, onClose, children, wide = false }) {
 function Field({ label, children }) {
   return (
     <div style={{ marginBottom: 10 }}>
-      <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>{label}</label>
       {children}
     </div>
   );
@@ -197,17 +198,17 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove }) {
         if (id && currentStage !== stage) onMove(id, stage);
       }}
       style={{
-        minWidth: 240, flex: 1, background: dragOver ? '#0f1e33' : '#0a0f1c',
-        border: `1px solid ${dragOver ? STAGE_COLORS[stage] : '#1e293b'}`, borderRadius: 10,
+        minWidth: 240, flex: 1, background: dragOver ? 'var(--color-surface-2)' : 'var(--color-bg)',
+        border: `1px solid ${dragOver ? STAGE_COLORS[stage] : 'var(--color-surface-2)'}`, borderRadius: 10,
         padding: 10, display: 'flex', flexDirection: 'column', gap: 8, transition: 'all 0.1s',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingBottom: 6, borderBottom: `2px solid ${STAGE_COLORS[stage]}` }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: STAGE_COLORS[stage] }} />
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#e2e8f0', textTransform: 'capitalize' }}>{stage}</span>
-        <span style={{ fontSize: 10, color: '#64748b', marginLeft: 'auto' }}>{deals.length}</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text)', textTransform: 'capitalize' }}>{stage}</span>
+        <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginLeft: 'auto' }}>{deals.length}</span>
       </div>
-      <div style={{ fontSize: 9, color: '#64748b' }}>
+      <div style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>
         Total: {money(deals.reduce((s, d) => s + (d.value || 0), 0), deals[0]?.currency)}
       </div>
       {deals.map((d) => (
@@ -215,19 +216,19 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove }) {
           key={d.id}
           draggable
           onDragStart={(e) => { e.dataTransfer.setData('deal_id', d.id); e.dataTransfer.setData('stage', d.stage); }}
-          style={{ padding: 10, background: '#111827', border: '1px solid #1f2937', borderRadius: 8, cursor: 'grab' }}
+          style={{ padding: 10, background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 8, cursor: 'grab' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#e2e8f0', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</span>
             <div style={{ display: 'flex', gap: 4 }}>
-              <button onClick={() => onEdit(d)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><Edit3 size={11} /></button>
-              <button onClick={() => onDelete(d)} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><Trash2 size={11} /></button>
+              <button onClick={() => onEdit(d)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><Edit3 size={11} /></button>
+              <button onClick={() => onDelete(d)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><Trash2 size={11} /></button>
             </div>
           </div>
           <div style={{ fontSize: 11, fontWeight: 500, color: STAGE_COLORS[stage], marginTop: 4 }}>{money(d.value, d.currency)}</div>
-          {d.company_name && <div style={{ fontSize: 10, color: '#94a3b8', marginTop: 2 }}>{d.company_name}</div>}
-          {d.contact_name && d.contact_name.trim() && <div style={{ fontSize: 10, color: '#64748b' }}>{d.contact_name}</div>}
-          <div style={{ fontSize: 9, color: '#475569', marginTop: 4 }}>{d.probability_pct}% · {d.expected_close || 'no close date'}</div>
+          {d.company_name && <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 2 }}>{d.company_name}</div>}
+          {d.contact_name && d.contact_name.trim() && <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{d.contact_name}</div>}
+          <div style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 4 }}>{d.probability_pct}% · {d.expected_close || 'no close date'}</div>
         </div>
       ))}
     </div>
@@ -315,24 +316,28 @@ export default function CRM() {
         </div>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
+
+      <div style={{ padding: '8px 24px 0' }}>
+        <FlowBanner currentStep={tab === 'deals' ? 'deal' : 'lead'} />
+      </div>
 
       {/* Overview cards */}
       {overview && (
         <div style={{ padding: '0 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 8 }}>
           {[
-            { label: 'Contacts', value: overview.contacts, icon: Users, color: '#60a5fa' },
+            { label: 'Contacts', value: overview.contacts, icon: Users, color: 'var(--color-info)' },
             { label: 'Companies', value: overview.companies, icon: Building2, color: '#a78bfa' },
-            { label: 'Open deals', value: `${overview.open_deals_count} · ${money(overview.open_deals_value)}`, icon: Briefcase, color: '#f59e0b' },
-            { label: 'Won this month', value: money(overview.won_this_month), icon: TrendingUp, color: '#22c55e' },
+            { label: 'Open deals', value: `${overview.open_deals_count} · ${money(overview.open_deals_value)}`, icon: Briefcase, color: 'var(--color-warn)' },
+            { label: 'Won this month', value: money(overview.won_this_month), icon: TrendingUp, color: 'var(--color-ok)' },
           ].map(({ label, value, icon: Icon, color }, i) => (
             <div key={i} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}22`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon size={16} />
               </div>
               <div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>{label}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#e2e8f0' }}>{value}</div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{label}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{value}</div>
               </div>
             </div>
           ))}
@@ -340,14 +345,14 @@ export default function CRM() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid #1e293b' }}>
+      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)' }}>
         {[['contacts', 'Contacts', Users], ['companies', 'Companies', Building2], ['deals', 'Deals Pipeline', Briefcase]].map(([k, lbl, Icon]) => (
           <button key={k} onClick={() => setTab(k)} className={tab === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>
             <Icon size={12} /> {lbl}
           </button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Search size={12} color="#64748b" />
+          <Search size={12} color="var(--color-text-dim)" />
           <input className="field-input" placeholder="Search..." value={searchStr} onChange={(e) => setSearchStr(e.target.value)} style={{ fontSize: 11, width: 200 }} />
         </div>
       </div>
@@ -355,7 +360,7 @@ export default function CRM() {
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
         {tab === 'contacts' && (
           contacts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
               <Users size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
               <p style={{ fontSize: 13 }}>No contacts yet. Click "Add contact" to create one.</p>
             </div>
@@ -369,11 +374,11 @@ export default function CRM() {
                       <td style={{ fontWeight: 500 }}>{(c.first_name + ' ' + c.last_name).trim() || '—'}</td>
                       <td>{c.title || '—'}</td>
                       <td>{c.company_name || '—'}</td>
-                      <td>{c.email ? <a href={`mailto:${c.email}`} style={{ color: '#60a5fa' }}>{c.email}</a> : '—'}</td>
+                      <td>{c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}</td>
                       <td>{c.phone || '—'}</td>
                       <td style={{ display: 'flex', gap: 4 }}>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'contact', record: c })}><Edit3 size={11} /></button>
-                        <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={() => handleDelete('contact', c)}><Trash2 size={11} /></button>
+                        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('contact', c)}><Trash2 size={11} /></button>
                       </td>
                     </tr>
                   ))}
@@ -385,7 +390,7 @@ export default function CRM() {
 
         {tab === 'companies' && (
           companies.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
               <Building2 size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
               <p style={{ fontSize: 13 }}>No companies yet. Click "Add company".</p>
             </div>
@@ -399,11 +404,11 @@ export default function CRM() {
                       <td style={{ fontWeight: 500 }}>{c.name}</td>
                       <td>{c.industry || '—'}</td>
                       <td>{c.size || '—'}</td>
-                      <td>{c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: '#60a5fa' }}>{c.website}</a> : '—'}</td>
+                      <td>{c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-info)' }}>{c.website}</a> : '—'}</td>
                       <td>{c.tags || '—'}</td>
                       <td style={{ display: 'flex', gap: 4 }}>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'company', record: c })}><Edit3 size={11} /></button>
-                        <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={() => handleDelete('company', c)}><Trash2 size={11} /></button>
+                        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('company', c)}><Trash2 size={11} /></button>
                       </td>
                     </tr>
                   ))}
@@ -415,7 +420,7 @@ export default function CRM() {
 
         {tab === 'deals' && (
           deals.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
               <Briefcase size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
               <p style={{ fontSize: 13 }}>No deals yet. Click "Add deal" — you can drag deals between stages.</p>
             </div>

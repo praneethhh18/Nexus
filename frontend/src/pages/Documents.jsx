@@ -6,13 +6,13 @@ function Modal({ title, onClose, children }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12,
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
         padding: 20, width: 560, maxHeight: '92vh', overflow: 'auto',
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={16} /></button>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><X size={16} /></button>
         </div>
         {children}
       </div>
@@ -50,26 +50,26 @@ function GenerateForm({ template, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={submit}>
-      <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 10 }}>{template.description}</p>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 10 }}>{template.description}</p>
       <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Document title *</label>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Document title *</label>
         <input className="field-input" autoFocus required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Acme Proposal — Q2 engagement" maxLength={200} />
       </div>
       <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Format</label>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Format</label>
         <select className="field-select" value={fmt} onChange={(e) => setFmt(e.target.value)} style={{ width: '100%' }}>
           <option value="docx">Word (.docx)</option>
           <option value="pdf">PDF</option>
         </select>
       </div>
-      <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid #1e293b' }}>
-        <div style={{ fontSize: 10, color: '#94a3b8', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+      <div style={{ paddingTop: 10, marginTop: 10, borderTop: '1px solid var(--color-surface-2)' }}>
+        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
           Template variables
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           {template.variables.map((v) => (
             <div key={v} style={{ gridColumn: varIsLong(v) ? '1 / -1' : 'auto' }}>
-              <label style={{ display: 'block', fontSize: 10, color: '#64748b', marginBottom: 4 }}>{varLabel(v)}</label>
+              <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 4 }}>{varLabel(v)}</label>
               {varIsLong(v) ? (
                 <textarea className="field-input" rows={3} value={vars[v] || ''} onChange={(e) => update(v, e.target.value)} maxLength={4000} placeholder={v.includes('bullets') || v.includes('deliverables') || v.includes('milestones') ? 'One item per line' : ''} />
               ) : (
@@ -134,7 +134,7 @@ export default function Documents() {
         <p>Generate proposals, SOWs, contracts, and offer letters from templates</p>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
       <div className="page-body">
         {/* Templates */}
@@ -146,11 +146,11 @@ export default function Documents() {
             {templates.map((t) => (
               <div key={t.key} className="panel" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <FileType2 size={18} color="#60a5fa" />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#e2e8f0' }}>{t.name}</span>
+                  <FileType2 size={18} color="var(--color-info)" />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{t.name}</span>
                 </div>
-                <p style={{ fontSize: 11, color: '#94a3b8', margin: 0, minHeight: 32 }}>{t.description}</p>
-                <div style={{ fontSize: 9, color: '#64748b' }}>{t.variables.length} fields</div>
+                <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0, minHeight: 32 }}>{t.description}</p>
+                <div style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>{t.variables.length} fields</div>
                 <button className="btn-primary" style={{ marginTop: 'auto' }} onClick={() => setModal({ template: t })}>
                   <Plus size={12} /> Generate
                 </button>
@@ -162,10 +162,10 @@ export default function Documents() {
         {/* Generated documents */}
         <div style={{ marginTop: 20 }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '0 0 10px' }}>
-            <FileText size={15} color="#22c55e" /> Recent documents
+            <FileText size={15} color="var(--color-ok)" /> Recent documents
           </h3>
           {documents.length === 0 ? (
-            <p style={{ fontSize: 12, color: '#64748b', textAlign: 'center', padding: 32 }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-dim)', textAlign: 'center', padding: 32 }}>
               No documents generated yet. Pick a template above to create your first one.
             </p>
           ) : (
@@ -179,11 +179,11 @@ export default function Documents() {
                     <tr key={d.id}>
                       <td style={{ fontWeight: 500 }}>{d.title}</td>
                       <td style={{ textTransform: 'capitalize' }}>{d.template_key.replace('_', ' ')}</td>
-                      <td><span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: '#0f172a', color: '#94a3b8', textTransform: 'uppercase' }}>{d.format}</span></td>
+                      <td><span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: 'var(--color-surface-1)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{d.format}</span></td>
                       <td>{d.created_at?.substring(0, 16)}</td>
                       <td style={{ display: 'flex', gap: 4 }}>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => downloadDocument(d.id, d.filename).catch((e) => flash(e.message))} title="Download"><Download size={11} /></button>
-                        <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={() => handleDelete(d)}><Trash2 size={11} /></button>
+                        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete(d)}><Trash2 size={11} /></button>
                       </td>
                     </tr>
                   ))}

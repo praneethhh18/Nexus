@@ -42,7 +42,7 @@ export default function WhatIf() {
           ))}
         </div>
 
-        {error && <div className="panel" style={{ color: '#f87171', borderColor: '#f8717120' }}>{error}</div>}
+        {error && <div className="panel" style={{ color: 'var(--color-err)', borderColor: 'color-mix(in srgb, var(--color-err) 13%, transparent)' }}>{error}</div>}
 
         {result && (<>
           <div className="panel"><p style={{ fontSize: 13, color: 'white', fontWeight: 500 }}>{result.scenario_description}</p></div>
@@ -50,15 +50,15 @@ export default function WhatIf() {
             <div className="stat-card"><div className="value">${(result.before_total_revenue || 0).toLocaleString()}</div><div className="label">Before Revenue</div></div>
             <div className="stat-card">
               <div className="value">${(result.after_total_revenue || 0).toLocaleString()}</div>
-              <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2, color: pct >= 0 ? '#4ade80' : '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, marginTop: 2, color: pct >= 0 ? 'var(--color-ok)' : 'var(--color-err)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
                 {pct >= 0 ? <ArrowUp size={12} /> : <ArrowDown size={12} />}{Math.abs(pct).toFixed(1)}%
               </div>
               <div className="label">After Revenue</div>
             </div>
             <div className="stat-card"><div className="value">{result.net_impact || 'N/A'}</div><div className="label">Net Impact</div></div>
           </div>
-          {result.assumptions && <div className="panel"><h3>Assumptions</h3><p style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>{result.assumptions}</p></div>}
-          {result.critique && <div className="panel"><h3>CFO Critique</h3><p style={{ fontSize: 12, color: '#94a3b8', whiteSpace: 'pre-wrap' }}>{result.critique}</p></div>}
+          {result.assumptions && <div className="panel"><h3>Assumptions</h3><p style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'pre-wrap' }}>{result.assumptions}</p></div>}
+          {result.critique && <div className="panel"><h3>CFO Critique</h3><p style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'pre-wrap' }}>{result.critique}</p></div>}
         </>)}
       </div>
     </div>

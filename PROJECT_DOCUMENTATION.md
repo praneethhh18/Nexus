@@ -2,6 +2,1009 @@
 
 ## Architecture Decisions
 
+### [New] [architecture] Changes in modular_bitnet.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bitnet\modular_bitnet.py`
+- **Captured**: 4/23/2026, 9:47:25 PM
+- **Category**: architecture
+**Summary:** Modified modular_bitnet.py: 149 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bitnet\modular_bitnet.py` (+149 / -0)
+**Schema: `BitNetModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in modeling_outputs.py
+
+- **File**: `venv\Lib\site-packages\transformers\modeling_outputs.py`
+- **Captured**: 4/23/2026, 9:47:06 PM
+- **Category**: architecture
+**Summary:** Modified modeling_outputs.py: 1707 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\modeling_outputs.py` (+1707 / -0)
+**Schema: `BaseModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithNoAttention`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithPooling`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithPoolingAndNoAttention`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithCrossAttentions`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithPoolingAndCrossAttentions`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithPastAndCrossAttentions`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `MoECausalLMOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `states` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `z_loss` | `torch` | ✓ | - |
+| `aux_loss` | `torch` | ✓ | - |
+| `router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `MoEModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `router_probs` | `tuple[torch` | ✓ | - |
+| `router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `MoeModelOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `MoeCausalLMOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `aux_loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `MoEModelOutputWithPastAndCrossAttentions`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Mixture` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `router_probs` | `tuple[torch` | ✓ | - |
+| `router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `decoding` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqMoEModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `decoding` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `decoder_router_logits` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `CausalLMOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `CausalLMOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `CausalLMOutputWithCrossAttentions`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `SequenceClassifierOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `MaskedLMOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqLMOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqMoEOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `encoder_z_loss` | `torch` | ✓ | - |
+| `decoder_z_loss` | `torch` | ✓ | - |
+| `encoder_aux_loss` | `torch` | ✓ | - |
+| `decoder_aux_loss` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `decoder_router_logits` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_router_logits` | `tuple[torch` | ✓ | - |
+
+**Schema: `NextSentencePredictorOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `SequenceClassifierOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqSequenceClassifierOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `MultipleChoiceModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `TokenClassifierOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `QuestionAnsweringModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `start_logits` | `torch` | ✓ | - |
+| `end_logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqQuestionAnsweringModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `start_logits` | `torch` | ✓ | - |
+| `end_logits` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `SemanticSegmenterOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `ImageClassifierOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `ImageClassifierOutputWithNoAttention`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+
+**Schema: `DepthEstimatorOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `predicted_depth` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `ImageSuperResolutionOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `reconstruction` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Wav2Vec2BaseModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `extract_features` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `XVectorOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Output` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `embeddings` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BackboneOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `feature_maps` | ✓ | - |
+| `feature_maps` | `tuple[torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BaseModelOutputWithPoolingAndProjection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `projection_state` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqSpectrogramOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `spectrogram` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Seq2SeqTSModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `sequential` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `loc` | `torch` | ✓ | - |
+| `scale` | `torch` | ✓ | - |
+| `static_features` | `torch` | ✓ | - |
+
+**Schema: `Seq2SeqTSPredictionOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `chosen` | `unknown` | ✓ | - |
+| `Args` | `loss` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `params` | `tuple[torch` | ✓ | - |
+| `past_key_values` | `EncoderDecoderCache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `loc` | `torch` | ✓ | - |
+| `scale` | `torch` | ✓ | - |
+| `static_features` | `torch` | ✓ | - |
+
+**Schema: `SampleTSPredictionOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `distribution` | `unknown` | ✓ | - |
+| `Args` | `sequences` | ✓ | - |
+| `sequences` | `torch` | ✓ | - |
+
+### [New] [architecture] Changes in modular_apertus.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\apertus\modular_apertus.py`
+- **Captured**: 4/23/2026, 9:46:28 PM
+- **Category**: architecture
+**Summary:** Modified modular_apertus.py: 269 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\apertus\modular_apertus.py` (+269 / -0)
+**Schema: `ApertusPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+**Schema: `ApertusModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in modular_audioflamingo3.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\audioflamingo3\modular_audioflamingo3.py`
+- **Captured**: 4/23/2026, 9:46:07 PM
+- **Category**: architecture
+**Summary:** Modified modular_audioflamingo3.py: 305 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\audioflamingo3\modular_audioflamingo3.py` (+305 / -0)
+**Schema: `AudioFlamingo3PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in modeling_auto.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\auto\modeling_auto.py`
+- **Captured**: 4/23/2026, 9:45:54 PM
+- **Category**: architecture
+**Summary:** Modified modeling_auto.py: 2377 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\auto\modeling_auto.py` (+2377 / -0)
+**Schema: `AutoModelForMaskGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForKeypointDetection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForKeypointMatching`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTextEncoding`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForImageToImage`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForPreTraining`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForSeq2SeqLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForSeq2SeqLM` | `unknown` | ✓ | - |
+| `head_doc` | `unknown` | ✓ | - |
+| `checkpoint_for_example` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForSequenceClassification` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTableQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForTableQuestionAnswering` | `unknown` | ✓ | - |
+| `head_doc` | `unknown` | ✓ | - |
+| `checkpoint_for_example` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForVisualQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForVisualQuestionAnswering` | `unknown` | ✓ | - |
+| `head_doc` | `unknown` | ✓ | - |
+| `checkpoint_for_example` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForDocumentQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForDocumentQuestionAnswering` | `unknown` | ✓ | - |
+| `head_doc` | `unknown` | ✓ | - |
+| `checkpoint_for_example` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTokenClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForMultipleChoice`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForNextSentencePrediction`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForNextSentencePrediction` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForImageClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForZeroShotImageClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForImageSegmentation`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForSemanticSegmentation`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForSemanticSegmentation` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTimeSeriesPrediction`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForTimeSeriesPrediction` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForUniversalSegmentation`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForUniversalSegmentation` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForInstanceSegmentation`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForInstanceSegmentation` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForObjectDetection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForZeroShotObjectDetection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForDepthEstimation`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTextRecognition`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTableRecognition`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForVideoClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForImageTextToText`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForMultimodalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForAudioClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForCTC`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForSpeechSeq2Seq`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForSpeechSeq2Seq` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForAudioFrameClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `AutoModelForAudioFrameClassification` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForAudioXVector`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTextToSpectrogram`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForTextToWaveform`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoBackbone`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForMaskedImageModeling`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+**Schema: `AutoModelForAudioTokenization`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in test_types.py
+
+- **File**: `venv\Lib\site-packages\pandas\tests\api\test_types.py`
+- **Captured**: 4/23/2026, 9:45:50 PM
+- **Category**: architecture
+**Summary:** Modified test_types.py: 62 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\tests\api\test_types.py` (+62 / -0)
+**Schema: `TestTypes`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `allowed` | `unknown` | ✓ | - |
+| `deprecated` | `list[str]` | ✓ | - |
+| `dtypes` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in streams.py
+
+- **File**: `venv\Lib\site-packages\torch\xpu\streams.py`
+- **Captured**: 4/23/2026, 9:45:00 PM
+- **Category**: architecture
+**Summary:** Modified streams.py: 185 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\xpu\streams.py` (+185 / -0)
+**Schema: `Stream`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `A` | `unknown` | ✓ | - |
+| `device` | `unknown` | ✓ | - |
+| `context` | `unknown` | ✓ | - |
+| `on` | `unknown` | ✓ | - |
+| `Args` | `device` | ✓ | - |
+
+### [New] [architecture] Changes in modular_mm_grounding_dino.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mm_grounding_dino\modular_mm_grounding_dino.py`
+- **Captured**: 4/23/2026, 9:40:30 PM
+- **Category**: architecture
+**Summary:** Modified modular_mm_grounding_dino.py: 301 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mm_grounding_dino\modular_mm_grounding_dino.py` (+301 / -0)
+**Schema: `MMGroundingDinoConvModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in modular_modernvbert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\modernvbert\modular_modernvbert.py`
+- **Captured**: 4/23/2026, 9:39:54 PM
+- **Category**: architecture
+**Summary:** Modified modular_modernvbert.py: 627 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\modernvbert\modular_modernvbert.py` (+627 / -0)
+**Schema: `ModernVBertBaseModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `image_hidden_states` | `tuple[torch` | ✓ | - |
+
+**Schema: `ModernVBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `ModernVBertModel` | `unknown` | ✓ | - |
+| `ModernVBert` | `unknown` | ✓ | - |
+
+**Schema: `ModernVBertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernVBertForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [architecture] Changes in modular_moonshine_streaming.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\moonshine_streaming\modular_moonshine_streaming.py`
+- **Captured**: 4/23/2026, 9:39:43 PM
+- **Category**: architecture
+**Summary:** Modified modular_moonshine_streaming.py: 411 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\moonshine_streaming\modular_moonshine_streaming.py` (+411 / -0)
+**Schema: `MoonshineStreamingEncoderModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `attention_mask` | `torch` | ✓ | - |
+
+**Schema: `MoonshineStreamingPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineStreamingEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MoonshineStreamingEncoderConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
 ### [New] [architecture] Changes in model_card.py
 
 - **File**: `venv\Lib\site-packages\sentence_transformers\sentence_transformer\model_card.py`
@@ -4168,6 +5171,7316 @@
   - `venv\Lib\site-packages\openpyxl\compat\singleton.py` (+41 / -0)er.py` (+113 / -0)
 
 ## Bug Fixes & Enhancements
+
+### [bugfix] Changes in index-0prIQnl3.js
+
+- **File**: `frontend\dist\assets\index-0prIQnl3.js`
+- **Captured**: 4/23/2026, 10:36:42 PM
+- **Category**: bugfix
+**Summary:** Modified index-0prIQnl3.js: 32 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\dist\assets\index-0prIQnl3.js` (+32 / -0)
+
+### [bugfix] Changes in FlowBanner.jsx
+
+- **File**: `frontend\src\components\FlowBanner.jsx`
+- **Captured**: 4/23/2026, 10:35:52 PM
+- **Category**: bugfix
+**Summary:** Modified FlowBanner.jsx: 90 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\components\FlowBanner.jsx` (+90 / -0)
+
+### [bugfix] Changes in Dashboard.jsx
+
+- **File**: `frontend\src\pages\Dashboard.jsx`
+- **Captured**: 4/23/2026, 10:35:24 PM
+- **Category**: bugfix
+**Summary:** Modified Dashboard.jsx: 26 lines added, 3 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Dashboard.jsx` (+26 / -3)
+
+### [bugfix] Changes in seed.js
+
+- **File**: `frontend\src\services\seed.js`
+- **Captured**: 4/23/2026, 10:35:02 PM
+- **Category**: bugfix
+**Summary:** Modified seed.js: 18 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\services\seed.js` (+18 / -0)
+
+### [enhancement] Changes in server.py
+
+- **File**: `api\server.py`
+- **Captured**: 4/23/2026, 10:34:09 PM
+- **Category**: enhancement
+**Summary:** Modified server.py: 14 lines added, 1 lines removed.
+**Files Modified:**
+  - `api\server.py` (+14 / -1)
+**API Endpoints** (`server.py`):
+
+| Method | Route | Handler | Middleware |
+|--------|-------|---------|------------|
+| `POST` | `/api/seed/sample-data` | post | - |
+**Schema: `ChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+
+**Schema: `WhatIfRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `scenario` | `str` | ✓ | - |
+
+**Schema: `ReportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+
+**Schema: `ConversationUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `title` | `str` | ✓ | - |
+
+**Schema: `SignupRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+| `name` | `str` | ✓ | - |
+| `password` | `str` | ✓ | - |
+
+**Schema: `LoginRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+| `password` | `str` | ✓ | - |
+| `totp_code` | `Optional[str]` | ✓ | - |
+
+**Schema: `BusinessCreate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `name` | `str` | ✓ | - |
+| `industry` | `str` | ✓ | - |
+| `description` | `str` | ✓ | - |
+
+**Schema: `BusinessUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `name` | `Optional[str]` | ✓ | - |
+| `industry` | `Optional[str]` | ✓ | - |
+| `description` | `Optional[str]` | ✓ | - |
+
+**Schema: `MemberAdd`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `user_id` | `str` | ✓ | - |
+| `role` | `str` | ✓ | - |
+| `create_access_token` | `unknown` | ✓ | - |
+| `get_current_user` | `unknown` | ✓ | - |
+| `create_business` | `unknown` | ✓ | - |
+| `update_business` | `unknown` | ✓ | - |
+| `list_members` | `unknown` | ✓ | - |
+| `ensure_business_for_user` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `biz_id` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `refresh` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `biz_id` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `refresh` | `unknown` | ✓ | - |
+| `try` | `from datetime import timedelta as _td` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `token` | `unknown` | ✓ | - |
+| `payload` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `ChangePasswordRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `current_password` | `str` | ✓ | - |
+| `new_password` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `change_password` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `TotpCode`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `code` | `str` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `recovery` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_sec` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `codes` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `sessions` | `unknown` | ✓ | - |
+| `current_jti` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `_sec` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `current` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `tool` | `Optional[str]` | ✓ | - |
+| `user_id_filter` | `Optional[str]` | ✓ | - |
+| `success` | `Optional[bool]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `limit` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `sql` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `user_ids` | `unknown` | ✓ | - |
+| `names` | `dict` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `tasks` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Summarize` | `unknown` | ✓ | - |
+| `kill` | `unknown` | ✓ | - |
+| `log` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `Return` | `unknown` | ✓ | - |
+| `newest` | `unknown` | ✓ | - |
+| `call` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `limit` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `entries` | `list` | ✓ | - |
+| `stats` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `limit` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `rows` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `buf` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `ForgotPasswordRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+
+**Schema: `ResetPasswordRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `token` | `str` | ✓ | - |
+| `new_password` | `str` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `base_url` | `unknown` | ✓ | - |
+| `reset_link` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `import smtplib` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `Always` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `consume_password_reset` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `assert_member` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `updates` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `delete_business` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `assert_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `add_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `remove_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `company_id` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `stage` | `Optional[str]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `contact_id` | `Optional[str]` | ✓ | - |
+| `company_id` | `Optional[str]` | ✓ | - |
+| `deal_id` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `status` | `Optional[str]` | ✓ | - |
+| `assignee_id` | `Optional[str]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `due_window` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_tasks` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `status` | `Optional[str]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_inv` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `filename` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `inv` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `filename` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `template_key` | `unknown` | ✓ | - |
+| `title` | `unknown` | ✓ | - |
+| `variables` | `unknown` | ✓ | - |
+| `fmt` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `doc` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `media` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_docs` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `configured` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `url` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `state` | `unknown` | ✓ | - |
+| `small` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `user_id` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `redirect_uri` | `unknown` | ✓ | - |
+| `tokens` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_cal` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `AgentChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Tool` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `business_id` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `business_name` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `assert_conversation_access` | ✓ | - |
+| `prior` | `unknown` | ✓ | - |
+| `agent_messages` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `agent_messages` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `loop` | `unknown` | ✓ | - |
+| `try` | `result` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `ts` | `unknown` | ✓ | - |
+| `tools_used` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `reason` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `_email_triage` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_mem` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `body` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `mark_read` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `mark_all_read` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `ph` | `unknown` | ✓ | - |
+| `provider` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `else` | `online` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `kb` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `business_id` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `assert_conversation_access` | ✓ | - |
+| `try` | `loop` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `answer` | `unknown` | ✓ | - |
+| `tools` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `await` | `unknown` | ✓ | - |
+| `authed_user` | `unknown` | ✓ | - |
+| `business_id` | `unknown` | ✓ | - |
+| `try` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `assert_conversation_access` | `unknown` | ✓ | - |
+| `update_title` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `assert_conversation_access` | `unknown` | ✓ | - |
+| `dc` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `tables` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `cols` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `file` | `UploadFile` | ✓ | - |
+| `table_name` | `str` | ✓ | - |
+| `if_exists` | `str` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `try` | `preview` | ✓ | - |
+| `finally` | `Path` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `from sql_agent` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `try` | `preview` | ✓ | - |
+| `finally` | `Path` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `ext` | `unknown` | ✓ | - |
+| `media` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `intent` | `Optional[str]` | ✓ | - |
+| `starred` | `bool` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `delete_query` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `stats` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `safe_name` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `content` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `docs` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+
+**Schema: `InviteCreate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+| `role` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `assert_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_team` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [bugfix] Changes in seed_data.py
+
+- **File**: `api\seed_data.py`
+- **Captured**: 4/23/2026, 10:33:54 PM
+- **Category**: bugfix
+**Summary:** Modified seed_data.py: 180 lines added, 0 lines removed.
+**Files Modified:**
+  - `api\seed_data.py` (+180 / -0)
+
+### [bugfix] Changes in index-DTX9_5Cl.js
+
+- **File**: `frontend\dist\assets\index-DTX9_5Cl.js`
+- **Captured**: 4/23/2026, 10:32:28 PM
+- **Category**: bugfix
+**Summary:** Modified index-DTX9_5Cl.js: 32 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\dist\assets\index-DTX9_5Cl.js` (+32 / -0)
+
+### [bugfix] Changes in index-C-Zf_tbo.js
+
+- **File**: `frontend\dist\assets\index-C-Zf_tbo.js`
+- **Captured**: 4/23/2026, 10:28:45 PM
+- **Category**: bugfix
+**Summary:** Modified index-C-Zf_tbo.js: 32 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\dist\assets\index-C-Zf_tbo.js` (+32 / -0)
+
+### [bugfix] Changes in Settings.jsx
+
+- **File**: `frontend\src\pages\Settings.jsx`
+- **Captured**: 4/23/2026, 10:27:33 PM
+- **Category**: bugfix
+**Summary:** Modified Settings.jsx: 204 lines added, 170 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Settings.jsx` (+204 / -170)
+
+### [bugfix] Changes in index-BPcOfiXj.js
+
+- **File**: `frontend\dist\assets\index-BPcOfiXj.js`
+- **Captured**: 4/23/2026, 10:06:45 PM
+- **Category**: bugfix
+**Summary:** Modified index-BPcOfiXj.js: 32 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\dist\assets\index-BPcOfiXj.js` (+32 / -0)
+
+### [bugfix] Changes in index-CTD2iEwV.js
+
+- **File**: `frontend\dist\assets\index-CTD2iEwV.js`
+- **Captured**: 4/23/2026, 10:06:18 PM
+- **Category**: bugfix
+**Summary:** Modified index-CTD2iEwV.js: 32 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\dist\assets\index-CTD2iEwV.js` (+32 / -0)
+
+### [bugfix] Changes in Documents.jsx
+
+- **File**: `frontend\src\pages\Documents.jsx`
+- **Captured**: 4/23/2026, 10:05:43 PM
+- **Category**: bugfix
+**Summary:** Modified Documents.jsx: 205 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Documents.jsx` (+205 / -0)
+
+### [bugfix] Changes in OnboardingWizard.jsx
+
+- **File**: `frontend\src\components\OnboardingWizard.jsx`
+- **Captured**: 4/23/2026, 10:05:41 PM
+- **Category**: bugfix
+**Summary:** Modified OnboardingWizard.jsx: 213 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\components\OnboardingWizard.jsx` (+213 / -0)
+
+### [bugfix] Changes in migrate_colors.py
+
+- **File**: `scripts\migrate_colors.py`
+- **Captured**: 4/23/2026, 10:05:10 PM
+- **Category**: bugfix
+**Summary:** Modified migrate_colors.py: 131 lines added, 0 lines removed.
+**Files Modified:**
+  - `scripts\migrate_colors.py` (+131 / -0)
+
+### [bugfix] Changes in index-BXjNyZs5.js
+
+- **File**: `frontend\dist\assets\index-BXjNyZs5.js`
+- **Captured**: 4/23/2026, 9:49:51 PM
+- **Category**: bugfix
+**Summary:** Modified index-BXjNyZs5.js: 32 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\dist\assets\index-BXjNyZs5.js` (+32 / -0)
+
+### [New] [bugfix] Changes in modeling_deformable_detr.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\deformable_detr\modeling_deformable_detr.py`
+- **Captured**: 4/23/2026, 9:47:59 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_deformable_detr.py: 1698 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\deformable_detr\modeling_deformable_detr.py` (+1698 / -0)
+**Schema: `DeformableDetrDecoderOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `cross_attentions` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `DeformableDetrModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `init_reference_points` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `enc_outputs_coord_logits` | `unknown` | ✓ | - |
+| `init_reference_points` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `enc_outputs_coord_logits` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Output` | `unknown` | ✓ | - |
+
+**Schema: `DeformableDetrObjectDetectionOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `loss_dict` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `pred_boxes` | `unknown` | ✓ | - |
+| `auxiliary_outputs` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `init_reference_points` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `enc_outputs_coord_logits` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `loss_dict` | `dict` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `pred_boxes` | `torch` | ✓ | - |
+| `auxiliary_outputs` | `list[dict]` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `init_reference_points` | `torch` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `enc_outputs_coord_logits` | `torch` | ✓ | - |
+
+**Schema: `DeformableDetrPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `DeformableDetrConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+
+**Schema: `DeformableDetrEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `x` | `unknown` | ✓ | - |
+| `x1` | `unknown` | ✓ | - |
+| `x2` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `DeformableDetrDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Some` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `hidden` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_deformable_detr.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\deformable_detr\modular_deformable_detr.py`
+- **Captured**: 4/23/2026, 9:47:57 PM
+- **Category**: bugfix
+**Summary:** Modified modular_deformable_detr.py: 1560 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\deformable_detr\modular_deformable_detr.py` (+1560 / -0)
+**Schema: `DeformableDetrModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `init_reference_points` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `enc_outputs_coord_logits` | `unknown` | ✓ | - |
+| `init_reference_points` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `enc_outputs_coord_logits` | `torch` | ✓ | - |
+
+**Schema: `DeformableDetrPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `DeformableDetrConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+
+**Schema: `DeformableDetrDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Some` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `hidden` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bigbird_pegasus.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bigbird_pegasus\modeling_bigbird_pegasus.py`
+- **Captured**: 4/23/2026, 9:47:53 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bigbird_pegasus.py: 2432 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bigbird_pegasus\modeling_bigbird_pegasus.py` (+2432 / -0)
+**Schema: `BigBirdPegasusPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BigBirdPegasusConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdPegasusEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdPegasusDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdPegasusModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdPegasusForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_missing` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdPegasusDecoderWrapper`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `used` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_beit.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\beit\modeling_beit.py`
+- **Captured**: 4/23/2026, 9:47:51 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_beit.py: 1449 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\beit\modeling_beit.py` (+1449 / -0)
+**Schema: `BeitModelOutputWithPooling`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `pooler_output` | `unknown` | ✓ | - |
+| `Drop` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `keep_prob` | `unknown` | ✓ | - |
+| `shape` | `unknown` | ✓ | - |
+| `random_tensor` | `unknown` | ✓ | - |
+| `random_tensor` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `BeitPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BeitConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+
+**Schema: `BeitForMaskedImageModeling`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `Beit` | `unknown` | ✓ | - |
+| `hidden` | `unknown` | ✓ | - |
+
+**Schema: `BeitForSemanticSegmentation`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `BEiT` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in observer.py
+
+- **File**: `venv\Lib\site-packages\torch\ao\quantization\observer.py`
+- **Captured**: 4/23/2026, 9:47:49 PM
+- **Category**: bugfix
+**Summary:** Modified observer.py: 2160 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\ao\quantization\observer.py` (+2160 / -0)
+**Schema: `UniformQuantizationObserverBase`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `scale` | `unknown` | ✓ | - |
+| `Args` | `dtype` | ✓ | - |
+| `_version` | `unknown` | ✓ | - |
+| `eps` | `torch` | ✓ | - |
+
+**Schema: `MinMaxObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `running` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `parameters` | `unknown` | ✓ | - |
+| `tensors` | `unknown` | ✓ | - |
+| `Args` | `dtype` | ✓ | - |
+| `Given` | `unknown` | ✓ | - |
+| `scale` | `math` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `where` | `math` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `where` | `math` | ✓ | - |
+| `maximum` | `unknown` | ✓ | - |
+| `min_val` | `torch` | ✓ | - |
+| `max_val` | `torch` | ✓ | - |
+
+**Schema: `PerChannelMinMaxObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `running` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `quantization` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `parameters` | `unknown` | ✓ | - |
+| `Args` | `ch_axis` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `that` | `unknown` | ✓ | - |
+| `Scales` | `unknown` | ✓ | - |
+| `min_val` | `torch` | ✓ | - |
+| `max_val` | `torch` | ✓ | - |
+
+**Schema: `HistogramObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `min` | `unknown` | ✓ | - |
+| `Args` | `bins` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `1` | `unknown` | ✓ | - |
+| `2` | `unknown` | ✓ | - |
+| `3` | `unknown` | ✓ | - |
+| `histogram` | `torch` | ✓ | - |
+| `min_val` | `torch` | ✓ | - |
+| `max_val` | `torch` | ✓ | - |
+
+**Schema: `FixedQParamsObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Observer` | `unknown` | ✓ | - |
+| `quantization` | `unknown` | ✓ | - |
+| `quantization` | `unknown` | ✓ | - |
+| `Args` | `unknown` | ✓ | - |
+| `scale` | `torch` | ✓ | - |
+| `zero_point` | `torch` | ✓ | - |
+
+**Schema: `PlaceholderObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Observer` | `unknown` | ✓ | - |
+| `quantized` | `unknown` | ✓ | - |
+| `Can` | `unknown` | ✓ | - |
+| `ranges` | `unknown` | ✓ | - |
+| `Args` | `dtype` | ✓ | - |
+
+**Schema: `RecordingObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Args` | `dtype` | ✓ | - |
+
+**Schema: `NoopObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Observer` | `unknown` | ✓ | - |
+| `quantized` | `unknown` | ✓ | - |
+| `Primarily` | `unknown` | ✓ | - |
+| `ranges` | `unknown` | ✓ | - |
+| `Args` | `dtype` | ✓ | - |
+
+**Schema: `ReuseInputObserver`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `that` | `unknown` | ✓ | - |
+| `x0` | `unknown` | ✓ | - |
+| `x1` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `and` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `Note` | `this is only enabled in FX Graph Mode Quantization` | ✓ | - |
+
+### [New] [bugfix] Changes in _learnable_fake_quantize.py
+
+- **File**: `venv\Lib\site-packages\torch\ao\quantization\_learnable_fake_quantize.py`
+- **Captured**: 4/23/2026, 9:47:47 PM
+- **Category**: bugfix
+**Summary:** Modified _learnable_fake_quantize.py: 200 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\ao\quantization\_learnable_fake_quantize.py` (+200 / -0)
+**Schema: `_LearnableFakeQuantize`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `supports` | `unknown` | ✓ | - |
+| `and` | `unknown` | ✓ | - |
+| `In` | `unknown` | ✓ | - |
+| `module` | `unknown` | ✓ | - |
+
+### [bugfix] Changes in Security.jsx
+
+- **File**: `frontend\src\pages\Security.jsx`
+- **Captured**: 4/23/2026, 9:47:45 PM
+- **Category**: bugfix
+**Summary:** Modified Security.jsx: 280 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Security.jsx` (+280 / -0)
+
+### [New] [bugfix] Changes in modeling_big_bird.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\big_bird\modeling_big_bird.py`
+- **Captured**: 4/23/2026, 9:47:44 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_big_bird.py: 2563 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\big_bird\modeling_big_bird.py` (+2563 / -0)
+**Schema: `BigBirdPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BigBirdConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Output` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdForPreTrainingOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `prediction_logits` | `unknown` | ✓ | - |
+| `seq_relationship_logits` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `prediction_logits` | `torch` | ✓ | - |
+| `seq_relationship_logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdForQuestionAnsweringModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `pooler_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `start_logits` | `torch` | ✓ | - |
+| `end_logits` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BigBirdModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Llion` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdForPreTraining`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BigBird` | `unknown` | ✓ | - |
+
+**Schema: `BigBirdForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bert\modeling_bert.py`
+- **Captured**: 4/23/2026, 9:47:42 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bert.py: 1395 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bert\modeling_bert.py` (+1395 / -0)
+**Schema: `BertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Output` | `unknown` | ✓ | - |
+
+**Schema: `BertForPreTrainingOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `prediction_logits` | `unknown` | ✓ | - |
+| `seq_relationship_logits` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `prediction_logits` | `torch` | ✓ | - |
+| `seq_relationship_logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Llion` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+**Schema: `BertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Bert` | `unknown` | ✓ | - |
+| `sentence` | `unknown` | ✓ | - |
+
+**Schema: `BertForPreTraining`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Bert` | `unknown` | ✓ | - |
+
+**Schema: `BertLMHeadModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `BertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Bert` | `unknown` | ✓ | - |
+
+**Schema: `BertForNextSentencePrediction`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `Bert` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_biogpt.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\biogpt\modeling_biogpt.py`
+- **Captured**: 4/23/2026, 9:47:39 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_biogpt.py: 678 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\biogpt\modeling_biogpt.py` (+678 / -0)
+**Schema: `BioGptPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BioGptConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BioGptModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `BioGPT` | `unknown` | ✓ | - |
+
+**Schema: `BioGptForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `BioGptForTokenClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `no` | `unknown` | ✓ | - |
+| `padding` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+
+### [bugfix] Changes in security.js
+
+- **File**: `frontend\src\services\security.js`
+- **Captured**: 4/23/2026, 9:47:38 PM
+- **Category**: bugfix
+**Summary:** Modified security.js: 55 lines added, 0 lines removed.
+**Files Modified:**
+  - `frontend\src\services\security.js` (+55 / -0)
+
+### [New] [bugfix] Changes in modular_biogpt.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\biogpt\modular_biogpt.py`
+- **Captured**: 4/23/2026, 9:47:37 PM
+- **Category**: bugfix
+**Summary:** Modified modular_biogpt.py: 510 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\biogpt\modular_biogpt.py` (+510 / -0)
+**Schema: `BioGptPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BioGptConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BioGptModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `BioGPT` | `unknown` | ✓ | - |
+
+**Schema: `BioGptForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `BioGptForTokenClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `no` | `unknown` | ✓ | - |
+| `padding` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in function.py
+
+- **File**: `venv\Lib\site-packages\torch\autograd\function.py`
+- **Captured**: 4/23/2026, 9:47:35 PM
+- **Category**: bugfix
+**Summary:** Modified function.py: 870 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\autograd\function.py` (+870 / -0)
+**Schema: `BackwardCFunction`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+
+**Schema: `_SingleLevelFunction`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `vjp` | `unknown` | ✓ | - |
+| `Bool` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `clears` | `unknown` | ✓ | - |
+| `as` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `only` | `unknown` | ✓ | - |
+| `Default` | `unknown` | ✓ | - |
+| `clear_saved_tensors_on_access` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bit.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bit\modeling_bit.py`
+- **Captured**: 4/23/2026, 9:47:32 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bit.py: 833 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bit\modeling_bit.py` (+833 / -0)
+**Schema: `BitPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BitConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `BitModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `BiT` | `unknown` | ✓ | - |
+| `ImageNet` | `unknown` | ✓ | - |
+
+**Schema: `BitForImageClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `BiT` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bert_generation.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bert_generation\modeling_bert_generation.py`
+- **Captured**: 4/23/2026, 9:47:30 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bert_generation.py: 713 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bert_generation\modeling_bert_generation.py` (+713 / -0)
+**Schema: `BertGenerationPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `BertGenerationEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Llion` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `described` | `unknown` | ✓ | - |
+| `by` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bitnet.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bitnet\modeling_bitnet.py`
+- **Captured**: 4/23/2026, 9:47:27 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bitnet.py: 502 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bitnet\modeling_bitnet.py` (+502 / -0)
+**Schema: `BitNetPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BitNetConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_blenderbot.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blenderbot\modeling_blenderbot.py`
+- **Captured**: 4/23/2026, 9:47:23 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_blenderbot.py: 1022 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blenderbot\modeling_blenderbot.py` (+1022 / -0)
+**Schema: `BlenderbotPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BlenderbotConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_missing` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotDecoderWrapper`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `used` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in hyperparameter_search.py
+
+- **File**: `venv\Lib\site-packages\transformers\hyperparameter_search.py`
+- **Captured**: 4/23/2026, 9:47:21 PM
+- **Category**: bugfix
+**Summary:** Modified hyperparameter_search.py: 124 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\hyperparameter_search.py` (+124 / -0)
+**Schema: `OptunaBackend`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `name` | `unknown` | ✓ | - |
+
+**Schema: `RayTuneBackend`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `name` | `unknown` | ✓ | - |
+| `pip_package` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in image_processing_base.py
+
+- **File**: `venv\Lib\site-packages\transformers\image_processing_base.py`
+- **Captured**: 4/23/2026, 9:47:19 PM
+- **Category**: bugfix
+**Summary:** Modified image_processing_base.py: 495 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\image_processing_base.py` (+495 / -0)
+**Schema: `BatchFeature`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Holds` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `Args` | `data` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_blenderbot_small.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blenderbot_small\modeling_blenderbot_small.py`
+- **Captured**: 4/23/2026, 9:47:13 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_blenderbot_small.py: 986 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blenderbot_small\modeling_blenderbot_small.py` (+986 / -0)
+**Schema: `BlenderbotSmallPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BlenderbotSmallConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotSmallEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotSmallDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotSmallModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotSmallForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_keys_to_ignore_on_load_missing` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `BlenderbotSmallDecoderWrapper`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `used` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_blip.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blip\modeling_blip.py`
+- **Captured**: 4/23/2026, 9:47:10 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_blip.py: 1303 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blip\modeling_blip.py` (+1303 / -0)
+**Schema: `BlipForConditionalGenerationModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `hidden_states` | `unknown` | ✓ | - |
+| `attentions` | `unknown` | ✓ | - |
+| `loss` | `tuple[torch` | ✓ | - |
+| `logits` | `tuple[torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Adapted` | `unknown` | ✓ | - |
+| `last` | `unknown` | ✓ | - |
+
+**Schema: `BlipTextVisionModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Adapted` | `unknown` | ✓ | - |
+| `last` | `unknown` | ✓ | - |
+| `scores` | `unknown` | ✓ | - |
+
+**Schema: `BlipImageTextMatchingModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `itm_score` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `vision_pooler_output` | `unknown` | ✓ | - |
+| `question_embeds` | `unknown` | ✓ | - |
+| `itm_score` | `torch` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `vision_pooler_output` | `torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `question_embeds` | `tuple[torch` | ✓ | - |
+
+**Schema: `BlipOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+
+**Schema: `BlipPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BlipConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+
+**Schema: `BlipVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `config` | `BlipVisionConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+
+**Schema: `BlipModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BlipConfig` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BLIP` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+
+**Schema: `BlipForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BlipConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BLIP` | `unknown` | ✓ | - |
+| `decoder` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+
+**Schema: `BlipForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BlipConfig` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BLIP` | `unknown` | ✓ | - |
+| `image` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_blip_text.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blip\modeling_blip_text.py`
+- **Captured**: 4/23/2026, 9:47:08 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_blip_text.py: 792 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blip\modeling_blip_text.py` (+792 / -0)
+**Schema: `BlipTextPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `models` | `unknown` | ✓ | - |
+| `config` | `BlipTextConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BlipTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Llion` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_afmoe.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\afmoe\modeling_afmoe.py`
+- **Captured**: 4/23/2026, 9:47:04 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_afmoe.py: 694 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\afmoe\modeling_afmoe.py` (+694 / -0)
+**Schema: `AfmoePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `models` | `unknown` | ✓ | - |
+| `config` | `AfmoeConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `AfmoeModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_afmoe.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\afmoe\modular_afmoe.py`
+- **Captured**: 4/23/2026, 9:47:02 PM
+- **Category**: bugfix
+**Summary:** Modified modular_afmoe.py: 461 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\afmoe\modular_afmoe.py` (+461 / -0)
+**Schema: `AfmoePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `models` | `unknown` | ✓ | - |
+| `config` | `AfmoeConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `AfmoeModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_blip_2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blip_2\modeling_blip_2.py`
+- **Captured**: 4/23/2026, 9:46:59 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_blip_2.py: 2145 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blip_2\modeling_blip_2.py` (+2145 / -0)
+**Schema: `BaseModelOutputWithVisionQformerOutputs`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `vision_outputs` | `unknown` | ✓ | - |
+| `qformer_outputs` | `unknown` | ✓ | - |
+| `vision_outputs` | `BaseModelOutputWithPooling` | ✓ | - |
+| `qformer_outputs` | `BaseModelOutputWithPoolingAndCrossAttentions` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Class` | `unknown` | ✓ | - |
+
+**Schema: `Blip2ForConditionalGenerationModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `vision_outputs` | `unknown` | ✓ | - |
+| `qformer_outputs` | `unknown` | ✓ | - |
+| `language_model_outputs` | `unknown` | ✓ | - |
+| `loss` | `tuple[torch` | ✓ | - |
+| `logits` | `tuple[torch` | ✓ | - |
+| `vision_outputs` | `BaseModelOutputWithPooling` | ✓ | - |
+| `qformer_outputs` | `BaseModelOutputWithPoolingAndCrossAttentions` | ✓ | - |
+| `language_model_outputs` | `CausalLMOutputWithPast` | ✓ | - |
+
+**Schema: `Blip2ImageTextMatchingModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `Blip2TextModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `Blip2VisionModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `Blip2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `Blip2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+
+**Schema: `Blip2VisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `config` | `Blip2VisionConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `Blip2QFormerModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `Blip2QFormerConfig` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BLIP` | `unknown` | ✓ | - |
+
+**Schema: `Blip2Model`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `Blip2Config` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+
+**Schema: `Blip2TextModelWithProjection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+
+**Schema: `Blip2VisionModelWithProjection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BLIP` | `unknown` | ✓ | - |
+| `encoder` | `unknown` | ✓ | - |
+| `One` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `Note` | `unknown` | ✓ | - |
+
+**Schema: `Blip2ForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `Blip2Config` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BLIP` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_aimv2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\aimv2\modeling_aimv2.py`
+- **Captured**: 4/23/2026, 9:46:57 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_aimv2.py: 747 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\aimv2\modeling_aimv2.py` (+747 / -0)
+**Schema: `Aimv2Output`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+
+**Schema: `Aimv2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `models` | `unknown` | ✓ | - |
+| `config` | `Aimv2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `Aimv2VisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `Aimv2VisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `Aimv2TextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `model` | `unknown` | ✓ | - |
+| `square_tensor` | `unknown` | ✓ | - |
+| `sum_tensor` | `unknown` | ✓ | - |
+| `normed_tensor` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_aimv2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\aimv2\modular_aimv2.py`
+- **Captured**: 4/23/2026, 9:46:55 PM
+- **Category**: bugfix
+**Summary:** Modified modular_aimv2.py: 566 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\aimv2\modular_aimv2.py` (+566 / -0)
+**Schema: `Aimv2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `models` | `unknown` | ✓ | - |
+| `config` | `Aimv2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `Aimv2VisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `Aimv2VisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `Aimv2TextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in prune.py
+
+- **File**: `venv\Lib\site-packages\torch\nn\utils\prune.py`
+- **Captured**: 4/23/2026, 9:46:53 PM
+- **Category**: bugfix
+**Summary:** Modified prune.py: 1396 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\nn\utils\prune.py` (+1396 / -0)
+**Schema: `PruningContainer`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Keeps` | `unknown` | ✓ | - |
+| `combining` | `unknown` | ✓ | - |
+| `Accepts` | `unknown` | ✓ | - |
+| `them` | `unknown` | ✓ | - |
+
+**Schema: `Identity`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `PRUNING_TYPE` | `unknown` | ✓ | - |
+
+**Schema: `RandomUnstructured`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Args` | `name` | ✓ | - |
+| `PRUNING_TYPE` | `unknown` | ✓ | - |
+
+**Schema: `L1Unstructured`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Args` | `amount` | ✓ | - |
+| `PRUNING_TYPE` | `unknown` | ✓ | - |
+
+**Schema: `RandomStructured`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Args` | `amount` | ✓ | - |
+| `PRUNING_TYPE` | `unknown` | ✓ | - |
+
+**Schema: `LnStructured`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Args` | `amount` | ✓ | - |
+| `PRUNING_TYPE` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bloom.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bloom\modeling_bloom.py`
+- **Captured**: 4/23/2026, 9:46:50 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bloom.py: 988 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bloom\modeling_bloom.py` (+988 / -0)
+**Schema: `BloomPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BloomConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `BloomModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `embeddings` | `unknown` | ✓ | - |
+
+**Schema: `BloomForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `no` | `unknown` | ✓ | - |
+| `padding` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_albert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\albert\modeling_albert.py`
+- **Captured**: 4/23/2026, 9:46:48 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_albert.py: 977 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\albert\modeling_albert.py` (+977 / -0)
+**Schema: `AlbertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Output` | `unknown` | ✓ | - |
+
+**Schema: `AlbertForPreTrainingOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `prediction_logits` | `unknown` | ✓ | - |
+| `sop_logits` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `prediction_logits` | `torch` | ✓ | - |
+| `sop_logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `AlbertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Albert` | `unknown` | ✓ | - |
+
+**Schema: `AlbertForPreTraining`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `AlbertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Albert` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_blt.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blt\modeling_blt.py`
+- **Captured**: 4/23/2026, 9:46:46 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_blt.py: 1464 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blt\modeling_blt.py` (+1464 / -0)
+**Schema: `BltPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BltLocalEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltLocalEncoderConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BltLocalDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltLocalDecoderConfig` | ✓ | - |
+
+**Schema: `BltGlobalTransformer`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltGlobalTransformerConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `Splits` | `unknown` | ✓ | - |
+| `Pads` | `unknown` | ✓ | - |
+| `Args` | `patch_lengths` | ✓ | - |
+| `Returns` | `torch` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `batch_size` | `unknown` | ✓ | - |
+| `processed` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `max_len` | `unknown` | ✓ | - |
+| `padded` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `BltPatcher`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltPatcherConfig` | ✓ | - |
+| `A` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `identify` | `unknown` | ✓ | - |
+| `Args` | `token_tensor` | ✓ | - |
+| `Returns` | `torch` | ✓ | - |
+| `Example` | `unknown` | ✓ | - |
+| `prime_tensor` | `unknown` | ✓ | - |
+| `powers` | `unknown` | ✓ | - |
+| `prime_powers` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `token_ids` | `torch` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `local_encoder_tokens` | `torch` | ✓ | - |
+| `local_encoder` | `unknown` | ✓ | - |
+| `encoder_hash_tok_embedding` | `nn` | ✓ | - |
+| `encoder_hash_byte_group_nb_functions` | `int,` | ✓ | - |
+| `encoder_hash_byte_group_size` | `list,` | ✓ | - |
+| `encoder_hash_byte_group_vocab` | `int,` | ✓ | - |
+| `primes` | `unknown` | ✓ | - |
+| `embeddings` | `unknown` | ✓ | - |
+| `embedding_idx` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `patch_ids` | `torch` | ✓ | - |
+| `num_patches` | `int,` | ✓ | - |
+| `sequence_length` | `int,` | ✓ | - |
+| `patches_as_queries` | `bool` | ✓ | - |
+| `cross_attn_k` | `int` | ✓ | - |
+| `dtype` | `torch` | ✓ | - |
+| `Prepare` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `Args` | `patch_ids` | ✓ | - |
+| `Returns` | `Tuple[torch` | ✓ | - |
+| `batch_size` | `unknown` | ✓ | - |
+| `device` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `q_len` | ✓ | - |
+| `cross_attention_mask` | `unknown` | ✓ | - |
+| `repeat_dim` | `unknown` | ✓ | - |
+| `cross_attention_mask` | `unknown` | ✓ | - |
+| `expected_shape` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `cross_attention_mask` | `unknown` | ✓ | - |
+| `inverted_cross_attn_mask` | `unknown` | ✓ | - |
+| `cross_attention_mask` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `BltModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_blt.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\blt\modular_blt.py`
+- **Captured**: 4/23/2026, 9:46:44 PM
+- **Category**: bugfix
+**Summary:** Modified modular_blt.py: 1196 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\blt\modular_blt.py` (+1196 / -0)
+**Schema: `BltPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltConfig` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BltLocalEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltLocalEncoderConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BltLocalDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltLocalDecoderConfig` | ✓ | - |
+
+**Schema: `BltGlobalTransformer`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltGlobalTransformerConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BltPatcher`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BltPatcherConfig` | ✓ | - |
+
+**Schema: `BltModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bridgetower.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bridgetower\modeling_bridgetower.py`
+- **Captured**: 4/23/2026, 9:46:42 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bridgetower.py: 1762 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bridgetower\modeling_bridgetower.py` (+1762 / -0)
+**Schema: `BridgeTowerModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `text_features` | `unknown` | ✓ | - |
+| `image_features` | `unknown` | ✓ | - |
+| `pooler_output` | `unknown` | ✓ | - |
+| `text_features` | `torch` | ✓ | - |
+| `image_features` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Output` | `unknown` | ✓ | - |
+
+**Schema: `BridgeTowerContrastiveOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `cross_embeds` | `unknown` | ✓ | - |
+| `attentions` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `text_embeds` | `tuple[torch` | ✓ | - |
+| `image_embeds` | `tuple[torch` | ✓ | - |
+| `cross_embeds` | `tuple[torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BridgeTowerPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BridgeTowerConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BridgeTowerVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BridgeTowerVisionConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Kaiser` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+**Schema: `BridgeTowerTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BridgeTowerTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `BridgeTowerForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `BridgeTower` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in cpp_extension.py
+
+- **File**: `venv\Lib\site-packages\torch\utils\cpp_extension.py`
+- **Captured**: 4/23/2026, 9:46:40 PM
+- **Category**: bugfix
+**Summary:** Modified cpp_extension.py: 3196 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\utils\cpp_extension.py` (+3196 / -0)
+**API Endpoints** (`cpp_extension.py`):
+
+| Method | Route | Handler | Middleware |
+|--------|-------|---------|------------|
+| `PATH('INCLUDE', SCHEME` | `include` | get_path | - |
+
+### [bugfix] Changes in server.py
+
+- **File**: `api\server.py`
+- **Captured**: 4/23/2026, 9:46:38 PM
+- **Category**: bugfix
+**Summary:** Modified server.py: 2641 lines added, 0 lines removed.
+**Files Modified:**
+  - `api\server.py` (+2641 / -0)
+**API Endpoints** (`server.py`):
+
+| Method | Route | Handler | Middleware |
+|--------|-------|---------|------------|
+| `POST` | `/api/auth/signup` | post | auth |
+| `POST` | `/api/auth/login` | post | auth |
+| `POST` | `/api/auth/refresh` | post | auth |
+| `GET` | `/api/auth/me` | get | auth |
+| `GET` | `/api/auth/users` | get | auth |
+| `POST` | `/api/auth/change-password` | post | auth |
+| `GET` | `/api/auth/2fa/status` | get | auth |
+| `POST` | `/api/auth/2fa/enroll` | post | auth |
+| `POST` | `/api/auth/2fa/verify` | post | auth |
+| `POST` | `/api/auth/2fa/disable` | post | auth |
+| `POST` | `/api/auth/2fa/regenerate-codes` | post | auth |
+| `GET` | `/api/auth/sessions` | get | auth, session |
+| `DELETE` | `/api/auth/sessions/{jti}` | delete | auth |
+| `POST` | `/api/auth/sessions/revoke-all-other` | post | auth, session |
+| `GET` | `/api/audit` | get | - |
+| `GET` | `/api/privacy/status` | get | - |
+| `GET` | `/api/privacy/audit` | get | - |
+| `POST` | `/api/privacy/audit/clear` | post | - |
+| `GET` | `/api/audit/export` | get | - |
+| `POST` | `/api/auth/forgot-password` | post | auth |
+| `POST` | `/api/auth/reset-password` | post | auth |
+| `GET` | `/api/businesses` | get | - |
+| `POST` | `/api/businesses` | post | - |
+| `GET` | `/api/businesses/{business_id}` | get | - |
+| `PATCH` | `/api/businesses/{business_id}` | patch | - |
+| `DELETE` | `/api/businesses/{business_id}` | delete | - |
+| `GET` | `/api/businesses/{business_id}/members` | get | - |
+| `POST` | `/api/businesses/{business_id}/members` | post | - |
+| `DELETE` | `/api/businesses/{business_id}/members/{target_user_id}` | delete | - |
+| `GET` | `/api/crm/overview` | get | - |
+| `GET` | `/api/crm/companies` | get | - |
+| `POST` | `/api/crm/companies` | post | - |
+| `GET` | `/api/crm/companies/{company_id}` | get | - |
+| `PATCH` | `/api/crm/companies/{company_id}` | patch | - |
+| `DELETE` | `/api/crm/companies/{company_id}` | delete | - |
+| `GET` | `/api/crm/contacts` | get | - |
+| `POST` | `/api/crm/contacts` | post | - |
+| `GET` | `/api/crm/contacts/{contact_id}` | get | - |
+| `PATCH` | `/api/crm/contacts/{contact_id}` | patch | - |
+| `DELETE` | `/api/crm/contacts/{contact_id}` | delete | - |
+| `GET` | `/api/crm/deals` | get | - |
+| `POST` | `/api/crm/deals` | post | - |
+| `GET` | `/api/crm/deals/{deal_id}` | get | - |
+| `PATCH` | `/api/crm/deals/{deal_id}` | patch | - |
+| `DELETE` | `/api/crm/deals/{deal_id}` | delete | - |
+| `GET` | `/api/crm/pipeline` | get | - |
+| `GET` | `/api/crm/interactions` | get | - |
+| `POST` | `/api/crm/interactions` | post | - |
+| `DELETE` | `/api/crm/interactions/{interaction_id}` | delete | - |
+| `GET` | `/api/tasks` | get | - |
+| `POST` | `/api/tasks` | post | - |
+| `GET` | `/api/tasks/summary` | get | - |
+| `GET` | `/api/tasks/{task_id}` | get | - |
+| `PATCH` | `/api/tasks/{task_id}` | patch | - |
+| `DELETE` | `/api/tasks/{task_id}` | delete | - |
+| `GET` | `/api/invoices` | get | - |
+| `POST` | `/api/invoices` | post | - |
+| `GET` | `/api/invoices/summary` | get | - |
+| `GET` | `/api/invoices/{invoice_id}` | get | - |
+| `PATCH` | `/api/invoices/{invoice_id}` | patch | - |
+| `DELETE` | `/api/invoices/{invoice_id}` | delete | - |
+| `POST` | `/api/invoices/{invoice_id}/render` | post | - |
+| `GET` | `/api/invoices/{invoice_id}/pdf` | get | - |
+| `GET` | `/api/documents/templates` | get | - |
+| `GET` | `/api/documents/templates/{template_key}` | get | - |
+| `GET` | `/api/documents` | get | - |
+| `POST` | `/api/documents/generate` | post | - |
+| `GET` | `/api/documents/{document_id}` | get | - |
+| `GET` | `/api/documents/{document_id}/download` | get | - |
+| `DELETE` | `/api/documents/{document_id}` | delete | - |
+| `GET` | `/api/calendar/status` | get | - |
+| `POST` | `/api/calendar/oauth/start` | post | - |
+| `GET` | `/api/calendar/oauth/callback` | get | - |
+| `GET` | `/api/calendar/events` | get | - |
+| `DELETE` | `/api/calendar/disconnect` | delete | - |
+| `GET` | `/api/agent/tools` | get | - |
+| `POST` | `/api/agent/chat` | post | - |
+| `GET` | `/api/approvals` | get | - |
+| `GET` | `/api/approvals/pending-count` | get | - |
+| `GET` | `/api/approvals/{action_id}` | get | - |
+| `POST` | `/api/approvals/{action_id}/approve` | post | - |
+| `POST` | `/api/approvals/{action_id}/reject` | post | - |
+| `GET` | `/api/agents/background` | get | - |
+| `POST` | `/api/agents/background/stale-deals/run` | post | - |
+| `POST` | `/api/agents/background/invoice-reminders/run` | post | - |
+| `POST` | `/api/agents/background/meeting-prep/run` | post | - |
+| `GET` | `/api/email-triage/account` | get | - |
+| `POST` | `/api/email-triage/account` | post | - |
+| `DELETE` | `/api/email-triage/account` | delete | - |
+| `POST` | `/api/email-triage/run` | post | - |
+| `GET` | `/api/email-triage/log` | get | - |
+| `GET` | `/api/memory` | get | - |
+| `POST` | `/api/memory` | post | - |
+| `PATCH` | `/api/memory/{memory_id}` | patch | - |
+| `DELETE` | `/api/memory/{memory_id}` | delete | - |
+| `POST` | `/api/memory/consolidate` | post | - |
+| `GET` | `/api/notifications` | get | - |
+| `POST` | `/api/notifications/{nid}/read` | post | - |
+| `POST` | `/api/notifications/read-all` | post | - |
+| `GET` | `/api/health` | get | - |
+| `GET` | `/api/stats` | get | - |
+| `POST` | `/api/chat` | post | - |
+| `GET` | `/api/conversations` | get | - |
+| `GET` | `/api/conversations/{conv_id}` | get | - |
+| `PATCH` | `/api/conversations/{conv_id}` | patch | - |
+| `DELETE` | `/api/conversations/{conv_id}` | delete | - |
+| `POST` | `/api/conversations` | post | - |
+| `GET` | `/api/database/tables` | get | - |
+| `GET` | `/api/database/tables/{table_name}` | get | - |
+| `POST` | `/api/database/import` | post | - |
+| `POST` | `/api/database/import/preview` | post | - |
+| `POST` | `/api/reports/generate` | post | - |
+| `GET` | `/api/reports` | get | - |
+| `GET` | `/api/reports/download/{filename}` | get | - |
+| `POST` | `/api/whatif` | post | - |
+| `GET` | `/api/history` | get | - |
+| `POST` | `/api/history/{query_id}/star` | post | - |
+| `DELETE` | `/api/history/{query_id}` | delete | - |
+| `DELETE` | `/api/history` | delete | - |
+| `GET` | `/api/knowledge` | get | - |
+| `POST` | `/api/knowledge/upload` | post | upload |
+| `GET` | `/api/monitor/status` | get | - |
+| `POST` | `/api/monitor/run` | post | - |
+| `POST` | `/api/export/markdown` | post | - |
+| `POST` | `/api/export/pdf` | post | - |
+| `GET` | `/api/settings` | get | - |
+| `POST` | `/api/settings/reset-llm` | post | - |
+| `POST` | `/api/settings/clear-cache` | post | cache |
+| `GET` | `/api/workflows` | get | - |
+| `GET` | `/api/workflows/node-types` | get | - |
+| `GET` | `/api/workflows/templates` | get | - |
+| `POST` | `/api/workflows/generate-from-text` | post | - |
+| `POST` | `/api/agent/research` | post | - |
+| `GET` | `/api/workflows/{wf_id}` | get | - |
+| `POST` | `/api/workflows` | post | - |
+| `DELETE` | `/api/workflows/{wf_id}` | delete | - |
+| `POST` | `/api/workflows/{wf_id}/toggle` | post | - |
+| `POST` | `/api/workflows/{wf_id}/run` | post | - |
+| `POST` | `/api/workflows/run-preview` | post | - |
+| `GET` | `/api/workflows/scheduler/jobs` | get | - |
+| `GET` | `/api/workflows/scheduler/history` | get | - |
+| `POST` | `/api/voice/transcribe` | post | - |
+| `POST` | `/api/email/send` | post | - |
+| `POST` | `/api/webhooks/{webhook_path:path}` | post | - |
+| `POST` | `/api/settings/update` | post | - |
+| `GET` | `/api/analytics/pipeline-velocity` | get | - |
+| `GET` | `/api/analytics/revenue-forecast` | get | - |
+| `GET` | `/api/analytics/agent-impact` | get | - |
+| `GET` | `/api/analytics/churn-risk` | get | - |
+| `GET` | `/api/team/invites` | get | - |
+| `POST` | `/api/team/invites` | post | - |
+| `DELETE` | `/api/team/invites/{token}` | delete | - |
+| `GET` | `/api/team/invites/preview` | get | auth |
+| `POST` | `/api/team/invites/accept` | post | - |
+| `GET` | `/api/team/activity` | get | - |
+| `POST` | `/api/whatsapp/link/generate` | post | - |
+| `GET` | `/api/whatsapp/account` | get | - |
+| `DELETE` | `/api/whatsapp/account` | delete | - |
+| `GET` | `/api/whatsapp/bridge-secret` | get | - |
+| `POST` | `/api/whatsapp/inbound` | post | - |
+| `GET` | `/api/whatsapp/attachment` | get | - |
+| `GET` | `/api/search` | get | - |
+| `GET` | `/{full_path:path}` | get | - |
+**Schema: `ChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+
+**Schema: `WhatIfRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `scenario` | `str` | ✓ | - |
+
+**Schema: `ReportRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+
+**Schema: `ConversationUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `title` | `str` | ✓ | - |
+
+**Schema: `SignupRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+| `name` | `str` | ✓ | - |
+| `password` | `str` | ✓ | - |
+
+**Schema: `LoginRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+| `password` | `str` | ✓ | - |
+| `totp_code` | `Optional[str]` | ✓ | - |
+
+**Schema: `BusinessCreate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `name` | `str` | ✓ | - |
+| `industry` | `str` | ✓ | - |
+| `description` | `str` | ✓ | - |
+
+**Schema: `BusinessUpdate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `name` | `Optional[str]` | ✓ | - |
+| `industry` | `Optional[str]` | ✓ | - |
+| `description` | `Optional[str]` | ✓ | - |
+
+**Schema: `MemberAdd`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `user_id` | `str` | ✓ | - |
+| `role` | `str` | ✓ | - |
+| `create_access_token` | `unknown` | ✓ | - |
+| `get_current_user` | `unknown` | ✓ | - |
+| `create_business` | `unknown` | ✓ | - |
+| `update_business` | `unknown` | ✓ | - |
+| `list_members` | `unknown` | ✓ | - |
+| `ensure_business_for_user` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `biz_id` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `refresh` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `biz_id` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `refresh` | `unknown` | ✓ | - |
+| `try` | `from datetime import timedelta as _td` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `token` | `unknown` | ✓ | - |
+| `payload` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `access` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `ChangePasswordRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `current_password` | `str` | ✓ | - |
+| `new_password` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `change_password` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `TotpCode`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `code` | `str` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `recovery` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_sec` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `codes` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `sessions` | `unknown` | ✓ | - |
+| `current_jti` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `_sec` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `current` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `tool` | `Optional[str]` | ✓ | - |
+| `user_id_filter` | `Optional[str]` | ✓ | - |
+| `success` | `Optional[bool]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `limit` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `sql` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `user_ids` | `unknown` | ✓ | - |
+| `names` | `dict` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Summarize` | `unknown` | ✓ | - |
+| `kill` | `unknown` | ✓ | - |
+| `log` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `Return` | `unknown` | ✓ | - |
+| `newest` | `unknown` | ✓ | - |
+| `call` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `limit` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `entries` | `list` | ✓ | - |
+| `stats` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `limit` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `rows` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `buf` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `ForgotPasswordRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+
+**Schema: `ResetPasswordRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `token` | `str` | ✓ | - |
+| `new_password` | `str` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `base_url` | `unknown` | ✓ | - |
+| `reset_link` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `import smtplib` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `Always` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `consume_password_reset` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `assert_member` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `updates` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `delete_business` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `assert_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `add_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `remove_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `company_id` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `stage` | `Optional[str]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `contact_id` | `Optional[str]` | ✓ | - |
+| `company_id` | `Optional[str]` | ✓ | - |
+| `deal_id` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_crm` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `status` | `Optional[str]` | ✓ | - |
+| `assignee_id` | `Optional[str]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `due_window` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_tasks` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `status` | `Optional[str]` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_inv` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `filename` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `inv` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `filename` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `template_key` | `unknown` | ✓ | - |
+| `title` | `unknown` | ✓ | - |
+| `variables` | `unknown` | ✓ | - |
+| `fmt` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `doc` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `media` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_docs` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `configured` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `url` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `state` | `unknown` | ✓ | - |
+| `small` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `user_id` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `redirect_uri` | `unknown` | ✓ | - |
+| `tokens` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_cal` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `AgentChatRequest`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `query` | `str` | ✓ | - |
+| `conversation_id` | `Optional[str]` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Tool` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `business_id` | `unknown` | ✓ | - |
+| `biz` | `unknown` | ✓ | - |
+| `business_name` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `assert_conversation_access` | ✓ | - |
+| `prior` | `unknown` | ✓ | - |
+| `agent_messages` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `agent_messages` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `loop` | `unknown` | ✓ | - |
+| `try` | `result` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `ts` | `unknown` | ✓ | - |
+| `tools_used` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `reason` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `_email_triage` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_mem` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `body` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `mark_read` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `mark_all_read` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `ph` | `unknown` | ✓ | - |
+| `provider` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `else` | `online` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `kb` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `start` | `unknown` | ✓ | - |
+| `user` | `unknown` | ✓ | - |
+| `business_id` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `assert_conversation_access` | ✓ | - |
+| `try` | `loop` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `duration_ms` | `unknown` | ✓ | - |
+| `answer` | `unknown` | ✓ | - |
+| `tools` | `unknown` | ✓ | - |
+| `user_msg` | `unknown` | ✓ | - |
+| `assistant_msg` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `existing` | `unknown` | ✓ | - |
+| `save_full_conversation` | `unknown` | ✓ | - |
+| `try` | `log_query` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `await` | `unknown` | ✓ | - |
+| `authed_user` | `unknown` | ✓ | - |
+| `business_id` | `unknown` | ✓ | - |
+| `try` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `info` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `assert_conversation_access` | `unknown` | ✓ | - |
+| `update_title` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `assert_conversation_access` | `unknown` | ✓ | - |
+| `dc` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conv_id` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `tables` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `conn` | `unknown` | ✓ | - |
+| `try` | `cols` | ✓ | - |
+| `finally` | `conn` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `file` | `UploadFile` | ✓ | - |
+| `table_name` | `str` | ✓ | - |
+| `if_exists` | `str` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `try` | `preview` | ✓ | - |
+| `finally` | `Path` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `try` | `from sql_agent` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `import` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `suffix` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `try` | `preview` | ✓ | - |
+| `finally` | `Path` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `preview` | `unknown` | ✓ | - |
+| `df` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `pdf_path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `ext` | `unknown` | ✓ | - |
+| `media` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `search` | `Optional[str]` | ✓ | - |
+| `intent` | `Optional[str]` | ✓ | - |
+| `starred` | `bool` | ✓ | - |
+| `limit` | `int` | ✓ | - |
+| `ctx` | `dict` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `delete_query` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `try` | `stats` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `safe_name` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `content` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `dest` | `unknown` | ✓ | - |
+| `docs` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `path` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+
+**Schema: `InviteCreate`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `email` | `str` | ✓ | - |
+| `role` | `str` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `assert_member` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `_team` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_align.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\align\modeling_align.py`
+- **Captured**: 4/23/2026, 9:46:37 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_align.py: 1181 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\align\modeling_align.py` (+1181 / -0)
+**Schema: `AlignVisionModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `AlignTextModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `AlignOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPoolingAndNoAttention` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `caption_loss` | `unknown` | ✓ | - |
+| `image_loss` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `r` | `unknown` | ✓ | - |
+| `Round` | `unknown` | ✓ | - |
+| `divisor` | `unknown` | ✓ | - |
+| `num_channels` | `unknown` | ✓ | - |
+| `new_dim` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `r` | `unknown` | ✓ | - |
+| `Utility` | `unknown` | ✓ | - |
+| `Args` | `kernel_size` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `correct` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `return` | ✓ | - |
+
+**Schema: `AlignPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AlignConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `AlignTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AlignTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `AlignVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AlignVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_input_embed_layer` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_bros.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\bros\modeling_bros.py`
+- **Captured**: 4/23/2026, 9:46:35 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_bros.py: 972 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\bros\modeling_bros.py` (+972 / -0)
+**Schema: `BrosSpadeOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `initial_token_logits` | `unknown` | ✓ | - |
+| `subsequent_token_logits` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `initial_token_logits` | `torch` | ✓ | - |
+| `subsequent_token_logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `BrosPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `BrosConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `BrosForTokenClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Bros` | `unknown` | ✓ | - |
+| `hidden` | `unknown` | ✓ | - |
+| `predict` | `unknown` | ✓ | - |
+| `tokens` | `unknown` | ✓ | - |
+| `since` | `unknown` | ✓ | - |
+
+**Schema: `BrosSpadeEEForTokenClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Bros` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_altclip.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\altclip\modeling_altclip.py`
+- **Captured**: 4/23/2026, 9:46:33 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_altclip.py: 1187 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\altclip\modeling_altclip.py` (+1187 / -0)
+**Schema: `AltCLIPOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+
+**Schema: `AltCLIPPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AltCLIPConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_module` | `unknown` | ✓ | - |
+
+**Schema: `AltCLIPVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AltCLIPVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Kaiser` | `unknown` | ✓ | - |
+
+**Schema: `AltRobertaModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AltCLIPTextConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `AltCLIPTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AltCLIPTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_apertus.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\apertus\modeling_apertus.py`
+- **Captured**: 4/23/2026, 9:46:30 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_apertus.py: 506 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\apertus\modeling_apertus.py` (+506 / -0)
+**Schema: `ApertusPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ApertusConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ApertusForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `_tp_plan` | `unknown` | ✓ | - |
+| `_pp_plan` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_camembert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\camembert\modeling_camembert.py`
+- **Captured**: 4/23/2026, 9:46:26 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_camembert.py: 1272 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\camembert\modeling_camembert.py` (+1272 / -0)
+**Schema: `CamembertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `CamembertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `CamembertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `CamembertForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `Camembert` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_camembert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\camembert\modular_camembert.py`
+- **Captured**: 4/23/2026, 9:46:24 PM
+- **Category**: bugfix
+**Summary:** Modified modular_camembert.py: 535 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\camembert\modular_camembert.py` (+535 / -0)
+**Schema: `CamembertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+
+**Schema: `CamembertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_arcee.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\arcee\modeling_arcee.py`
+- **Captured**: 4/23/2026, 9:46:19 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_arcee.py: 521 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\arcee\modeling_arcee.py` (+521 / -0)
+**Schema: `ArceePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ArceeConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ArceeForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `_tp_plan` | `unknown` | ✓ | - |
+| `_pp_plan` | `unknown` | ✓ | - |
+
+**Schema: `ArceeForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+**Schema: `ArceeForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `base_model_prefix` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_canine.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\canine\modeling_canine.py`
+- **Captured**: 4/23/2026, 9:46:17 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_canine.py: 1359 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\canine\modeling_canine.py` (+1359 / -0)
+**Schema: `CanineModelOutputWithPooling`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `pooler_output` | `unknown` | ✓ | - |
+| `hidden_states` | `unknown` | ✓ | - |
+| `attentions` | `unknown` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `pooler_output` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `CaninePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CanineConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `CanineModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `CANINE` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_aria.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\aria\modeling_aria.py`
+- **Captured**: 4/23/2026, 9:46:14 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_aria.py: 1211 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\aria\modeling_aria.py` (+1211 / -0)
+**Schema: `AriaTextPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AriaTextConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `AriaPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AriaConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `AriaTextForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `_tp_plan` | `unknown` | ✓ | - |
+| `_pp_plan` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `AriaCausalLMOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `image_hidden_states` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `image_hidden_states` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `AriaModelOutputWithPast`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `image_hidden_states` | `unknown` | ✓ | - |
+| `image_hidden_states` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `AriaModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `Aria` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_aria.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\aria\modular_aria.py`
+- **Captured**: 4/23/2026, 9:46:13 PM
+- **Category**: bugfix
+**Summary:** Modified modular_aria.py: 1157 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\aria\modular_aria.py` (+1157 / -0)
+**Schema: `AriaTextPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AriaTextConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `AriaPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AriaConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+
+**Schema: `AriaTextForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `AriaModelOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+**Schema: `AriaModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `Aria` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_chameleon.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\chameleon\modeling_chameleon.py`
+- **Captured**: 4/23/2026, 9:46:10 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_chameleon.py: 1133 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\chameleon\modeling_chameleon.py` (+1133 / -0)
+**Schema: `ChameleonVQVAEModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `quantized_last_hidden_state` | `unknown` | ✓ | - |
+| `image_tokens` | `unknown` | ✓ | - |
+| `embedding_loss` | `unknown` | ✓ | - |
+| `quantized_last_hidden_state` | `torch` | ✓ | - |
+| `image_tokens` | `torch` | ✓ | - |
+| `embedding_loss` | `torch` | ✓ | - |
+
+**Schema: `ChameleonPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ChameleonConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `Taigman` | `unknown` | ✓ | - |
+
+**Schema: `ChameleonVQVAE`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ChameleonVQVAEConfig` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ChameleonModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `Chameleon` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_audioflamingo3.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\audioflamingo3\modeling_audioflamingo3.py`
+- **Captured**: 4/23/2026, 9:46:08 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_audioflamingo3.py: 595 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\audioflamingo3\modeling_audioflamingo3.py` (+595 / -0)
+**Schema: `AudioFlamingo3PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AudioFlamingo3Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `AudioFlamingo3Encoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `AudioFlamingo3` | `unknown` | ✓ | - |
+| `config` | `AudioFlamingo3EncoderConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_chinese_clip.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\chinese_clip\modeling_chinese_clip.py`
+- **Captured**: 4/23/2026, 9:46:04 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_chinese_clip.py: 1073 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\chinese_clip\modeling_chinese_clip.py` (+1073 / -0)
+**Schema: `ChineseCLIPOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPoolingAndCrossAttentions` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPoolingAndCrossAttentions` | ✓ | - |
+
+**Schema: `ChineseCLIPPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ChineseCLIPConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `ChineseCLIPTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Llion` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `config` | `ChineseCLIPTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ChineseCLIPVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ChineseCLIPVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_audio_spectrogram_transformer.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\audio_spectrogram_transformer\modeling_audio_spectrogram_transformer.py`
+- **Captured**: 4/23/2026, 9:46:02 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_audio_spectrogram_transformer.py: 455 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\audio_spectrogram_transformer\modeling_audio_spectrogram_transformer.py` (+455 / -0)
+**Schema: `ASTPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ASTConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_chmv2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\chmv2\modeling_chmv2.py`
+- **Captured**: 4/23/2026, 9:46:00 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_chmv2.py: 435 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\chmv2\modeling_chmv2.py` (+435 / -0)
+**Schema: `CHMv2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CHMv2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `CHMv2` | `unknown` | ✓ | - |
+| `estimation` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_chmv2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\chmv2\modular_chmv2.py`
+- **Captured**: 4/23/2026, 9:45:58 PM
+- **Category**: bugfix
+**Summary:** Modified modular_chmv2.py: 538 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\chmv2\modular_chmv2.py` (+538 / -0)
+**Schema: `CHMv2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CHMv2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `CHMv2` | `unknown` | ✓ | - |
+| `estimation` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in auto_factory.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\auto\auto_factory.py`
+- **Captured**: 4/23/2026, 9:45:56 PM
+- **Category**: bugfix
+**Summary:** Modified auto_factory.py: 663 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\auto\auto_factory.py` (+663 / -0)
+**Schema: `_BaseAutoBackboneClass`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_model_mapping` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `model_mapping` | `unknown` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `cls` | `unknown` | ✓ | - |
+| `from_config` | `unknown` | ✓ | - |
+| `from_config_docstring` | `unknown` | ✓ | - |
+| `from_config_docstring` | `unknown` | ✓ | - |
+| `from_config_docstring` | `unknown` | ✓ | - |
+| `from_config` | `unknown` | ✓ | - |
+| `from_config` | `unknown` | ✓ | - |
+| `cls` | `unknown` | ✓ | - |
+| `from_pretrained_docstring` | `unknown` | ✓ | - |
+| `from_pretrained` | `unknown` | ✓ | - |
+| `from_pretrained_docstring` | `unknown` | ✓ | - |
+| `from_pretrained_docstring` | `unknown` | ✓ | - |
+| `from_pretrained_docstring` | `unknown` | ✓ | - |
+| `shortcut` | `unknown` | ✓ | - |
+| `from_pretrained_docstring` | `unknown` | ✓ | - |
+| `from_pretrained` | `unknown` | ✓ | - |
+| `from_pretrained` | `unknown` | ✓ | - |
+| `cls` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `transformers_module` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `raise ValueError` | ✓ | - |
+| `Adds` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `from` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `has_custom_prepare_inputs` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in test_api.py
+
+- **File**: `venv\Lib\site-packages\pandas\tests\api\test_api.py`
+- **Captured**: 4/23/2026, 9:45:51 PM
+- **Category**: bugfix
+**Summary:** Modified test_api.py: 578 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\tests\api\test_api.py` (+578 / -0)
+**Schema: `TestPDApi`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `ignored` | `unknown` | ✓ | - |
+| `public_lib` | `unknown` | ✓ | - |
+| `private_lib` | `unknown` | ✓ | - |
+| `misc` | `unknown` | ✓ | - |
+
+**Schema: `TestApi`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `allowed_api_dirs` | `unknown` | ✓ | - |
+| `allowed_typing` | `unknown` | ✓ | - |
+| `allowed_api_types` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_clap.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\clap\modeling_clap.py`
+- **Captured**: 4/23/2026, 9:45:48 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_clap.py: 1776 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\clap\modeling_clap.py` (+1776 / -0)
+**Schema: `ClapTextModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `ClapAudio` | `unknown` | ✓ | - |
+
+**Schema: `ClapAudioModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `audio_embeds` | `unknown` | ✓ | - |
+| `audio_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `ClapOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_audio` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `audio_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `audio_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_audio` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `audio_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `audio_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+
+**Schema: `ClapPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ClapConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `ClapAudioModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ClapAudioConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `cross` | `unknown` | ✓ | - |
+| `all` | `unknown` | ✓ | - |
+| `Kaiser` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+**Schema: `ClapTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ClapTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ClapModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ClapConfig` | ✓ | - |
+
+**Schema: `ClapTextModelWithProjection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ClapTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_autoformer.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\autoformer\modeling_autoformer.py`
+- **Captured**: 4/23/2026, 9:45:46 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_autoformer.py: 1833 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\autoformer\modeling_autoformer.py` (+1833 / -0)
+**Schema: `AutoFormerDecoderOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `trend` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `cross_attentions` | `unknown` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `trend` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Autoformer` | `unknown` | ✓ | - |
+
+**Schema: `AutoformerModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `trend` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `loc` | `unknown` | ✓ | - |
+| `scale` | `unknown` | ✓ | - |
+| `static_features` | `unknown` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `trend` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[torch` | ✓ | - |
+| `cross_attentions` | `tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state` | `torch` | ✓ | - |
+| `encoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[torch` | ✓ | - |
+| `loc` | `torch` | ✓ | - |
+| `scale` | `torch` | ✓ | - |
+| `static_features` | `torch` | ✓ | - |
+
+**Schema: `AutoformerPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AutoformerConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `AutoformerEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+
+**Schema: `AutoformerDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in conftest.py
+
+- **File**: `venv\Lib\site-packages\pandas\tests\apply\conftest.py`
+- **Captured**: 4/23/2026, 9:45:43 PM
+- **Category**: bugfix
+**Summary:** Modified conftest.py: 64 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\tests\apply\conftest.py` (+64 / -0)
+**Schema: `MockExecutionEngine`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Execution` | `unknown` | ✓ | - |
+| `uses` | `unknown` | ✓ | - |
+| `Making` | `unknown` | ✓ | - |
+| `functionality` | `unknown` | ✓ | - |
+| `When` | `unknown` | ✓ | - |
+| `same` | `unknown` | ✓ | - |
+| `executing` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_clip.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\clip\modeling_clip.py`
+- **Captured**: 4/23/2026, 9:45:41 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_clip.py: 1150 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\clip\modeling_clip.py` (+1150 / -0)
+**Schema: `CLIPVisionModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `CLIPTextModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `CLIPOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+
+**Schema: `CLIPPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `CLIPTextTransformer`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `CLIPTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `CLIPVisionTransformer`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `CLIPVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `CLIPModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPConfig` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `CLIPTextModelWithProjection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `CLIPVisionModelWithProjection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `CLIP` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+
+### [New] [enhancement] Changes in skeleton.html
+
+- **File**: `venv\Lib\site-packages\torch\utils\model_dump\skeleton.html`
+- **Captured**: 4/23/2026, 9:45:39 PM
+- **Category**: enhancement
+**Summary:** Modified skeleton.html: 22 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\utils\model_dump\skeleton.html` (+22 / -0)
+
+### [New] [bugfix] Changes in modeling_clipseg.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\clipseg\modeling_clipseg.py`
+- **Captured**: 4/23/2026, 9:45:36 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_clipseg.py: 1243 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\clipseg\modeling_clipseg.py` (+1243 / -0)
+**Schema: `CLIPSegOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits_per_image` | `unknown` | ✓ | - |
+| `logits_per_text` | `unknown` | ✓ | - |
+| `text_embeds` | `unknown` | ✓ | - |
+| `image_embeds` | `unknown` | ✓ | - |
+| `text_model_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits_per_image` | `torch` | ✓ | - |
+| `logits_per_text` | `torch` | ✓ | - |
+| `text_embeds` | `torch` | ✓ | - |
+| `image_embeds` | `torch` | ✓ | - |
+| `text_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+
+**Schema: `CLIPSegDecoderOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `CLIPSegImageSegmentationOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `conditional_embeddings` | `unknown` | ✓ | - |
+| `pooled_output` | `unknown` | ✓ | - |
+| `vision_model_output` | `unknown` | ✓ | - |
+| `decoder_output` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `conditional_embeddings` | `torch` | ✓ | - |
+| `pooled_output` | `torch` | ✓ | - |
+| `vision_model_output` | `BaseModelOutputWithPooling` | ✓ | - |
+| `decoder_output` | `CLIPSegDecoderOutput` | ✓ | - |
+
+**Schema: `CLIPSegPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPSegConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `CLIPSegTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPSegTextConfig` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `CLIPSegVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPSegVisionConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+
+**Schema: `CLIPSegModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `CLIPSegConfig` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `CLIPSeg` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_aya_vision.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\aya_vision\modeling_aya_vision.py`
+- **Captured**: 4/23/2026, 9:45:33 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_aya_vision.py: 447 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\aya_vision\modeling_aya_vision.py` (+447 / -0)
+**Schema: `AyaVisionPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `AyaVisionConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `AyaVisionCausalLMOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `image_hidden_states` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `image_hidden_states` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `AyaVisionModelOutputWithPast`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `image_hidden_states` | `unknown` | ✓ | - |
+| `image_hidden_states` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `AyaVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `AyaVisionForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_aya_vision.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\aya_vision\modular_aya_vision.py`
+- **Captured**: 4/23/2026, 9:45:31 PM
+- **Category**: bugfix
+**Summary:** Modified modular_aya_vision.py: 263 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\aya_vision\modular_aya_vision.py` (+263 / -0)
+**Schema: `AyaVisionPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `AyaVisionModelOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in functions.py
+
+- **File**: `venv\Lib\site-packages\torch\utils\_sympy\functions.py`
+- **Captured**: 4/23/2026, 9:45:21 PM
+- **Category**: bugfix
+**Summary:** Modified functions.py: 1510 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\utils\_sympy\functions.py` (+1510 / -0)
+**Schema: `Max`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Return` | `unknown` | ✓ | - |
+| `zero` | `unknown` | ✓ | - |
+| `identity` | `unknown` | ✓ | - |
+
+**Schema: `Min`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Return` | `unknown` | ✓ | - |
+| `zero` | `unknown` | ✓ | - |
+| `identity` | `unknown` | ✓ | - |
+| `sign` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `half_exp` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in graph_id_filter.py
+
+- **File**: `venv\Lib\site-packages\torch\_dynamo\graph_id_filter.py`
+- **Captured**: 4/23/2026, 9:45:17 PM
+- **Category**: bugfix
+**Summary:** Modified graph_id_filter.py: 370 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\_dynamo\graph_id_filter.py` (+370 / -0)
+**Schema: `GraphBackendRouter`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Routes` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Rules` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `Special` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in symbolic_convert.py
+
+- **File**: `venv\Lib\site-packages\torch\_dynamo\symbolic_convert.py`
+- **Captured**: 4/23/2026, 9:45:09 PM
+- **Category**: bugfix
+**Summary:** Modified symbolic_convert.py: 6269 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\_dynamo\symbolic_convert.py` (+6269 / -0)
+**Schema: `InstructionTranslator`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `if` | `unknown` | ✓ | - |
+| `_binary_op_lookup` | `unknown` | ✓ | - |
+| `output` | `OutputGraph,` | ✓ | - |
+| `code` | `types` | ✓ | - |
+| `get_inline_depth` | `Callable[[], int],` | ✓ | - |
+| `Context` | `unknown` | ✓ | - |
+| `Args` | `output` | ✓ | - |
+| `Yields` | `None` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `caller_info` | `unknown` | ✓ | - |
+| `call_stack` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+| `trace_success` | `unknown` | ✓ | - |
+| `try` | `yield` | ✓ | - |
+| `finally` | `stack_entry` | ✓ | - |
+
+**Schema: `InliningInstructionTranslator`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `symbolic_result` | `Optional[VariableTracker]` | ✓ | - |
+| `parent` | `InstructionTranslatorBase` | ✓ | - |
+
+### [New] [bugfix] Changes in builtin.py
+
+- **File**: `venv\Lib\site-packages\torch\_dynamo\variables\builtin.py`
+- **Captured**: 4/23/2026, 9:45:07 PM
+- **Category**: bugfix
+**Summary:** Modified builtin.py: 3350 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\_dynamo\variables\builtin.py` (+3350 / -0)
+**Schema: `GetMethodMode`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `inp0` | `unknown` | ✓ | - |
+| `inp1` | `unknown` | ✓ | - |
+| `inp0_int` | `unknown` | ✓ | - |
+| `inp1_int` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in functions.py
+
+- **File**: `venv\Lib\site-packages\torch\_dynamo\variables\functions.py`
+- **Captured**: 4/23/2026, 9:45:05 PM
+- **Category**: bugfix
+**Summary:** Modified functions.py: 3275 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\_dynamo\variables\functions.py` (+3275 / -0)
+**Schema: `UserFunctionVariable`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_nonvar_fields` | `unknown` | ✓ | - |
+| `_TREE_MAP_MODULES` | `unknown` | ✓ | - |
+
+**Schema: `TreeMapOnlyFunctionVariable`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_nonvar_fields` | `unknown` | ✓ | - |
+
+**Schema: `NestedUserFunctionVariable`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_nonvar_fields` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in lists.py
+
+- **File**: `venv\Lib\site-packages\torch\_dynamo\variables\lists.py`
+- **Captured**: 4/23/2026, 9:45:03 PM
+- **Category**: bugfix
+**Summary:** Modified lists.py: 1917 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\_dynamo\variables\lists.py` (+1917 / -0)
+**Schema: `CommonListMethodsVariable`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Implement` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in streams.py
+
+- **File**: `venv\Lib\site-packages\torch\cuda\streams.py`
+- **Captured**: 4/23/2026, 9:44:48 PM
+- **Category**: bugfix
+**Summary:** Modified streams.py: 272 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\cuda\streams.py` (+272 / -0)
+**Schema: `Stream`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `A` | `unknown` | ✓ | - |
+| `device` | `unknown` | ✓ | - |
+| `context` | `unknown` | ✓ | - |
+| `on` | `unknown` | ✓ | - |
+| `Args` | `device` | ✓ | - |
+
+### [New] [bugfix] Changes in filesystem.py
+
+- **File**: `venv\Lib\site-packages\torch\distributed\checkpoint\filesystem.py`
+- **Captured**: 4/23/2026, 9:44:42 PM
+- **Category**: bugfix
+**Summary:** Modified filesystem.py: 1031 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\distributed\checkpoint\filesystem.py` (+1031 / -0)
+**Schema: `NoCloseWriter`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `size` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `dtype` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `bytes_w` | `unknown` | ✓ | - |
+| `tensor_w` | `unknown` | ✓ | - |
+| `buckets` | `list[list[WriteItem]]` | ✓ | - |
+| `bucket_sizes` | `unknown` | ✓ | - |
+| `tensor_w` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `transforms` | `_StorageWriterTransforms,` | ✓ | - |
+| `stream` | `io` | ✓ | - |
+| `data` | `io` | ✓ | - |
+| `write_item` | `WriteItem,` | ✓ | - |
+| `storage_key` | `str,` | ✓ | - |
+| `serialization_format` | `SerializationFormat,` | ✓ | - |
+| `offset` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `if not isinstance` | ✓ | - |
+| `transform_to` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `else` | `length` | ✓ | - |
+| `info_transform_descriptors` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `create_stream` | `Callable,` | ✓ | - |
+| `file_queue` | `queue` | ✓ | - |
+| `result_queue` | `queue` | ✓ | - |
+| `planner` | `SavePlanner,` | ✓ | - |
+| `transforms` | `_StorageWriterTransforms,` | ✓ | - |
+| `inflight_threshhold` | `int,` | ✓ | - |
+| `use_fsync` | `bool,` | ✓ | - |
+| `thread_count` | `int,` | ✓ | - |
+| `serialization_format` | `SerializationFormat,` | ✓ | - |
+| `try` | `while True` | ✓ | - |
+| `except` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _frontend.py
+
+- **File**: `venv\Lib\site-packages\torch\distributed\debug\_frontend.py`
+- **Captured**: 4/23/2026, 9:43:31 PM
+- **Category**: bugfix
+**Summary:** Modified _frontend.py: 460 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\distributed\debug\_frontend.py` (+460 / -0)
+**Schema: `HTTPRequestHandler`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `frontend` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in version.py
+
+- **File**: `venv\Lib\site-packages\sklearn\externals\_packaging\version.py`
+- **Captured**: 4/23/2026, 9:41:19 PM
+- **Category**: bugfix
+**Summary:** Modified version.py: 536 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\externals\_packaging\version.py` (+536 / -0)
+**Schema: `LegacyVersion`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_legacy_version_component_re` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `yield` | `unknown` | ✓ | - |
+| `epoch` | `unknown` | ✓ | - |
+| `parts` | `List[str]` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `v` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in test_bagging.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\tests\test_bagging.py`
+- **Captured**: 4/23/2026, 9:41:13 PM
+- **Category**: bugfix
+**Summary:** Modified test_bagging.py: 1217 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\tests\test_bagging.py` (+1217 / -0)
+**Schema: `DummySizeEstimator`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `estimator` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `training_hash` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `test_score` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `warn_msg` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `clf1` | `unknown` | ✓ | - |
+| `clf2` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `base` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `y1` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `y2` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `y3` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `decisions1` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `decisions2` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `decisions3` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `y1` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `y2` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `y3` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `y` | `unknown` | ✓ | - |
+| `parameters` | `unknown` | ✓ | - |
+| `GridSearchCV` | `unknown` | ✓ | - |
+| `rng` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `ensemble` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `estimator` | `unknown` | ✓ | - |
+| `estimator` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `clf_ws` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `clf_no_ws` | `unknown` | ✓ | - |
+| `clf_no_ws` | `unknown` | ✓ | - |
+| `assert` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `y_pred` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `warn_msg` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `assert_array_equal` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `X_train` | `unknown` | ✓ | - |
+| `clf_ws` | `unknown` | ✓ | - |
+| `clf_ws` | `unknown` | ✓ | - |
+| `clf_ws` | `unknown` | ✓ | - |
+| `clf_ws` | `unknown` | ✓ | - |
+| `y1` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `y2` | `unknown` | ✓ | - |
+| `assert_array_almost_equal` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `sample_weight` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `warn_msg` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `sample_weight` | `unknown` | ✓ | - |
+| `reg` | `unknown` | ✓ | - |
+| `warn_msg` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `X` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `sample_weight` | `unknown` | ✓ | - |
+| `expected_msg` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `clf` | `unknown` | ✓ | - |
+| `sample_weight` | `unknown` | ✓ | - |
+| `sample_weight` | `unknown` | ✓ | - |
+| `expected_msg` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in test_dtypes.py
+
+- **File**: `venv\Lib\site-packages\pandas\tests\dtypes\test_dtypes.py`
+- **Captured**: 4/23/2026, 9:41:11 PM
+- **Category**: bugfix
+**Summary:** Modified test_dtypes.py: 1259 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\tests\dtypes\test_dtypes.py` (+1259 / -0)
+**Schema: `TestCategoricalDtype`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `dtype1` | `unknown` | ✓ | - |
+| `dtype2` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _bagging.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_bagging.py`
+- **Captured**: 4/23/2026, 9:41:04 PM
+- **Category**: bugfix
+**Summary:** Modified _bagging.py: 1543 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_bagging.py` (+1543 / -0)
+**Schema: `BaseBagging`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+**Schema: `BaggingClassifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `A` | `unknown` | ✓ | - |
+| `aggregate` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `a` | `unknown` | ✓ | - |
+| `tree` | `unknown` | ✓ | - |
+| `then` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `subsets` | `unknown` | ✓ | - |
+| `this` | `unknown` | ✓ | - |
+| `replacement` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `is` | `unknown` | ✓ | - |
+| `on` | `unknown` | ✓ | - |
+| `Random` | `unknown` | ✓ | - |
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `estimator` | `object, default` | ✓ | - |
+| `n_estimators` | `int, default` | ✓ | - |
+| `max_samples` | `int or float, default` | ✓ | - |
+| `max_features` | `int or float, default` | ✓ | - |
+| `bootstrap` | `bool, default` | ✓ | - |
+| `bootstrap_features` | `bool, default` | ✓ | - |
+| `oob_score` | `bool, default` | ✓ | - |
+| `warm_start` | `bool, default` | ✓ | - |
+| `n_jobs` | `int, default` | ✓ | - |
+| `random_state` | `int, RandomState instance or None, default` | ✓ | - |
+| `verbose` | `int, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `estimator_` | `estimator` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `estimators_` | `list of estimators` | ✓ | - |
+| `estimators_samples_` | `list of arrays` | ✓ | - |
+| `estimators_features_` | `list of arrays` | ✓ | - |
+| `oob_score_` | `float` | ✓ | - |
+| `oob_decision_function_` | `ndarray of shape` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `BaggingRegressor` | `A Bagging regressor` | ✓ | - |
+| `References` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `array` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _base.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_base.py`
+- **Captured**: 4/23/2026, 9:41:03 PM
+- **Category**: bugfix
+**Summary:** Modified _base.py: 314 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_base.py` (+314 / -0)
+**Schema: `BaseEnsemble`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `estimator` | `object` | ✓ | - |
+| `n_estimators` | `int, default` | ✓ | - |
+| `estimator_params` | `list of str, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `estimator_` | `estimator` | ✓ | - |
+| `estimators_` | `list of estimators` | ✓ | - |
+| `n_jobs` | `unknown` | ✓ | - |
+| `n_estimators_per_job` | `unknown` | ✓ | - |
+| `n_estimators_per_job` | `unknown` | ✓ | - |
+| `starts` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _forest.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_forest.py`
+- **Captured**: 4/23/2026, 9:41:01 PM
+- **Category**: bugfix
+**Summary:** Modified _forest.py: 3048 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_forest.py` (+3048 / -0)
+**Schema: `BaseForest`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `It` | `unknown` | ✓ | - |
+| `complains` | `unknown` | ✓ | - |
+| `prediction` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+
+**Schema: `ForestClassifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+
+**Schema: `ForestRegressor`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _gb.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_gb.py`
+- **Captured**: 4/23/2026, 9:40:59 PM
+- **Category**: bugfix
+**Summary:** Modified _gb.py: 2205 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_gb.py` (+2205 / -0)
+**Schema: `BaseGradientBoosting`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_parameter_constraints` | `dict` | ✓ | - |
+| `_parameter_constraints` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `unknown` | ✓ | - |
+
+**Schema: `GradientBoostingClassifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `allows` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `induced` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `supports` | `unknown` | ✓ | - |
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `learning_rate` | `float, default` | ✓ | - |
+| `n_estimators` | `int, default` | ✓ | - |
+| `subsample` | `float, default` | ✓ | - |
+| `criterion` | `unknown` | ✓ | - |
+| `min_samples_split` | `int or float, default` | ✓ | - |
+| `min_samples_leaf` | `int or float, default` | ✓ | - |
+| `min_weight_fraction_leaf` | `float, default` | ✓ | - |
+| `max_depth` | `int or None, default` | ✓ | - |
+| `min_impurity_decrease` | `float, default` | ✓ | - |
+| `init` | `estimator or` | ✓ | - |
+| `random_state` | `int, RandomState instance or None, default` | ✓ | - |
+| `max_features` | `unknown` | ✓ | - |
+| `verbose` | `int, default` | ✓ | - |
+| `max_leaf_nodes` | `int, default` | ✓ | - |
+| `warm_start` | `bool, default` | ✓ | - |
+| `validation_fraction` | `float, default` | ✓ | - |
+| `n_iter_no_change` | `int, default` | ✓ | - |
+| `tol` | `float, default` | ✓ | - |
+| `ccp_alpha` | `non` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `n_estimators_` | `int` | ✓ | - |
+| `n_trees_per_iteration_` | `int` | ✓ | - |
+| `feature_importances_` | `ndarray of shape` | ✓ | - |
+| `oob_improvement_` | `ndarray of shape` | ✓ | - |
+| `oob_scores_` | `ndarray of shape` | ✓ | - |
+| `oob_score_` | `float` | ✓ | - |
+| `train_score_` | `ndarray of shape` | ✓ | - |
+| `init_` | `estimator` | ✓ | - |
+| `estimators_` | `ndarray of DecisionTreeRegressor of` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `max_features_` | `int` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `HistGradientBoostingClassifier` | `Histogram` | ✓ | - |
+| `sklearn` | `unknown` | ✓ | - |
+| `RandomForestClassifier` | `A meta` | ✓ | - |
+| `AdaBoostClassifier` | `A meta` | ✓ | - |
+| `Notes` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `identical` | `unknown` | ✓ | - |
+| `split` | `unknown` | ✓ | - |
+| `References` | `unknown` | ✓ | - |
+| `J` | `unknown` | ✓ | - |
+| `Machine` | `unknown` | ✓ | - |
+| `J` | `unknown` | ✓ | - |
+| `T` | `unknown` | ✓ | - |
+| `Elements` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `100` | `unknown` | ✓ | - |
+| `0` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+### [New] [bugfix] Changes in gradient_boosting.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_hist_gradient_boosting\gradient_boosting.py`
+- **Captured**: 4/23/2026, 9:40:57 PM
+- **Category**: bugfix
+**Summary:** Modified gradient_boosting.py: 2374 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_hist_gradient_boosting\gradient_boosting.py` (+2374 / -0)
+**Schema: `BaseHistGradientBoosting`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+**Schema: `HistGradientBoostingRegressor`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `training` | `unknown` | ✓ | - |
+| `with` | `unknown` | ✓ | - |
+| `potential` | `unknown` | ✓ | - |
+| `assigned` | `unknown` | ✓ | - |
+| `were` | `unknown` | ✓ | - |
+| `missing` | `unknown` | ✓ | - |
+| `See` | `ref` | ✓ | - |
+| `usecase` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `quantile` | `float, default` | ✓ | - |
+| `learning_rate` | `float, default` | ✓ | - |
+| `max_iter` | `int, default` | ✓ | - |
+| `max_leaf_nodes` | `int or None, default` | ✓ | - |
+| `max_depth` | `int or None, default` | ✓ | - |
+| `min_samples_leaf` | `int, default` | ✓ | - |
+| `l2_regularization` | `float, default` | ✓ | - |
+| `max_features` | `float, default` | ✓ | - |
+| `max_bins` | `int, default` | ✓ | - |
+| `categorical_features` | `array` | ✓ | - |
+| `monotonic_cst` | `array` | ✓ | - |
+| `interaction_cst` | `unknown` | ✓ | - |
+| `warm_start` | `bool, default` | ✓ | - |
+| `early_stopping` | `unknown` | ✓ | - |
+| `scoring` | `str or callable or None, default` | ✓ | - |
+| `validation_fraction` | `int or float or None, default` | ✓ | - |
+| `n_iter_no_change` | `int, default` | ✓ | - |
+| `tol` | `float, default` | ✓ | - |
+| `verbose` | `int, default` | ✓ | - |
+| `random_state` | `int, RandomState instance or None, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `do_early_stopping_` | `bool` | ✓ | - |
+| `n_iter_` | `int` | ✓ | - |
+| `n_trees_per_iteration_` | `int` | ✓ | - |
+| `train_score_` | `ndarray, shape` | ✓ | - |
+| `validation_score_` | `ndarray, shape` | ✓ | - |
+| `is_categorical_` | `ndarray, shape` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `GradientBoostingRegressor` | `Exact gradient boosting method that does not` | ✓ | - |
+| `sklearn` | `unknown` | ✓ | - |
+| `RandomForestRegressor` | `A meta` | ✓ | - |
+| `AdaBoostRegressor` | `A meta` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `0` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+### [New] [bugfix] Changes in ops.py
+
+- **File**: `venv\Lib\site-packages\pandas\tests\extension\base\ops.py`
+- **Captured**: 4/23/2026, 9:40:51 PM
+- **Category**: bugfix
+**Summary:** Modified ops.py: 288 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\tests\extension\base\ops.py` (+288 / -0)
+**Schema: `BaseArithmeticOpsTests`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Various` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `series_scalar_exc` | `type[Exception]` | ✓ | - |
+| `frame_scalar_exc` | `type[Exception]` | ✓ | - |
+| `series_array_exc` | `type[Exception]` | ✓ | - |
+| `divmod_exc` | `type[Exception]` | ✓ | - |
+
+### [New] [bugfix] Changes in __init__.py
+
+- **File**: `venv\Lib\site-packages\pandas\tests\extension\base\__init__.py`
+- **Captured**: 4/23/2026, 9:40:49 PM
+- **Category**: bugfix
+**Summary:** Modified __init__.py: 90 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\tests\extension\base\__init__.py` (+90 / -0)
+**Schema: `TestMyDtype`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Dim2CompatTests` | `unknown` | ✓ | - |
+| `NDArrayBacked2DTests` | `unknown` | ✓ | - |
+| `BaseArithmeticOpsTests` | `unknown` | ✓ | - |
+| `BaseComparisonOpsTests` | `unknown` | ✓ | - |
+| `BaseOpsUtil` | `unknown` | ✓ | - |
+| `BaseUnaryOpsTests` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _iforest.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_iforest.py`
+- **Captured**: 4/23/2026, 9:40:46 PM
+- **Category**: bugfix
+**Summary:** Modified _iforest.py: 682 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_iforest.py` (+682 / -0)
+**Schema: `IsolationForest`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Isolation` | `unknown` | ✓ | - |
+| `Return` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `and` | `unknown` | ✓ | - |
+| `values` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `number` | `unknown` | ✓ | - |
+| `length` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `measure` | `unknown` | ✓ | - |
+| `Random` | `unknown` | ✓ | - |
+| `Hence` | `unknown` | ✓ | - |
+| `lengths` | `unknown` | ✓ | - |
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `n_estimators` | `int, default` | ✓ | - |
+| `max_samples` | `unknown` | ✓ | - |
+| `contamination` | `unknown` | ✓ | - |
+| `max_features` | `int or float, default` | ✓ | - |
+| `bootstrap` | `bool, default` | ✓ | - |
+| `n_jobs` | `int, default` | ✓ | - |
+| `random_state` | `int, RandomState instance or None, default` | ✓ | - |
+| `verbose` | `int, default` | ✓ | - |
+| `warm_start` | `bool, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `estimator_` | `unknown` | ✓ | - |
+| `estimators_` | `list of ExtraTreeRegressor instances` | ✓ | - |
+| `estimators_features_` | `list of ndarray` | ✓ | - |
+| `estimators_samples_` | `list of ndarray` | ✓ | - |
+| `max_samples_` | `int` | ✓ | - |
+| `offset_` | `float` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `sklearn` | `unknown` | ✓ | - |
+| `sklearn` | `unknown` | ✓ | - |
+| `sklearn` | `unknown` | ✓ | - |
+| `Notes` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `maximum` | `unknown` | ✓ | - |
+| `References` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _stacking.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_stacking.py`
+- **Captured**: 4/23/2026, 9:40:45 PM
+- **Category**: bugfix
+**Summary:** Modified _stacking.py: 1146 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_stacking.py` (+1146 / -0)
+**Schema: `_BaseStacking`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+**Schema: `StackingClassifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Stacked` | `unknown` | ✓ | - |
+| `estimator` | `unknown` | ✓ | - |
+| `allows` | `unknown` | ✓ | - |
+| `output` | `unknown` | ✓ | - |
+| `Note` | `unknown` | ✓ | - |
+| `is` | `unknown` | ✓ | - |
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `estimators` | `list of` | ✓ | - |
+| `final_estimator` | `estimator, default` | ✓ | - |
+| `cv` | `int, cross` | ✓ | - |
+| `stack_method` | `unknown` | ✓ | - |
+| `n_jobs` | `int, default` | ✓ | - |
+| `passthrough` | `bool, default` | ✓ | - |
+| `verbose` | `int, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `estimators_` | `list of estimators` | ✓ | - |
+| `named_estimators_` | `unknown` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `final_estimator_` | `estimator` | ✓ | - |
+| `stack_method_` | `list of str` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `StackingRegressor` | `Stack of estimators with a final regressor` | ✓ | - |
+| `Notes` | `unknown` | ✓ | - |
+| `When` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `of` | `unknown` | ✓ | - |
+| `collinear` | `unknown` | ✓ | - |
+| `In` | `unknown` | ✓ | - |
+| `first` | `unknown` | ✓ | - |
+| `be` | `unknown` | ✓ | - |
+| `order` | `unknown` | ✓ | - |
+| `encode` | `unknown` | ✓ | - |
+| `References` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `0` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+### [New] [bugfix] Changes in _voting.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_voting.py`
+- **Captured**: 4/23/2026, 9:40:43 PM
+- **Category**: bugfix
+**Summary:** Modified _voting.py: 735 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_voting.py` (+735 / -0)
+**Schema: `_BaseVoting`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+**Schema: `VotingClassifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `estimators` | `list of` | ✓ | - |
+| `voting` | `unknown` | ✓ | - |
+| `weights` | `array` | ✓ | - |
+| `n_jobs` | `int, default` | ✓ | - |
+| `flatten_transform` | `bool, default` | ✓ | - |
+| `verbose` | `bool, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `estimators_` | `list of classifiers` | ✓ | - |
+| `named_estimators_` | `unknown` | ✓ | - |
+| `le_` | `unknown` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `VotingRegressor` | `Prediction voting regressor` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `True` | `unknown` | ✓ | - |
+| `To` | `unknown` | ✓ | - |
+| `dropped` | `unknown` | ✓ | - |
+| `2` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+### [New] [bugfix] Changes in _weight_boosting.py
+
+- **File**: `venv\Lib\site-packages\sklearn\ensemble\_weight_boosting.py`
+- **Captured**: 4/23/2026, 9:40:41 PM
+- **Category**: bugfix
+**Summary:** Modified _weight_boosting.py: 1130 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\sklearn\ensemble\_weight_boosting.py` (+1130 / -0)
+**Schema: `BaseWeightBoosting`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Warning` | `This class should not be used directly` | ✓ | - |
+| `instead` | `unknown` | ✓ | - |
+| `_parameter_constraints` | `dict` | ✓ | - |
+
+**Schema: `AdaBoostClassifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `An` | `unknown` | ✓ | - |
+| `more` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `Read` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `estimator` | `object, default` | ✓ | - |
+| `n_estimators` | `int, default` | ✓ | - |
+| `learning_rate` | `float, default` | ✓ | - |
+| `random_state` | `int, RandomState instance or None, default` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `estimator_` | `estimator` | ✓ | - |
+| `estimators_` | `list of classifiers` | ✓ | - |
+| `estimator_weights_` | `ndarray of floats` | ✓ | - |
+| `estimator_errors_` | `ndarray of floats` | ✓ | - |
+| `feature_importances_` | `ndarray of shape` | ✓ | - |
+| `n_features_in_` | `int` | ✓ | - |
+| `feature_names_in_` | `ndarray of shape` | ✓ | - |
+| `See` | `unknown` | ✓ | - |
+| `AdaBoostRegressor` | `An AdaBoost regressor that begins by fitting a` | ✓ | - |
+| `GradientBoostingClassifier` | `GB builds an additive model in a forward` | ✓ | - |
+| `sklearn` | `unknown` | ✓ | - |
+| `References` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mllama.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mllama\modeling_mllama.py`
+- **Captured**: 4/23/2026, 9:40:38 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mllama.py: 1635 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mllama\modeling_mllama.py` (+1635 / -0)
+**Schema: `MllamaPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MllamaConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MllamaVisionModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MllamaVisionConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MllamaTextModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MllamaTextConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MllamaForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MllamaTextConfig` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MllamaModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mm_grounding_dino.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mm_grounding_dino\modeling_mm_grounding_dino.py`
+- **Captured**: 4/23/2026, 9:40:32 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mm_grounding_dino.py: 2587 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mm_grounding_dino\modeling_mm_grounding_dino.py` (+2587 / -0)
+**Schema: `MMGroundingDinoPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MMGroundingDinoConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+
+**Schema: `MMGroundingDinoEncoderOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `last_hidden_state_vision` | `unknown` | ✓ | - |
+| `last_hidden_state_text` | `unknown` | ✓ | - |
+| `vision_hidden_states` | `unknown` | ✓ | - |
+| `text_hidden_states` | `unknown` | ✓ | - |
+| `last_hidden_state_vision` | `torch` | ✓ | - |
+| `last_hidden_state_text` | `torch` | ✓ | - |
+| `vision_hidden_states` | `tuple[torch` | ✓ | - |
+| `text_hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[tuple[torch` | ✓ | - |
+
+**Schema: `MMGroundingDinoEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+| `BaseModelOutputWithCrossAttentions` | `unknown` | ✓ | - |
+
+**Schema: `MMGroundingDinoDecoderOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[tuple[torch` | ✓ | - |
+
+**Schema: `MMGroundingDinoDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Some` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Base` | `unknown` | ✓ | - |
+
+**Schema: `MMGroundingDinoModelOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `init_reference_points` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `encoder_last_hidden_state_vision` | `unknown` | ✓ | - |
+| `encoder_last_hidden_state_text` | `unknown` | ✓ | - |
+| `encoder_vision_hidden_states` | `unknown` | ✓ | - |
+| `encoder_text_hidden_states` | `unknown` | ✓ | - |
+| `encoder_attentions` | `unknown` | ✓ | - |
+| `enc_outputs_coord_logits` | `unknown` | ✓ | - |
+| `encoder_logits` | `unknown` | ✓ | - |
+| `encoder_pred_boxes` | `unknown` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `init_reference_points` | `torch` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state_vision` | `torch` | ✓ | - |
+| `encoder_last_hidden_state_text` | `torch` | ✓ | - |
+| `encoder_vision_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_text_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[tuple[torch` | ✓ | - |
+| `enc_outputs_coord_logits` | `torch` | ✓ | - |
+| `encoder_logits` | `torch` | ✓ | - |
+| `encoder_pred_boxes` | `torch` | ✓ | - |
+
+**Schema: `MMGroundingDinoObjectDetectionOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `loss_dict` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `pred_boxes` | `unknown` | ✓ | - |
+| `auxiliary_outputs` | `unknown` | ✓ | - |
+| `last_hidden_state` | `unknown` | ✓ | - |
+| `init_reference_points` | `unknown` | ✓ | - |
+| `intermediate_hidden_states` | `unknown` | ✓ | - |
+| `intermediate_reference_points` | `unknown` | ✓ | - |
+| `encoder_last_hidden_state_vision` | `unknown` | ✓ | - |
+| `encoder_last_hidden_state_text` | `unknown` | ✓ | - |
+| `encoder_vision_hidden_states` | `unknown` | ✓ | - |
+| `encoder_text_hidden_states` | `unknown` | ✓ | - |
+| `enc_outputs_coord_logits` | `unknown` | ✓ | - |
+| `encoder_logits` | `unknown` | ✓ | - |
+| `encoder_pred_boxes` | `unknown` | ✓ | - |
+| `input_ids` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `loss_dict` | `dict` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `pred_boxes` | `torch` | ✓ | - |
+| `auxiliary_outputs` | `list[dict]` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `init_reference_points` | `torch` | ✓ | - |
+| `intermediate_hidden_states` | `torch` | ✓ | - |
+| `intermediate_reference_points` | `torch` | ✓ | - |
+| `decoder_hidden_states` | `tuple[torch` | ✓ | - |
+| `decoder_attentions` | `tuple[tuple[torch` | ✓ | - |
+| `encoder_last_hidden_state_vision` | `torch` | ✓ | - |
+| `encoder_last_hidden_state_text` | `torch` | ✓ | - |
+| `encoder_vision_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_text_hidden_states` | `tuple[torch` | ✓ | - |
+| `encoder_attentions` | `tuple[tuple[torch` | ✓ | - |
+| `enc_outputs_coord_logits` | `torch` | ✓ | - |
+| `encoder_logits` | `torch` | ✓ | - |
+| `encoder_pred_boxes` | `torch` | ✓ | - |
+| `input_ids` | `torch` | ✓ | - |
+| `Computes` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Args` | `logits` | ✓ | - |
+| `Returns` | `tuple` | ✓ | - |
+| `Example` | `Given an input prompt` | ✓ | - |
+| `Note` | `unknown` | ✓ | - |
+| `max_seq_len` | `unknown` | ✓ | - |
+| `delimiter_tokens` | `unknown` | ✓ | - |
+| `delimiter_token_masks` | `unknown` | ✓ | - |
+| `label_groups` | `unknown` | ✓ | - |
+| `label_maps` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Create` | `unknown` | ✓ | - |
+| `seq_len` | `unknown` | ✓ | - |
+| `text_mask` | `unknown` | ✓ | - |
+| `text_mask` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Grounding` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+
+**Schema: `MMGroundingDinoForObjectDetection`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mobilebert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mobilebert\modeling_mobilebert.py`
+- **Captured**: 4/23/2026, 9:40:28 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mobilebert.py: 1252 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mobilebert\modeling_mobilebert.py` (+1252 / -0)
+**Schema: `MobileBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MobileBertConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Output` | `unknown` | ✓ | - |
+
+**Schema: `MobileBertForPreTrainingOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `prediction_logits` | `unknown` | ✓ | - |
+| `seq_relationship_logits` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `prediction_logits` | `torch` | ✓ | - |
+| `seq_relationship_logits` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `MobileBertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `https` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `MobileBert` | `unknown` | ✓ | - |
+
+**Schema: `MobileBertForPreTraining`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `MobileBertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `MobileBertForNextSentencePrediction`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `MobileBert` | `unknown` | ✓ | - |
+| `pooled` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mobilenet_v1.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mobilenet_v1\modeling_mobilenet_v1.py`
+- **Captured**: 4/23/2026, 9:40:25 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mobilenet_v1.py: 297 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mobilenet_v1\modeling_mobilenet_v1.py` (+297 / -0)
+**Schema: `MobileNetV1PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MobileNetV1Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `MobileNetV1Model`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `MobileNetV1` | `unknown` | ✓ | - |
+| `ImageNet` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mobilenet_v2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mobilenet_v2\modeling_mobilenet_v2.py`
+- **Captured**: 4/23/2026, 9:40:22 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mobilenet_v2.py: 604 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mobilenet_v2\modeling_mobilenet_v2.py` (+604 / -0)
+**Schema: `MobileNetV2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MobileNetV2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `MobileNetV2Model`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `MobileNetV2` | `unknown` | ✓ | - |
+| `ImageNet` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mobilevit.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mobilevit\modeling_mobilevit.py`
+- **Captured**: 4/23/2026, 9:40:19 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mobilevit.py: 964 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mobilevit\modeling_mobilevit.py` (+964 / -0)
+**Schema: `MobileViTPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MobileViTConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `MobileViTModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `MobileViT` | `unknown` | ✓ | - |
+| `ImageNet` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mobilevitv2.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mobilevitv2\modeling_mobilevitv2.py`
+- **Captured**: 4/23/2026, 9:40:17 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mobilevitv2.py: 943 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mobilevitv2\modeling_mobilevitv2.py` (+943 / -0)
+**Schema: `MobileViTV2PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MobileViTV2Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `MobileViTV2Model`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `MobileViTV2` | `unknown` | ✓ | - |
+| `ImageNet` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_modernbert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\modernbert\modeling_modernbert.py`
+- **Captured**: 4/23/2026, 9:40:14 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_modernbert.py: 878 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\modernbert\modeling_modernbert.py` (+878 / -0)
+**Schema: `ModernBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ModernBertConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_modernbert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\modernbert\modular_modernbert.py`
+- **Captured**: 4/23/2026, 9:40:13 PM
+- **Category**: bugfix
+**Summary:** Modified modular_modernbert.py: 922 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\modernbert\modular_modernbert.py` (+922 / -0)
+**Schema: `ModernBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ModernBertConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertForQuestionAnswering`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in unflatten.py
+
+- **File**: `venv\Lib\site-packages\torch\export\unflatten.py`
+- **Captured**: 4/23/2026, 9:40:09 PM
+- **Category**: bugfix
+**Summary:** Modified unflatten.py: 1900 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\export\unflatten.py` (+1900 / -0)
+**Schema: `InterpreterModule`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `codegen` | `unknown` | ✓ | - |
+| `and` | `unknown` | ✓ | - |
+| `graph_module` | `torch` | ✓ | - |
+
+**Schema: `InterpreterModuleDispatcher`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `A` | `unknown` | ✓ | - |
+| `a` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+
+**Schema: `UnflattenedModule`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `module` | `ExportedProgram, flat_args_adapter` | ✓ | - |
+| `hierarchy` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `hierarchy` | `unknown` | ✓ | - |
+| `Args` | `module` | ✓ | - |
+| `Returns` | `An instance of` | ✓ | - |
+| `module` | `unknown` | ✓ | - |
+| `m` | `unknown` | ✓ | - |
+| `m` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `graph` | `torch` | ✓ | - |
+| `graph_signature` | `ExportGraphSignature,` | ✓ | - |
+| `into` | `unknown` | ✓ | - |
+| `Functionalization` | `unknown` | ✓ | - |
+| `an` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `We` | `unknown` | ✓ | - |
+| `eager` | `unknown` | ✓ | - |
+| `Input` | `unknown` | ✓ | - |
+| `output_node` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return_args` | `unknown` | ✓ | - |
+| `input_name_to_node` | `unknown` | ✓ | - |
+| `mutation_name_to_input_name` | `unknown` | ✓ | - |
+| `buffer_fqn_to_input_name` | `unknown` | ✓ | - |
+| `mutation_name_to_input_name` | `unknown` | ✓ | - |
+| `mutation_name_to_input_name` | `unknown` | ✓ | - |
+| `num_mutations` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `user_outputs` | `unknown` | ✓ | - |
+| `output_node` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `parent_split` | `unknown` | ✓ | - |
+| `child_split` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `i` | `unknown` | ✓ | - |
+| `while` | `unknown` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `setattr` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `flatten` | `unknown` | ✓ | - |
+| `getitem_0` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `gm` | `torch` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `spec_node` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `gm` | `torch` | ✓ | - |
+| `name` | `unknown` | ✓ | - |
+| `spec_node` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `mod` | `torch` | ✓ | - |
+| `target` | `str,` | ✓ | - |
+| `module_to_add` | `torch` | ✓ | - |
+| `create_module` | `Callable[[str], torch` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `mod` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_modernbert_decoder.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\modernbert_decoder\modeling_modernbert_decoder.py`
+- **Captured**: 4/23/2026, 9:40:06 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_modernbert_decoder.py: 749 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\modernbert_decoder\modeling_modernbert_decoder.py` (+749 / -0)
+**Schema: `ModernBertDecoderPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ModernBertDecoderConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertDecoderModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertDecoderForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `no` | `unknown` | ✓ | - |
+| `padding` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_modernbert_decoder.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\modernbert_decoder\modular_modernbert_decoder.py`
+- **Captured**: 4/23/2026, 9:40:04 PM
+- **Category**: bugfix
+**Summary:** Modified modular_modernbert_decoder.py: 711 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\modernbert_decoder\modular_modernbert_decoder.py` (+711 / -0)
+**Schema: `ModernBertDecoderPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertDecoderModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernBertDecoderForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `no` | `unknown` | ✓ | - |
+| `padding` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in specifiers.py
+
+- **File**: `venv\Lib\site-packages\packaging\specifiers.py`
+- **Captured**: 4/23/2026, 9:40:01 PM
+- **Category**: bugfix
+**Summary:** Modified specifiers.py: 1790 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\packaging\specifiers.py` (+1790 / -0)
+**Schema: `Specifier`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_specifier_regex_str` | `unknown` | ✓ | - |
+| `_regex` | `unknown` | ✓ | - |
+| `_operators` | `Final` | ✓ | - |
+| `iterable` | `Iterable[Any], key` | ✓ | - |
+| `all_nonfinal` | `list[Any]` | ✓ | - |
+| `arbitrary_strings` | `list[Any]` | ✓ | - |
+| `found_final` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `not` | `unknown` | ✓ | - |
+| `components` | `unknown` | ✓ | - |
+| `version` | `unknown` | ✓ | - |
+| `result` | `list[str]` | ✓ | - |
+| `epoch` | `unknown` | ✓ | - |
+| `result` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `first` | `unknown` | ✓ | - |
+| `components` | `unknown` | ✓ | - |
+| `epoch` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `3` | `unknown` | ✓ | - |
+| `count` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `numeric_len` | `unknown` | ✓ | - |
+| `pad_needed` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `Operators` | `unknown` | ✓ | - |
+| `reject` | `unknown` | ✓ | - |
+| `Tier` | `unknown` | ✓ | - |
+| `Tier` | `unknown` | ✓ | - |
+| `Tier` | `unknown` | ✓ | - |
+| `Tier` | `unknown` | ✓ | - |
+| `Tier` | `unknown` | ✓ | - |
+| `_` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `raise` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in version.py
+
+- **File**: `venv\Lib\site-packages\packaging\version.py`
+- **Captured**: 4/23/2026, 9:39:59 PM
+- **Category**: bugfix
+**Summary:** Modified version.py: 1155 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\packaging\version.py` (+1155 / -0)
+**Schema: `Version`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `A` | `class` | ✓ | - |
+| `sorted` | `unknown` | ✓ | - |
+| `True` | `unknown` | ✓ | - |
+| `False` | `unknown` | ✓ | - |
+| `False` | `unknown` | ✓ | - |
+| `False` | `unknown` | ✓ | - |
+| `True` | `class` | ✓ | - |
+| `part` | `unknown` | ✓ | - |
+| `Pattern` | `unknown` | ✓ | - |
+| `_regex` | `unknown` | ✓ | - |
+| `_epoch` | `int` | ✓ | - |
+| `_release` | `tuple[int,` | ✓ | - |
+| `_dev` | `tuple[Literal[` | ✓ | - |
+| `_pre` | `tuple[Literal[` | ✓ | - |
+| `_post` | `tuple[Literal[` | ✓ | - |
+| `_local` | `LocalType` | ✓ | - |
+| `_hash_cache` | `int` | ✓ | - |
+| `_key_cache` | `CmpKey` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_modernvbert.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\modernvbert\modeling_modernvbert.py`
+- **Captured**: 4/23/2026, 9:39:56 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_modernvbert.py: 697 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\modernvbert\modeling_modernvbert.py` (+697 / -0)
+**Schema: `ModernVBertBaseModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Base` | `unknown` | ✓ | - |
+| `Args` | `last_hidden_state` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `image_hidden_states` | `tuple[torch` | ✓ | - |
+
+**Schema: `ModernVBertPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `ModernVBertConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+| `_supports_attention_backend` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `ModernVBertModel` | `unknown` | ✓ | - |
+| `ModernVBert` | `unknown` | ✓ | - |
+
+**Schema: `ModernVBertModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `A` | `unknown` | ✓ | - |
+| `in` | `unknown` | ✓ | - |
+
+**Schema: `ModernVBertForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `ModernVBertForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_moonshine.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\moonshine\modeling_moonshine.py`
+- **Captured**: 4/23/2026, 9:39:51 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_moonshine.py: 945 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\moonshine\modeling_moonshine.py` (+945 / -0)
+**Schema: `MoonshineEncoderModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `attention_mask` | `torch` | ✓ | - |
+
+**Schema: `MoonshinePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MoonshineConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Shift` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_moonshine.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\moonshine\modular_moonshine.py`
+- **Captured**: 4/23/2026, 9:39:49 PM
+- **Category**: bugfix
+**Summary:** Modified modular_moonshine.py: 787 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\moonshine\modular_moonshine.py` (+787 / -0)
+**Schema: `MoonshineEncoderModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `attention_mask` | `torch` | ✓ | - |
+
+**Schema: `MoonshinePreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MoonshineConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_moonshine_streaming.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\moonshine_streaming\modeling_moonshine_streaming.py`
+- **Captured**: 4/23/2026, 9:39:45 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_moonshine_streaming.py: 1113 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\moonshine_streaming\modeling_moonshine_streaming.py` (+1113 / -0)
+**Schema: `MoonshineStreamingEncoderModelOutput`** (pydantic)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `attention_mask` | `torch` | ✓ | - |
+
+**Schema: `MoonshineStreamingPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MoonshineStreamingConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineStreamingEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MoonshineStreamingEncoderConfig` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineStreamingDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `main_input_name` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MoonshineStreamingModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Shift` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in auth.py
+
+- **File**: `venv\Lib\site-packages\pip\_internal\network\auth.py`
+- **Captured**: 4/23/2026, 9:39:40 PM
+- **Category**: bugfix
+**Summary:** Modified auth.py: 565 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pip\_internal\network\auth.py` (+565 / -0)
+**Schema: `KeyRingNullProvider`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `has_keyring` | `unknown` | ✓ | - |
+
+**Schema: `KeyRingPythonProvider`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `has_keyring` | `unknown` | ✓ | - |
+
+**Schema: `KeyRingCliProvider`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Instead` | `unknown` | ✓ | - |
+| `we` | `unknown` | ✓ | - |
+| `use` | `unknown` | ✓ | - |
+| `PATH` | `unknown` | ✓ | - |
+| `has_keyring` | `unknown` | ✓ | - |
+| `logger` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `logger` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_moshi.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\moshi\modeling_moshi.py`
+- **Captured**: 4/23/2026, 9:39:32 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_moshi.py: 2083 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\moshi\modeling_moshi.py` (+2083 / -0)
+**Schema: `MoshiConditionalGenerationGenerateOutput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `audio_sequences` | `unknown` | ✓ | - |
+| `sequences` | `unknown` | ✓ | - |
+| `sequences_scores` | `unknown` | ✓ | - |
+| `scores` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `beam_indices` | `unknown` | ✓ | - |
+| `attentions` | `unknown` | ✓ | - |
+| `hidden_states` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `audio_codes` | `unknown` | ✓ | - |
+| `audio_sequences` | `torch` | ✓ | - |
+| `sequences` | `torch` | ✓ | - |
+| `sequences_scores` | `torch` | ✓ | - |
+| `scores` | `tuple[torch` | ✓ | - |
+| `logits` | `tuple[torch` | ✓ | - |
+| `beam_indices` | `torch` | ✓ | - |
+| `attentions` | `tuple[tuple[torch` | ✓ | - |
+| `hidden_states` | `tuple[tuple[torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `audio_codes` | `torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+
+**Schema: `MoshiCausalLMOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+
+**Schema: `MoshiConditionalGenerationOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `depth_loss` | `unknown` | ✓ | - |
+| `audio_logits` | `unknown` | ✓ | - |
+| `depth_past_key_values` | `unknown` | ✓ | - |
+| `depth_hidden_states` | `unknown` | ✓ | - |
+| `depth_attentions` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `last_hidden_state` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `depth_loss` | `torch` | ✓ | - |
+| `audio_logits` | `torch` | ✓ | - |
+| `depth_past_key_values` | `Cache` | ✓ | - |
+| `depth_hidden_states` | `tuple[torch` | ✓ | - |
+| `depth_attentions` | `tuple[torch` | ✓ | - |
+
+**Schema: `MoshiUnconditionalInput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `input_ids` | `unknown` | ✓ | - |
+| `user_audio_codes` | `unknown` | ✓ | - |
+| `moshi_audio_codes` | `unknown` | ✓ | - |
+| `attention_mask` | `unknown` | ✓ | - |
+| `input_ids` | `torch` | ✓ | - |
+| `user_audio_codes` | `torch` | ✓ | - |
+| `moshi_audio_codes` | `torch` | ✓ | - |
+| `attention_mask` | `torch` | ✓ | - |
+
+**Schema: `MoshiPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MoshiConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+
+**Schema: `MoshiDepthDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+| `config` | `MoshiDepthConfig` | ✓ | - |
+
+**Schema: `MoshiModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MoshiForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `input_modalities` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mpnet.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mpnet\modeling_mpnet.py`
+- **Captured**: 4/23/2026, 9:39:26 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mpnet.py: 899 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mpnet\modeling_mpnet.py` (+899 / -0)
+**Schema: `MPNetPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MPNetConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+
+**Schema: `MPNetForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mpt.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mpt\modeling_mpt.py`
+- **Captured**: 4/23/2026, 9:39:23 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mpt.py: 762 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mpt\modeling_mpt.py` (+762 / -0)
+**Schema: `MptPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MptConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+
+**Schema: `MptModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `embeddings` | `unknown` | ✓ | - |
+
+**Schema: `MptForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `Since` | `unknown` | ✓ | - |
+| `no` | `unknown` | ✓ | - |
+| `padding` | `unknown` | ✓ | - |
+| `each` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mra.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mra\modeling_mra.py`
+- **Captured**: 4/23/2026, 9:39:19 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mra.py: 1333 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mra\modeling_mra.py` (+1333 / -0)
+**Schema: `MraPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MraConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `MraForMaskedLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mt5.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mt5\modeling_mt5.py`
+- **Captured**: 4/23/2026, 9:39:14 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mt5.py: 1683 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mt5\modeling_mt5.py` (+1683 / -0)
+**Schema: `MT5PreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MT5Config` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_can_compile_fullgraph` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_keep_in_fp32_modules` | `unknown` | ✓ | - |
+
+**Schema: `MT5Model`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `model_type` | `unknown` | ✓ | - |
+| `config` | `MT5Config` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `MT5` | `unknown` | ✓ | - |
+
+**Schema: `MT5ForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `model_type` | `unknown` | ✓ | - |
+| `config` | `MT5Config` | ✓ | - |
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+
+**Schema: `MT5EncoderModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `model_type` | `unknown` | ✓ | - |
+| `config` | `MT5Config` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `MT5` | `unknown` | ✓ | - |
+| `tasks` | `unknown` | ✓ | - |
+
+**Schema: `MT5ForSequenceClassification`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in operator_support.py
+
+- **File**: `venv\Lib\site-packages\torch\fx\passes\operator_support.py`
+- **Captured**: 4/23/2026, 9:39:12 PM
+- **Category**: bugfix
+**Summary:** Modified operator_support.py: 231 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\fx\passes\operator_support.py` (+231 / -0)
+**Schema: `OperatorSupport`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `node` | `unknown` | ✓ | - |
+| `If` | `unknown` | ✓ | - |
+| `we` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+| `inputs` | `unknown` | ✓ | - |
+| `what` | `unknown` | ✓ | - |
+| `For` | `unknown` | ✓ | - |
+| `e` | `unknown` | ✓ | - |
+| `the` | `unknown` | ✓ | - |
+| `be` | `unknown` | ✓ | - |
+| `_support_dict` | `SupportDict` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `instance` | `unknown` | ✓ | - |
+| `any` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `instance` | `unknown` | ✓ | - |
+| `any` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_musicflamingo.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\musicflamingo\modeling_musicflamingo.py`
+- **Captured**: 4/23/2026, 9:39:09 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_musicflamingo.py: 414 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\musicflamingo\modeling_musicflamingo.py` (+414 / -0)
+**Schema: `MusicFlamingoPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MusicFlamingoConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `input_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_skip_keys_device_placement` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modular_musicflamingo.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\musicflamingo\modular_musicflamingo.py`
+- **Captured**: 4/23/2026, 9:39:07 PM
+- **Category**: bugfix
+**Summary:** Modified modular_musicflamingo.py: 420 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\musicflamingo\modular_musicflamingo.py` (+420 / -0)
+**Schema: `MusicFlamingoPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_musicgen_melody.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\musicgen_melody\modeling_musicgen_melody.py`
+- **Captured**: 4/23/2026, 9:38:57 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_musicgen_melody.py: 2094 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\musicgen_melody\modeling_musicgen_melody.py` (+2094 / -0)
+**Schema: `MusicgenMelodyOutputWithPast`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `loss` | `unknown` | ✓ | - |
+| `logits` | `unknown` | ✓ | - |
+| `past_key_values` | `unknown` | ✓ | - |
+| `encoder_hidden_states` | `unknown` | ✓ | - |
+| `loss` | `torch` | ✓ | - |
+| `logits` | `torch` | ✓ | - |
+| `past_key_values` | `Cache` | ✓ | - |
+| `hidden_states` | `tuple[torch` | ✓ | - |
+| `attentions` | `tuple[torch` | ✓ | - |
+| `encoder_hidden_states` | `torch` | ✓ | - |
+| `Shift` | `unknown` | ✓ | - |
+| `input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenMelodyPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MusicgenMelodyDecoderConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenMelodyDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenMelodyModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenMelodyForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `output_modalities` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenMelodyForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MusicgenMelodyConfig` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `output_modalities` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in proxy.py
+
+- **File**: `venv\Lib\site-packages\torch\fx\proxy.py`
+- **Captured**: 4/23/2026, 9:38:53 PM
+- **Category**: bugfix
+**Summary:** Modified proxy.py: 956 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\fx\proxy.py` (+956 / -0)
+**Schema: `GraphAppendingTracer`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `if` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in _symbolic_trace.py
+
+- **File**: `venv\Lib\site-packages\torch\fx\_symbolic_trace.py`
+- **Captured**: 4/23/2026, 9:38:51 PM
+- **Category**: bugfix
+**Summary:** Modified _symbolic_trace.py: 1388 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\torch\fx\_symbolic_trace.py` (+1388 / -0)
+**Schema: `PHWithMeta`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Object` | `unknown` | ✓ | - |
+| `for` | `unknown` | ✓ | - |
+
+**Schema: `Tracer`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `of` | `unknown` | ✓ | - |
+| `to` | `unknown` | ✓ | - |
+| `Tracer` | `unknown` | ✓ | - |
+| `process` | `unknown` | ✓ | - |
+| `in` | `unknown` | ✓ | - |
+| `_qualname_counter` | `dict[str, int]` | ✓ | - |
+| `_wrapped_methods_to_patch` | `unknown` | ✓ | - |
+| `Recursively` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `proxy` | `unknown` | ✓ | - |
+| `map_aggregate` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+| `orig_fn` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in modeling_mvp.py
+
+- **File**: `venv\Lib\site-packages\transformers\models\mvp\modeling_mvp.py`
+- **Captured**: 4/23/2026, 9:38:49 PM
+- **Category**: bugfix
+**Summary:** Modified modeling_mvp.py: 1631 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\mvp\modeling_mvp.py` (+1631 / -0)
+**Schema: `MvpPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MvpConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
+**Schema: `MvpEncoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+
+**Schema: `MvpDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `Args` | `config` | ✓ | - |
+
+**Schema: `MvpModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_keys_to_ignore_on_load_unexpected` | `unknown` | ✓ | - |
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MvpForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `_tied_weights_keys` | `unknown` | ✓ | - |
+| `custom_intro` | `unknown` | ✓ | - |
+| `Mvp` | `unknown` | ✓ | - |
+| `tasks` | `unknown` | ✓ | - |
+
+**Schema: `MvpDecoderWrapper`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `This` | `unknown` | ✓ | - |
+| `used` | `unknown` | ✓ | - |
+
+### [New] [bugfix] Changes in boolean.py
+
+- **File**: `venv\Lib\site-packages\pandas\core\arrays\boolean.py`
+- **Captured**: 4/23/2026, 9:38:47 PM
+- **Category**: bugfix
+**Summary:** Modified boolean.py: 439 lines added, 0 lines removed.
+**Files Modified:**
+  - `venv\Lib\site-packages\pandas\core\arrays\boolean.py` (+439 / -0)
+**Schema: `BooleanDtype`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Extension` | `unknown` | ✓ | - |
+| `This` | `unknown` | ✓ | - |
+| `missing` | `unknown` | ✓ | - |
+| `which` | `unknown` | ✓ | - |
+| `logical` | `unknown` | ✓ | - |
+| `Attributes` | `unknown` | ✓ | - |
+| `None` | `unknown` | ✓ | - |
+| `None` | `unknown` | ✓ | - |
+| `arrays` | `unknown` | ✓ | - |
+| `Int64Dtype` | `Extension dtype for int64 integer data` | ✓ | - |
+| `StringDtype` | `Extension dtype for string data` | ✓ | - |
+| `Examples` | `unknown` | ✓ | - |
+| `BooleanDtype` | `unknown` | ✓ | - |
+| `Length` | `3, dtype` | ✓ | - |
+| `Length` | `3, dtype` | ✓ | - |
+| `name` | `ClassVar[str]` | ✓ | - |
+| `_internal_fill_value` | `unknown` | ✓ | - |
+| `values` | `unknown` | ✓ | - |
+| `Coerce` | `unknown` | ✓ | - |
+| `Parameters` | `unknown` | ✓ | - |
+| `values` | `1D list` | ✓ | - |
+| `mask` | `bool 1D array, optional` | ✓ | - |
+| `copy` | `bool, default False` | ✓ | - |
+| `Returns` | `unknown` | ✓ | - |
+| `tuple` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `mask_values` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `else` | `values_object` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `elif` | `unknown` | ✓ | - |
+| `else` | `mask` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
 
 ### [New] [bugfix] Changes in numeric.py
 
@@ -20683,15 +28996,77 @@
 | `if` | `unknown` | ✓ | - |
 | `if` | `unknown` | ✓ | - |
 | `target_size` | `unknown` | ✓ | - |
-| `attn_mask` | `unknown` | ✓ | - |
-| `attn_mask` | `unknown` | ✓ | - |
-| `for` | `unknown` | ✓ | - |
-| `denoising_meta_values` | `unknown` | ✓ | - |
-| `return` | `unknown` | ✓ | - |
-| `custom_intro` | `unknown` | ✓ | - |
-| `PP` | `unknown` | ✓ | - |
+| `attn_mask` | `unk
 
-**Schema: `PPDocLayoutV2Model`** (django/sqlalchemy)
+## Features & Implementation
+
+### [UI] NexusAgent
+
+- **File**: `frontend\dist\index.html`
+- **Captured**: 4/23/2026, 10:36:39 PM
+- **Category**: feature
+**Summary:** **Page:** NexusAgent
+**Libraries:** `index-0prIQnl3.js`
+**Files Modified:**
+  - `frontend\dist\index.html` (+17 / -0)
+
+### [UI] NexusAgent
+
+- **File**: `frontend\dist\index.html`
+- **Captured**: 4/23/2026, 10:32:20 PM
+- **Category**: feature
+**Summary:** **Page:** NexusAgent
+**Libraries:** `index-DTX9_5Cl.js`
+**Files Modified:**
+  - `frontend\dist\index.html` (+17 / -0)
+
+### [feature] Changes in Chat.jsx
+
+- **File**: `frontend\src\pages\Chat.jsx`
+- **Captured**: 4/23/2026, 10:31:26 PM
+- **Category**: feature
+**Summary:** Modified Chat.jsx: 5 lines added, 3 lines removed.
+**Files Modified:**
+  - `frontend\src\pages\Chat.jsx` (+5 / -3)
+
+### [UI] NexusAgent
+
+- **File**: `frontend\dist\index.html`
+- **Captured**: 4/23/2026, 10:28:42 PM
+- **Category**: feature
+**Summary:** **Page:** NexusAgent
+**Libraries:** `index-C-Zf_tbo.js`
+**Files Modified:**
+  - `frontend\dist\index.html` (+17 / -0)
+
+### [UI] NexusAgent
+
+- **File**: `frontend\dist\index.html`
+- **Captured**: 4/23/2026, 10:06:15 PM
+- **Category**: feature
+**Summary:** **Page:** NexusAgent
+**Libraries:** `index-CTD2iEwV.js`
+**Files Modified:**
+  - `frontend\dist\index.html` (+17 / -0)
+
+### Add SQL Editor with query execution and result handling
+
+- **File**: `frontend\src\pages\SQLEditor.jsx`
+- **Captured**: 4/23/2026, 10:06:14 PM
+- **Category**: feature
+**Summary:** Introduces a new SQL Editor component that allows users to write, execute, and manage SQL queries with result handling and history tracking.
+**Files Modified:**
+  - `frontend\src\pages\SQLEditor.jsx` (+158 / -0)
+
+### [UI] NexusAgent
+
+- **File**: `frontend\dist\index.html`
+- **Captured**: 4/23/2026, 9:49:34 PM
+- **Category**: feature
+**Summary:** **Page:** NexusAgent
+**Libraries:** `index-BXjNyZs5.js`
+**Files Modified:**
+  - `frontend\dist\index.html` (+17 / -0)go/sqlalchemy)
 
 | Field | Type | Required | Attributes |
 |-------|------|----------|------------|
@@ -34606,7 +42981,7 @@
 | `input_modalities` | `unknown` | ✓ | - |
 | `supports_gradient_checkpointing` | `unknown` | ✓ | - |
 | `_supports_flash_attn` | `unknown` | ✓ | - |
-| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supposdpa` | `unknown` | ✓ | - |
 | `_supports_flex_attn` | `unknown` | ✓ | - |
 
 **Schema: `WavLMModel`** (django/sqlalchemy)
@@ -49537,7 +57912,7 @@
 | `Args` | `source_path` | ✓ | - |
 | `Returns` | `int` | ✓ | - |
 | `if` | `unknown` | ✓ | - |
-| `size` | `unknown` | ✓ | - |
+| `size` | `un `unknown` | ✓ | - |
 | `if` | `unknown` | ✓ | - |
 | `elif` | `unknown` | ✓ | - |
 | `return` | `unknown` | ✓ | - |
@@ -49545,9 +57920,7 @@
 | `Returns` | `int` | ✓ | - |
 | `encoded_content` | `unknown` | ✓ | - |
 | `size` | `unknown` | ✓ | - |
-| `return` | `unknown` | ✓ | - |
-
-### [New] [bugfix] Changes in rememberizer.py
+| `return` | `unknown` | ✓ |known` | ✓ |memberizer.py
 
 - **File**: `venv\Lib\site-packages\langchain_community\utilities\rememberizer.py`
 - **Captured**: 4/23/2026, 8:34:26 PM
@@ -58741,6 +67114,161 @@
 
 ## Features & Implementation
 
+### [UI] index-Dr5N1gmF
+
+- **File**: `frontend\dist\assets\index-Dr5N1gmF.css`
+- **Captured**: 4/23/2026, 9:49:34 PM
+- **Category**: feature
+**Summary:** **CSS Variables:**
+
+| Variable | Value |
+|----------|-------|
+| `--tw-rotate-x` | `initial` |
+| `--tw-rotate-y` | `initial` |
+| `--tw-rotate-z` | `initial` |
+| `--tw-skew-x` | `initial` |
+| `--tw-skew-y` | `initial` |
+| `--tw-border-style` | `solid` |
+| `--tw-outline-style` | `solid` |
+| `--tw-blur` | `initial` |
+| `--tw-brightness` | `initial` |
+| `--tw-contrast` | `initial` |
+| `--tw-grayscale` | `initial` |
+| `--tw-hue-rotate` | `initial` |
+| `--tw-invert` | `initial` |
+| `--tw-opacity` | `initial` |
+| `--tw-saturate` | `initial` |
+
+**Animations/Keyframes:** `fade-in`, `fade-up`, `scale-in`, `pulse-dot`, `shimmer`, `spin`, `dashdraw`
+
+**Breakpoints:** `(prefers-reduced-motion:reduce)`, `(width<=768px)`, `(width<=480px)`
+**Files Modified:**
+  - `frontend\dist\assets\index-Dr5N1gmF.css` (+3 / -0)
+
+### [UI] index
+
+- **File**: `frontend\src\index.css`
+- **Captured**: 4/23/2026, 9:48:52 PM
+- **Category**: feature
+**Summary:** **CSS Variables:**
+
+| Variable | Value |
+|----------|-------|
+| `--color-bg` | `#0a0b10` |
+| `--color-surface-1` | `#10131b` |
+| `--color-surface-2` | `#161a25` |
+| `--color-surface-3` | `#1d2230` |
+| `--color-border` | `#252a38` |
+| `--color-border-strong` | `#343a4c` |
+| `--color-text` | `#e6e8ee` |
+| `--color-text-muted` | `#9197a8` |
+| `--color-text-dim` | `#5e6377` |
+| `--color-accent` | `#10b981` |
+| `--color-accent-hover` | `#14c08b` |
+| `--color-accent-soft` | `rgba(16, 185, 129, 0.12)` |
+| `--color-accent-ring` | `rgba(16, 185, 129, 0.35)` |
+| `--color-ok` | `#10b981` |
+| `--color-warn` | `#f59e0b` |
+
+**Animations/Keyframes:** `fade-in`, `fade-up`, `scale-in`, `pulse-dot`, `shimmer`, `spin`
+
+**Breakpoints:** `(prefers-reduced-motion: reduce)`, `(max-width: 768px)`, `(max-width: 480px)`
+
+**Component classes:** `.sidebar`, `.sidebar-logo`, `.sidebar-logo-icon`, `.nav-section`, `.nav-item`, `.conv-section`, `.conv-label`, `.conv-item`, `.status-bar`, `.status-dot`
+**Files Modified:**
+  - `frontend\src\index.css` (+615 / -0)
+
+### [New] Add PipSession and network configuration setup
+
+- **File**: `venv\Lib\site-packages\pip\_internal\network\session.py`
+- **Captured**: 4/23/2026, 9:39:38 PM
+- **Category**: feature
+**Summary:** Introduces the PipSession class and supporting code for pip-specific network request configuration.
+**Files Modified:**
+  - `venv\Lib\site-packages\pip\_internal\network\session.py` (+529 / -0)
+**Schema: `HTTPAdapter`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+**Schema: `CacheControlAdapter`** (python)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `pass` | `unknown` | ✓ | - |
+
+### [New] Add Musicgen model implementation and related utilities
+
+- **File**: `venv\Lib\site-packages\transformers\models\musicgen\modeling_musicgen.py`
+- **Captured**: 4/23/2026, 9:39:04 PM
+- **Category**: feature
+**Summary:** Introduces the PyTorch Musicgen model, including its configuration, utilities, and input/output classes.
+**Files Modified:**
+  - `venv\Lib\site-packages\transformers\models\musicgen\modeling_musicgen.py` (+2174 / -0)
+**Schema: `MusicgenUnconditionalInput`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `r` | `unknown` | ✓ | - |
+| `encoder_outputs` | `unknown` | ✓ | - |
+| `attention_mask` | `unknown` | ✓ | - |
+| `guidance_scale` | `unknown` | ✓ | - |
+| `encoder_outputs` | `tuple[torch` | ✓ | - |
+| `attention_mask` | `torch` | ✓ | - |
+| `guidance_scale` | `float` | ✓ | - |
+| `Shift` | `unknown` | ✓ | - |
+| `input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `if` | `unknown` | ✓ | - |
+| `shifted_input_ids` | `unknown` | ✓ | - |
+| `return` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenPreTrainedModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MusicgenDecoderConfig` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+| `_no_split_modules` | `unknown` | ✓ | - |
+| `_supports_flash_attn` | `unknown` | ✓ | - |
+| `_supports_sdpa` | `unknown` | ✓ | - |
+| `_supports_flex_attn` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenDecoder`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `Transformer` | `unknown` | ✓ | - |
+| `_can_record_outputs` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenModel`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `custom_intro` | `unknown` | ✓ | - |
+| `The` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenForCausalLM`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `output_modalities` | `unknown` | ✓ | - |
+
+**Schema: `MusicgenForConditionalGeneration`** (django/sqlalchemy)
+
+| Field | Type | Required | Attributes |
+|-------|------|----------|------------|
+| `config` | `MusicgenConfig` | ✓ | - |
+| `output_modalities` | `unknown` | ✓ | - |
+| `base_model_prefix` | `unknown` | ✓ | - |
+| `main_input_name` | `unknown` | ✓ | - |
+| `supports_gradient_checkpointing` | `unknown` | ✓ | - |
+
 ### [New] Add NemotronH model implementation and helper methods
 
 - **File**: `venv\Lib\site-packages\transformers\models\nemotron_h\modeling_nemotron_h.py`
@@ -58987,4 +67515,15 @@
 **Summary:** **Page:** NexusAgent
 **Libraries:** `index-CXRMw8Ab.js`
 **Files Modified:**
-  - `frontend\dist\index.html` (+17 / -0)html` (+17 / -0)html` (+17 / -0) / -0)
+  - `frontend\dist\index.html` (+17 / -0)html` (+17 / -0)html` (+17 / -0) / -0)0)html` (+17 / -0) / -0)17 / -0)html` (+17 / -0) / -0)
+
+## Recent Changes
+
+### [unknown] Changes in Layout.jsx
+
+- **File**: `frontend\src\components\Layout.jsx`
+- **Captured**: 4/23/2026, 10:28:59 PM
+- **Category**: unknown
+**Summary:** Modified Layout.jsx: 1 lines added, 22 lines removed.
+**Files Modified:**
+  - `frontend\src\components\Layout.jsx` (+1 / -22)

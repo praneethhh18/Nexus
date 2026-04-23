@@ -1,14 +1,49 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Shield, Smartphone, Key, Laptop, X, Check, AlertTriangle, Copy, RefreshCw } from 'lucide-react';
+import { Shield, Smartphone, Laptop, X, Check, AlertTriangle, Copy, RefreshCw,
+         Cloud, CloudOff, Eye, EyeOff, Trash2, Lock, ShieldCheck } from 'lucide-react';
 import {
   twofaStatus, twofaEnroll, twofaVerify, twofaDisable, twofaRegenerate,
   listSessions, revokeSession, revokeAllOther,
+  privacyStatus, privacyAudit, privacyAuditClear,
 } from '../services/security';
 
 function formatWhen(iso) {
   if (!iso) return '—';
   try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
   catch { return iso.substring(0, 16); }
+}
+
+function formatAgo(ts) {
+  if (!ts) return '—';
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - Number(ts)));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function StatusChip({ icon, label, value, sub, tone = 'dim' }) {
+  const toneColor = {
+    accent: 'var(--color-accent)',
+    warn:   'var(--color-warn)',
+    dim:    'var(--color-text-dim)',
+  }[tone];
+  return (
+    <div style={{
+      padding: '10px 12px',
+      borderRadius: 'var(--r-md)',
+      background: 'var(--color-surface-1)',
+      border: '1px solid var(--color-border)',
+      display: 'flex', flexDirection: 'column', gap: 4,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: toneColor, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+        {icon}
+        {label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{sub}</div>}
+    </div>
+  );
 }
 
 function humanUserAgent(ua) {
@@ -31,6 +66,10 @@ export default function Security() {
   const [sessions, setSessions] = useState([]);
   const [disableCode, setDisableCode] = useState('');
   const [msg, setMsg] = useState('');
+  const [privacy, setPrivacy] = useState(null);
+  const [privacyLog, setPrivacyLog] = useState({ stats: null, entries: [] });
+  const [privacyLoading, setPrivacyLoading] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -40,7 +79,21 @@ export default function Security() {
     } catch (e) { setMsg(`Failed: ${e.message}`); }
   }, []);
 
-  useEffect(() => { reload(); }, [reload]);
+  const reloadPrivacy = useCallback(async () => {
+    setPrivacyLoading(true);
+    try {
+      const [st, log] = await Promise.all([privacyStatus(), privacyAudit(50)]);
+      setPrivacy(st);
+      setPrivacyLog(log);
+    } catch (e) {
+      // non-admins get 403 on the audit log — still show status
+      try { setPrivacy(await privacyStatus()); } catch {}
+    } finally {
+      setPrivacyLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { reload(); reloadPrivacy(); }, [reload, reloadPrivacy]);
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -107,6 +160,15 @@ export default function Security() {
     flash('Copied to clipboard.');
   };
 
+  const handleClearAudit = async () => {
+    if (!confirm('Clear the cloud audit log? This only removes the local record — it cannot undo calls that already happened.')) return;
+    try {
+      await privacyAuditClear();
+      flash('Audit log cleared.');
+      reloadPrivacy();
+    } catch (e) { flash(`Failed: ${e.message}`); }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header">
@@ -114,27 +176,180 @@ export default function Security() {
         <p>Two-factor authentication and active sessions for your account</p>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
       <div className="page-body">
+        {/* ── Cloud privacy ────────────────────────────────────────────────────── */}
+        <div className="panel">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+              <ShieldCheck size={16} color="var(--color-accent)" />
+              Cloud privacy
+            </h3>
+            <button className="btn-ghost" onClick={reloadPrivacy} disabled={privacyLoading}>
+              <RefreshCw size={11} style={{ animation: privacyLoading ? 'spin 1s linear infinite' : 'none' }} />
+              Refresh
+            </button>
+          </div>
+
+          {!privacy ? (
+            <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>Loading…</p>
+          ) : (
+            <>
+              {/* Status chips */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10, marginBottom: 14 }}>
+                <StatusChip
+                  icon={privacy.allow_cloud_llm && privacy.cloud_configured ? <Cloud size={14} /> : <CloudOff size={14} />}
+                  label="Cloud LLM"
+                  value={!privacy.cloud_configured ? 'Not configured' : privacy.allow_cloud_llm ? `On · ${privacy.provider}` : 'Disabled'}
+                  tone={!privacy.cloud_configured ? 'dim' : privacy.allow_cloud_llm ? 'accent' : 'warn'}
+                  sub={privacy.cloud_model || 'Local only'}
+                />
+                <StatusChip
+                  icon={<Lock size={14} />}
+                  label="PII redaction"
+                  value={privacy.redact_pii ? 'Active' : 'Off'}
+                  tone={privacy.redact_pii ? 'accent' : 'warn'}
+                  sub={privacy.redact_pii ? 'Emails, IDs, secrets scrubbed' : 'No outbound scrubbing'}
+                />
+                <StatusChip
+                  icon={<Eye size={14} />}
+                  label="Audit logging"
+                  value={privacy.audit_enabled ? 'Recording' : 'Off'}
+                  tone={privacy.audit_enabled ? 'accent' : 'warn'}
+                  sub={privacyLog?.stats ? `${privacyLog.stats.total} calls tracked` : ''}
+                />
+              </div>
+
+              {/* Aggregate stats */}
+              {privacyLog?.stats && (
+                <div className="stat-grid" style={{ marginBottom: 14 }}>
+                  <div className="stat-card">
+                    <div className="value">{privacyLog.stats.total}</div>
+                    <div className="label">Total cloud calls</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="value">{privacyLog.stats.last_24h}</div>
+                    <div className="label">Last 24 hours</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="value">{privacyLog.stats.total_redactions}</div>
+                    <div className="label">PII tokens redacted</div>
+                  </div>
+                  <div className="stat-card">
+                    <div className="value">{(privacyLog.stats.total_chars || 0).toLocaleString()}</div>
+                    <div className="label">Chars sent (lifetime)</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Explanation */}
+              <div style={{
+                padding: 12, borderRadius: 'var(--r-md)',
+                background: 'var(--color-accent-soft)',
+                border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
+                fontSize: 12, color: 'var(--color-text)', marginBottom: 14, lineHeight: 1.55,
+              }}>
+                <strong style={{ color: 'var(--color-accent)' }}>What this log shows:</strong>{' '}
+                every time NexusAgent talks to a cloud LLM, we record the timestamp, provider, model,
+                a SHA-256 fingerprint of the (already-redacted) payload, and how many PII tokens were
+                scrubbed. <strong>The raw prompt is never stored</strong> — the log itself can't leak
+                what it's protecting. Raw database rows, email bodies, and customer records never
+                enter this list because those paths are forced to local Ollama.
+              </div>
+
+              {/* Entry list */}
+              {privacyLog?.entries?.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+                      Recent cloud calls ({privacyLog.entries.length})
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button className="btn-ghost" onClick={() => setShowRaw(v => !v)}>
+                        {showRaw ? <EyeOff size={11} /> : <Eye size={11} />}
+                        {showRaw ? 'Hide hashes' : 'Show hashes'}
+                      </button>
+                      <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={handleClearAudit}>
+                        <Trash2 size={11} /> Clear log
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="table-panel">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>When</th>
+                          <th>Provider</th>
+                          <th>Model</th>
+                          <th>Mode</th>
+                          <th style={{ textAlign: 'right' }}>Chars</th>
+                          <th style={{ textAlign: 'right' }}>Redactions</th>
+                          {showRaw && <th>Payload SHA</th>}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {privacyLog.entries.map((e, i) => (
+                          <tr key={`${e.ts}-${i}`}>
+                            <td style={{ color: 'var(--color-text-muted)' }}>{formatAgo(e.ts)}</td>
+                            <td>
+                              <span className="tool-badge tool-sql" style={{ textTransform: 'lowercase' }}>
+                                {e.provider}
+                              </span>
+                            </td>
+                            <td style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>{e.model}</td>
+                            <td style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>
+                              {e.meta?.mode || 'invoke'}
+                            </td>
+                            <td style={{ textAlign: 'right', fontFamily: 'ui-monospace, Menlo, monospace' }}>
+                              {e.prompt_chars ?? 0}
+                            </td>
+                            <td style={{ textAlign: 'right', color: e.redactions > 0 ? 'var(--color-accent)' : 'var(--color-text-dim)' }}>
+                              {e.redactions || 0}
+                            </td>
+                            {showRaw && (
+                              <td style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: 10, color: 'var(--color-text-dim)' }}>
+                                {e.prompt_sha256}
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: 'var(--color-text-dim)', padding: '12px 0' }}>
+                  {!privacy.cloud_configured
+                    ? 'No cloud provider is configured — every LLM call runs on local Ollama. Nothing has left this machine.'
+                    : privacyLog?.stats?.total === 0
+                    ? 'No cloud calls recorded yet. This log populates the first time the app sends an aggregate or non-sensitive prompt to the cloud.'
+                    : 'Audit log access is restricted to admin/owner accounts.'}
+                </p>
+              )}
+            </>
+          )}
+        </div>
+
         {/* ── 2FA ──────────────────────────────────────────────────────────────── */}
         <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Shield size={16} color={twofa?.enabled ? '#22c55e' : '#64748b'} />
+            <Shield size={16} color={twofa?.enabled ? 'var(--color-ok)' : 'var(--color-text-dim)'} />
             Two-factor authentication
           </h3>
 
           {!twofa ? (
-            <p style={{ fontSize: 12, color: '#64748b' }}>Loading…</p>
+            <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>Loading…</p>
           ) : twofa.enabled ? (
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                <Check size={14} color="#22c55e" />
+                <Check size={14} color="var(--color-ok)" />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: '#e2e8f0' }}>
-                    <strong style={{ color: '#22c55e' }}>Enabled</strong> since {formatWhen(twofa.enabled_at)}
+                  <div style={{ fontSize: 13, color: 'var(--color-text)' }}>
+                    <strong style={{ color: 'var(--color-ok)' }}>Enabled</strong> since {formatWhen(twofa.enabled_at)}
                   </div>
-                  <div style={{ fontSize: 10, color: '#64748b' }}>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
                     {twofa.recovery_codes_remaining} recovery codes remaining
                   </div>
                 </div>
@@ -144,8 +359,8 @@ export default function Security() {
                   className="field-input" style={{ fontSize: 12, width: 150, letterSpacing: 3, textAlign: 'center' }}
                   placeholder="123456" value={disableCode} onChange={(e) => setDisableCode(e.target.value)}
                 />
-                <button className="btn-ghost" style={{ color: '#f87171' }} onClick={handleDisable}>Disable 2FA</button>
-                <div style={{ width: 1, background: '#1e293b', height: 20 }} />
+                <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={handleDisable}>Disable 2FA</button>
+                <div style={{ width: 1, background: 'var(--color-surface-2)', height: 20 }} />
                 <button className="btn-ghost" onClick={handleRegenerate}>
                   <RefreshCw size={11} /> Regenerate recovery codes
                 </button>
@@ -153,7 +368,7 @@ export default function Security() {
             </div>
           ) : enrollData ? (
             <div>
-              <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 10 }}>
                 Scan this QR code in <strong>Google Authenticator</strong>, <strong>Authy</strong>, or <strong>1Password</strong>,
                 then type the 6-digit code to verify.
               </p>
@@ -161,17 +376,17 @@ export default function Security() {
                 {enrollData.qr_data_url ? (
                   <img src={enrollData.qr_data_url} alt="2FA QR code" style={{ width: 180, height: 180, background: '#fff', padding: 8, borderRadius: 8 }} />
                 ) : (
-                  <div style={{ width: 180, padding: 12, background: '#0f172a', borderRadius: 8, fontSize: 10, color: '#94a3b8', wordBreak: 'break-all' }}>
+                  <div style={{ width: 180, padding: 12, background: 'var(--color-surface-1)', borderRadius: 8, fontSize: 10, color: 'var(--color-text-muted)', wordBreak: 'break-all' }}>
                     QR rendering unavailable. Copy this URL into your authenticator:
-                    <div style={{ marginTop: 6, fontFamily: 'monospace', color: '#60a5fa' }}>{enrollData.otpauth_url}</div>
+                    <div style={{ marginTop: 6, fontFamily: 'monospace', color: 'var(--color-info)' }}>{enrollData.otpauth_url}</div>
                   </div>
                 )}
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Or type this key manually:</div>
-                  <code style={{ fontSize: 11, color: '#e2e8f0', background: '#0f172a', padding: '4px 8px', borderRadius: 4, display: 'inline-block', marginBottom: 12, letterSpacing: 2 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 4 }}>Or type this key manually:</div>
+                  <code style={{ fontSize: 11, color: 'var(--color-text)', background: 'var(--color-surface-1)', padding: '4px 8px', borderRadius: 4, display: 'inline-block', marginBottom: 12, letterSpacing: 2 }}>
                     {enrollData.secret.match(/.{1,4}/g)?.join(' ')}
                   </code>
-                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>Enter the current code:</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>Enter the current code:</div>
                   <input
                     className="field-input"
                     placeholder="123456"
@@ -190,7 +405,7 @@ export default function Security() {
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 10 }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 10 }}>
                 Add an extra layer on your account. After enabling, you'll need your password <em>and</em> a 6-digit code from your authenticator app to log in.
               </p>
               <button className="btn-primary" onClick={handleEnroll}>
@@ -200,17 +415,17 @@ export default function Security() {
           )}
 
           {newRecoveryCodes && (
-            <div style={{ marginTop: 14, padding: 12, background: '#f59e0b15', border: '1px solid #f59e0b40', borderRadius: 8 }}>
+            <div style={{ marginTop: 14, padding: 12, background: 'color-mix(in srgb, var(--color-warn) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warn) 25%, transparent)', borderRadius: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                <AlertTriangle size={14} color="#fbbf24" />
-                <strong style={{ fontSize: 12, color: '#fbbf24' }}>Recovery codes — shown ONCE</strong>
+                <AlertTriangle size={14} color="var(--color-warn)" />
+                <strong style={{ fontSize: 12, color: 'var(--color-warn)' }}>Recovery codes — shown ONCE</strong>
               </div>
-              <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
                 Save these somewhere safe. You can use any of them to log in if you lose your phone. Each one works once.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
                 {newRecoveryCodes.map((c) => (
-                  <code key={c} style={{ padding: '4px 8px', background: '#0f172a', borderRadius: 4, fontSize: 12, color: '#e2e8f0', letterSpacing: 1 }}>
+                  <code key={c} style={{ padding: '4px 8px', background: 'var(--color-surface-1)', borderRadius: 4, fontSize: 12, color: 'var(--color-text)', letterSpacing: 1 }}>
                     {c}
                   </code>
                 ))}
@@ -225,40 +440,40 @@ export default function Security() {
         <div className="panel">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
-              <Laptop size={16} color="#60a5fa" /> Active sessions
+              <Laptop size={16} color="var(--color-info)" /> Active sessions
             </h3>
             {sessions.filter(s => !s.revoked_at && !s.is_current).length > 0 && (
-              <button className="btn-ghost" style={{ color: '#f87171' }} onClick={handleRevokeAll}>
+              <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={handleRevokeAll}>
                 Revoke all other sessions
               </button>
             )}
           </div>
           {sessions.length === 0 ? (
-            <p style={{ color: '#64748b', fontSize: 12 }}>Loading…</p>
+            <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>Loading…</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {sessions.map((s) => {
                 const isActive = !s.revoked_at;
                 return (
                   <div key={s.jti} style={{
-                    padding: '10px 12px', background: '#0f172a', borderRadius: 6,
+                    padding: '10px 12px', background: 'var(--color-surface-1)', borderRadius: 6,
                     display: 'flex', alignItems: 'center', gap: 10,
-                    borderLeft: `3px solid ${s.is_current ? '#22c55e' : isActive ? '#60a5fa' : '#475569'}`,
+                    borderLeft: `3px solid ${s.is_current ? 'var(--color-ok)' : isActive ? 'var(--color-info)' : 'var(--color-text-dim)'}`,
                     opacity: isActive ? 1 : 0.5,
                   }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 12, color: '#e2e8f0', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ fontSize: 12, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         {humanUserAgent(s.user_agent)}
-                        {s.is_current && <span style={{ fontSize: 9, padding: '1px 6px', background: '#22c55e22', color: '#4ade80', borderRadius: 10, fontWeight: 600 }}>THIS DEVICE</span>}
-                        {!isActive && <span style={{ fontSize: 9, color: '#64748b' }}>revoked</span>}
+                        {s.is_current && <span style={{ fontSize: 9, padding: '1px 6px', background: 'color-mix(in srgb, var(--color-ok) 13%, transparent)', color: 'var(--color-ok)', borderRadius: 10, fontWeight: 600 }}>THIS DEVICE</span>}
+                        {!isActive && <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>revoked</span>}
                       </div>
-                      <div style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>
                         {s.ip || 'unknown ip'} · started {formatWhen(s.created_at)}
                         {s.last_seen_at && <> · last seen {formatWhen(s.last_seen_at)}</>}
                       </div>
                     </div>
                     {isActive && !s.is_current && (
-                      <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={() => handleRevoke(s)} title="Revoke">
+                      <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleRevoke(s)} title="Revoke">
                         <X size={12} />
                       </button>
                     )}
@@ -267,7 +482,7 @@ export default function Security() {
               })}
             </div>
           )}
-          <p style={{ fontSize: 10, color: '#64748b', marginTop: 10 }}>
+          <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 10 }}>
             Revoking a session immediately invalidates its login token — the other device will have to sign in again.
           </p>
         </div>

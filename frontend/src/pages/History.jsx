@@ -26,8 +26,8 @@ export default function History() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, alignItems: 'center' }}>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: '#1e293b', border: '1px solid #334155', borderRadius: 8, padding: '6px 12px' }}>
-            <Search size={14} color="#475569" />
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--color-surface-2)', border: '1px solid var(--color-border-strong)', borderRadius: 8, padding: '6px 12px' }}>
+            <Search size={14} color="var(--color-text-dim)" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search queries..."
               style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'white', fontSize: 12 }} />
           </div>
@@ -36,13 +36,13 @@ export default function History() {
             {(stats.top_intents || []).map(i => <option key={i.intent} value={i.intent}>{i.intent} ({i.count})</option>)}
           </select>
           <button onClick={() => setStarredOnly(!starredOnly)}
-            style={{ padding: 6, borderRadius: 6, border: 'none', cursor: 'pointer', background: starredOnly ? '#f59e0b15' : 'transparent', color: starredOnly ? '#fbbf24' : '#475569' }}>
+            style={{ padding: 6, borderRadius: 6, border: 'none', cursor: 'pointer', background: starredOnly ? 'color-mix(in srgb, var(--color-warn) 8%, transparent)' : 'transparent', color: starredOnly ? 'var(--color-warn)' : 'var(--color-text-dim)' }}>
             <Star size={16} fill={starredOnly ? 'currentColor' : 'none'} />
           </button>
         </div>
 
         {data.queries.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#475569' }}>
+          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
             <Clock size={28} style={{ margin: '0 auto 8px' }} /><p style={{ fontSize: 13 }}>No queries found</p>
           </div>
         ) : data.queries.map(q => (
@@ -59,10 +59,10 @@ export default function History() {
               <button onClick={() => { navigate('/'); setTimeout(() => window.dispatchEvent(new CustomEvent('nexus-rerun', { detail: q.query })), 100); }}>
                 <Play size={12} /> Re-run
               </button>
-              <button onClick={async () => { await toggleStar(q.id); load(); }} style={q.starred ? { color: '#fbbf24' } : {}}>
+              <button onClick={async () => { await toggleStar(q.id); load(); }} style={q.starred ? { color: 'var(--color-warn)' } : {}}>
                 <Star size={12} fill={q.starred ? 'currentColor' : 'none'} /> {q.starred ? 'Unstar' : 'Star'}
               </button>
-              <button onClick={async () => { await deleteHistoryEntry(q.id); load(); }} style={{ color: '#64748b' }}>
+              <button onClick={async () => { await deleteHistoryEntry(q.id); load(); }} style={{ color: 'var(--color-text-dim)' }}>
                 <Trash2 size={12} />
               </button>
             </div>

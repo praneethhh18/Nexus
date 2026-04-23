@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, STATUSES, PRIORITIES } from '../services/tasks';
+import FlowBanner from '../components/FlowBanner';
 
-const PRIORITY_COLORS = { urgent: '#ef4444', high: '#f59e0b', normal: '#60a5fa', low: '#64748b' };
-const STATUS_COLORS = { open: '#64748b', in_progress: '#f59e0b', done: '#22c55e', cancelled: '#475569' };
+const PRIORITY_COLORS = { urgent: 'var(--color-err)', high: 'var(--color-warn)', normal: 'var(--color-info)', low: 'var(--color-text-dim)' };
+const STATUS_COLORS = { open: 'var(--color-text-dim)', in_progress: 'var(--color-warn)', done: 'var(--color-ok)', cancelled: 'var(--color-text-dim)' };
 
 function todayStr() {
   return new Date().toISOString().substring(0, 10);
@@ -27,13 +28,13 @@ function Modal({ title, onClose, children }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12,
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
         padding: 20, width: 460, maxHeight: '90vh', overflow: 'auto',
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={16} /></button>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><X size={16} /></button>
         </div>
         {children}
       </div>
@@ -50,33 +51,33 @@ function TaskForm({ initial, onSubmit, onCancel }) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
       <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Title *</label>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Title *</label>
         <input className="field-input" required autoFocus value={f.title} onChange={(e) => set('title', e.target.value)} maxLength={200} />
       </div>
       <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Description</label>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Description</label>
         <textarea className="field-input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={4000} />
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Priority</label>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Priority</label>
           <select className="field-select" value={f.priority} onChange={(e) => set('priority', e.target.value)} style={{ width: '100%' }}>
             {PRIORITIES.map((p) => <option key={p}>{p}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Status</label>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Status</label>
           <select className="field-select" value={f.status} onChange={(e) => set('status', e.target.value)} style={{ width: '100%' }}>
             {STATUSES.map((s) => <option key={s}>{s}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Due date</label>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Due date</label>
           <input className="field-input" type="date" value={f.due_date || ''} onChange={(e) => set('due_date', e.target.value)} />
         </div>
       </div>
       <div style={{ marginTop: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Tags</label>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Tags</label>
         <input className="field-input" placeholder="comma-separated" value={f.tags} onChange={(e) => set('tags', e.target.value)} />
       </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
@@ -94,24 +95,24 @@ function TaskRow({ task, onToggle, onEdit, onDelete }) {
     <div className="panel" style={{
       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
       opacity: done ? 0.55 : 1,
-      borderLeft: `3px solid ${PRIORITY_COLORS[task.priority] || '#475569'}`,
+      borderLeft: `3px solid ${PRIORITY_COLORS[task.priority] || 'var(--color-text-dim)'}`,
     }}>
-      <button onClick={() => onToggle(task)} style={{ background: 'none', border: 'none', color: done ? '#22c55e' : '#64748b', cursor: 'pointer' }}>
+      <button onClick={() => onToggle(task)} style={{ background: 'none', border: 'none', color: done ? 'var(--color-ok)' : 'var(--color-text-dim)', cursor: 'pointer' }}>
         {done ? <CheckSquare size={18} /> : <Square size={18} />}
       </button>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 13, fontWeight: 500, color: '#e2e8f0',
+          fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
           textDecoration: done ? 'line-through' : 'none',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         }}>
           {task.title}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 2, fontSize: 10, color: '#64748b' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 2, fontSize: 10, color: 'var(--color-text-dim)' }}>
           <span style={{ color: PRIORITY_COLORS[task.priority], fontWeight: 600 }}>{task.priority}</span>
           <span style={{ color: STATUS_COLORS[task.status] }}>{task.status.replace('_', ' ')}</span>
           {task.due_date && (
-            <span style={{ color: overdue ? '#ef4444' : '#64748b', display: 'flex', alignItems: 'center', gap: 3 }}>
+            <span style={{ color: overdue ? 'var(--color-err)' : 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 3 }}>
               <Calendar size={10} /> {isoToDateLabel(task.due_date)}
             </span>
           )}
@@ -120,7 +121,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }) {
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => onEdit(task)}>Edit</button>
-        <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={() => onDelete(task)}><Trash2 size={12} /></button>
+        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => onDelete(task)}><Trash2 size={12} /></button>
       </div>
     </div>
   );
@@ -189,25 +190,29 @@ export default function Tasks() {
         <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> Add task</button>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
+
+      <div style={{ padding: '8px 24px 0' }}>
+        <FlowBanner currentStep="task" />
+      </div>
 
       {/* Summary cards */}
       {summary && (
         <div style={{ padding: '0 24px', display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 8 }}>
           {[
-            { label: 'Open total', value: summary.open_total, icon: Briefcase, color: '#60a5fa' },
-            { label: 'Overdue', value: summary.overdue, icon: AlertTriangle, color: '#ef4444' },
-            { label: 'Today', value: summary.today, icon: Calendar, color: '#f59e0b' },
+            { label: 'Open total', value: summary.open_total, icon: Briefcase, color: 'var(--color-info)' },
+            { label: 'Overdue', value: summary.overdue, icon: AlertTriangle, color: 'var(--color-err)' },
+            { label: 'Today', value: summary.today, icon: Calendar, color: 'var(--color-warn)' },
             { label: 'Next 7 days', value: summary.upcoming, icon: Clock, color: '#a78bfa' },
-            { label: 'Done today', value: summary.done_today, icon: CheckSquare, color: '#22c55e' },
+            { label: 'Done today', value: summary.done_today, icon: CheckSquare, color: 'var(--color-ok)' },
           ].map(({ label, value, icon: Icon, color }, i) => (
             <div key={i} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}22`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon size={16} />
               </div>
               <div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>{label}</div>
-                <div style={{ fontSize: 16, fontWeight: 600, color: '#e2e8f0' }}>{value}</div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{label}</div>
+                <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>{value}</div>
               </div>
             </div>
           ))}
@@ -215,11 +220,11 @@ export default function Tasks() {
       )}
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid #1e293b', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)', flexWrap: 'wrap' }}>
         {[['active', 'Active'], ['open', 'Open'], ['in_progress', 'In progress'], ['done', 'Done'], ['all', 'All']].map(([k, lbl]) => (
           <button key={k} onClick={() => setFilter(k)} className={filter === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>{lbl}</button>
         ))}
-        <div style={{ width: 1, background: '#1e293b', margin: '0 4px' }} />
+        <div style={{ width: 1, background: 'var(--color-surface-2)', margin: '0 4px' }} />
         {[['', 'Any due'], ['overdue', 'Overdue'], ['today', 'Today'], ['this_week', 'This week']].map(([k, lbl]) => (
           <button key={k || 'any'} onClick={() => setDueWindow(k)} className={dueWindow === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>{lbl}</button>
         ))}
@@ -227,7 +232,7 @@ export default function Tasks() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tasks.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
             <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
             <p style={{ fontSize: 13 }}>No tasks match this filter.</p>
           </div>

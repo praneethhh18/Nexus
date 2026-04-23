@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
-import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3 } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
+         PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import { sendMessage, getConversation, exportMarkdown, uploadDocument, downloadReport } from '../services/api';
+import { sendMessage, getConversation, getConversations, deleteConversation,
+         exportMarkdown, uploadDocument, downloadReport } from '../services/api';
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { Zap } from 'lucide-react';
@@ -34,11 +36,11 @@ function DataChart({ sqlData }) {
   return (
     <div style={{ marginTop: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-        <BarChart3 size={14} color="#3b82f6" />
-        <span style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8' }}>Data ({sqlData.row_count} rows)</span>
+        <BarChart3 size={14} color="var(--color-accent)" />
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-muted)' }}>Data ({sqlData.row_count} rows)</span>
       </div>
       {/* Bar chart using CSS */}
-      <div style={{ background: '#0f172a', borderRadius: 8, padding: 12, border: '1px solid #1e293b' }}>
+      <div style={{ background: 'var(--color-surface-1)', borderRadius: 8, padding: 12, border: '1px solid var(--color-surface-2)' }}>
         {data.map((row, i) => {
           const label = String(row[xCol] || '').substring(0, 20);
           const val = Number(row[yCol]) || 0;
@@ -46,11 +48,11 @@ function DataChart({ sqlData }) {
           const pct = maxVal > 0 ? (val / maxVal) * 100 : 0;
           return (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 10, color: '#94a3b8', minWidth: 80, textAlign: 'right' }}>{label}</span>
-              <div style={{ flex: 1, height: 16, background: '#1e293b', borderRadius: 4, overflow: 'hidden' }}>
-                <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #3b82f6, #8b5cf6)', borderRadius: 4, transition: 'width 0.3s' }} />
+              <span style={{ fontSize: 10, color: 'var(--color-text-muted)', minWidth: 80, textAlign: 'right' }}>{label}</span>
+              <div style={{ flex: 1, height: 16, background: 'var(--color-surface-2)', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, var(--color-accent), #8b5cf6)', borderRadius: 4, transition: 'width 0.3s' }} />
               </div>
-              <span style={{ fontSize: 10, color: '#64748b', minWidth: 60 }}>
+              <span style={{ fontSize: 10, color: 'var(--color-text-dim)', minWidth: 60 }}>
                 {typeof val === 'number' && val > 1000 ? `$${(val / 1000).toFixed(1)}k` : val}
               </span>
             </div>
@@ -59,7 +61,7 @@ function DataChart({ sqlData }) {
       </div>
       {/* Data table */}
       <details style={{ marginTop: 6 }}>
-        <summary style={{ fontSize: 10, color: '#475569', cursor: 'pointer' }}>View raw data</summary>
+        <summary style={{ fontSize: 10, color: 'var(--color-text-dim)', cursor: 'pointer' }}>View raw data</summary>
         <div style={{ overflowX: 'auto', marginTop: 4 }}>
           <table className="data-table">
             <thead><tr>{cols.map(c => <th key={c}>{c}</th>)}</tr></thead>
@@ -85,12 +87,53 @@ export default function Chat() {
     const saved = localStorage.getItem('nexus_agent_mode');
     return saved === null ? true : saved === '1';
   });
+  const [conversations, setConversations] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(() => localStorage.getItem('nexus_chat_history_open') !== '0');
+  const [historySearch, setHistorySearch] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
   const wsRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading, streamingText]);
+
+  // Conversation history — loaded here, not in the app sidebar
+  const loadConversations = useCallback(() => {
+    getConversations().then(setConversations).catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadConversations();
+    const iv = setInterval(loadConversations, 15000);
+    return () => clearInterval(iv);
+  }, [loadConversations]);
+  // Refresh right after a new message lands (so the new conversation title appears)
+  useEffect(() => {
+    if (messages.length > 0) { loadConversations(); }
+  }, [convId, messages.length, loadConversations]);
+
+  const toggleHistory = () => {
+    setHistoryOpen(v => {
+      localStorage.setItem('nexus_chat_history_open', v ? '0' : '1');
+      return !v;
+    });
+  };
+
+  const loadConversation = async (id) => {
+    try { const data = await getConversation(id); setMessages(data.messages || []); setConvId(id); setChartData(null); }
+    catch {}
+  };
+
+  const removeConversation = async (e, id) => {
+    e.stopPropagation();
+    if (!confirm('Delete this conversation?')) return;
+    await deleteConversation(id).catch(() => {});
+    setConversations(c => c.filter(x => x.conversation_id !== id));
+    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); }
+  };
+
+  const filteredConvs = conversations.filter(c =>
+    !historySearch.trim() || (c.title || '').toLowerCase().includes(historySearch.toLowerCase())
+  );
 
   useEffect(() => {
     const onLoad = async (e) => {
@@ -271,9 +314,15 @@ export default function Chat() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1>Chat {agentMode && <span style={{ fontSize: 10, fontWeight: 600, color: '#22c55e', background: '#22c55e15', border: '1px solid #22c55e40', padding: '2px 8px', borderRadius: 10, verticalAlign: 'middle', marginLeft: 8 }}>AGENT</span>}</h1>
-          <p>{agentMode ? 'Ask me to do things — create tasks, add contacts, draft invoices, send emails (with approval)' : 'Ask about your business data, documents, or operations'}</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={toggleHistory} title={historyOpen ? 'Hide chat history' : 'Show chat history'}
+            style={{ background: 'none', border: 'none', color: 'var(--color-text-muted)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+            {historyOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+          </button>
+          <div>
+            <h1>Chat {agentMode && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-ok)', background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-ok) 25%, transparent)', padding: '2px 8px', borderRadius: 10, verticalAlign: 'middle', marginLeft: 8 }}>AGENT</span>}</h1>
+            <p>{agentMode ? 'Ask me to do things — create tasks, add contacts, draft invoices, send emails (with approval)' : 'Ask about your business data, documents, or operations'}</p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <button
@@ -282,9 +331,9 @@ export default function Chat() {
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               padding: '5px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
-              border: `1px solid ${agentMode ? '#22c55e60' : '#334155'}`,
-              background: agentMode ? '#22c55e15' : 'transparent',
-              color: agentMode ? '#4ade80' : '#94a3b8',
+              border: `1px solid ${agentMode ? 'color-mix(in srgb, var(--color-ok) 38%, transparent)' : 'var(--color-border-strong)'}`,
+              background: agentMode ? 'color-mix(in srgb, var(--color-ok) 8%, transparent)' : 'transparent',
+              color: agentMode ? 'var(--color-ok)' : 'var(--color-text-muted)',
             }}
           >
             <Zap size={12} /> {agentMode ? 'Agent ON' : 'Agent OFF'}
@@ -303,13 +352,71 @@ export default function Chat() {
         </div>
       </div>
 
-      {/* Messages + Chart sidebar */}
+      {/* History + Messages + Chart sidebar */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* History panel */}
+        {historyOpen && (
+          <aside style={{
+            width: 240, flexShrink: 0,
+            borderRight: '1px solid var(--color-border)',
+            background: 'var(--color-surface-1)',
+            display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '7px 10px' }}
+                onClick={() => { setMessages([]); setConvId(null); setChartData(null); inputRef.current?.focus(); }}>
+                <Plus size={13} /> New chat
+              </button>
+            </div>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 6, alignItems: 'center' }}>
+              <Search size={12} style={{ color: 'var(--color-text-dim)', flexShrink: 0 }} />
+              <input value={historySearch} onChange={e => setHistorySearch(e.target.value)} placeholder="Search chats"
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: 'var(--color-text)', fontSize: 12 }} />
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: 6 }}>
+              {filteredConvs.length === 0 && (
+                <div style={{ padding: '16px 8px', fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center' }}>
+                  {conversations.length === 0 ? 'No chats yet. Start by asking a question below.' : 'No matches.'}
+                </div>
+              )}
+              {filteredConvs.map(c => {
+                const active = c.conversation_id === convId;
+                return (
+                  <div key={c.conversation_id}
+                    onClick={() => loadConversation(c.conversation_id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 8,
+                      padding: '7px 10px', borderRadius: 'var(--r-sm)',
+                      fontSize: 12, color: active ? 'var(--color-text)' : 'var(--color-text-muted)',
+                      background: active ? 'var(--color-accent-soft)' : 'transparent',
+                      border: `1px solid ${active ? 'color-mix(in srgb, var(--color-accent) 25%, transparent)' : 'transparent'}`,
+                      cursor: 'pointer', marginBottom: 2,
+                      transition: 'background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)',
+                    }}
+                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--color-surface-3)'; }}
+                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                  >
+                    <MessageSquare size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
+                    <button onClick={(e) => removeConversation(e, c.conversation_id)}
+                      title="Delete chat"
+                      style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 2, opacity: 0.5 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-err)'; e.currentTarget.style.opacity = 1; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-dim)'; e.currentTarget.style.opacity = 0.5; }}>
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </aside>
+        )}
+
         {/* Chat */}
         <div className="chat-area" style={{ flex: 1 }}>
           {messages.length === 0 && !loading && (
             <div className="welcome">
-              <div className="welcome-icon"><Sparkles size={24} color="#60a5fa" /></div>
+              <div className="welcome-icon"><Sparkles size={24} color="var(--color-info)" /></div>
               <h2>Welcome to NexusAgent</h2>
               <p>Your AI business assistant. Ask about data, documents, generate reports, or run scenarios.</p>
               <div className="quick-grid">
@@ -335,15 +442,15 @@ export default function Chat() {
                       <div key={j}>
                         <div style={{
                           fontSize: 10, padding: '4px 10px', borderRadius: 6,
-                          background: tc.pending_approval ? '#f59e0b15' : (tc.error ? '#ef444415' : '#22c55e15'),
-                          border: `1px solid ${tc.pending_approval ? '#f59e0b40' : (tc.error ? '#ef444440' : '#22c55e40')}`,
-                          color: tc.pending_approval ? '#fbbf24' : (tc.error ? '#f87171' : '#4ade80'),
+                          background: tc.pending_approval ? 'color-mix(in srgb, var(--color-warn) 8%, transparent)' : (tc.error ? 'color-mix(in srgb, var(--color-err) 8%, transparent)' : 'color-mix(in srgb, var(--color-ok) 8%, transparent)'),
+                          border: `1px solid ${tc.pending_approval ? 'color-mix(in srgb, var(--color-warn) 25%, transparent)' : (tc.error ? 'color-mix(in srgb, var(--color-err) 25%, transparent)' : 'color-mix(in srgb, var(--color-ok) 25%, transparent)')}`,
+                          color: tc.pending_approval ? 'var(--color-warn)' : (tc.error ? 'var(--color-err)' : 'var(--color-ok)'),
                         }}>
                           {tc.pending_approval ? '⏸ ' : tc.error ? '✗ ' : '✓ '}
                           <code style={{ fontSize: 10 }}>{tc.name}</code>
                           {tc.pending_approval && <span> — waiting for your approval</span>}
                           {tc.error && <span> — {tc.error}</span>}
-                          {tc.summary && <span style={{ color: '#94a3b8' }}> · {tc.summary}</span>}
+                          {tc.summary && <span style={{ color: 'var(--color-text-muted)' }}> · {tc.summary}</span>}
                         </div>
                         {/* Downloadable files produced by this tool */}
                         {tc.files?.length > 0 && (
@@ -357,8 +464,8 @@ export default function Chat() {
                                 }}
                                 style={{
                                   fontSize: 11, padding: '4px 10px', borderRadius: 6,
-                                  background: '#1e293b', border: '1px solid #334155',
-                                  color: '#60a5fa', cursor: 'pointer',
+                                  background: 'var(--color-surface-2)', border: '1px solid var(--color-border-strong)',
+                                  color: 'var(--color-info)', cursor: 'pointer',
                                   display: 'inline-flex', alignItems: 'center', gap: 4,
                                 }}
                                 title={`Download ${f.filename}`}
@@ -375,10 +482,10 @@ export default function Chat() {
                 {msg.pending_approvals?.length > 0 && (
                   <div style={{
                     marginTop: 8, padding: '8px 12px', borderRadius: 8,
-                    background: '#f59e0b15', border: '1px solid #f59e0b40',
-                    fontSize: 11, color: '#fbbf24',
+                    background: 'color-mix(in srgb, var(--color-warn) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warn) 25%, transparent)',
+                    fontSize: 11, color: 'var(--color-warn)',
                   }}>
-                    {msg.pending_approvals.length} action{msg.pending_approvals.length > 1 ? 's' : ''} queued. Review on the <a href="/approvals" style={{ color: '#60a5fa', textDecoration: 'underline' }}>Approvals page</a>.
+                    {msg.pending_approvals.length} action{msg.pending_approvals.length > 1 ? 's' : ''} queued. Review on the <a href="/approvals" style={{ color: 'var(--color-info)', textDecoration: 'underline' }}>Approvals page</a>.
                   </div>
                 )}
                 {msg.tools_used?.length > 0 && !msg.tool_calls && (
@@ -407,7 +514,7 @@ export default function Chat() {
               <div className="msg-bubble bot">
                 <div className="chat-markdown" style={{ fontSize: 13 }}>
                   <ReactMarkdown>{streamingText}</ReactMarkdown>
-                  <span style={{ display: 'inline-block', width: 6, height: 14, background: '#3b82f6', marginLeft: 2, animation: 'pulse-dot 0.8s ease-in-out infinite', borderRadius: 1 }} />
+                  <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', marginLeft: 2, animation: 'pulse-dot 0.8s ease-in-out infinite', borderRadius: 1 }} />
                 </div>
               </div>
             </div>
@@ -420,7 +527,7 @@ export default function Chat() {
               <div className="msg-bubble bot">
                 <div className="thinking">
                   <div className="thinking-dot" /><div className="thinking-dot" /><div className="thinking-dot" />
-                  <span style={{ fontSize: 11, color: '#64748b', marginLeft: 6 }}>Thinking...</span>
+                  <span style={{ fontSize: 11, color: 'var(--color-text-dim)', marginLeft: 6 }}>Thinking...</span>
                 </div>
               </div>
             </div>
@@ -430,7 +537,7 @@ export default function Chat() {
 
         {/* Right panel — Chart */}
         {chartData && (
-          <div style={{ width: 320, borderLeft: '1px solid #1e293b', padding: 12, overflow: 'auto', flexShrink: 0 }}>
+          <div style={{ width: 320, borderLeft: '1px solid var(--color-surface-2)', padding: 12, overflow: 'auto', flexShrink: 0 }}>
             <DataChart sqlData={chartData} />
           </div>
         )}
@@ -443,8 +550,8 @@ export default function Chat() {
           <button onClick={recording ? stopRecording : startRecording}
             style={{
               padding: 6, borderRadius: 8, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-              background: recording ? '#ef444420' : 'transparent',
-              color: recording ? '#ef4444' : '#64748b',
+              background: recording ? 'color-mix(in srgb, var(--color-err) 13%, transparent)' : 'transparent',
+              color: recording ? 'var(--color-err)' : 'var(--color-text-dim)',
             }}>
             {recording ? <MicOff size={16} /> : <Mic size={16} />}
           </button>

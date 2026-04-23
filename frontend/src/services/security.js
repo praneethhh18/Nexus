@@ -44,6 +44,11 @@ export const auditList = (params = {}) => {
   return req(`/api/audit?${qs.toString()}`);
 };
 
+// Privacy / Cloud-LLM audit
+export const privacyStatus = () => req('/api/privacy/status');
+export const privacyAudit  = (limit = 100) => req(`/api/privacy/audit?limit=${limit}`);
+export const privacyAuditClear = () => req('/api/privacy/audit/clear', { method: 'POST' });
+
 // Global search
 export const globalSearch = (q, limit = 8) =>
   req(`/api/search?q=${encodeURIComponent(q)}&limit=${limit}`);

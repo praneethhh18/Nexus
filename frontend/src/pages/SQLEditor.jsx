@@ -56,13 +56,13 @@ export default function SQLEditor() {
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* Sidebar — tables + history */}
-        <div style={{ width: 200, borderRight: '1px solid #1e293b', overflow: 'auto', padding: 8, flexShrink: 0 }}>
+        <div style={{ width: 200, borderRight: '1px solid var(--color-surface-2)', overflow: 'auto', padding: 8, flexShrink: 0 }}>
           <div className="conv-label">Tables</div>
           {tables.filter(t => !t.is_system).map(t => (
             <div key={t.name} className="conv-item" onClick={() => setSQL(`SELECT * FROM ${t.name} LIMIT 20;`)} style={{ fontSize: 11 }}>
               <Database size={11} style={{ opacity: 0.4, flexShrink: 0 }} />
               <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-              <span style={{ fontSize: 9, color: '#475569' }}>{t.row_count}</span>
+              <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>{t.row_count}</span>
             </div>
           ))}
 
@@ -70,7 +70,7 @@ export default function SQLEditor() {
             <>
               <div className="conv-label" style={{ marginTop: 12 }}>Recent</div>
               {history.map((h, i) => (
-                <div key={i} className="conv-item" onClick={() => setSQL(h.sql)} style={{ fontSize: 10, color: '#475569' }}>
+                <div key={i} className="conv-item" onClick={() => setSQL(h.sql)} style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
                   {h.sql.substring(0, 30)}...
                 </div>
               ))}
@@ -81,12 +81,12 @@ export default function SQLEditor() {
         {/* Main */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Editor */}
-          <div style={{ padding: 12, borderBottom: '1px solid #1e293b' }}>
+          <div style={{ padding: 12, borderBottom: '1px solid var(--color-surface-2)' }}>
             <textarea value={sql} onChange={e => setSQL(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runQuery(); } }}
               style={{
-                width: '100%', minHeight: 100, background: '#0a0e1a', border: '1px solid #1e293b', borderRadius: 8,
-                padding: 12, color: '#e2e8f0', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.5,
+                width: '100%', minHeight: 100, background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 8,
+                padding: 12, color: 'var(--color-text)', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.5,
                 resize: 'vertical', outline: 'none',
               }}
               placeholder="Write SQL here... Press Ctrl+Enter to run" />
@@ -94,7 +94,7 @@ export default function SQLEditor() {
               <button className="btn-primary" onClick={runQuery} disabled={loading || !sql.trim()}>
                 <Play size={14} /> {loading ? 'Running...' : 'Run Query'}
               </button>
-              <span style={{ fontSize: 10, color: '#475569' }}>Ctrl+Enter to run</span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Ctrl+Enter to run</span>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
                 {EXAMPLES.map((ex, i) => (
                   <button key={i} className="btn-ghost" onClick={() => setSQL(ex)} style={{ fontSize: 9, padding: '3px 8px' }}>
@@ -107,12 +107,12 @@ export default function SQLEditor() {
 
           {/* Results */}
           <div style={{ flex: 1, overflow: 'auto', padding: 12 }}>
-            {error && <div className="panel" style={{ color: '#f87171', borderColor: '#ef444420' }}>{error}</div>}
+            {error && <div className="panel" style={{ color: 'var(--color-err)', borderColor: 'color-mix(in srgb, var(--color-err) 13%, transparent)' }}>{error}</div>}
 
             {result && (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, color: '#94a3b8' }}>
+                  <span style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
                     {result.row_count} rows &middot; {result.columns?.length || 0} columns
                   </span>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -121,7 +121,7 @@ export default function SQLEditor() {
                 </div>
 
                 {result.explanation && (
-                  <div style={{ fontSize: 12, color: '#94a3b8', padding: '8px 12px', background: '#0f172a', borderRadius: 8, marginBottom: 8, borderLeft: '2px solid #3b82f640' }}>
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', padding: '8px 12px', background: 'var(--color-surface-1)', borderRadius: 8, marginBottom: 8, borderLeft: '2px solid color-mix(in srgb, var(--color-accent) 25%, transparent)' }}>
                     {result.explanation}
                   </div>
                 )}
@@ -138,13 +138,13 @@ export default function SQLEditor() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ textAlign: 'center', padding: 30, color: '#475569', fontSize: 13 }}>Query returned no rows</div>
+                  <div style={{ textAlign: 'center', padding: 30, color: 'var(--color-text-dim)', fontSize: 13 }}>Query returned no rows</div>
                 )}
               </>
             )}
 
             {!result && !error && (
-              <div style={{ textAlign: 'center', padding: 40, color: '#334155' }}>
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-border-strong)' }}>
                 <Database size={32} style={{ margin: '0 auto 8px' }} />
                 <p style={{ fontSize: 13 }}>Write a query above and press Run or Ctrl+Enter</p>
               </div>

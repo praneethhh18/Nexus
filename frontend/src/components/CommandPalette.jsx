@@ -9,14 +9,14 @@ import { Search, User, Building2, Briefcase, CheckSquare, Receipt, FileType2, Br
 import { globalSearch } from '../services/security';
 
 const KIND_META = {
-  contact:      { icon: User,         color: '#60a5fa', label: 'Contact' },
+  contact:      { icon: User,         color: 'var(--color-info)', label: 'Contact' },
   company:      { icon: Building2,    color: '#a78bfa', label: 'Company' },
-  deal:         { icon: Briefcase,    color: '#f59e0b', label: 'Deal' },
-  task:         { icon: CheckSquare,  color: '#22c55e', label: 'Task' },
-  invoice:      { icon: Receipt,      color: '#60a5fa', label: 'Invoice' },
+  deal:         { icon: Briefcase,    color: 'var(--color-warn)', label: 'Deal' },
+  task:         { icon: CheckSquare,  color: 'var(--color-ok)', label: 'Task' },
+  invoice:      { icon: Receipt,      color: 'var(--color-info)', label: 'Invoice' },
   document:     { icon: FileType2,    color: '#a78bfa', label: 'Document' },
-  memory:       { icon: Brain,        color: '#f59e0b', label: 'Memory' },
-  conversation: { icon: MessageSquare, color: '#64748b', label: 'Chat' },
+  memory:       { icon: Brain,        color: 'var(--color-warn)', label: 'Memory' },
+  conversation: { icon: MessageSquare, color: 'var(--color-text-dim)', label: 'Chat' },
 };
 
 export default function CommandPalette() {
@@ -112,13 +112,13 @@ export default function CommandPalette() {
         onClick={(e) => e.stopPropagation()}
         style={{
           width: 600, maxWidth: '92vw', maxHeight: '70vh',
-          background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12,
+          background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
           boxShadow: '0 24px 80px rgba(0,0,0,0.7)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid #1e293b' }}>
-          <Search size={16} color="#60a5fa" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--color-surface-2)' }}>
+          <Search size={16} color="var(--color-info)" />
           <input
             ref={inputRef}
             value={query}
@@ -127,33 +127,33 @@ export default function CommandPalette() {
             placeholder="Search contacts, deals, tasks, invoices, documents, memory..."
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
-              color: '#e2e8f0', fontSize: 15,
+              color: 'var(--color-text)', fontSize: 15,
             }}
           />
-          <span style={{ fontSize: 10, color: '#475569', padding: '2px 6px', border: '1px solid #334155', borderRadius: 4 }}>ESC</span>
+          <span style={{ fontSize: 10, color: 'var(--color-text-dim)', padding: '2px 6px', border: '1px solid var(--color-border-strong)', borderRadius: 4 }}>ESC</span>
         </div>
 
         <div style={{ flex: 1, overflow: 'auto' }}>
           {query.trim().length < 2 ? (
-            <div style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 12 }}>
-              Type at least 2 characters. <span style={{ color: '#475569' }}>Tip: try a contact name, a deal title, or an invoice number.</span>
+            <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>
+              Type at least 2 characters. <span style={{ color: 'var(--color-text-dim)' }}>Tip: try a contact name, a deal title, or an invoice number.</span>
             </div>
           ) : loading && groups.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 12 }}>Searching…</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>Searching…</div>
           ) : groups.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: '#64748b', fontSize: 12 }}>
-              No matches for "<strong style={{ color: '#94a3b8' }}>{query}</strong>"
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>
+              No matches for "<strong style={{ color: 'var(--color-text-muted)' }}>{query}</strong>"
             </div>
           ) : (
             groups.map((g) => {
-              const meta = KIND_META[g.kind] || { icon: Search, color: '#64748b', label: g.kind };
+              const meta = KIND_META[g.kind] || { icon: Search, color: 'var(--color-text-dim)', label: g.kind };
               const Icon = meta.icon;
               return (
                 <div key={g.kind}>
                   <div style={{
                     padding: '8px 16px', fontSize: 10, fontWeight: 700,
-                    color: '#64748b', textTransform: 'uppercase', letterSpacing: 1,
-                    background: '#0a0e1a',
+                    color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 1,
+                    background: 'var(--color-bg)',
                   }}>
                     {meta.label}
                   </div>
@@ -168,24 +168,24 @@ export default function CommandPalette() {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           padding: '10px 16px', cursor: 'pointer',
-                          background: isActive ? '#1e293b' : 'transparent',
+                          background: isActive ? 'var(--color-surface-2)' : 'transparent',
                           borderLeft: `3px solid ${isActive ? meta.color : 'transparent'}`,
                         }}
                       >
                         <Icon size={14} color={meta.color} style={{ flexShrink: 0 }} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{
-                            fontSize: 13, color: '#e2e8f0',
+                            fontSize: 13, color: 'var(--color-text)',
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                           }}>{item.title}</div>
                           {item.subtitle && (
-                            <div style={{ fontSize: 10, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {item.subtitle}
                             </div>
                           )}
                         </div>
                         {isActive && (
-                          <span style={{ fontSize: 10, color: '#475569' }}>↵</span>
+                          <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>↵</span>
                         )}
                       </div>
                     );
@@ -196,7 +196,7 @@ export default function CommandPalette() {
           )}
         </div>
 
-        <div style={{ padding: '6px 12px', borderTop: '1px solid #1e293b', fontSize: 10, color: '#475569', display: 'flex', gap: 12 }}>
+        <div style={{ padding: '6px 12px', borderTop: '1px solid var(--color-surface-2)', fontSize: 10, color: 'var(--color-text-dim)', display: 'flex', gap: 12 }}>
           <span>↑ ↓ navigate</span>
           <span>↵ open</span>
           <span>esc close</span>

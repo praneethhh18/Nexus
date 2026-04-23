@@ -49,24 +49,24 @@ export default function Login() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: '#06080f' }}>
-      <div style={{ width: 380, padding: 32, borderRadius: 16, background: '#0f172a', border: '1px solid #1e293b' }}>
+    <div style={{ display: 'flex', height: '100vh', alignItems: 'center', justifyContent: 'center', background: 'var(--color-bg)' }}>
+      <div style={{ width: 380, padding: 32, borderRadius: 16, background: 'var(--color-surface-1)', border: '1px solid var(--color-surface-2)' }}>
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 12 }}>N</div>
+          <div style={{ width: 48, height: 48, borderRadius: 12, background: 'linear-gradient(135deg, var(--color-accent), #8b5cf6)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 20, fontWeight: 700, marginBottom: 12 }}>N</div>
           <h1 style={{ fontSize: 20, fontWeight: 600, color: 'white', marginBottom: 4 }}>NexusAgent</h1>
-          <p style={{ fontSize: 12, color: '#64748b' }}>AI Business Assistant</p>
+          <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>AI Business Assistant</p>
         </div>
 
         {/* Mode toggle */}
-        <div style={{ display: 'flex', marginBottom: 20, background: '#1e293b', borderRadius: 8, padding: 3 }}>
+        <div style={{ display: 'flex', marginBottom: 20, background: 'var(--color-surface-2)', borderRadius: 8, padding: 3 }}>
           {['login', 'signup'].map(m => (
             <button key={m} onClick={() => { setMode(m); setError(''); }}
               style={{
                 flex: 1, padding: '8px 0', borderRadius: 6, border: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
-                background: mode === m ? '#3b82f6' : 'transparent',
-                color: mode === m ? 'white' : '#64748b',
+                background: mode === m ? 'var(--color-accent)' : 'transparent',
+                color: mode === m ? 'white' : 'var(--color-text-dim)',
               }}>
               {m === 'login' ? 'Sign In' : 'Sign Up'}
             </button>
@@ -76,24 +76,24 @@ export default function Login() {
         <form onSubmit={handleSubmit}>
           {mode === 'signup' && (
             <div style={{ marginBottom: 12 }}>
-              <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Full Name</label>
+              <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Full Name</label>
               <input className="field-input" value={name} onChange={e => setName(e.target.value)}
                 placeholder="John Doe" required />
             </div>
           )}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Email</label>
+            <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Email</label>
             <input className="field-input" type="email" value={email} onChange={e => setEmail(e.target.value)}
               placeholder="you@company.com" required />
           </div>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>Password</label>
+            <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>Password</label>
             <input className="field-input" type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder="Enter password" required minLength={3} />
           </div>
           {needs2fa && (
             <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: '#64748b', display: 'block', marginBottom: 4 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'block', marginBottom: 4 }}>
                 Authenticator code (or recovery code)
               </label>
               <input className="field-input" autoFocus value={totpCode}
@@ -104,12 +104,12 @@ export default function Login() {
           )}
 
           {error && (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#ef444415', color: '#f87171', fontSize: 12, marginBottom: 12, border: '1px solid #ef444425' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'color-mix(in srgb, var(--color-err) 8%, transparent)', color: 'var(--color-err)', fontSize: 12, marginBottom: 12, border: '1px solid color-mix(in srgb, var(--color-err) 15%, transparent)' }}>
               {error}
             </div>
           )}
           {info && (
-            <div style={{ padding: '8px 12px', borderRadius: 8, background: '#22c55e15', color: '#4ade80', fontSize: 12, marginBottom: 12, border: '1px solid #22c55e25' }}>
+            <div style={{ padding: '8px 12px', borderRadius: 8, background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)', color: 'var(--color-ok)', fontSize: 12, marginBottom: 12, border: '1px solid color-mix(in srgb, var(--color-ok) 15%, transparent)' }}>
               {info}
             </div>
           )}
@@ -126,14 +126,14 @@ export default function Login() {
               type="button"
               onClick={handleForgot}
               disabled={loading}
-              style={{ background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', fontSize: 11, textDecoration: 'underline' }}
+              style={{ background: 'none', border: 'none', color: 'var(--color-info)', cursor: 'pointer', fontSize: 11, textDecoration: 'underline' }}
             >
               Forgot password?
             </button>
           </p>
         )}
 
-        <p style={{ textAlign: 'center', fontSize: 11, color: '#475569', marginTop: 16 }}>
+        <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--color-text-dim)', marginTop: 16 }}>
           {mode === 'login' ? 'Default: admin@nexusagent.local / admin1234' : ''}
         </p>
       </div>

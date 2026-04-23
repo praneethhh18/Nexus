@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search } from 'lucide-react';
-import { getConversations, deleteConversation, getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
+import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
 import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
@@ -34,7 +34,6 @@ const NAV_DEV = [
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
-  const [conversations, setConversations] = useState([]);
   const [health, setHealth] = useState(null);
   const [notifData, setNotifData] = useState({ notifications: [], unread_count: 0 });
   const [showNotifs, setShowNotifs] = useState(false);
@@ -54,7 +53,6 @@ export default function Layout() {
   const current = getCurrentBusiness();
 
   const reloadAll = useCallback(() => {
-    getConversations().then(setConversations).catch(() => {});
     getNotifications().then(setNotifData).catch(() => {});
     getHealth().then(setHealth).catch(() => {});
     approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
@@ -64,7 +62,6 @@ export default function Layout() {
     reloadAll();
     listBusinesses().then(setBusinessesState).catch(() => {});
     const iv = setInterval(() => {
-      getConversations().then(setConversations).catch(() => {});
       getNotifications().then(setNotifData).catch(() => {});
       approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
     }, 15000);
@@ -137,12 +134,6 @@ export default function Layout() {
     document.documentElement.setAttribute('data-theme', next);
   };
 
-  const handleDelete = async (e, id) => {
-    e.stopPropagation();
-    await deleteConversation(id).catch(() => {});
-    setConversations(c => c.filter(x => x.conversation_id !== id));
-  };
-
   const handleClearNotifs = async () => {
     await markAllNotificationsRead().catch(() => {});
     setNotifData(d => ({ ...d, unread_count: 0, notifications: d.notifications.map(n => ({ ...n, read: 1 })) }));
@@ -155,38 +146,38 @@ export default function Layout() {
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon">N</div>
           {!collapsed && <span>NexusAgent</span>}
-          <button onClick={() => setCollapsed(!collapsed)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+          <button onClick={() => setCollapsed(!collapsed)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}>
             {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 
         {/* Business switcher */}
         {!collapsed && (
-          <div ref={bizRef} style={{ padding: '8px 12px', borderBottom: '1px solid #1e293b', position: 'relative' }}>
+          <div ref={bizRef} style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-surface-2)', position: 'relative' }}>
             <button
               onClick={() => setShowBizMenu(v => !v)}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 10px', background: '#111827', border: '1px solid #1f2937',
-                borderRadius: 8, color: '#e2e8f0', cursor: 'pointer', fontSize: 12,
+                padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
+                borderRadius: 8, color: 'var(--color-text)', cursor: 'pointer', fontSize: 12,
               }}
               title="Switch business"
             >
-              <Briefcase size={14} style={{ color: '#22c55e', flexShrink: 0 }} />
+              <Briefcase size={14} style={{ color: 'var(--color-ok)', flexShrink: 0 }} />
               <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {current?.name || 'Select business'}
               </span>
-              <ChevronDown size={12} style={{ color: '#64748b' }} />
+              <ChevronDown size={12} style={{ color: 'var(--color-text-dim)' }} />
             </button>
 
             {showBizMenu && (
               <div style={{
                 position: 'absolute', top: 'calc(100% - 2px)', left: 12, right: 12, zIndex: 50,
-                background: '#0c1222', border: '1px solid #1e293b', borderRadius: 8,
+                background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 8,
                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)', maxHeight: 280, overflow: 'auto',
               }}>
                 {businesses.length === 0 && (
-                  <div style={{ padding: 12, fontSize: 11, color: '#64748b' }}>No businesses yet</div>
+                  <div style={{ padding: 12, fontSize: 11, color: 'var(--color-text-dim)' }}>No businesses yet</div>
                 )}
                 {businesses.map(b => (
                   <div
@@ -195,21 +186,21 @@ export default function Layout() {
                     style={{
                       padding: '8px 12px', cursor: 'pointer', fontSize: 12,
                       display: 'flex', alignItems: 'center', gap: 8,
-                      background: b.id === currentBizId ? '#1e293b' : 'transparent',
-                      color: '#e2e8f0',
+                      background: b.id === currentBizId ? 'var(--color-surface-2)' : 'transparent',
+                      color: 'var(--color-text)',
                     }}
-                    onMouseEnter={(e) => { if (b.id !== currentBizId) e.currentTarget.style.background = '#111827'; }}
+                    onMouseEnter={(e) => { if (b.id !== currentBizId) e.currentTarget.style.background = 'var(--color-bg)'; }}
                     onMouseLeave={(e) => { if (b.id !== currentBizId) e.currentTarget.style.background = 'transparent'; }}
                   >
-                    <Briefcase size={12} style={{ color: '#64748b', flexShrink: 0 }} />
+                    <Briefcase size={12} style={{ color: 'var(--color-text-dim)', flexShrink: 0 }} />
                     <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{b.name}</span>
-                    {b.id === currentBizId && <Check size={12} style={{ color: '#22c55e' }} />}
+                    {b.id === currentBizId && <Check size={12} style={{ color: 'var(--color-ok)' }} />}
                   </div>
                 ))}
-                <div style={{ borderTop: '1px solid #1e293b' }}>
+                <div style={{ borderTop: '1px solid var(--color-surface-2)' }}>
                   <div
                     onClick={() => { setShowBizMenu(false); setShowNewBiz(true); }}
-                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 8 }}
+                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: 'var(--color-ok)', display: 'flex', alignItems: 'center', gap: 8 }}
                   >
                     <Plus size={12} /> New business
                   </div>
@@ -228,10 +219,10 @@ export default function Layout() {
                 <Icon size={18} />
                 {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
                 {count > 0 && !collapsed && (
-                  <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: '#f59e0b', color: '#0c1222', minWidth: 18, textAlign: 'center' }}>{count}</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--color-warn)', color: 'var(--color-bg)', minWidth: 18, textAlign: 'center' }}>{count}</span>
                 )}
                 {count > 0 && collapsed && (
-                  <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: '#f59e0b' }} />
+                  <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--color-warn)' }} />
                 )}
               </NavLink>
             );
@@ -239,7 +230,7 @@ export default function Layout() {
           {devMode && (
             <>
               {!collapsed && (
-                <div style={{ padding: '8px 12px 4px', fontSize: 9, color: '#475569', textTransform: 'uppercase', letterSpacing: 1 }}>
+                <div style={{ padding: '8px 12px 4px', fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 1 }}>
                   Developer
                 </div>
               )}
@@ -254,47 +245,26 @@ export default function Layout() {
           )}
         </nav>
 
-        {/* Conversations */}
-        {!collapsed && (
-          <div className="conv-section hide-mobile">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 8px', marginBottom: 4 }}>
-              <span className="conv-label">Chats</span>
-              <button onClick={() => { navigate('/chat'); window.dispatchEvent(new Event('nexus-new-chat')); }}
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
-                <Plus size={14} />
-              </button>
-            </div>
-            {conversations.slice(0, 15).map(c => (
-              <div key={c.conversation_id} className="conv-item"
-                onClick={() => { navigate('/chat'); window.dispatchEvent(new CustomEvent('nexus-load-conv', { detail: c.conversation_id })); }}>
-                <MessageSquare size={12} style={{ opacity: 0.4, flexShrink: 0 }} />
-                <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
-                <button className="del" onClick={(e) => handleDelete(e, c.conversation_id)}>
-                  <Trash2 size={12} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Conversations moved into the Chat page itself */}
 
         {/* Bottom: user + status */}
-        <div style={{ borderTop: '1px solid #1e293b', padding: collapsed ? '8px' : '8px 12px' }}>
+        <div style={{ borderTop: '1px solid var(--color-surface-2)', padding: collapsed ? '8px' : '8px 12px' }}>
           {/* Notification bell */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, justifyContent: collapsed ? 'center' : 'flex-start' }}>
-            <button onClick={() => setShowNotifs(!showNotifs)} style={{ position: 'relative', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}>
+            <button onClick={() => setShowNotifs(!showNotifs)} style={{ position: 'relative', background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}>
               <Bell size={16} />
               {notifData.unread_count > 0 && (
-                <span style={{ position: 'absolute', top: -2, right: -4, width: 14, height: 14, borderRadius: '50%', background: '#ef4444', color: 'white', fontSize: 8, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ position: 'absolute', top: -2, right: -4, width: 14, height: 14, borderRadius: '50%', background: 'var(--color-err)', color: 'white', fontSize: 8, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {notifData.unread_count}
                 </span>
               )}
             </button>
             {!collapsed && (
               <>
-                <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}>
+                <button onClick={toggleTheme} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}>
                   {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
                 </button>
-                <button onClick={logout} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }} title="Logout">
+                <button onClick={logout} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }} title="Logout">
                   <LogOut size={14} />
                 </button>
               </>
@@ -304,33 +274,33 @@ export default function Layout() {
           {/* Status */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: collapsed ? 'center' : 'flex-start' }}>
             <div className={`status-dot ${health?.ollama?.online ? 'online' : 'offline'}`} />
-            {!collapsed && <span style={{ fontSize: 10, color: '#475569' }}>{user?.name || 'User'}</span>}
+            {!collapsed && <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{user?.name || 'User'}</span>}
           </div>
         </div>
       </aside>
 
       {/* Notification panel */}
       {showNotifs && (
-        <div style={{ position: 'fixed', top: 0, right: 0, width: 340, height: '100vh', background: '#0c1222', borderLeft: '1px solid #1e293b', zIndex: 100, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.4)' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ position: 'fixed', top: 0, right: 0, width: 340, height: '100vh', background: 'var(--color-bg)', borderLeft: '1px solid var(--color-surface-2)', zIndex: 100, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.4)' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-surface-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Notifications</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={handleClearNotifs} style={{ fontSize: 11, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}>Mark all read</button>
-              <button onClick={() => setShowNotifs(false)} style={{ fontSize: 16, color: '#64748b', background: 'none', border: 'none', cursor: 'pointer' }}>x</button>
+              <button onClick={handleClearNotifs} style={{ fontSize: 11, color: 'var(--color-text-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>Mark all read</button>
+              <button onClick={() => setShowNotifs(false)} style={{ fontSize: 16, color: 'var(--color-text-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>x</button>
             </div>
           </div>
           <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
             {notifData.notifications.length === 0 ? (
-              <p style={{ textAlign: 'center', padding: 40, color: '#475569', fontSize: 12 }}>No notifications</p>
+              <p style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)', fontSize: 12 }}>No notifications</p>
             ) : notifData.notifications.map((n, i) => (
               <div key={i} style={{
                 padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
-                background: n.read ? 'transparent' : '#1e293b',
-                borderLeft: `3px solid ${{ critical: '#ef4444', warning: '#f59e0b', success: '#22c55e', info: '#3b82f6' }[n.severity] || '#64748b'}`,
+                background: n.read ? 'transparent' : 'var(--color-surface-2)',
+                borderLeft: `3px solid ${{ critical: 'var(--color-err)', warning: 'var(--color-warn)', success: 'var(--color-ok)', info: 'var(--color-accent)' }[n.severity] || 'var(--color-text-dim)'}`,
               }}>
-                <p style={{ fontSize: 12, fontWeight: n.read ? 400 : 600, color: '#e2e8f0' }}>{n.title}</p>
-                <p style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>{n.message}</p>
-                <p style={{ fontSize: 9, color: '#475569', marginTop: 2 }}>{n.created_at?.substring(0, 16)}</p>
+                <p style={{ fontSize: 12, fontWeight: n.read ? 400 : 600, color: 'var(--color-text)' }}>{n.title}</p>
+                <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.message}</p>
+                <p style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.created_at?.substring(0, 16)}</p>
               </div>
             ))}
           </div>
@@ -346,11 +316,11 @@ export default function Layout() {
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={handleCreateBiz}
-            style={{ background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12, padding: 24, width: 380, boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12, padding: 24, width: 380, boxShadow: '0 16px 48px rgba(0,0,0,0.6)' }}
           >
-            <h3 style={{ fontSize: 16, fontWeight: 600, color: '#e2e8f0', margin: '0 0 4px' }}>Create a new business</h3>
-            <p style={{ fontSize: 11, color: '#64748b', margin: '0 0 16px' }}>Each business has isolated data, contacts, workflows, and reports.</p>
-            <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Business name *</label>
+            <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)', margin: '0 0 4px' }}>Create a new business</h3>
+            <p style={{ fontSize: 11, color: 'var(--color-text-dim)', margin: '0 0 16px' }}>Each business has isolated data, contacts, workflows, and reports.</p>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>Business name *</label>
             <input
               autoFocus
               value={newBizName}
@@ -358,19 +328,19 @@ export default function Layout() {
               placeholder="e.g. Acme Corp"
               required
               maxLength={120}
-              style={{ width: '100%', padding: '8px 10px', background: '#111827', border: '1px solid #1f2937', borderRadius: 6, color: '#e2e8f0', fontSize: 13, marginBottom: 12 }}
+              style={{ width: '100%', padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 6, color: 'var(--color-text)', fontSize: 13, marginBottom: 12 }}
             />
-            <label style={{ display: 'block', fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Industry (optional)</label>
+            <label style={{ display: 'block', fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 4 }}>Industry (optional)</label>
             <input
               value={newBizIndustry}
               onChange={(e) => setNewBizIndustry(e.target.value)}
               placeholder="e.g. SaaS, Retail, Consulting"
               maxLength={80}
-              style={{ width: '100%', padding: '8px 10px', background: '#111827', border: '1px solid #1f2937', borderRadius: 6, color: '#e2e8f0', fontSize: 13, marginBottom: 20 }}
+              style={{ width: '100%', padding: '8px 10px', background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 6, color: 'var(--color-text)', fontSize: 13, marginBottom: 20 }}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setShowNewBiz(false)} style={{ padding: '6px 14px', fontSize: 12, background: 'transparent', border: '1px solid #1f2937', borderRadius: 6, color: '#94a3b8', cursor: 'pointer' }}>Cancel</button>
-              <button type="submit" style={{ padding: '6px 14px', fontSize: 12, background: '#22c55e', border: 'none', borderRadius: 6, color: '#0c1222', fontWeight: 600, cursor: 'pointer' }}>Create</button>
+              <button type="button" onClick={() => setShowNewBiz(false)} style={{ padding: '6px 14px', fontSize: 12, background: 'transparent', border: '1px solid var(--color-surface-2)', borderRadius: 6, color: 'var(--color-text-muted)', cursor: 'pointer' }}>Cancel</button>
+              <button type="submit" style={{ padding: '6px 14px', fontSize: 12, background: 'var(--color-ok)', border: 'none', borderRadius: 6, color: 'var(--color-bg)', fontWeight: 600, cursor: 'pointer' }}>Create</button>
             </div>
           </form>
         </div>
@@ -387,9 +357,9 @@ export default function Layout() {
 
       {/* Keyboard shortcut hint */}
       <div style={{ position: 'fixed', bottom: 8, right: 12, display: 'flex', gap: 8, opacity: 0.3 }}>
-        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+K Search</span>
-        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+N New chat</span>
-        <span style={{ fontSize: 9, color: '#475569' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+D Dashboard</span>
+        <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+K Search</span>
+        <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+N New chat</span>
+        <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+D Dashboard</span>
       </div>
     </>
   );

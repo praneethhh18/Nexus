@@ -108,7 +108,7 @@ export default function Settings() {
     }
   };
 
-  if (!s) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#475569' }}>Loading...</div>;
+  if (!s) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-dim)' }}>Loading...</div>;
 
   const myRole = bizDetail?.my_role;
   const canEditBiz = myRole === 'owner' || myRole === 'admin';
@@ -117,31 +117,65 @@ export default function Settings() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header"><h1>Settings</h1><p>Manage your business, integrations, and system</p></div>
       <div className="page-body">
-        {msg && <div className="panel" style={{ color: '#60a5fa', marginBottom: 12 }}>{msg}</div>}
+        {msg && <div className="panel" style={{ color: 'var(--color-info)', marginBottom: 12 }}>{msg}</div>}
+
+        {/* Developer Mode — moved to top as the master toggle */}
+        <div className="panel" style={{ borderColor: devMode ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--color-border)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Code size={18} color={devMode ? 'var(--color-accent)' : 'var(--color-text-dim)'} />
+              <div>
+                <div style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>Developer mode</div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+                  {devMode
+                    ? 'Showing advanced configuration — LLM, system info, email triage, SQL editor.'
+                    : 'Showing the essentials. Turn this on to access advanced system configuration.'}
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={toggleDevMode}
+              aria-pressed={devMode}
+              style={{
+                position: 'relative', width: 42, height: 22, borderRadius: 11,
+                background: devMode ? 'var(--color-accent)' : 'var(--color-surface-3)',
+                border: 'none', cursor: 'pointer', flexShrink: 0,
+                transition: 'background var(--dur-fast) var(--ease-out)',
+              }}
+            >
+              <div style={{
+                position: 'absolute', top: 2, left: devMode ? 22 : 2,
+                width: 18, height: 18, borderRadius: '50%', background: 'white',
+                transition: 'left var(--dur-fast) var(--ease-out)',
+                boxShadow: 'var(--shadow-1)',
+              }} />
+            </button>
+          </div>
+        </div>
 
         {/* Current Business */}
         {current && (
           <div className="panel">
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Briefcase size={16} color="#22c55e" /> Current Business</h3>
-            <div style={{ fontSize: 10, color: '#64748b', marginBottom: 12 }}>ID: {current.id} &middot; Your role: <strong style={{ color: '#e2e8f0' }}>{myRole || '...'}</strong></div>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Briefcase size={16} color="var(--color-ok)" /> Current Business</h3>
+            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 12 }}>ID: {current.id} &middot; Your role: <strong style={{ color: 'var(--color-text)' }}>{myRole || '...'}</strong></div>
             <div style={{ display: 'grid', gap: 10 }}>
               <div>
-                <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Name</label>
+                <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Name</label>
                 <input className="field-input" value={bizName} onChange={(e) => setBizName(e.target.value)} disabled={!canEditBiz} maxLength={120} />
               </div>
               <div>
-                <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Industry</label>
+                <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Industry</label>
                 <input className="field-input" value={bizIndustry} onChange={(e) => setBizIndustry(e.target.value)} disabled={!canEditBiz} maxLength={80} />
               </div>
               <div>
-                <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Description</label>
+                <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Description</label>
                 <textarea className="field-input" rows={2} value={bizDescription} onChange={(e) => setBizDescription(e.target.value)} disabled={!canEditBiz} maxLength={500} />
               </div>
               {canEditBiz && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn-ghost" onClick={saveBiz}>Save</button>
                   {myRole === 'owner' && (
-                    <button className="btn-ghost" style={{ color: '#ef4444', borderColor: '#7f1d1d' }} onClick={removeBiz}>
+                    <button className="btn-ghost" style={{ color: 'var(--color-err)', borderColor: '#7f1d1d' }} onClick={removeBiz}>
                       <AlertTriangle size={12} /> Delete business
                     </button>
                   )}
@@ -149,14 +183,14 @@ export default function Settings() {
               )}
             </div>
             {bizDetail?.members?.length > 0 && (
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #1e293b' }}>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--color-surface-2)' }}>
+                <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
                   <Users size={12} /> Members ({bizDetail.members.length})
                 </div>
                 {bizDetail.members.map(m => (
-                  <div key={m.user_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 11, color: '#cbd5e1' }}>
+                  <div key={m.user_id} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 11, color: 'var(--color-text)' }}>
                     <span>{m.name || m.email || m.user_id}</span>
-                    <span style={{ color: '#64748b' }}>{m.role}</span>
+                    <span style={{ color: 'var(--color-text-dim)' }}>{m.role}</span>
                   </div>
                 ))}
               </div>
@@ -169,7 +203,7 @@ export default function Settings() {
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MessageCircle size={16} color="#25D366" /> WhatsApp
           </h3>
-          <p style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>
+          <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 10 }}>
             Text the agent on WhatsApp to get tasks, reports, and updates on the go.
             Open-source bridge using Baileys — no Twilio, no Meta business verification.
             See <code>whatsapp_bridge/README.md</code> for bridge setup.
@@ -177,14 +211,14 @@ export default function Settings() {
 
           {waAccount?.phone ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <Check size={14} color="#22c55e" />
+              <Check size={14} color="var(--color-ok)" />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: '#e2e8f0' }}>Linked: <strong>+{waAccount.phone}</strong></div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text)' }}>Linked: <strong>+{waAccount.phone}</strong></div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
                   Since {waAccount.linked_at?.substring(0, 16)} · {waAccount.messages_count || 0} messages
                 </div>
               </div>
-              <button className="btn-ghost" style={{ color: '#f87171' }} onClick={async () => {
+              <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={async () => {
                 if (!confirm('Unlink this phone from your account?')) return;
                 await etFetch('/api/whatsapp/account', { method: 'DELETE' });
                 await loadWaAccount();
@@ -194,21 +228,21 @@ export default function Settings() {
               </button>
             </div>
           ) : (
-            <div style={{ padding: 12, background: '#0f172a', borderRadius: 8, marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>
-                <strong style={{ color: '#e2e8f0' }}>Not linked yet.</strong> To link your phone:
+            <div style={{ padding: 12, background: 'var(--color-surface-1)', borderRadius: 8, marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
+                <strong style={{ color: 'var(--color-text)' }}>Not linked yet.</strong> To link your phone:
               </div>
-              <ol style={{ fontSize: 11, color: '#94a3b8', marginLeft: 18, lineHeight: 1.7 }}>
+              <ol style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 18, lineHeight: 1.7 }}>
                 <li>Click <em>Generate link code</em> below</li>
                 <li>Text the 6-character code to the WhatsApp number running your bridge</li>
                 <li>You're linked — ask the bot anything</li>
               </ol>
 
               {waCode ? (
-                <div style={{ marginTop: 10, padding: 12, background: '#0c1222', border: '1px dashed #22c55e50', borderRadius: 8, textAlign: 'center' }}>
-                  <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>Send this code to the WhatsApp bot now:</div>
-                  <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 6, color: '#22c55e', fontFamily: 'monospace' }}>{waCode.code}</div>
-                  <div style={{ fontSize: 10, color: '#64748b', marginTop: 4 }}>
+                <div style={{ marginTop: 10, padding: 12, background: 'var(--color-bg)', border: '1px dashed color-mix(in srgb, var(--color-ok) 31%, transparent)', borderRadius: 8, textAlign: 'center' }}>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 4 }}>Send this code to the WhatsApp bot now:</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: 6, color: 'var(--color-ok)', fontFamily: 'monospace' }}>{waCode.code}</div>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 4 }}>
                     Expires in {waCode.ttl_minutes} minutes · The phone you text from becomes your linked number.
                   </div>
                   <button className="btn-ghost" style={{ marginTop: 8 }} onClick={async () => {
@@ -238,17 +272,17 @@ export default function Settings() {
             </div>
           )}
 
-          {isAdmin && (
-            <div style={{ padding: 10, background: '#0c1222', border: '1px solid #334155', borderRadius: 6 }}>
-              <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
+          {isAdmin && devMode && (
+            <div style={{ padding: 10, background: 'var(--color-bg)', border: '1px solid var(--color-border-strong)', borderRadius: 6 }}>
+              <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>
                 Bridge secret (admin only)
               </div>
-              <p style={{ fontSize: 11, color: '#94a3b8', marginBottom: 6 }}>
+              <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 6 }}>
                 Paste this into <code>whatsapp_bridge/.env</code> as <code>NEXUS_WEBHOOK_SECRET</code>.
               </p>
               {waSecret ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <code style={{ flex: 1, padding: 6, background: '#060a14', borderRadius: 4, fontSize: 10, color: '#cbd5e1', overflow: 'auto', whiteSpace: 'nowrap' }}>
+                  <code style={{ flex: 1, padding: 6, background: 'var(--color-bg)', borderRadius: 4, fontSize: 10, color: 'var(--color-text)', overflow: 'auto', whiteSpace: 'nowrap' }}>
                     {waSecret}
                   </code>
                   <button className="btn-ghost" onClick={async () => {
@@ -271,22 +305,22 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Email triage */}
-        <div className="panel">
+        {/* Email triage — advanced IMAP config, dev-only */}
+        {devMode && <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>📬 Email Triage Agent</h3>
-          <p style={{ fontSize: 11, color: '#64748b', marginBottom: 10 }}>
+          <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 10 }}>
             Connect an IMAP inbox. Every 15 minutes the agent reads unread messages, classifies each as
             lead/invoice/support/noise, auto-logs CRM interactions for known contacts, and queues reply drafts
             for your approval. Nothing is ever sent without your OK.
           </p>
           {etAccount?.username ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <Check size={14} color={etAccount.enabled ? '#22c55e' : '#64748b'} />
+              <Check size={14} color={etAccount.enabled ? 'var(--color-ok)' : 'var(--color-text-dim)'} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: '#e2e8f0' }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text)' }}>
                   {etAccount.username} @ {etAccount.imap_host}:{etAccount.imap_port} · {etAccount.folder}
                 </div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
                   {etAccount.enabled ? 'Enabled' : 'Disabled'} · {etAccount.auto_draft_reply ? 'auto-drafts replies' : 'classify only'}
                 </div>
               </div>
@@ -295,7 +329,7 @@ export default function Settings() {
                 const d = await r.json();
                 flash(`Processed ${d.processed || 0} messages.`);
               }}>Run now</button>
-              <button className="btn-ghost" style={{ color: '#f87171' }} onClick={async () => {
+              <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={async () => {
                 if (!confirm('Disconnect email triage? Saved message logs will remain.')) return;
                 await etFetch('/api/email-triage/account', { method: 'DELETE' });
                 setEtAccount(null);
@@ -307,31 +341,31 @@ export default function Settings() {
           ) : null}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
-              <label style={{ fontSize: 10, color: '#64748b' }}>IMAP host</label>
+              <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>IMAP host</label>
               <input className="field-input" value={etForm.imap_host} onChange={(e) => setEtForm({ ...etForm, imap_host: e.target.value })} placeholder="imap.gmail.com" />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: '#64748b' }}>Port</label>
+              <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Port</label>
               <input className="field-input" type="number" value={etForm.imap_port} onChange={(e) => setEtForm({ ...etForm, imap_port: parseInt(e.target.value) || 993 })} />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: '#64748b' }}>Username (email)</label>
+              <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Username (email)</label>
               <input className="field-input" value={etForm.username} onChange={(e) => setEtForm({ ...etForm, username: e.target.value })} />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: '#64748b' }}>Password (app-specific)</label>
+              <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Password (app-specific)</label>
               <input className="field-input" type="password" value={etForm.password} onChange={(e) => setEtForm({ ...etForm, password: e.target.value })} placeholder={etAccount?.username ? '(leave blank to keep)' : ''} />
             </div>
             <div>
-              <label style={{ fontSize: 10, color: '#64748b' }}>Folder</label>
+              <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Folder</label>
               <input className="field-input" value={etForm.folder} onChange={(e) => setEtForm({ ...etForm, folder: e.target.value })} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 16 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={etForm.enabled} onChange={(e) => setEtForm({ ...etForm, enabled: e.target.checked })} />
                 Enabled
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={etForm.auto_draft_reply} onChange={(e) => setEtForm({ ...etForm, auto_draft_reply: e.target.checked })} />
                 Auto-draft replies
               </label>
@@ -355,25 +389,25 @@ export default function Settings() {
               {etAccount?.username ? 'Update' : 'Connect'}
             </button>
           </div>
-        </div>
+        </div>}
 
         {/* Google Calendar */}
         <div className="panel">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalendarIcon size={16} color="#60a5fa" /> Google Calendar</h3>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><CalendarIcon size={16} color="var(--color-info)" /> Google Calendar</h3>
           {!calStatus ? (
-            <p style={{ fontSize: 12, color: '#64748b' }}>Checking...</p>
+            <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>Checking...</p>
           ) : !calStatus.configured ? (
-            <p style={{ fontSize: 12, color: '#64748b' }}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>
               Not available. An admin needs to set <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> in <code>.env</code> first.
             </p>
           ) : calStatus.connected ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Check size={14} color="#22c55e" />
+              <Check size={14} color="var(--color-ok)" />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: '#e2e8f0' }}>Connected: <strong>{calStatus.connection?.account_email || '...'}</strong></div>
-                <div style={{ fontSize: 10, color: '#64748b' }}>Since {calStatus.connection?.connected_at?.substring(0, 16)}</div>
+                <div style={{ fontSize: 12, color: 'var(--color-text)' }}>Connected: <strong>{calStatus.connection?.account_email || '...'}</strong></div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Since {calStatus.connection?.connected_at?.substring(0, 16)}</div>
               </div>
-              <button className="btn-ghost" style={{ color: '#f87171' }} onClick={async () => {
+              <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={async () => {
                 if (!confirm('Disconnect Google Calendar?')) return;
                 try { await calendarDisconnect(); setCalStatus(await calendarStatus()); flash('Disconnected.'); }
                 catch (e) { flash(`Failed: ${e.message}`); }
@@ -383,7 +417,7 @@ export default function Settings() {
             </div>
           ) : (
             <div>
-              <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 8 }}>
                 Connect your Google Calendar to see upcoming meetings on your dashboard.
               </p>
               <button className="btn-primary" onClick={async () => {
@@ -405,61 +439,37 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Developer Mode */}
-        <div className="panel">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Code size={16} color="#a78bfa" /> Developer Mode</h3>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 12, color: '#e2e8f0', marginBottom: 4 }}>Show advanced tools in navigation</div>
-              <div style={{ fontSize: 10, color: '#64748b' }}>Enables the SQL Editor, Database Explorer, and What-If pages. For power users and debugging.</div>
-            </div>
-            <button
-              onClick={toggleDevMode}
-              style={{
-                position: 'relative', width: 42, height: 22, borderRadius: 11,
-                background: devMode ? '#22c55e' : '#1e293b', border: 'none', cursor: 'pointer', flexShrink: 0,
-              }}
-            >
-              <div style={{
-                position: 'absolute', top: 2, left: devMode ? 22 : 2,
-                width: 18, height: 18, borderRadius: '50%', background: 'white',
-                transition: 'left 0.15s',
-              }} />
-            </button>
-          </div>
-        </div>
-
-        {/* Models */}
-        <div className="panel">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Cpu size={16} color="#60a5fa" /> LLM Configuration</h3>
+        {/* Models — dev-only */}
+        {devMode && <div className="panel">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Cpu size={16} color="var(--color-info)" /> LLM Configuration</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             {[['Primary LLM', s.primary_model], ['Fallback LLM', s.fallback_model], ['Embedding', s.embed_model], ['Ollama URL', s.ollama_url]].map(([k, v], i) => (
-              <div key={i} className="info-row" style={{ flexDirection: 'column', background: '#0f172a', borderRadius: 8, padding: 10, border: 'none' }}>
+              <div key={i} className="info-row" style={{ flexDirection: 'column', background: 'var(--color-surface-1)', borderRadius: 8, padding: 10, border: 'none' }}>
                 <span className="key" style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: 1 }}>{k}</span>
                 <span className="val" style={{ fontSize: 12 }}>{v}</span>
               </div>
             ))}
           </div>
-        </div>
+        </div>}
 
-        {/* Available Models */}
-        {s.available_models?.length > 0 && (
+        {/* Available Models — dev-only */}
+        {devMode && s.available_models?.length > 0 && (
           <div className="panel">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Server size={16} color="#a78bfa" /> Available Ollama Models</h3>
             {s.available_models.map((m, i) => (
-              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 6, background: '#0f172a', marginBottom: 4 }}>
+              <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', borderRadius: 6, background: 'var(--color-surface-1)', marginBottom: 4 }}>
                 <span style={{ fontSize: 12, fontFamily: 'monospace', color: 'white' }}>{m.name}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>{m.size_gb} GB</span>
-                  {m.active && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: '#16a34a15', color: '#4ade80', border: '1px solid #4ade8025' }}>Active</span>}
+                  <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{m.size_gb} GB</span>
+                  {m.active && <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)', color: 'var(--color-ok)', border: '1px solid color-mix(in srgb, var(--color-ok) 15%, transparent)' }}>Active</span>}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* System Info */}
-        <div className="panel">
+        {/* System Info — dev-only */}
+        {devMode && <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><HardDrive size={16} color="#22d3ee" /> System Information</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
             {[['Version', `v${s.version}`], ['Python', s.python_version], ['SQL Retries', s.max_sql_retries],
@@ -469,13 +479,13 @@ export default function Settings() {
               <div key={i} className="info-row"><span className="key">{k}</span><span className="val">{String(v)}</span></div>
             ))}
           </div>
-        </div>
+        </div>}
 
         {/* Integrations (admin-only on server) */}
         <div className="panel">
           <h3>Integrations</h3>
           <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Discord Webhook URL</label>
+            <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Discord Webhook URL</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input className="field-input" placeholder="https://discord.com/api/webhooks/..." id="discord-url"
                 defaultValue={s.discord_enabled ? '(configured)' : ''} style={{ fontSize: 12 }} />
@@ -492,7 +502,7 @@ export default function Settings() {
             </div>
           </div>
           <div style={{ marginBottom: 10 }}>
-            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Slack Webhook URL</label>
+            <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Slack Webhook URL</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input className="field-input" placeholder="https://hooks.slack.com/services/..." id="slack-url" style={{ fontSize: 12 }} />
               <button className="btn-ghost" onClick={async () => {
@@ -508,7 +518,7 @@ export default function Settings() {
             </div>
           </div>
           <div>
-            <label style={{ fontSize: 10, color: '#64748b', display: 'block', marginBottom: 2 }}>Gmail App Password</label>
+            <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Gmail App Password</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input className="field-input" type="password" placeholder="16-char app password" id="gmail-pw" style={{ fontSize: 12 }} />
               <button className="btn-ghost" onClick={async () => {
@@ -522,7 +532,7 @@ export default function Settings() {
                 } catch (e) { flash('Failed: ' + e.message); }
               }}>Save</button>
             </div>
-            <p style={{ fontSize: 9, color: '#475569', marginTop: 4 }}>Get an app password from Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords</p>
+            <p style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 4 }}>Get an app password from Google Account &gt; Security &gt; 2-Step Verification &gt; App passwords</p>
           </div>
         </div>
 
@@ -558,12 +568,6 @@ export default function Settings() {
         <div className="panel">
           <h3>Maintenance</h3>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button className="btn-ghost" onClick={async () => { await resetLLM(); flash('LLM connection reset.'); }}>
-              <RefreshCw size={14} /> Reset LLM
-            </button>
-            <button className="btn-ghost" onClick={async () => { await clearCache(); flash('SQL cache cleared.'); }}>
-              <Trash2 size={14} /> Clear Cache
-            </button>
             <button className="btn-ghost" onClick={() => {
               localStorage.removeItem('nexus_onboarding_done');
               flash('Onboarding will appear on next reload.');
@@ -573,6 +577,16 @@ export default function Settings() {
             <button className="btn-ghost" onClick={() => { logout(); }}>
               Sign out
             </button>
+            {devMode && (
+              <>
+                <button className="btn-ghost" onClick={async () => { await resetLLM(); flash('LLM connection reset.'); }}>
+                  <RefreshCw size={14} /> Reset LLM
+                </button>
+                <button className="btn-ghost" onClick={async () => { await clearCache(); flash('SQL cache cleared.'); }}>
+                  <Trash2 size={14} /> Clear Cache
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

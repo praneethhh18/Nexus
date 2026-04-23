@@ -7,13 +7,13 @@ function Modal({ title, onClose, children }) {
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: '#0c1222', border: '1px solid #1e293b', borderRadius: 12,
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
         padding: 20, width: 480, maxHeight: '92vh', overflow: 'auto',
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 600, color: '#e2e8f0', margin: 0 }}>{title}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}><X size={16} /></button>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{title}</h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><X size={16} /></button>
         </div>
         {children}
       </div>
@@ -29,7 +29,7 @@ function MemoryForm({ initial, onSubmit, onCancel }) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
       <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>What should the agent remember? *</label>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>What should the agent remember? *</label>
         <textarea
           className="field-input" rows={4} required autoFocus
           value={f.content} onChange={(e) => set('content', e.target.value)}
@@ -39,17 +39,17 @@ function MemoryForm({ initial, onSubmit, onCancel }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 10, marginBottom: 10 }}>
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Kind</label>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Kind</label>
           <select className="field-select" value={f.kind} onChange={(e) => set('kind', e.target.value)} style={{ width: '100%' }}>
             {['fact', 'preference', 'policy', 'contact'].map((k) => <option key={k}>{k}</option>)}
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: 10, color: '#94a3b8', marginBottom: 4 }}>Tags</label>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Tags</label>
           <input className="field-input" value={f.tags} onChange={(e) => set('tags', e.target.value)} placeholder="e.g. billing, sales" maxLength={300} />
         </div>
       </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: '#94a3b8', cursor: 'pointer' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--color-text-muted)', cursor: 'pointer' }}>
         <input type="checkbox" checked={f.is_pinned} onChange={(e) => set('is_pinned', e.target.checked)} />
         Pin (always include in the agent's context)
       </label>
@@ -62,7 +62,7 @@ function MemoryForm({ initial, onSubmit, onCancel }) {
 }
 
 const KIND_COLORS = {
-  fact: '#60a5fa', preference: '#22c55e', policy: '#f59e0b', contact: '#a78bfa',
+  fact: 'var(--color-info)', preference: 'var(--color-ok)', policy: 'var(--color-warn)', contact: '#a78bfa',
 };
 
 export default function Memory() {
@@ -146,31 +146,31 @@ export default function Memory() {
         </div>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
-      <div style={{ display: 'flex', gap: 8, padding: '0 24px 8px', borderBottom: '1px solid #1e293b', alignItems: 'center' }}>
-        <Search size={12} color="#64748b" />
+      <div style={{ display: 'flex', gap: 8, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)', alignItems: 'center' }}>
+        <Search size={12} color="var(--color-text-dim)" />
         <input className="field-input" placeholder="Search memory..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ fontSize: 11, width: 320 }} />
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
             <Brain size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
             <p style={{ fontSize: 13 }}>No memories yet. Add things the agent should know about how you run this business.</p>
             <p style={{ fontSize: 11, marginTop: 6 }}>e.g. <em>"Our pricing tiers are A: $5k/mo, B: $12k/mo."</em> or <em>"Slack alerts go to #sales-ops"</em></p>
           </div>
         ) : (
           items.map((m) => {
-            const color = KIND_COLORS[m.kind] || '#64748b';
+            const color = KIND_COLORS[m.kind] || 'var(--color-text-dim)';
             return (
               <div key={m.id} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'flex-start', gap: 10, borderLeft: `3px solid ${color}` }}>
-                <button onClick={() => handleTogglePin(m)} style={{ background: 'none', border: 'none', color: m.is_pinned ? '#f59e0b' : '#475569', cursor: 'pointer', padding: 2 }} title={m.is_pinned ? 'Unpin' : 'Pin'}>
+                <button onClick={() => handleTogglePin(m)} style={{ background: 'none', border: 'none', color: m.is_pinned ? 'var(--color-warn)' : 'var(--color-text-dim)', cursor: 'pointer', padding: 2 }} title={m.is_pinned ? 'Unpin' : 'Pin'}>
                   {m.is_pinned ? <Pin size={14} /> : <PinOff size={14} />}
                 </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: '#e2e8f0', marginBottom: 4, whiteSpace: 'pre-wrap' }}>{m.content}</div>
-                  <div style={{ fontSize: 9, color: '#64748b', display: 'flex', gap: 8 }}>
+                  <div style={{ fontSize: 13, color: 'var(--color-text)', marginBottom: 4, whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                  <div style={{ fontSize: 9, color: 'var(--color-text-dim)', display: 'flex', gap: 8 }}>
                     <span style={{ color, fontWeight: 600, textTransform: 'uppercase' }}>{m.kind}</span>
                     {m.tags && <span>· {m.tags}</span>}
                     <span>· updated {m.updated_at?.substring(0, 16)}</span>
@@ -178,7 +178,7 @@ export default function Memory() {
                 </div>
                 <div style={{ display: 'flex', gap: 4 }}>
                   <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ record: m })}><Edit3 size={11} /></button>
-                  <button className="btn-ghost" style={{ padding: 4, color: '#f87171' }} onClick={() => handleDelete(m)}><Trash2 size={11} /></button>
+                  <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete(m)}><Trash2 size={11} /></button>
                 </div>
               </div>
             );

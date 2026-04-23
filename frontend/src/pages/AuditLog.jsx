@@ -63,10 +63,10 @@ export default function AuditLog() {
         </button>
       </div>
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: '#60a5fa' }}>{msg}</div>}
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
-      <div style={{ display: 'flex', gap: 8, padding: '0 24px 8px', borderBottom: '1px solid #1e293b', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Search size={12} color="#64748b" />
+      <div style={{ display: 'flex', gap: 8, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Search size={12} color="var(--color-text-dim)" />
         <input className="field-input" placeholder="Search input/output..." value={filters.search}
           onChange={(e) => setFilters({ ...filters, search: e.target.value })} style={{ fontSize: 11, width: 220 }} />
         <input className="field-input" placeholder="Filter by tool (e.g. agent.send_email)" value={filters.tool}
@@ -81,9 +81,9 @@ export default function AuditLog() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
         {loading && rows.length === 0 ? (
-          <p style={{ color: '#64748b', fontSize: 12, textAlign: 'center' }}>Loading…</p>
+          <p style={{ color: 'var(--color-text-dim)', fontSize: 12, textAlign: 'center' }}>Loading…</p>
         ) : rows.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: '#64748b' }}>
+          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
             <Activity size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
             <p style={{ fontSize: 13 }}>No events match these filters.</p>
           </div>
@@ -104,7 +104,7 @@ export default function AuditLog() {
               <tbody>
                 {rows.map(r => (
                   <tr key={r.event_id}>
-                    <td style={{ fontSize: 10, color: '#94a3b8' }}>{formatWhen(r.timestamp)}</td>
+                    <td style={{ fontSize: 10, color: 'var(--color-text-muted)' }}>{formatWhen(r.timestamp)}</td>
                     <td><code style={{ fontSize: 10 }}>{r.tool_name}</code></td>
                     <td style={{ fontSize: 11 }}>{r.actor_name || '—'}</td>
                     <td style={{ fontSize: 11, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.input_summary}>
@@ -113,9 +113,9 @@ export default function AuditLog() {
                     <td style={{ fontSize: 11, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.output_summary}>
                       {r.output_summary}
                     </td>
-                    <td style={{ textAlign: 'right', fontSize: 10, color: '#64748b' }}>{r.duration_ms || 0}ms</td>
+                    <td style={{ textAlign: 'right', fontSize: 10, color: 'var(--color-text-dim)' }}>{r.duration_ms || 0}ms</td>
                     <td style={{ textAlign: 'center' }}>
-                      {r.success ? <Check size={12} color="#22c55e" /> : <X size={12} color="#ef4444" />}
+                      {r.success ? <Check size={12} color="var(--color-ok)" /> : <X size={12} color="var(--color-err)" />}
                     </td>
                   </tr>
                 ))}
