@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
-         PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search } from 'lucide-react';
+         PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search, AudioLines } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { sendMessage, getConversation, getConversations, deleteConversation,
          exportMarkdown, uploadDocument, downloadReport } from '../services/api';
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
+import { transcribeBlob, voiceSupported } from '../services/voice';
+import VoiceMode from '../components/VoiceMode';
 import { Zap } from 'lucide-react';
 
 const TOOL_CLASS = { rag: 'tool-rag', sql: 'tool-sql', action: 'tool-action', report: 'tool-report', whatif: 'tool-whatif' };
@@ -121,6 +123,7 @@ export default function Chat() {
   const [historyOpen, setHistoryOpen] = useState(() => localStorage.getItem('nexus_chat_history_open') !== '0');
   const [historySearch, setHistorySearch] = useState('');
   const [slashIdx, setSlashIdx] = useState(0);
+  const [voiceOpen, setVoiceOpen] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
@@ -189,14 +192,11 @@ export default function Chat() {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunks, { type: 'audio/webm' });
         setRecording(false);
-        // Send to transcription API
-        const form = new FormData();
-        form.append('file', blob, 'recording.webm');
+        // Send to transcription API (authenticated)
         try {
-          const res = await fetch('/api/voice/transcribe', { method: 'POST', body: form });
-          const data = await res.json();
-          if (data.text) {
-            setInput(data.text);
+          const text = await transcribeBlob(blob);
+          if (text) {
+            setInput(text);
             inputRef.current?.focus();
           }
         } catch (err) {
@@ -390,6 +390,16 @@ export default function Chat() {
           >
             <Zap size={12} /> {agentMode ? 'Agent ON' : 'Agent OFF'}
           </button>
+          {voiceSupported() && (
+            <button
+              onClick={() => setVoiceOpen(true)}
+              className="action-btn"
+              title="Hands-free voice conversation"
+              style={{ color: 'var(--color-accent)' }}
+            >
+              <AudioLines size={13} /> Voice chat
+            </button>
+          )}
           {/* Document upload button */}
           <label className="action-btn" style={{ cursor: 'pointer' }}>
             <Upload size={13} /> Upload Doc
@@ -689,6 +699,21 @@ export default function Chat() {
         </div>
         <div className="chat-footer">NexusAgent v2.0 &middot; 100% Local &middot; Zero API Cost</div>
       </div>
+
+      {/* Voice mode modal */}
+      <VoiceMode
+        open={voiceOpen}
+        onClose={() => setVoiceOpen(false)}
+        convId={convId}
+        setConvId={setConvId}
+        onTranscript={(text) => {
+          const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          setMessages(prev => [...prev, { role: 'user', content: text, tools_used: [], timestamp: ts }]);
+        }}
+        onAgentReply={(msg) => {
+          if (msg) setMessages(prev => [...prev, msg]);
+        }}
+      />
     </div>
   );
 }

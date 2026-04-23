@@ -96,6 +96,10 @@ body {
 @keyframes pulse-dot   { 0%, 100% { opacity: 0.25; transform: scale(0.9); } 50% { opacity: 1; transform: scale(1); } }
 @keyframes shimmer     { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 @keyframes spin        { to { transform: rotate(360deg); } }
+@keyframes voice-orb-breathe {
+  0%, 100% { transform: scale(1.1); filter: brightness(1); }
+  50%      { transform: scale(1.22); filter: brightness(1.15); }
+}
 
 .page-body > *, .chat-area > * { animation: fade-up var(--dur-slow) var(--ease-out) both; }
 
