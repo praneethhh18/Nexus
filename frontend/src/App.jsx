@@ -15,7 +15,7 @@ import CRM from './pages/CRM';
 import Tasks from './pages/Tasks';
 import Invoices from './pages/Invoices';
 import Documents from './pages/Documents';
-import Approvals from './pages/Approvals';
+import Inbox from './pages/Inbox';
 import Agents from './pages/Agents';
 import Memory from './pages/Memory';
 import Team from './pages/Team';
@@ -43,7 +43,9 @@ export default function App() {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/documents" element={<Documents />} />
-          <Route path="/approvals" element={<Approvals />} />
+          <Route path="/inbox" element={<Inbox />} />
+          {/* legacy bookmark: /approvals → /inbox */}
+          <Route path="/approvals" element={<Navigate to="/inbox" replace />} />
           <Route path="/agents" element={<Agents />} />
           <Route path="/memory" element={<Memory />} />
           <Route path="/team" element={<Team />} />

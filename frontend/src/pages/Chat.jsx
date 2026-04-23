@@ -10,6 +10,36 @@ import { Zap } from 'lucide-react';
 
 const TOOL_CLASS = { rag: 'tool-rag', sql: 'tool-sql', action: 'tool-action', report: 'tool-report', whatif: 'tool-whatif' };
 
+// ── Slash commands ──────────────────────────────────────────────────────────
+// Each command maps a terse shortcut to a natural-language request the agent
+// already knows how to execute via its existing tool registry. Nothing new
+// server-side — just a speed layer on top of agent mode.
+const SLASH_COMMANDS = [
+  { cmd: '/remind',  args: '<customer>',        desc: 'Draft an invoice reminder email',
+    rewrite: (a) => `Draft an invoice reminder email for ${a || 'the most overdue invoice'}.` },
+  { cmd: '/task',    args: '<title>',           desc: 'Create a new task',
+    rewrite: (a) => `Create a task: ${a}.` },
+  { cmd: '/deal',    args: '<name>',            desc: 'Create a deal at the lead stage',
+    rewrite: (a) => `Create a deal called "${a}" at the lead stage.` },
+  { cmd: '/contact', args: '<name>',            desc: 'Add a new contact to CRM',
+    rewrite: (a) => `Add a contact named ${a} to the CRM.` },
+  { cmd: '/invoice', args: '<customer> <amt>',  desc: 'Draft an invoice',
+    rewrite: (a) => `Draft an invoice for ${a}.` },
+  { cmd: '/brief',   args: '',                  desc: "Run today's morning briefing",
+    rewrite: () => `Generate today's morning briefing.` },
+  { cmd: '/triage',  args: '',                  desc: 'Run email triage now',
+    rewrite: () => `Run email triage on the inbox now.` },
+];
+
+function parseSlash(input) {
+  const trimmed = input.trimStart();
+  if (!trimmed.startsWith('/')) return null;
+  const [head, ...rest] = trimmed.split(/\s+/);
+  const match = SLASH_COMMANDS.find(c => c.cmd === head);
+  if (!match) return null;
+  return { match, args: rest.join(' ').trim() };
+}
+
 const QUICK = [
   { label: 'Revenue by Region', query: 'Show me revenue by region' },
   { label: 'Company Policy', query: 'What does our company policy say about remote work?' },
@@ -90,6 +120,7 @@ export default function Chat() {
   const [conversations, setConversations] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(() => localStorage.getItem('nexus_chat_history_open') !== '0');
   const [historySearch, setHistorySearch] = useState('');
+  const [slashIdx, setSlashIdx] = useState(0);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
@@ -192,16 +223,37 @@ export default function Chat() {
     localStorage.setItem('nexus_agent_mode', next ? '1' : '0');
   };
 
+  // Slash menu — visible when input starts with "/" and hasn't been confirmed yet.
+  const slashHead = input.trimStart().split(/\s+/)[0];
+  const slashMatches = input.trimStart().startsWith('/') && !input.includes(' ')
+    ? SLASH_COMMANDS.filter(c => c.cmd.startsWith(slashHead.toLowerCase()))
+    : [];
+  useEffect(() => { setSlashIdx(0); }, [slashHead, slashMatches.length]);
+
+  const acceptSlash = (cmd) => {
+    // Insert "{cmd} " so the user can type args next
+    setInput(cmd.cmd + (cmd.args ? ' ' : ''));
+    inputRef.current?.focus();
+  };
+
   const send = async (text = input) => {
     if (!text.trim() || loading) return;
-    const q = text.trim(); setInput('');
+    // Rewrite slash commands → natural language that the agent tool system understands
+    const slash = parseSlash(text);
+    const q = (slash ? slash.match.rewrite(slash.args) : text).trim();
+    // Show the user the command they typed, but send the rewrite to the agent
+    const display = slash ? text.trim() : q;
+    setInput('');
     const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    setMessages(prev => [...prev, { role: 'user', content: q, tools_used: [], timestamp: ts }]);
+    setMessages(prev => [...prev, { role: 'user', content: display, tools_used: [], timestamp: ts }]);
     setLoading(true);
     setStreamingText('');
 
+    // Slash commands imply agent mode — force it on so the tools actually run.
+    const useAgentForThisTurn = agentMode || !!slash;
+
     // Agent mode — tool-using (no streaming, returns complete turn)
-    if (agentMode) {
+    if (useAgentForThisTurn) {
       try {
         const res = await agentChat(q, convId);
         if (!convId && res.conversation_id) setConvId(res.conversation_id);
@@ -485,7 +537,7 @@ export default function Chat() {
                     background: 'color-mix(in srgb, var(--color-warn) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warn) 25%, transparent)',
                     fontSize: 11, color: 'var(--color-warn)',
                   }}>
-                    {msg.pending_approvals.length} action{msg.pending_approvals.length > 1 ? 's' : ''} queued. Review on the <a href="/approvals" style={{ color: 'var(--color-info)', textDecoration: 'underline' }}>Approvals page</a>.
+                    {msg.pending_approvals.length} action{msg.pending_approvals.length > 1 ? 's' : ''} queued. Review in your <a href="/inbox" style={{ color: 'var(--color-info)', textDecoration: 'underline' }}>Inbox</a>.
                   </div>
                 )}
                 {msg.tools_used?.length > 0 && !msg.tool_calls && (
@@ -544,7 +596,53 @@ export default function Chat() {
       </div>
 
       {/* Input */}
-      <div className="chat-input-bar">
+      <div className="chat-input-bar" style={{ position: 'relative' }}>
+        {/* Slash command typeahead */}
+        {slashMatches.length > 0 && (
+          <div style={{
+            position: 'absolute', bottom: '100%', left: 24, right: 24,
+            marginBottom: 6,
+            background: 'var(--color-surface-2)',
+            border: '1px solid var(--color-border-strong)',
+            borderRadius: 'var(--r-md)',
+            boxShadow: 'var(--shadow-2)',
+            padding: 4,
+            maxHeight: 260, overflowY: 'auto',
+            animation: 'fade-up var(--dur-fast) var(--ease-out)',
+          }}>
+            {slashMatches.map((c, i) => (
+              <div
+                key={c.cmd}
+                onMouseEnter={() => setSlashIdx(i)}
+                onMouseDown={(e) => { e.preventDefault(); acceptSlash(c); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 10px', borderRadius: 'var(--r-sm)',
+                  cursor: 'pointer',
+                  background: i === slashIdx ? 'var(--color-accent-soft)' : 'transparent',
+                  border: `1px solid ${i === slashIdx ? 'color-mix(in srgb, var(--color-accent) 22%, transparent)' : 'transparent'}`,
+                }}
+              >
+                <code style={{
+                  fontSize: 12, fontWeight: 600, color: 'var(--color-accent)',
+                  background: 'transparent', padding: 0, minWidth: 80,
+                }}>{c.cmd}</code>
+                <code style={{ fontSize: 11, color: 'var(--color-text-dim)', background: 'transparent', padding: 0 }}>
+                  {c.args}
+                </code>
+                <span style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 'auto' }}>
+                  {c.desc}
+                </span>
+              </div>
+            ))}
+            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', padding: '6px 10px 2px', display: 'flex', gap: 8 }}>
+              <span>↑↓ navigate</span>
+              <span>Tab / Enter to select</span>
+              <span>Esc to cancel</span>
+            </div>
+          </div>
+        )}
+
         <div className="chat-input-wrap">
           {/* Voice button */}
           <button onClick={recording ? stopRecording : startRecording}
@@ -555,9 +653,35 @@ export default function Chat() {
             }}>
             {recording ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
-          <input ref={inputRef} type="text" value={input} onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && send()}
-            placeholder={recording ? 'Listening... (5 sec)' : 'Ask about data, documents, or operations...'}
+          <input
+            ref={inputRef}
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              // Slash menu navigation
+              if (slashMatches.length > 0) {
+                if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  setSlashIdx(i => (i + 1) % slashMatches.length);
+                  return;
+                }
+                if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  setSlashIdx(i => (i - 1 + slashMatches.length) % slashMatches.length);
+                  return;
+                }
+                if (e.key === 'Tab' || (e.key === 'Enter' && slashMatches[slashIdx]?.cmd !== slashHead)) {
+                  // Tab always accepts; Enter accepts only if the user hasn't typed a full command yet
+                  e.preventDefault();
+                  acceptSlash(slashMatches[slashIdx]);
+                  return;
+                }
+                if (e.key === 'Escape') { setInput(''); return; }
+              }
+              if (e.key === 'Enter' && !e.shiftKey) send();
+            }}
+            placeholder={recording ? 'Listening... (5 sec)' : 'Ask, or type / for commands…'}
             disabled={loading} />
           <button className="send-btn" onClick={() => send()} disabled={loading || !input.trim()}>
             <Send size={15} />

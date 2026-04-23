@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
@@ -17,8 +17,8 @@ const NAV_MAIN = [
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
+  { to: '/inbox', icon: Inbox, label: 'Inbox', badge: 'approvals' },
   { to: '/agents', icon: Bot, label: 'Agents' },
-  { to: '/approvals', icon: ShieldCheck, label: 'Approvals', badge: 'approvals' },
   { to: '/team', icon: Users, label: 'Team' },
   { to: '/memory', icon: Brain, label: 'Memory' },
   { to: '/security', icon: Shield, label: 'Security' },
