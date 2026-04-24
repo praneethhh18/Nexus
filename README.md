@@ -7,52 +7,74 @@
 ╚═╝  ╚═══╝╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═╝ ╚═════╝ ╚══════╝╚═╝  ╚═══╝   ╚═╝
 ```
 
-**Multi-agent AI business assistant that reads your documents, queries your data, builds automations,
-and monitors your business — all running 100% locally for free.**
+**A private AI business OS with a named team of autonomous agents —
+runs local-first, stays local for anything sensitive, and uses the cloud
+only for polished writing on aggregates you explicitly allow.**
 
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
-![Tests](https://img.shields.io/badge/tests-72%20passed-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
 ## What is NexusAgent?
 
-NexusAgent is a production-grade AI business assistant that runs entirely on your local machine.
-It combines a local LLM (via Ollama), a vector database (ChromaDB), a SQL agent, a multi-agent
-orchestrator (LangGraph), and a drag-and-drop workflow automation builder into a modern
-React frontend powered by a FastAPI backend.
+NexusAgent is a private AI business OS for small teams. One app replaces the
+patchwork of Notion AI + Zapier + an analytics dashboard + a CRM + an invoice
+tool, with one crucial difference: **customer data never leaves your machine**,
+while reports still get cloud-quality writing via a strict aggregate-only path.
 
-Unlike cloud AI tools, NexusAgent keeps all your data local, runs at zero cost after setup,
-and gives you full transparency through a complete audit trail. It learns from your conversations,
-proactively monitors your business for anomalies, and can take real actions like sending
-emails — always with your explicit approval first.
+Under the hood it combines a local LLM (Ollama), a vector database (ChromaDB),
+a SQL agent, a multi-agent orchestrator (LangGraph), a drag-and-drop workflow
+builder, and a four-layer privacy gate on every outbound call — wired into a
+React + FastAPI application.
+
+You get a named team of six agents (Atlas, Kira, Arjun, Iris, Sage, Echo) that
+run on their own schedules, surface proactive nudges, and can be renamed to match
+your team's vocabulary. Everything the agents do is logged in a single activity
+feed and gated behind human approval when it touches the outside world.
 
 ---
 
 ## Key Features
 
-- **AI Chat** — Ask business questions in natural language; get answers with citations and charts
-- **Natural Language SQL** — Query your database in plain English; auto-generates SQL with self-correction
-- **Document Q&A** — Upload PDFs/DOCX and ask questions; multi-document comparison and cross-source reasoning
-- **Workflow Automation** — Drag-and-drop node builder (React Flow) with 10 pre-built templates
-- **PDF Report Generation** — Professional reports with charts, tables, and executive summaries
-- **What-If Simulator** — Model business scenarios with before/after impact analysis and CFO critique
-- **Proactive Anomaly Detection** — Background monitoring alerts you when data looks abnormal
-- **Database Explorer** — Browse tables, view schemas, preview data, import CSV/Excel
-- **Conversation Persistence** — Chat sessions saved and loadable from sidebar
-- **Query History** — Searchable history with star, re-run, and filter
-- **Export** — Download conversations as Markdown or PDF
-- **Human-in-the-Loop Actions** — Emails drafted and shown for approval before sending
-- **Self-Reflection Loop** — Agent reviews its own answers before showing them to you
-- **Voice Input/Output** — Speak queries (Whisper STT) and hear responses (pyttsx3 TTS)
-- **Full Audit Trail** — Every tool call logged with timestamps, inputs, outputs
-- **Multi-Agent Collaboration** — Complex queries decomposed across specialist agents
-- **10 Workflow Templates** — Daily reports, anomaly alerts, email sender, meeting scheduler, churn detection, and more
-- **Zero API Cost** — 100% local, 100% open source, $0 after setup
+### Your AI team
+
+- **Six named agents with personas** — Atlas (Chief of staff · morning briefings), Kira (Invoice chaser), Arjun (Pipeline watcher), Iris (Inbox triage), Sage (Meeting prep), Echo (Memory keeper). Rename any of them from the `/agents` page.
+- **Morning briefing** — Atlas writes a 1-page summary of tasks, overdue items, and pipeline every day at 08:00 (aggregates only — never raw rows leaving the machine).
+- **Proactive nudges** — agents raise a hand when they notice something: *"Kira noticed 2 overdue invoices — draft reminders?"* One click to accept, one click to dismiss for the day.
+- **Run Now** — trigger any agent on demand from the `/agents` page. Each shows its own "last ran" timestamp and activity count.
+- **Unified activity feed** — everything all 6 agents did in the last 48 hours, newest first, stamped with the persona that did it.
+
+### Work the product
+
+- **Smart Inbox** (`/inbox`) — one page for "what needs me right now": pending approvals, proactive nudges, overdue tasks, today's meetings. Empty sections hide.
+- **AI Chat with slash commands** — natural language or `/remind`, `/task`, `/deal`, `/contact`, `/invoice`, `/brief`, `/triage`. Type `/` for a typeahead menu; commands reuse the agent tool system.
+- **Voice chat mode** — fullscreen hands-free conversation with an animated orb, VAD-based listening (no fixed 5-second cap), and spoken responses. Whisper STT + browser-native TTS. Nothing leaves your machine.
+- **CRM + Tasks + Invoices** — Lead → Deal → Task → Invoice → Paid flow, with a banner showing where the current page fits.
+- **Document templates** — generate proposals, SOWs, contracts, offer letters from templates.
+- **Dashboard sample data** — one-click "Load sample data" on an empty workspace so you can see the product in action in 30 seconds.
+
+### Privacy-first hybrid intelligence
+
+- **4-layer privacy gate** — (1) `ALLOW_CLOUD_LLM` kill switch, (2) sensitivity routing that forces DB/email prompts to local Ollama, (3) PII redaction (emails, phones, Aadhaar/PAN/SSN, cards, secrets) before any cloud call, (4) audit log at `outputs/cloud_audit.jsonl` with SHA-256 fingerprints only — never raw prompts.
+- **Aggregate-then-cloud reports** — row-level business data never leaves the machine. Totals, means, and top-5 category breakdowns are computed locally, redacted, and only then sent to the cloud for narrative writing. See `report_generator/narrative.py`.
+- **Cloud Privacy panel** (`/security`) — live view of every cloud call: provider, model, redaction count, payload size, SHA fingerprint. Proof of safety, not a promise.
+- **Developer mode** — a master toggle on Settings. Off by default: non-tech users see only the essentials. On: full LLM config, system info, IMAP triage, SQL editor, database explorer.
+
+### Foundations
+
+- **Natural Language SQL** — plain-English queries auto-generate SQL with self-correction; all execution stays on local SQLite.
+- **Document Q&A** — PDFs/DOCX, multi-document comparison, cross-source reasoning; embeddings always local via `nomic-embed-text`.
+- **Workflow automation** — drag-and-drop React Flow node builder, 10 pre-built templates.
+- **PDF reports** — charts + tables + executive summaries from the aggregate-then-cloud path.
+- **What-If simulator** — before/after impact analysis with CFO-style critique.
+- **Human-in-the-loop** — any outbound action (emails, SMS, invoice sends) is drafted and queued for explicit approval in `/inbox`.
+- **Full audit trail** — every tool call timestamped with inputs, outputs, approver.
+- **2FA + session management** — TOTP enrollment, recovery codes, per-device session revocation.
+- **Zero-subscription stack** — Ollama + SQLite + ChromaDB + FastAPI + React. Cloud LLM optional (Anthropic Claude or AWS Nova). Everything else free and open-source.
 
 ---
 
