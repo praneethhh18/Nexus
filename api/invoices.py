@@ -59,6 +59,15 @@ def _get_conn() -> sqlite3.Connection:
     conn.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_biz_number ON {INVOICES_TABLE}(business_id, number)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_invoice_status ON {INVOICES_TABLE}(business_id, status)")
 
+    # Additive migration for recurring invoices — safe to re-run.
+    for col, decl in [
+        ("recurrence", "TEXT DEFAULT 'none'"),
+        ("recurrence_parent_id", "TEXT"),
+    ]:
+        existing = [r[1] for r in conn.execute(f"PRAGMA table_info({INVOICES_TABLE})").fetchall()]
+        if col not in existing:
+            conn.execute(f"ALTER TABLE {INVOICES_TABLE} ADD COLUMN {col} {decl}")
+
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {COUNTER_TABLE} (
         business_id TEXT PRIMARY KEY,
@@ -67,6 +76,9 @@ def _get_conn() -> sqlite3.Connection:
 
     conn.commit()
     return conn
+
+
+INVOICE_RECURRENCES = ("none", "weekly", "monthly")
 
 
 def _next_number(business_id: str) -> str:
@@ -205,6 +217,11 @@ def create_invoice(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
 
     currency = _validate_text(data.get("currency", "USD"), "Currency", 8) or "USD"
 
+    recurrence = (data.get("recurrence") or "none").strip().lower()
+    if recurrence not in INVOICE_RECURRENCES:
+        raise HTTPException(400, f"Invalid recurrence. Must be one of: {', '.join(INVOICE_RECURRENCES)}")
+    recurrence_parent_id = data.get("recurrence_parent_id") or None
+
     iid = f"inv-{uuid.uuid4().hex[:10]}"
     number = _next_number(business_id)
 
@@ -219,6 +236,7 @@ def create_invoice(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
         json.dumps(line_items),
         totals["subtotal"], tax_pct, totals["tax_amount"], totals["total"],
         None, None, _now(), _now(), user_id,
+        recurrence, recurrence_parent_id,
     )
     conn = _get_conn()
     try:
@@ -227,8 +245,8 @@ def create_invoice(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
             f"(id, business_id, number, status, customer_company_id, customer_contact_id, "
             f"customer_name, customer_email, customer_address, currency, issue_date, due_date, "
             f"notes, line_items, subtotal, tax_pct, tax_amount, total, pdf_path, paid_at, "
-            f"created_at, updated_at, created_by) "
-            f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row,
+            f"created_at, updated_at, created_by, recurrence, recurrence_parent_id) "
+            f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row,
         )
         conn.commit()
     finally:
@@ -290,13 +308,17 @@ def update_invoice(business_id: str, invoice_id: str, updates: Dict[str, Any]) -
     current = get_invoice(business_id, invoice_id)
     allowed = {"customer_name", "customer_email", "customer_address",
                "currency", "issue_date", "due_date", "notes",
-               "line_items", "tax_pct", "status"}
+               "line_items", "tax_pct", "status", "recurrence"}
     fields = {k: v for k, v in updates.items() if k in allowed}
     if not fields:
         raise HTTPException(400, "No editable fields provided")
 
     if "status" in fields and fields["status"] not in STATUSES:
         raise HTTPException(400, f"Invalid status. Must be one of: {', '.join(STATUSES)}")
+    if "recurrence" in fields:
+        fields["recurrence"] = (fields["recurrence"] or "none").strip().lower()
+        if fields["recurrence"] not in INVOICE_RECURRENCES:
+            raise HTTPException(400, f"Invalid recurrence. Must be one of: {', '.join(INVOICE_RECURRENCES)}")
     if "issue_date" in fields:
         fields["issue_date"] = _validate_date(fields["issue_date"], "issue_date")
     if "due_date" in fields:
@@ -359,7 +381,78 @@ def update_invoice(business_id: str, invoice_id: str, updates: Dict[str, Any]) -
         conn.commit()
     finally:
         conn.close()
+
+    # When a recurring invoice is marked paid, spawn the next occurrence as a
+    # draft so the user doesn't have to recreate the monthly invoice manually.
+    if fields.get("status") == "paid":
+        try:
+            spawn_next_if_recurring(business_id, invoice_id)
+        except Exception as e:
+            logger.warning(f"[invoices] spawn_next_if_recurring failed for {invoice_id}: {e}")
+
     return get_invoice(business_id, invoice_id)
+
+
+def _next_invoice_dates(current_issue: Optional[str], current_due: Optional[str],
+                        recurrence: str):
+    """Compute (issue_date, due_date) for the next occurrence."""
+    from datetime import date as _date, timedelta as _td
+    step = {"weekly": 7, "monthly": 30}.get(recurrence)
+    if not step:
+        return None, None
+    try:
+        issue = (_date.fromisoformat(current_issue) + _td(days=step)).isoformat() \
+            if current_issue else _date.today().isoformat()
+    except Exception:
+        issue = _date.today().isoformat()
+    try:
+        due = (_date.fromisoformat(current_due) + _td(days=step)).isoformat() \
+            if current_due else None
+    except Exception:
+        due = None
+    return issue, due
+
+
+def spawn_next_if_recurring(business_id: str, paid_invoice_id: str) -> Optional[Dict]:
+    """If the invoice is part of a recurring series and just got paid,
+    create the next draft. Idempotent — no duplicates."""
+    src = get_invoice(business_id, paid_invoice_id)
+    recurrence = (src.get("recurrence") or "none").lower()
+    if recurrence == "none":
+        return None
+    if src.get("status") != "paid":
+        return None
+    parent_id = src.get("recurrence_parent_id") or src["id"]
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute(
+            f"SELECT id FROM {INVOICES_TABLE} "
+            f"WHERE business_id = ? AND recurrence_parent_id = ? AND status IN ('draft','sent')",
+            (business_id, parent_id),
+        ).fetchone()
+    finally:
+        conn.close()
+    if existing:
+        return None
+    new_issue, new_due = _next_invoice_dates(src.get("issue_date"), src.get("due_date"), recurrence)
+    spawn_data = {
+        "customer_company_id": src.get("customer_company_id"),
+        "customer_contact_id": src.get("customer_contact_id"),
+        "customer_name": src.get("customer_name", ""),
+        "customer_email": src.get("customer_email", ""),
+        "customer_address": src.get("customer_address", ""),
+        "currency": src.get("currency", "USD"),
+        "issue_date": new_issue,
+        "due_date": new_due,
+        "notes": src.get("notes", ""),
+        "line_items": src.get("line_items", []),
+        "tax_pct": src.get("tax_pct", 0),
+        "status": "draft",
+        "recurrence": recurrence,
+        "recurrence_parent_id": parent_id,
+    }
+    return create_invoice(business_id, src.get("created_by") or "system", spawn_data)
 
 
 def delete_invoice(business_id: str, invoice_id: str) -> None:
@@ -559,3 +652,44 @@ def invoice_summary(business_id: str) -> Dict[str, Any]:
         "draft": draft,
         "overdue": {"count": overdue_row[0], "total": float(overdue_row[1] or 0)},
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Bulk helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+def bulk_delete_invoices(business_id: str, ids: List[str]) -> int:
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            f"DELETE FROM {INVOICES_TABLE} "
+            f"WHERE business_id = ? AND id IN ({placeholders})",
+            [business_id, *ids],
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def bulk_update_invoice_status(business_id: str, ids: List[str], status: str) -> int:
+    """Mark many invoices with a new status (draft / sent / paid / void)."""
+    valid = ("draft", "sent", "paid", "void")
+    if status not in valid:
+        raise HTTPException(400, f"Invalid status. Must be one of: {', '.join(valid)}")
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            f"UPDATE {INVOICES_TABLE} SET status = ?, updated_at = ? "
+            f"WHERE business_id = ? AND id IN ({placeholders})",
+            [status, _now(), business_id, *ids],
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()

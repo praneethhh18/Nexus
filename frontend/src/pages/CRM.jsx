@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity } from 'lucide-react';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import {
@@ -10,6 +10,12 @@ import {
   listInteractions, createInteraction,
   DEAL_STAGES, INTERACTION_TYPES,
 } from '../services/crm';
+import { bulkDeleteContacts, bulkDeleteCompanies, bulkDeleteDeals, bulkDealStage, bulkTagsFor } from '../services/tags';
+import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
+import { TagChips, TagPicker } from '../components/TagChips';
+import TagFilterBar, { filterItems } from '../components/TagFilterBar';
+import EntityImportWizard from '../components/EntityImportWizard';
+import ActivityTimeline from '../components/ActivityTimeline';
 
 const STAGE_COLORS = {
   lead: 'var(--color-info)', qualified: '#a78bfa', proposal: 'var(--color-warn)',
@@ -247,6 +253,22 @@ export default function CRM() {
   const [msg, setMsg] = useState('');
 
   const [modal, setModal] = useState(null); // { kind: 'contact'|'company'|'deal', record: {} | null }
+  const [showImport, setShowImport] = useState(false);
+  const [activityFor, setActivityFor] = useState(null); // { kind, record }
+
+  // Tag chips + filter (per tab)
+  const [tagsByContact, setTagsByContact] = useState({});
+  const [tagsByCompany, setTagsByCompany] = useState({});
+  const [tagsByDeal, setTagsByDeal] = useState({});
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
+
+  const [undoToast, setUndoToast] = useState(null);
+  const undoTimerRef = useRef(null);
+  const showUndo = (message, onUndo) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoToast({ message, onUndo });
+    undoTimerRef.current = setTimeout(() => setUndoToast(null), 5000);
+  };
 
   const reload = useCallback(async () => {
     try {
@@ -257,8 +279,25 @@ export default function CRM() {
         listDeals({ search: searchStr }),
       ]);
       setOverview(ov); setContacts(cts); setCompanies(cos); setDeals(dls);
+      // Batch tag lookup per entity type
+      const [ct, co, dt] = await Promise.all([
+        cts.length ? bulkTagsFor('contact', cts.map(x => x.id)) : Promise.resolve({}),
+        cos.length ? bulkTagsFor('company', cos.map(x => x.id)) : Promise.resolve({}),
+        dls.length ? bulkTagsFor('deal',    dls.map(x => x.id)) : Promise.resolve({}),
+      ]);
+      setTagsByContact(ct); setTagsByCompany(co); setTagsByDeal(dt);
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [searchStr]);
+
+  // Filtered views — apply selected-tag filter per tab
+  const visibleContacts  = filterItems(contacts,  tagsByContact, selectedTagIds);
+  const visibleCompanies = filterItems(companies, tagsByCompany, selectedTagIds);
+  const visibleDeals     = filterItems(deals,     tagsByDeal,    selectedTagIds);
+
+  // Selection is scoped per tab — easiest: re-bind on the currently visible list
+  const selectionContacts  = useBulkSelection(visibleContacts);
+  const selectionCompanies = useBulkSelection(visibleCompanies);
+  const selectionDeals     = useBulkSelection(visibleDeals);
 
   useEffect(() => { reload(); }, [reload]);
 
@@ -311,6 +350,9 @@ export default function CRM() {
           <p>Contacts, companies, and your deal pipeline</p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn-ghost" onClick={() => setShowImport(true)} title="Import CSV / Excel">
+            <Upload size={13} /> Import
+          </button>
           {tab === 'contacts' && <button className="btn-primary" onClick={() => setModal({ kind: 'contact', record: null })}><Plus size={13} /> Add contact</button>}
           {tab === 'companies' && <button className="btn-primary" onClick={() => setModal({ kind: 'company', record: null })}><Plus size={13} /> Add company</button>}
           {tab === 'deals' && <button className="btn-primary" onClick={() => setModal({ kind: 'deal', record: null })}><Plus size={13} /> Add deal</button>}
@@ -358,64 +400,107 @@ export default function CRM() {
         </div>
       </div>
 
+      <div style={{ padding: '4px 24px' }}>
+        <TagFilterBar selectedIds={selectedTagIds} onChange={setSelectedTagIds} />
+      </div>
+
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
         {tab === 'contacts' && (
-          contacts.length === 0 ? (
+          visibleContacts.length === 0 ? (
             <EmptyState
               icon={Users}
-              title="No contacts yet"
-              description="Add your first lead manually or import a CSV of contacts to let Arjun track your pipeline and Sage prep meetings."
-              primaryLabel="Add contact"
-              onPrimary={() => setModal({ kind: 'contact', record: null })}
-              secondaryLabel="Import CSV"
-              onSecondary={() => window.location.assign('/database')}
+              title={contacts.length === 0 ? "No contacts yet" : "No contacts match this filter"}
+              description={contacts.length === 0
+                ? "Add your first lead manually or import a CSV of contacts to let Arjun track your pipeline and Sage prep meetings."
+                : "Try clearing the tag filter or search to see everyone."}
+              primaryLabel={contacts.length === 0 ? "Add contact" : undefined}
+              onPrimary={contacts.length === 0 ? () => setModal({ kind: 'contact', record: null }) : undefined}
+              secondaryLabel={contacts.length === 0 ? "Import CSV" : undefined}
+              onSecondary={contacts.length === 0 ? () => setShowImport(true) : undefined}
             />
           ) : (
-            <div className="table-panel">
-              <table className="data-table">
-                <thead><tr><th>Name</th><th>Title</th><th>Company</th><th>Email</th><th>Phone</th><th style={{ width: 80 }}></th></tr></thead>
-                <tbody>
-                  {contacts.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 500 }}>{(c.first_name + ' ' + c.last_name).trim() || '—'}</td>
-                      <td>{c.title || '—'}</td>
-                      <td>{c.company_name || '—'}</td>
-                      <td>{c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}</td>
-                      <td>{c.phone || '—'}</td>
-                      <td style={{ display: 'flex', gap: 4 }}>
-                        <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'contact', record: c })}><Edit3 size={11} /></button>
-                        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('contact', c)}><Trash2 size={11} /></button>
-                      </td>
+            <>
+              <div className="table-panel">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th style={{ width: 24 }}>
+                        <BulkCheckbox
+                          checked={selectionContacts.all}
+                          indeterminate={selectionContacts.some}
+                          onChange={() => selectionContacts.toggleAll()}
+                          title="Select all visible"
+                        />
+                      </th>
+                      <th>Name</th><th>Title</th><th>Company</th><th>Email</th><th>Phone</th><th>Tags</th><th style={{ width: 110 }}></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {visibleContacts.map((c) => (
+                      <tr key={c.id} style={{ background: selectionContacts.isSelected(c.id) ? 'color-mix(in srgb, var(--color-accent) 6%, transparent)' : undefined }}>
+                        <td>
+                          <BulkCheckbox checked={selectionContacts.isSelected(c.id)} onChange={() => selectionContacts.toggle(c.id)} />
+                        </td>
+                        <td style={{ fontWeight: 500 }}>{(c.first_name + ' ' + c.last_name).trim() || '—'}</td>
+                        <td>{c.title || '—'}</td>
+                        <td>{c.company_name || '—'}</td>
+                        <td>{c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}</td>
+                        <td>{c.phone || '—'}</td>
+                        <td><TagChips tags={tagsByContact[c.id] || []} size="xs" /></td>
+                        <td style={{ display: 'flex', gap: 4 }}>
+                          <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setActivityFor({ kind: 'contact', record: c })} title="Activity"><Activity size={11} /></button>
+                          <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'contact', record: c })}><Edit3 size={11} /></button>
+                          <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('contact', c)}><Trash2 size={11} /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <BulkActionBar count={selectionContacts.count} onCancel={selectionContacts.clear}>
+                <button
+                  onClick={async () => {
+                    const ids = Array.from(selectionContacts.selected);
+                    if (!confirm(`Delete ${ids.length} contact${ids.length === 1 ? '' : 's'}?`)) return;
+                    try {
+                      await bulkDeleteContacts(ids);
+                      selectionContacts.clear();
+                      showUndo(`${ids.length} contact${ids.length === 1 ? '' : 's'} deleted`, null);
+                      reload();
+                    } catch (e) { flash(`Bulk delete failed: ${e.message}`); }
+                  }}
+                  className="btn-ghost" style={{ fontSize: 11, color: 'var(--color-err)' }}
+                ><Trash2 size={11} /> Delete</button>
+              </BulkActionBar>
+            </>
           )
         )}
 
         {tab === 'companies' && (
-          companies.length === 0 ? (
+          visibleCompanies.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title="No companies yet"
-              description="Add the companies you sell to or work with — deals and contacts hang off them."
-              primaryLabel="Add company"
-              onPrimary={() => setModal({ kind: 'company', record: null })}
+              title={companies.length === 0 ? "No companies yet" : "No companies match this filter"}
+              description={companies.length === 0
+                ? "Add the companies you sell to or work with — deals and contacts hang off them."
+                : "Try clearing the tag filter or search."}
+              primaryLabel={companies.length === 0 ? "Add company" : undefined}
+              onPrimary={companies.length === 0 ? () => setModal({ kind: 'company', record: null }) : undefined}
             />
           ) : (
             <div className="table-panel">
               <table className="data-table">
-                <thead><tr><th>Name</th><th>Industry</th><th>Size</th><th>Website</th><th>Tags</th><th style={{ width: 80 }}></th></tr></thead>
+                <thead><tr><th>Name</th><th>Industry</th><th>Size</th><th>Website</th><th>Tags</th><th style={{ width: 110 }}></th></tr></thead>
                 <tbody>
-                  {companies.map((c) => (
+                  {visibleCompanies.map((c) => (
                     <tr key={c.id}>
                       <td style={{ fontWeight: 500 }}>{c.name}</td>
                       <td>{c.industry || '—'}</td>
                       <td>{c.size || '—'}</td>
                       <td>{c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-info)' }}>{c.website}</a> : '—'}</td>
-                      <td>{c.tags || '—'}</td>
+                      <td><TagChips tags={tagsByCompany[c.id] || []} size="xs" /></td>
                       <td style={{ display: 'flex', gap: 4 }}>
+                        <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setActivityFor({ kind: 'company', record: c })} title="Activity"><Activity size={11} /></button>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'company', record: c })}><Edit3 size={11} /></button>
                         <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('company', c)}><Trash2 size={11} /></button>
                       </td>
@@ -470,6 +555,35 @@ export default function CRM() {
           <DealForm initial={modal.record} contacts={contacts} companies={companies}
             onSubmit={(d) => handleSubmit('deal', d)} onCancel={() => setModal(null)} />
         </Modal>
+      )}
+
+      {showImport && (
+        <EntityImportWizard
+          defaultEntityType={tab === 'contacts' ? 'contact' : 'contact'}
+          onClose={() => setShowImport(false)}
+          onDone={() => { setShowImport(false); reload(); }}
+        />
+      )}
+
+      {activityFor && (
+        <Modal
+          title={`Activity · ${activityFor.record.name || (activityFor.record.first_name || '') + ' ' + (activityFor.record.last_name || '')}`}
+          onClose={() => setActivityFor(null)}
+          wide
+        >
+          <div style={{ marginBottom: 12 }}>
+            <TagPicker entityType={activityFor.kind} entityId={activityFor.record.id} onChange={reload} />
+          </div>
+          <ActivityTimeline entityType={activityFor.kind} entityId={activityFor.record.id} />
+        </Modal>
+      )}
+
+      {undoToast && (
+        <UndoToast
+          message={undoToast.message}
+          onUndo={undoToast.onUndo ? () => { undoToast.onUndo?.(); setUndoToast(null); } : null}
+          onClose={() => setUndoToast(null)}
+        />
       )}
     </div>
   );

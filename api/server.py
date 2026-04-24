@@ -1127,6 +1127,48 @@ def delete_deal_api(deal_id: str, ctx: dict = Depends(get_current_context)):
     return {"ok": True}
 
 
+@app.post("/api/crm/contacts/bulk-delete")
+def bulk_delete_contacts_api(body: dict, ctx: dict = Depends(get_current_context)):
+    ids = body.get("ids") or []
+    n = _crm.bulk_delete_contacts(ctx["business_id"], ids)
+    return {"deleted": n}
+
+
+@app.post("/api/crm/companies/bulk-delete")
+def bulk_delete_companies_api(body: dict, ctx: dict = Depends(get_current_context)):
+    ids = body.get("ids") or []
+    n = _crm.bulk_delete_companies(ctx["business_id"], ids)
+    return {"deleted": n}
+
+
+@app.post("/api/crm/deals/bulk-delete")
+def bulk_delete_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
+    ids = body.get("ids") or []
+    n = _crm.bulk_delete_deals(ctx["business_id"], ids)
+    return {"deleted": n}
+
+
+@app.post("/api/crm/deals/bulk-stage")
+def bulk_stage_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
+    ids = body.get("ids") or []
+    stage = body.get("stage") or ""
+    n = _crm.bulk_update_deal_stage(ctx["business_id"], ids, stage)
+    return {"updated": n}
+
+
+@app.get("/api/activity/{entity_type}/{entity_id}")
+def activity_timeline_api(entity_type: str, entity_id: str, limit: int = 200,
+                          ctx: dict = Depends(get_current_context)):
+    """Per-record activity timeline — tags, tasks, invoices, tool calls."""
+    from api import activity_feed
+    try:
+        return {"events": activity_feed.timeline(
+            ctx["business_id"], entity_type, entity_id, limit=limit,
+        )}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/crm/pipeline")
 def pipeline_api(ctx: dict = Depends(get_current_context)):
     return _crm.deal_pipeline_stats(ctx["business_id"])
@@ -1269,6 +1311,21 @@ def update_invoice_api(invoice_id: str, body: dict, ctx: dict = Depends(get_curr
 def delete_invoice_api(invoice_id: str, ctx: dict = Depends(get_current_context)):
     _inv.delete_invoice(ctx["business_id"], invoice_id)
     return {"ok": True}
+
+
+@app.post("/api/invoices/bulk-delete")
+def bulk_delete_invoices_api(body: dict, ctx: dict = Depends(get_current_context)):
+    ids = body.get("ids") or []
+    n = _inv.bulk_delete_invoices(ctx["business_id"], ids)
+    return {"deleted": n}
+
+
+@app.post("/api/invoices/bulk-status")
+def bulk_invoice_status_api(body: dict, ctx: dict = Depends(get_current_context)):
+    ids = body.get("ids") or []
+    status = body.get("status") or ""
+    n = _inv.bulk_update_invoice_status(ctx["business_id"], ids, status)
+    return {"updated": n}
 
 
 @app.post("/api/invoices/{invoice_id}/render")
@@ -2134,6 +2191,82 @@ def get_table_detail(table_name: str, limit: int = 50, ctx: dict = Depends(get_c
         "data": df.to_dict(orient="records"),
         "column_stats": stats,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Entity import wizard — CSV/Excel → contacts/tasks/invoices with column mapping
+# ═══════════════════════════════════════════════════════════════════════════════
+_ENTITY_IMPORT_STASH: dict = {}   # session_id → (path, expires_ts)
+_ENTITY_IMPORT_TTL = 15 * 60       # 15 minutes
+
+
+def _prune_import_stash():
+    now = time.time()
+    expired = [k for k, (_, exp) in _ENTITY_IMPORT_STASH.items() if exp < now]
+    for k in expired:
+        p, _ = _ENTITY_IMPORT_STASH.pop(k, (None, 0))
+        if p:
+            Path(p).unlink(missing_ok=True)
+
+
+@app.post("/api/entity-import/preview")
+async def entity_import_preview(
+    file: UploadFile = File(...),
+    entity_type: str = Query(...),
+    ctx: dict = Depends(get_current_context),
+):
+    """Upload CSV/Excel + entity_type → get sample rows + auto-suggested mapping."""
+    import tempfile, uuid as _uuid
+    from api import entity_import
+
+    suffix = Path(file.filename).suffix
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        content = await file.read()
+        if len(content) > 20 * 1024 * 1024:
+            raise HTTPException(413, "File too large (max 20 MB)")
+        tmp.write(content)
+        path = tmp.name
+    try:
+        preview = entity_import.preview(path, entity_type)
+    except ValueError as e:
+        Path(path).unlink(missing_ok=True)
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        Path(path).unlink(missing_ok=True)
+        raise HTTPException(400, f"Failed to read file: {e}")
+
+    _prune_import_stash()
+    session_id = _uuid.uuid4().hex
+    _ENTITY_IMPORT_STASH[session_id] = (path, time.time() + _ENTITY_IMPORT_TTL)
+    preview["session_id"] = session_id
+    return preview
+
+
+@app.post("/api/entity-import/commit")
+def entity_import_commit(body: dict, ctx: dict = Depends(get_current_context)):
+    """Finalize the import with the user's chosen column mapping."""
+    from api import entity_import
+    session_id = body.get("session_id") or ""
+    entity_type = body.get("entity_type") or ""
+    mapping = body.get("mapping") or {}
+
+    _prune_import_stash()
+    entry = _ENTITY_IMPORT_STASH.get(session_id)
+    if not entry:
+        raise HTTPException(400, "Upload session expired — re-upload the file")
+    path, _ = entry
+
+    try:
+        result = entity_import.commit(
+            ctx["business_id"], ctx["user"]["id"], path, entity_type, mapping,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    finally:
+        # One-shot — file is dropped after commit regardless of outcome.
+        Path(path).unlink(missing_ok=True)
+        _ENTITY_IMPORT_STASH.pop(session_id, None)
+    return result
 
 
 @app.post("/api/database/import")

@@ -688,3 +688,77 @@ def crm_overview(business_id: str) -> Dict[str, Any]:
         "open_deals_value": float(deals[1] or 0),
         "won_this_month": float(won_this_month or 0),
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Bulk helpers — list pages call these from the selection action bar
+# ═══════════════════════════════════════════════════════════════════════════════
+def _bulk_delete(table: str, business_id: str, ids: List[str]) -> int:
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            f"DELETE FROM {table} WHERE business_id = ? AND id IN ({placeholders})",
+            [business_id, *ids],
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def bulk_delete_contacts(business_id: str, ids: List[str]) -> int:
+    return _bulk_delete(CONTACTS_TABLE, business_id, ids)
+
+
+def bulk_delete_companies(business_id: str, ids: List[str]) -> int:
+    """Delete companies and null out their FKs on contacts / deals first."""
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    conn = _get_conn()
+    try:
+        conn.execute(
+            f"UPDATE {CONTACTS_TABLE} SET company_id = NULL "
+            f"WHERE business_id = ? AND company_id IN ({placeholders})",
+            [business_id, *ids],
+        )
+        conn.execute(
+            f"UPDATE {DEALS_TABLE} SET company_id = NULL "
+            f"WHERE business_id = ? AND company_id IN ({placeholders})",
+            [business_id, *ids],
+        )
+        cur = conn.execute(
+            f"DELETE FROM {COMPANIES_TABLE} WHERE business_id = ? AND id IN ({placeholders})",
+            [business_id, *ids],
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def bulk_delete_deals(business_id: str, ids: List[str]) -> int:
+    return _bulk_delete(DEALS_TABLE, business_id, ids)
+
+
+def bulk_update_deal_stage(business_id: str, ids: List[str], stage: str) -> int:
+    """Move many deals to a new stage in one call."""
+    if stage not in DEAL_STAGES:
+        raise HTTPException(400, f"Invalid stage. Must be one of: {', '.join(DEAL_STAGES)}")
+    if not ids:
+        return 0
+    placeholders = ",".join("?" for _ in ids)
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            f"UPDATE {DEALS_TABLE} SET stage = ?, updated_at = ? "
+            f"WHERE business_id = ? AND id IN ({placeholders})",
+            [stage, datetime.now().isoformat(), business_id, *ids],
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()

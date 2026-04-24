@@ -46,6 +46,24 @@ export const bulkDeleteTasks = (ids) =>
 export const bulkTaskStatus = (ids, status) =>
   req('/api/tasks/bulk-status', { method: 'POST', body: JSON.stringify({ ids, status }) });
 
+export const bulkDeleteContacts = (ids) =>
+  req('/api/crm/contacts/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+
+export const bulkDeleteCompanies = (ids) =>
+  req('/api/crm/companies/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+
+export const bulkDeleteDeals = (ids) =>
+  req('/api/crm/deals/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+
+export const bulkDealStage = (ids, stage) =>
+  req('/api/crm/deals/bulk-stage', { method: 'POST', body: JSON.stringify({ ids, stage }) });
+
+export const bulkDeleteInvoices = (ids) =>
+  req('/api/invoices/bulk-delete', { method: 'POST', body: JSON.stringify({ ids }) });
+
+export const bulkInvoiceStatus = (ids, status) =>
+  req('/api/invoices/bulk-status', { method: 'POST', body: JSON.stringify({ ids, status }) });
+
 // ── Export ────────────────────────────────────────────────────────────────
 export async function downloadFullExport() {
   const res = await fetch('/api/export/all', { headers: headers() });
