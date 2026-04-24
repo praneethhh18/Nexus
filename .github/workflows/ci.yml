@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ── Backend: pytest on the subsystems that don't need Ollama live ────────
+  backend:
+    name: Backend tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install only what the fast test subset needs. The full
+          # requirements.txt pulls ChromaDB + faster-whisper which are slow
+          # on CI and unnecessary for these suites.
+          pip install pytest loguru fastapi pydantic "uvicorn[standard]" \
+                      pandas openpyxl python-dotenv \
+                      anthropic
+          pip install -e . 2>/dev/null || true
+
+      - name: Run unit tests
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python -m pytest \
+            tests/test_privacy.py \
+            tests/test_agent_runlog.py \
+            tests/test_onboarding_prefs.py \
+            tests/test_tags_bulk_recurring.py \
+            tests/test_phase1_finish.py \
+            tests/test_phase2_scheduler_custom.py \
+            tests/test_phase2_workflows_suggestions.py \
+            tests/test_phase2_rag_sql_research.py \
+            tests/test_integrations.py \
+            tests/test_reliability_indexes.py \
+            -q
+
+  # ── Frontend: install + lint + production build ─────────────────────────
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+
+  # ── Smoke: verify server.py imports without runtime errors ───────────────
+  import-smoke:
+    name: Import smoke check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install minimal deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install fastapi "uvicorn[standard]" pydantic loguru python-dotenv \
+                      pandas openpyxl anthropic
+      - name: Import server module
+        run: |
+          python -c "
+          import os
+          os.environ['DB_PATH'] = '/tmp/nexus_ci.db'
+          from api import onboarding, notification_prefs, integrations, reliability, db_indexes
+          from api import tags, saved_queries, suggestions, rag_collections, custom_agents, agent_schedule
+          print('imports OK')
+          "

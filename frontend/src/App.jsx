@@ -27,6 +27,7 @@ import AuditLog from './pages/AuditLog';
 import Integrations from './pages/Integrations';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetPassword from './pages/ResetPassword';
+import Setup from './pages/Setup';
 
 function ProtectedRoute({ children }) {
   return isLoggedIn() ? children : <Navigate to="/login" />;
@@ -38,6 +39,7 @@ export default function App() {
     <BrowserRouter>
       <ToastHost />
       <Routes>
+        <Route path="/setup" element={<Setup />} />
         <Route path="/login" element={<Login />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite" element={<AcceptInvite />} />

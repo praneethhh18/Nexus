@@ -2227,6 +2227,51 @@ def read_all_notifications(ctx: dict = Depends(get_current_context)):
 # ═══════════════════════════════════════════════════════════════════════════════
 #   HEALTH & STATUS
 # ═══════════════════════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Self-hosted setup wizard (9.3) — runs before any user signs up
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/setup/status")
+def setup_status():
+    """Snapshot of install readiness. Unauthenticated — no users may exist yet."""
+    from api import setup_wizard
+    return setup_wizard.status()
+
+
+@app.post("/api/setup/pull-model")
+def setup_pull_model(body: dict):
+    """Trigger `ollama pull` for the chosen model. May take minutes on a cold pull."""
+    from api import setup_wizard
+    try:
+        return setup_wizard.pull_model(body.get("name") or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/setup/choose-model")
+def setup_choose_model(body: dict):
+    from api import setup_wizard
+    try:
+        return setup_wizard.choose_model(body.get("name") or "")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/setup/complete")
+def setup_complete():
+    """Mark setup done. Idempotent."""
+    from api import setup_wizard
+    return setup_wizard.complete()
+
+
+@app.post("/api/setup/reset")
+def setup_reset(ctx: dict = Depends(get_current_context)):
+    """Reopen the wizard — admin/owner only."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can reset setup")
+    from api import setup_wizard
+    return setup_wizard.reset()
+
+
 @app.get("/api/health/deep")
 def health_deep():
     """Comprehensive health snapshot for monitoring. No auth required."""
