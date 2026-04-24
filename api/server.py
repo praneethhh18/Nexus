@@ -1304,6 +1304,116 @@ def bulk_stage_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
+#   Integrations — provider catalog + connections + webhook receiver (3.4)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/integrations/providers")
+def integrations_providers(ctx: dict = Depends(get_current_context)):
+    """Catalog of every shipped integration provider."""
+    from api import integrations
+    return {
+        "providers": integrations.list_providers(),
+        "categories": integrations.CATEGORY_LABELS,
+    }
+
+
+@app.get("/api/integrations")
+def integrations_list(ctx: dict = Depends(get_current_context)):
+    """Integrations connected for this business."""
+    from api import integrations
+    return integrations.list_connections(ctx["business_id"])
+
+
+@app.post("/api/integrations/{provider}/connect")
+def integrations_connect(provider: str, body: dict,
+                         ctx: dict = Depends(get_current_context)):
+    """Store connection config for a provider. Owner/admin only."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can connect integrations")
+    from api import integrations
+    try:
+        return integrations.connect(ctx["business_id"], provider, body or {})
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/integrations/{provider}")
+def integrations_disconnect(provider: str,
+                            ctx: dict = Depends(get_current_context)):
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can disconnect integrations")
+    from api import integrations
+    integrations.disconnect(ctx["business_id"], provider)
+    return {"ok": True}
+
+
+@app.post("/api/integrations/{provider}/ping")
+def integrations_ping(provider: str, ctx: dict = Depends(get_current_context)):
+    """Refresh health status for a connected integration."""
+    from api import integrations
+    return integrations.ping(ctx["business_id"], provider)
+
+
+@app.post("/api/webhooks/{provider}")
+async def generic_webhook_receiver(provider: str, request: Request):
+    """
+    Generic inbound webhook endpoint. Adapters register themselves by setting
+    `nexus_integrations.config_json.webhook_secret` per business; the body is
+    HMAC-verified against any signature header the provider sends (x-hub-
+    signature-256 style), then stored in `nexus_notifications` as a record
+    the user can review.
+
+    The URL is `/api/webhooks/{provider}?business_id=...` — the business_id
+    query param is REQUIRED since the request is unauthenticated.
+    """
+    import sqlite3
+    from api import integrations
+    business_id = request.query_params.get("business_id", "")
+    if not business_id:
+        raise HTTPException(400, "business_id query param is required")
+
+    body = await request.body()
+    row = integrations.get_connection(business_id, provider, scrub=False)
+    if not row:
+        raise HTTPException(404, f"{provider} is not connected for this business")
+
+    secret = (row.get("config") or {}).get("webhook_secret", "")
+    # Best-effort signature header probe — providers use different headers.
+    sig = (request.headers.get("x-hub-signature-256") or
+           request.headers.get("x-signature") or
+           request.headers.get("x-nexus-signature") or "")
+    if sig.startswith("sha256="):
+        sig = sig[len("sha256="):]
+
+    if secret and sig and not integrations.verify_webhook_signature(secret, body, sig):
+        integrations.record_health(business_id, provider, ok=False,
+                                   error="Webhook signature verification failed")
+        raise HTTPException(401, "Signature verification failed")
+
+    # Log as a notification so the user sees what arrived.
+    try:
+        import json as _json
+        preview = body.decode("utf-8", errors="replace")[:500]
+        try:
+            parsed = _json.loads(body)
+            preview = _json.dumps(parsed)[:500]
+        except Exception:
+            pass
+        from api import notifications
+        notifications.push(
+            title=f"{row['provider_meta'].get('name', provider)} webhook",
+            message=preview,
+            type=f"webhook_{provider}",
+            severity="info",
+            business_id=business_id,
+        )
+    except Exception as e:
+        logger.warning(f"[webhook:{provider}] notify failed: {e}")
+
+    integrations.record_health(business_id, provider, ok=True, error="")
+    return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
 #   RAG collections + document expiry (2.6)
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.get("/api/rag/collections")
@@ -3035,8 +3145,17 @@ def get_workflow_history(limit: int = 30, ctx: dict = Depends(get_current_contex
 # ═══════════════════════════════════════════════════════════════════════════════
 #   VOICE TRANSCRIPTION
 # ═══════════════════════════════════════════════════════════════════════════════
-@app.post("/api/voice/transcribe")
-async def transcribe_voice(file: UploadFile = File(...), ctx: dict = Depends(get_current_context)):
+@app.post("/api/voice/memo-to-task")
+async def voice_memo_to_task(
+    file: UploadFile = File(...),
+    language: str = Query("en"),
+    ctx: dict = Depends(get_current_context),
+):
+    """
+    Quick voice-memo shortcut: transcribe an audio blob and create a task
+    directly from it. The first sentence becomes the title, the rest becomes
+    the description. Returns the created task + transcript.
+    """
     import tempfile
     suffix = Path(file.filename or "audio.webm").suffix or ".webm"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
@@ -3062,8 +3181,59 @@ async def transcribe_voice(file: UploadFile = File(...), ctx: dict = Depends(get
             except Exception:
                 wav_path = tmp_path
 
-        text = _transcribe(wav_path)
-        return {"text": text or "", "success": bool(text)}
+        text = (_transcribe(wav_path, language=language) or "").strip()
+        if not text:
+            raise HTTPException(400, "Could not transcribe audio — try recording again")
+
+        # First sentence → title, rest → description
+        parts = text.split(". ", 1)
+        title = parts[0][:200].rstrip(".")
+        description = (parts[1] if len(parts) > 1 else "").strip()[:4000]
+
+        task = _tasks.create_task(
+            ctx["business_id"], ctx["user"]["id"],
+            {"title": title, "description": description, "priority": "normal"},
+        )
+        return {"task": task, "transcript": text}
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+        if wav_check != tmp_path:
+            Path(wav_check).unlink(missing_ok=True)
+
+
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(
+    file: UploadFile = File(...),
+    language: str = Query("en"),
+    ctx: dict = Depends(get_current_context),
+):
+    import tempfile
+    suffix = Path(file.filename or "audio.webm").suffix or ".webm"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        content = await file.read()
+        if len(content) > 25 * 1024 * 1024:
+            raise HTTPException(413, "Audio too large (max 25 MB)")
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    wav_check = tmp_path
+    try:
+        from voice.listener import _transcribe
+        wav_path = tmp_path
+        if suffix.lower() in (".webm", ".ogg", ".mp4", ".m4a"):
+            try:
+                import subprocess
+                wav_path = tmp_path.replace(suffix, ".wav")
+                wav_check = wav_path
+                subprocess.run(
+                    ["ffmpeg", "-i", tmp_path, "-ar", "16000", "-ac", "1", wav_path, "-y"],
+                    capture_output=True, timeout=10,
+                )
+            except Exception:
+                wav_path = tmp_path
+
+        text = _transcribe(wav_path, language=language)
+        return {"text": text or "", "success": bool(text), "language": language}
     except Exception as e:
         logger.error(f"Transcription failed: {e}")
         return {"text": "", "success": False, "error": str(e)}

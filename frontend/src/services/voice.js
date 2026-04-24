@@ -28,7 +28,7 @@ import { getToken, getBusinessId } from './auth';
  * @param {AbortSignal} signal  Abort the request if the user exits voice mode.
  * @returns {Promise<string>}   The transcribed text (may be empty).
  */
-export async function transcribeBlob(blob, signal) {
+export async function transcribeBlob(blob, signal, language = 'en') {
   if (!blob || blob.size === 0) return '';
 
   const headers = {};
@@ -40,7 +40,7 @@ export async function transcribeBlob(blob, signal) {
   const form = new FormData();
   form.append('file', blob, 'voice.webm');
 
-  const res = await fetch('/api/voice/transcribe', {
+  const res = await fetch(`/api/voice/transcribe?language=${encodeURIComponent(language)}`, {
     method: 'POST',
     body: form,
     headers,
@@ -53,6 +53,32 @@ export async function transcribeBlob(blob, signal) {
   }
   const data = await res.json();
   return (data.text || '').trim();
+}
+
+
+// ── Voice memo → task quick action ─────────────────────────────────────────
+/**
+ * Record an audio blob, ship it to /api/voice/memo-to-task, return the new task.
+ * The backend transcribes and creates the task in one round trip.
+ */
+export async function memoToTask(blob, language = 'en') {
+  if (!blob || blob.size === 0) throw new Error('No audio to transcribe');
+  const headers = {};
+  const t = getToken();
+  if (t) headers['Authorization'] = `Bearer ${t}`;
+  const b = getBusinessId();
+  if (b) headers['X-Business-Id'] = b;
+  const form = new FormData();
+  form.append('file', blob, 'memo.webm');
+  const res = await fetch(`/api/voice/memo-to-task?language=${encodeURIComponent(language)}`, {
+    method: 'POST', body: form, headers,
+  });
+  if (!res.ok) {
+    let detail = '';
+    try { detail = (await res.json()).detail || ''; } catch {}
+    throw new Error(detail || `Memo-to-task failed (${res.status})`);
+  }
+  return res.json();
 }
 
 
@@ -137,9 +163,22 @@ function _waitForVoices(timeoutMs = 1500) {
  *   3. Prefer known-clear names (Zira on Windows, Samantha on Mac)
  *   4. Anything else that matches en-*
  */
-export async function pickVoice() {
+export async function pickVoice(language = 'en') {
   const voices = await _waitForVoices();
   if (!voices.length) return null;
+
+  // Hindi branch — search for hi-IN voices the OS ships.
+  if (language === 'hi') {
+    const localHi = voices.filter(v => v.localService && /^hi[-_]/i.test(v.lang));
+    const hi = voices.filter(v => /^hi[-_]/i.test(v.lang));
+    const pool = localHi.length ? localHi : (hi.length ? hi : []);
+    if (pool.length) {
+      // Prefer female-sounding names when available.
+      const female = pool.find(v => /female|woman|swara|madhur|heera|kalpana/i.test(v.name));
+      return female || pool[0];
+    }
+    // No Hindi voice installed — fall through to English so TTS still works.
+  }
 
   const localEn = voices.filter(v => v.localService && /^en[-_]/i.test(v.lang));
   const en = voices.filter(v => /^en[-_]/i.test(v.lang));
@@ -150,7 +189,6 @@ export async function pickVoice() {
     const hit = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
     if (hit) return hit;
   }
-  // Fall back to the first female-sounding voice we can spot by name hint
   const female = pool.find(v => /female|woman|zira|samantha|karen|aria|jenny|eva/i.test(v.name));
   return female || pool[0];
 }

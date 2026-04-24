@@ -22,6 +22,7 @@ import Team from './pages/Team';
 import Analytics from './pages/Analytics';
 import Security from './pages/Security';
 import AuditLog from './pages/AuditLog';
+import Integrations from './pages/Integrations';
 import AcceptInvite from './pages/AcceptInvite';
 import ResetPassword from './pages/ResetPassword';
 
@@ -55,6 +56,7 @@ export default function App() {
           <Route path="/reports" element={<Reports />} />
           <Route path="/workflows" element={<Workflows />} />
           <Route path="/history" element={<History />} />
+          <Route path="/integrations" element={<Integrations />} />
           <Route path="/settings" element={<Settings />} />
           {/* Developer-mode pages (still routable even when hidden from nav) */}
           <Route path="/database" element={<Database />} />

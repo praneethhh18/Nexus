@@ -43,15 +43,30 @@ def _record_audio(duration: int = 5, sample_rate: int = 16000) -> Optional[str]:
         return None
 
 
-def _transcribe(wav_path: str) -> Optional[str]:
-    """Transcribe a WAV file using faster-whisper (local, no API)."""
+SUPPORTED_LANGUAGES = ("en", "hi", "auto")
+
+
+def _transcribe(wav_path: str, language: str = "en") -> Optional[str]:
+    """
+    Transcribe a WAV file using faster-whisper (local, no API).
+
+    language:
+        'en'   — English (default)
+        'hi'   — Hindi (Whisper handles natively)
+        'auto' — Let Whisper detect; useful for mixed-language users
+    """
+    if language not in SUPPORTED_LANGUAGES:
+        language = "en"
     try:
         from faster_whisper import WhisperModel
         model = WhisperModel("base", device="cpu", compute_type="int8")
-        segments, info = model.transcribe(wav_path, beam_size=5, language="en")
+        kwargs = {"beam_size": 5}
+        if language != "auto":
+            kwargs["language"] = language
+        segments, info = model.transcribe(wav_path, **kwargs)
         text = " ".join(s.text for s in segments).strip()
         if text:
-            logger.info(f"[Listener] Transcribed: '{text[:80]}'")
+            logger.info(f"[Listener] Transcribed ({language}): '{text[:80]}'")
             return text
         return None
     except Exception as e:
