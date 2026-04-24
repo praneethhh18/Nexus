@@ -74,7 +74,10 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install
-        run: npm ci
+        # Prefer `npm ci` for deterministic installs, but fall back to
+        # `npm install` when the lock file drifts (e.g. a maintainer's
+        # Windows-generated lock misses Linux-only optional deps).
+        run: npm ci || npm install --no-audit --no-fund
 
       - name: Lint
         run: npm run lint --if-present
