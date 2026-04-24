@@ -116,6 +116,8 @@ def _invoke_claude_tools(
         redactions=len(mapping),
         metadata={"mode": "tools", "tool_count": len(tools)},
     )
+    privacy.note_call("claude", cloud=True, redactions=len(mapping),
+                      kinds=privacy.kind_counts(mapping))
     try:
         kwargs = {
             "model": CLAUDE_MODEL,
@@ -210,6 +212,7 @@ def _invoke_ollama_tools(
     system: str,
     max_tokens: int,
 ) -> Dict[str, Any]:
+    privacy.note_call("ollama", cloud=False, redactions=0)
     tool_desc_lines = []
     for t in tools:
         schema = t.get("input_schema", {})

@@ -42,6 +42,60 @@ function parseSlash(input) {
   return { match, args: rest.join(' ').trim() };
 }
 
+// ── Privacy badge ───────────────────────────────────────────────────────────
+// Shown under an assistant message to make data-handling visible: whether the
+// reply came from the local model or the cloud, and if cloud, how many PII
+// values were redacted before the prompt left the machine.
+function PrivacyBadge({ stats }) {
+  if (!stats) return null;
+  const cloud = (stats.cloud_calls || 0) > 0;
+  const local = (stats.local_calls || 0) > 0;
+  if (!cloud && !local) return null;
+
+  const kinds = stats.by_kind || {};
+  const kindList = Object.entries(kinds)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${n} ${k.toLowerCase()}`)
+    .join(', ');
+
+  const color = cloud
+    ? 'var(--color-info)'
+    : 'var(--color-ok)';
+  const bg = cloud
+    ? 'color-mix(in srgb, var(--color-info) 10%, transparent)'
+    : 'color-mix(in srgb, var(--color-ok) 10%, transparent)';
+  const border = cloud
+    ? 'color-mix(in srgb, var(--color-info) 28%, transparent)'
+    : 'color-mix(in srgb, var(--color-ok) 28%, transparent)';
+
+  let label;
+  if (cloud && stats.redactions > 0) {
+    label = `Cloud · ${stats.redactions} value${stats.redactions === 1 ? '' : 's'} redacted`;
+  } else if (cloud) {
+    label = 'Cloud · no PII detected';
+  } else {
+    label = 'Local · nothing left the machine';
+  }
+
+  return (
+    <div
+      title={kindList ? `Redacted: ${kindList}` : (cloud ? 'Prompt sent to cloud provider' : 'Handled entirely by local Ollama')}
+      style={{
+        marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6,
+        fontSize: 10, fontWeight: 600, letterSpacing: 0.3,
+        padding: '2px 8px', borderRadius: 'var(--r-pill)',
+        color, background: bg, border: `1px solid ${border}`,
+      }}
+    >
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%',
+        background: color, boxShadow: `0 0 6px ${color}`,
+      }} />
+      {label}
+    </div>
+  );
+}
+
 const QUICK = [
   { label: 'Revenue by Region', query: 'Show me revenue by region' },
   { label: 'Company Policy', query: 'What does our company policy say about remote work?' },
@@ -563,6 +617,7 @@ export default function Chat() {
                 {msg.sources_used?.length > 0 && (
                   <div className="msg-sources">{msg.sources_used.map((s, j) => <div key={j} className="msg-source">{s}</div>)}</div>
                 )}
+                {msg.role === 'assistant' && msg.privacy && <PrivacyBadge stats={msg.privacy} />}
                 {msg.timestamp && <div className="msg-time">{msg.timestamp}</div>}
               </div>
               {msg.role === 'user' && <div className="msg-avatar human">U</div>}

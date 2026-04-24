@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity, Play } from 'lucide-react';
-import { listPersonas, renamePersona, listActivity, runAgent } from '../services/agents';
+import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity, Play,
+         Pause, PlayCircle, AlertTriangle, ShieldCheck, History } from 'lucide-react';
+import { listPersonas, renamePersona, togglePersonaEnabled, listActivity, runAgent, listRuns } from '../services/agents';
 
 function formatWhen(iso) {
   if (!iso) return null;
@@ -23,13 +24,59 @@ function formatNextRun(iso) {
   } catch { return iso.slice(0, 16); }
 }
 
-function PersonaCard({ persona, onRenamed, onOpenSurface, onRanAgent }) {
+function LastRunChip({ lastRun, stats24h }) {
+  if (!lastRun) {
+    return <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>No runs yet</span>;
+  }
+  const st = lastRun.status;
+  const color = st === 'success' ? 'var(--color-ok)'
+              : st === 'error'   ? 'var(--color-err)'
+              : st === 'skipped' ? 'var(--color-text-dim)'
+              :                    'var(--color-warn)';
+  const bg = `color-mix(in srgb, ${color} 12%, transparent)`;
+  const when = lastRun.finished_at || lastRun.started_at;
+  return (
+    <span
+      title={lastRun.error || `Last run ${st} · ${lastRun.items_produced || 0} item(s)`}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        fontSize: 10, fontWeight: 600, padding: '2px 7px',
+        borderRadius: 'var(--r-pill)', color, background: bg,
+        border: `1px solid color-mix(in srgb, ${color} 28%, transparent)`,
+      }}
+    >
+      {st === 'error' ? <AlertTriangle size={9} /> : <ShieldCheck size={9} />}
+      {st === 'success' && `${lastRun.items_produced || 0} produced`}
+      {st === 'error'   && 'Last run failed'}
+      {st === 'skipped' && 'Paused'}
+      {st === 'running' && 'Running…'}
+      {stats24h?.error > 0 && st !== 'error' && (
+        <span style={{ marginLeft: 4, color: 'var(--color-err)' }}>· {stats24h.error} err 24h</span>
+      )}
+    </span>
+  );
+}
+
+function PersonaCard({ persona, onRenamed, onEnabledChanged, onOpenSurface, onRanAgent, onOpenRuns }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(persona.name);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [running, setRunning] = useState(false);
   const [runMsg, setRunMsg] = useState('');
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
+
+  const enabled = persona.enabled !== false;
+
+  const togglePause = async () => {
+    if (togglingEnabled) return;
+    setTogglingEnabled(true); setErr('');
+    try {
+      const updated = await togglePersonaEnabled(persona.agent_key, !enabled);
+      onEnabledChanged(updated);
+    } catch (e) { setErr(e.message || 'Toggle failed'); }
+    finally { setTogglingEnabled(false); }
+  };
 
   useEffect(() => { setValue(persona.name); }, [persona.name]);
 
@@ -76,7 +123,9 @@ function PersonaCard({ persona, onRenamed, onOpenSurface, onRanAgent }) {
     <div className="panel" style={{
       padding: 18,
       display: 'flex', flexDirection: 'column', gap: 12,
-      transition: 'border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out)',
+      transition: 'border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out), opacity var(--dur-fast)',
+      opacity: enabled ? 1 : 0.7,
+      borderStyle: enabled ? 'solid' : 'dashed',
     }}>
       {/* Header — avatar + name + role */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
@@ -158,22 +207,40 @@ function PersonaCard({ persona, onRenamed, onOpenSurface, onRanAgent }) {
         {persona.description}
       </p>
 
-      {/* Run Now + result line */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+      {/* Run Now + Pause/Resume + last-run chip */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <button
           onClick={run}
-          disabled={running}
+          disabled={running || !enabled}
           className="btn-primary"
-          style={{ fontSize: 12, padding: '6px 14px' }}
-          title={`Run ${persona.name} right now`}
+          style={{ fontSize: 12, padding: '6px 14px', opacity: enabled ? 1 : 0.5 }}
+          title={enabled ? `Run ${persona.name} right now` : 'Resume the agent to run it'}
         >
           {running
             ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Working…</>
             : <><Play size={11} /> Run now</>}
         </button>
-        {runMsg && (
-          <span style={{ fontSize: 11, color: 'var(--color-ok)' }}>{runMsg}</span>
-        )}
+        <button
+          onClick={togglePause}
+          disabled={togglingEnabled}
+          className="btn-ghost"
+          style={{ fontSize: 11, padding: '6px 10px' }}
+          title={enabled ? 'Pause the scheduled run' : 'Resume the scheduled run'}
+        >
+          {togglingEnabled
+            ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} />
+            : (enabled ? <><Pause size={11} /> Pause</> : <><PlayCircle size={11} /> Resume</>)}
+        </button>
+        <button
+          onClick={() => onOpenRuns(persona)}
+          className="btn-ghost"
+          style={{ fontSize: 11, padding: '6px 10px' }}
+          title="See recent runs"
+        >
+          <History size={11} /> History
+        </button>
+        <LastRunChip lastRun={persona.last_run} stats24h={persona.run_stats_24h} />
+        {runMsg && <span style={{ fontSize: 11, color: 'var(--color-ok)' }}>{runMsg}</span>}
       </div>
 
       {/* Activity strip */}
@@ -300,12 +367,111 @@ function ActivityRow({ event, onOpen }) {
   );
 }
 
+function RunsDrawer({ persona, onClose }) {
+  const [runs, setRuns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    listRuns({ agentKey: persona.agent_key, limit: 50 })
+      .then((r) => { if (!cancelled) setRuns(r.runs || []); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [persona.agent_key]);
+
+  const fmt = (iso) => iso ? new Date(iso.endsWith('Z') ? iso : iso + 'Z').toLocaleString() : '—';
+  const dur = (r) => {
+    if (!r.started_at || !r.finished_at) return '';
+    const ms = new Date(r.finished_at + (r.finished_at.endsWith('Z') ? '' : 'Z')) -
+               new Date(r.started_at  + (r.started_at.endsWith('Z')  ? '' : 'Z'));
+    return ms > 0 ? `${(ms / 1000).toFixed(1)}s` : '';
+  };
+  const statusColor = (s) => ({
+    success: 'var(--color-ok)',
+    error:   'var(--color-err)',
+    skipped: 'var(--color-text-dim)',
+    running: 'var(--color-warn)',
+  }[s] || 'var(--color-text-dim)');
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
+        zIndex: 100, display: 'flex', justifyContent: 'flex-end',
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="panel"
+        style={{
+          width: 'min(520px, 94vw)', height: '100%', overflowY: 'auto',
+          borderRadius: 0, padding: 20,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 15, color: 'var(--color-text)' }}>
+              {persona.name} — run history
+            </h3>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>
+              Last 50 runs, newest first
+            </div>
+          </div>
+          <button className="btn-ghost" onClick={onClose}><X size={14} /></button>
+        </div>
+        {loading && <div style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>Loading…</div>}
+        {!loading && runs.length === 0 && (
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+            No runs recorded yet. The agent will log here the next time it runs.
+          </div>
+        )}
+        {runs.map((r) => (
+          <div key={r.id} style={{
+            padding: '10px 0', borderBottom: '1px solid var(--color-border)',
+            display: 'flex', flexDirection: 'column', gap: 4,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 10, fontWeight: 700, textTransform: 'uppercase',
+                letterSpacing: 0.4, color: statusColor(r.status),
+              }}>{r.status}</span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
+                {r.trigger === 'manual' ? 'Run now' : 'Scheduled'}
+              </span>
+              <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginLeft: 'auto' }}>
+                {fmt(r.started_at)} · {dur(r)}
+              </span>
+            </div>
+            {r.items_produced > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                {r.items_produced} item{r.items_produced === 1 ? '' : 's'} produced
+              </div>
+            )}
+            {r.error && (
+              <div style={{
+                fontSize: 11, color: 'var(--color-err)',
+                background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+                padding: '6px 8px', borderRadius: 'var(--r-sm)',
+                fontFamily: 'var(--font-mono)', wordBreak: 'break-word',
+              }}>
+                {r.error}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Agents() {
   const [personas, setPersonas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
+  const [runsDrawer, setRunsDrawer] = useState(null);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -325,6 +491,9 @@ export default function Agents() {
   useEffect(() => { load(); loadActivity(); }, [load, loadActivity]);
 
   const onRenamed = (updated) => {
+    setPersonas(prev => prev.map(p => p.agent_key === updated.agent_key ? { ...p, ...updated } : p));
+  };
+  const onEnabledChanged = (updated) => {
     setPersonas(prev => prev.map(p => p.agent_key === updated.agent_key ? { ...p, ...updated } : p));
   };
 
@@ -350,8 +519,10 @@ export default function Agents() {
                 key={p.agent_key}
                 persona={p}
                 onRenamed={onRenamed}
+                onEnabledChanged={onEnabledChanged}
                 onOpenSurface={(path) => navigate(path)}
                 onRanAgent={() => { loadActivity(); load(); }}
+                onOpenRuns={(persona) => setRunsDrawer(persona)}
               />
             ))}
           </div>
@@ -418,6 +589,10 @@ export default function Agents() {
           team's vocabulary — they'll keep their role and behaviour, just wear the new name.
         </div>
       </div>
+
+      {runsDrawer && (
+        <RunsDrawer persona={runsDrawer} onClose={() => setRunsDrawer(null)} />
+      )}
     </div>
   );
 }

@@ -20,13 +20,14 @@ and `should_use_cloud(sensitive: bool)`.
 """
 from __future__ import annotations
 
+import contextvars
 import hashlib
 import json
 import os
 import re
 import time
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 from loguru import logger
 
 
@@ -44,6 +45,76 @@ AUDIT_CLOUD_CALLS: bool = _env_bool("AUDIT_CLOUD_CALLS", True)
 
 _ROOT = Path(__file__).parent.parent
 _AUDIT_PATH = _ROOT / "outputs" / "cloud_audit.jsonl"
+
+
+# ── Per-request stats (contextvar — safe across async / threads) ────────────
+# These power the "N values redacted before cloud" badge the chat UI shows.
+# A caller resets the stats at the start of a request, performs LLM work,
+# and reads the accumulator afterward.
+_STATS_VAR: contextvars.ContextVar[dict] = contextvars.ContextVar(
+    "privacy_stats", default=None
+)
+
+
+def _empty_stats() -> dict:
+    return {
+        "cloud_calls": 0,
+        "local_calls": 0,
+        "redactions": 0,
+        "by_kind": {},          # e.g. {"EMAIL": 3, "PHONE": 1}
+        "provider": None,       # last provider actually used
+        "kill_switch_blocked": False,
+        "sensitive_forced_local": False,
+    }
+
+
+def reset_stats() -> None:
+    """Start fresh stats for the current request."""
+    _STATS_VAR.set(_empty_stats())
+
+
+def get_stats() -> dict:
+    """Read a copy of the current request's privacy stats (never None)."""
+    s = _STATS_VAR.get()
+    return dict(s) if s else _empty_stats()
+
+
+def _record(**updates) -> None:
+    """Merge updates into the active stats dict (no-op if not initialised)."""
+    s = _STATS_VAR.get()
+    if s is None:
+        return
+    for k, v in updates.items():
+        if k == "by_kind":
+            for kind, n in (v or {}).items():
+                s["by_kind"][kind] = s["by_kind"].get(kind, 0) + n
+        elif k == "redactions":
+            s["redactions"] = s.get("redactions", 0) + int(v)
+        elif k in ("cloud_calls", "local_calls"):
+            s[k] = s.get(k, 0) + int(v)
+        else:
+            s[k] = v
+
+
+def note_call(provider: str, cloud: bool, redactions: int, kinds: Dict[str, int] | None = None):
+    """Record one LLM call against the active stats."""
+    _record(
+        provider=provider,
+        **({"cloud_calls": 1} if cloud else {"local_calls": 1}),
+        redactions=redactions,
+        by_kind=kinds or {},
+    )
+
+
+def note_forced_local(reason: str) -> None:
+    """Flag that cloud was requested but we routed to local instead."""
+    s = _STATS_VAR.get()
+    if s is None:
+        return
+    if reason == "kill_switch":
+        s["kill_switch_blocked"] = True
+    elif reason == "sensitive":
+        s["sensitive_forced_local"] = True
 
 
 # ── Redaction patterns ──────────────────────────────────────────────────────
@@ -68,6 +139,18 @@ _PATTERNS: list[Tuple[str, re.Pattern]] = [
     ("PATH",    re.compile(r"[A-Za-z]:\\Users\\[^\\\"'\s]+")),
     ("PATH",    re.compile(r"/Users/[^/\"'\s]+|/home/[^/\"'\s]+")),
 ]
+
+
+def kind_counts(mapping: Dict[str, str]) -> Dict[str, int]:
+    """Count redactions per kind (EMAIL, PHONE, ...) from a token mapping."""
+    out: Dict[str, int] = {}
+    for token in mapping.keys():
+        # token looks like "[EMAIL_3]" — extract the kind before the underscore
+        if token.startswith("[") and token.endswith("]"):
+            inside = token[1:-1]
+            kind = inside.rsplit("_", 1)[0] if "_" in inside else inside
+            out[kind] = out.get(kind, 0) + 1
+    return out
 
 
 def redact(text: str) -> Tuple[str, Dict[str, str]]:
@@ -129,8 +212,10 @@ def should_use_cloud(sensitive: bool, cloud_available: bool) -> bool:
     if not cloud_available:
         return False
     if not ALLOW_CLOUD_LLM:
+        note_forced_local("kill_switch")
         return False
     if sensitive:
+        note_forced_local("sensitive")
         return False
     return True
 

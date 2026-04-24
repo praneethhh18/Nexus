@@ -61,6 +61,8 @@ def _invoke_claude(prompt: str, system: str, max_tokens: int, temperature: float
     client = _get_claude()
     red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
     privacy.audit_cloud_call("claude", CLAUDE_MODEL, red_prompt, redactions=len(mapping))
+    privacy.note_call("claude", cloud=True, redactions=len(mapping),
+                      kinds=privacy.kind_counts(mapping))
     try:
         messages = [{"role": "user", "content": red_prompt}]
         kwargs = {"model": CLAUDE_MODEL, "max_tokens": max_tokens,
@@ -79,6 +81,8 @@ def _stream_claude(prompt: str, system: str, max_tokens: int) -> Generator[str, 
     red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
     privacy.audit_cloud_call("claude", CLAUDE_MODEL, red_prompt,
                              redactions=len(mapping), metadata={"mode": "stream"})
+    privacy.note_call("claude", cloud=True, redactions=len(mapping),
+                      kinds=privacy.kind_counts(mapping))
     try:
         messages = [{"role": "user", "content": red_prompt}]
         kwargs = {"model": CLAUDE_MODEL, "max_tokens": max_tokens, "messages": messages}
@@ -96,11 +100,13 @@ def _stream_claude(prompt: str, system: str, max_tokens: int) -> Generator[str, 
 def _invoke_ollama(prompt: str) -> str:
     from config.llm_config import get_llm
     llm = get_llm()
+    privacy.note_call("ollama", cloud=False, redactions=0)
     return llm.invoke(prompt)
 
 
 def _stream_ollama(prompt: str) -> Generator[str, None, None]:
     from config.llm_config import stream_generate
+    privacy.note_call("ollama", cloud=False, redactions=0)
     yield from stream_generate(prompt)
 
 

@@ -43,3 +43,9 @@ export const dismissNudge = (id) =>
   req(`/api/agents/nudges/${encodeURIComponent(id)}/dismiss`, { method: 'POST' });
 export const acceptNudge = (id) =>
   req(`/api/agents/nudges/${encodeURIComponent(id)}/accept`, { method: 'POST' });
+
+export const listRuns = ({ agentKey = null, limit = 50 } = {}) => {
+  const q = new URLSearchParams({ limit });
+  if (agentKey) q.set('agent_key', agentKey);
+  return req(`/api/agents/runs?${q}`);
+};

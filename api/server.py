@@ -396,7 +396,24 @@ def agents_activity(hours: int = 48, limit: int = 50,
 def agents_list_personas(ctx: dict = Depends(get_current_context)):
     """Return all 6 agent personas (name, role tag, description, last activity)."""
     from agents.personas import list_personas
-    return list_personas(ctx["business_id"])
+    from agents import run_log
+
+    personas = list_personas(ctx["business_id"])
+    # Attach last run + 24h summary so the UI can show success/error chips.
+    summary = run_log.summary(ctx["business_id"], hours=24)
+    for p in personas:
+        last = run_log.last_run(ctx["business_id"], p["agent_key"])
+        p["last_run"] = last
+        p["run_stats_24h"] = summary.get(p["agent_key"], {"success": 0, "error": 0, "skipped": 0})
+    return personas
+
+
+@app.get("/api/agents/runs")
+def agents_list_runs(agent_key: Optional[str] = None, limit: int = 50,
+                     ctx: dict = Depends(get_current_context)):
+    """Recent per-run log — what ran, when, and whether it succeeded."""
+    from agents import run_log
+    return {"runs": run_log.list_runs(ctx["business_id"], agent_key=agent_key, limit=limit)}
 
 
 class _PersonaPatch(BaseModel):
@@ -479,35 +496,52 @@ def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
     business_id = ctx["business_id"]
     user_id = ctx["user"]["id"]
 
-    try:
+    from agents import run_log
+    from agents.background.scheduler import _count_items
+
+    # Dispatch table — keeps per-agent result shaping local to each branch.
+    def _do_run():
         if agent_key == "morning_briefing":
             from agents.briefing import run_for_business
             result = run_for_business(business_id)
-            return {"ok": True, "agent_key": agent_key,
-                    "detail": {"narrative_mode": result.get("mode"),
-                               "delivered": result.get("delivered_channels", [])}}
+            return result, {"narrative_mode": result.get("mode"),
+                            "delivered": result.get("delivered_channels", [])}
         if agent_key == "invoice_reminder":
             from agents.background.invoice_reminder import run_for_business
-            return {"ok": True, "agent_key": agent_key, "detail": run_for_business(business_id)}
+            result = run_for_business(business_id)
+            return result, result
         if agent_key == "stale_deal_watcher":
             from agents.background.stale_deal_watcher import run_for_business
-            return {"ok": True, "agent_key": agent_key, "detail": run_for_business(business_id)}
+            result = run_for_business(business_id)
+            return result, result
         if agent_key == "meeting_prep":
             from agents.background.meeting_prep import run_for_user
-            return {"ok": True, "agent_key": agent_key, "detail": run_for_user(user_id, business_id)}
+            result = run_for_user(user_id, business_id)
+            return result, result
         if agent_key == "email_triage":
             from agents.email_triage import run_for_business
-            return {"ok": True, "agent_key": agent_key, "detail": run_for_business(business_id)}
+            result = run_for_business(business_id)
+            return result, result
         if agent_key == "memory_consolidate":
             from agents.summarizer import consolidate_business_memory
-            return {"ok": True, "agent_key": agent_key,
-                    "detail": consolidate_business_memory(business_id, apply_changes=True)}
+            result = consolidate_business_memory(business_id, apply_changes=True)
+            return result, result
+        raise HTTPException(404, f"Unknown agent: {agent_key}")
+
+    run_id = run_log.start(business_id, agent_key, trigger="manual")
+    try:
+        result, detail = _do_run()
+        run_log.finish(run_id, status="success",
+                       items_produced=_count_items(result or {}))
+        return {"ok": True, "agent_key": agent_key, "detail": detail, "run_id": run_id}
+    except HTTPException:
+        run_log.finish(run_id, status="error", error="unknown agent")
+        raise
     except Exception as e:
         from loguru import logger
         logger.exception(f"[AgentRun] {agent_key} failed: {e}")
+        run_log.finish(run_id, status="error", error=str(e))
         raise HTTPException(500, f"{agent_key} failed: {e}")
-
-    raise HTTPException(404, f"Unknown agent: {agent_key}")
 
 
 @app.patch("/api/agents/personas/{agent_key}")
@@ -1269,6 +1303,9 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
             agent_messages.append({"role": role, "content": m.get("content", "")})
     agent_messages.append({"role": "user", "content": req.query})
 
+    from config import privacy as _privacy
+    _privacy.reset_stats()
+
     start = time.time()
     loop = asyncio.get_event_loop()
     try:
@@ -1291,6 +1328,7 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
             "stop_reason": "error",
         }
 
+    privacy_stats = _privacy.get_stats()
     duration_ms = int((time.time() - start) * 1000)
     ts = datetime.now().strftime("%H:%M")
 
@@ -1305,6 +1343,7 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
         "stop_reason": result.get("stop_reason"),
         "steps": result.get("steps"),
         "timestamp": ts,
+        "privacy": privacy_stats,
     }
 
     existing = load_messages(conv_id)
@@ -1567,6 +1606,9 @@ async def chat(req: ChatRequest, ctx: dict = Depends(get_current_context)):
     user = ctx["user"]
     business_id = ctx["business_id"]
 
+    from config import privacy as _privacy
+    _privacy.reset_stats()
+
     # Ensure conversation exists + belongs to this business
     conv_id = req.conversation_id
     if not conv_id:
@@ -1606,6 +1648,7 @@ async def chat(req: ChatRequest, ctx: dict = Depends(get_current_context)):
         "multi_agent": result_state.get("multi_agent", False),
         "agents_used": result_state.get("agents_used", []),
         "timestamp": datetime.now().strftime("%H:%M"),
+        "privacy": _privacy.get_stats(),
     }
 
     existing = load_messages(conv_id)

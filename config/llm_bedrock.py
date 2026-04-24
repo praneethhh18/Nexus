@@ -33,6 +33,8 @@ from typing import Any, Dict, Generator, List, Optional
 
 from loguru import logger
 
+from config import privacy
+
 
 # Nova models emit chain-of-thought inside <thinking>...</thinking> by default.
 # Strip them before the text reaches the user — and unwrap any <response>...</response>
@@ -220,16 +222,20 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     """Plain text prompt → text response. No tool use."""
     client = _get_client()
     model = fast_model_id() if fast else primary_model_id()
+    red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
+    privacy.audit_cloud_call("bedrock", model, red_prompt, redactions=len(mapping))
+    privacy.note_call("bedrock", cloud=True, redactions=len(mapping),
+                      kinds=privacy.kind_counts(mapping))
     kwargs = {
         "modelId": model,
-        "messages": [{"role": "user", "content": [{"text": prompt}]}],
+        "messages": [{"role": "user", "content": [{"text": red_prompt}]}],
         "inferenceConfig": {
             "maxTokens": max_tokens,
             "temperature": temperature,
         },
     }
-    if system:
-        kwargs["system"] = [{"text": system}]
+    if red_system:
+        kwargs["system"] = [{"text": red_system}]
     try:
         resp = client.converse(**kwargs)
     except Exception as e:
@@ -237,7 +243,7 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
         raise
     msg = resp.get("output", {}).get("message", {})
     parts = [b.get("text", "") for b in msg.get("content", []) if "text" in b]
-    return _clean_model_text("\n".join(parts))
+    return privacy.restore(_clean_model_text("\n".join(parts)), mapping)
 
 
 def stream(prompt: str, system: str = "", max_tokens: int = 1024,
@@ -245,13 +251,18 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
     """Stream text tokens as they're produced."""
     client = _get_client()
     model = fast_model_id() if fast else primary_model_id()
+    red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
+    privacy.audit_cloud_call("bedrock", model, red_prompt,
+                             redactions=len(mapping), metadata={"mode": "stream"})
+    privacy.note_call("bedrock", cloud=True, redactions=len(mapping),
+                      kinds=privacy.kind_counts(mapping))
     kwargs = {
         "modelId": model,
-        "messages": [{"role": "user", "content": [{"text": prompt}]}],
+        "messages": [{"role": "user", "content": [{"text": red_prompt}]}],
         "inferenceConfig": {"maxTokens": max_tokens, "temperature": 0.1},
     }
-    if system:
-        kwargs["system"] = [{"text": system}]
+    if red_system:
+        kwargs["system"] = [{"text": red_system}]
     try:
         resp = client.converse_stream(**kwargs)
     except Exception as e:
@@ -295,12 +306,12 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
             buffer = buffer[start + len("<thinking>"):]
             in_thinking = True
         if emit:
-            yield emit
+            yield privacy.restore(emit, mapping) if mapping else emit
     # Flush any remaining tail (won't contain a half-tag at this point)
     if buffer and not in_thinking:
         tail = _clean_model_text(buffer)
         if tail:
-            yield tail
+            yield privacy.restore(tail, mapping) if mapping else tail
 
 
 def invoke_with_tools(
