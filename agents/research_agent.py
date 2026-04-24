@@ -117,3 +117,146 @@ def research(subject: str, context: str = "", save_as_interaction: bool = False,
             result["interaction_error"] = str(e)
 
     return result
+
+
+# ── Structured research reports ─────────────────────────────────────────────
+def structured_research(subject: str, context: str = "") -> Dict[str, Any]:
+    """
+    Research wrapper that returns a structured report instead of free text.
+
+    Shape:
+        {
+          subject:     str,
+          summary:     str       — one-sentence executive summary
+          findings:    [         — 3-5 bullet points
+             {title, detail}
+          ],
+          sources:     [str]     — short labels for where info came from
+          next_steps:  [str]     — 2-3 suggested actions for the user
+          raw:         str       — original brief for fallback display
+        }
+
+    The LLM is asked to return pipe-separated fields so parsing is robust
+    without requiring tool-use. Falls back to the raw brief if parsing fails.
+    """
+    base = research(subject, context)
+    brief = base.get("brief", "") or ""
+    raw_findings = base.get("raw_findings", "") or ""
+
+    schema_prompt = (
+        f"You previously wrote this brief about '{subject}':\n\n{brief[:1500]}\n\n"
+        f"Raw findings: {raw_findings[:1500]}\n\n"
+        "Re-output the brief as structured fields, one per line:\n"
+        "SUMMARY: <one sentence>\n"
+        "FINDING: <title> || <detail>\n"
+        "FINDING: <title> || <detail>\n"
+        "FINDING: <title> || <detail>\n"
+        "SOURCE: <short label>\n"
+        "NEXT: <suggested action>\n"
+        "NEXT: <suggested action>\n\n"
+        "Each FINDING must have a title and detail separated by ' || '. "
+        "Do NOT include any other text, explanations, or headings."
+    )
+    try:
+        text = llm_invoke(schema_prompt,
+                          system="You output structured reports. No extra text.",
+                          max_tokens=700, temperature=0.1)
+    except Exception as e:
+        logger.warning(f"[Research] structured re-parse failed: {e}")
+        text = ""
+
+    summary, findings, sources, next_steps = _parse_structured(text or brief)
+    # If parsing produced nothing, fall back to using brief as summary.
+    if not summary:
+        summary = (brief.split("\n", 1)[0] or brief)[:220]
+
+    return {
+        "subject":    subject,
+        "summary":    summary,
+        "findings":   findings,
+        "sources":    sources,
+        "next_steps": next_steps,
+        "raw":        brief,
+    }
+
+
+def _parse_structured(text: str):
+    """Parse the pipe-separated schema into lists. Tolerant of minor format drift."""
+    summary = ""
+    findings: list = []
+    sources: list = []
+    next_steps: list = []
+    for raw in (text or "").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        upper = line.upper()
+        if upper.startswith("SUMMARY:"):
+            summary = line.split(":", 1)[1].strip()
+        elif upper.startswith("FINDING:"):
+            body = line.split(":", 1)[1].strip()
+            if "||" in body:
+                title, detail = body.split("||", 1)
+                findings.append({"title": title.strip(), "detail": detail.strip()})
+            else:
+                findings.append({"title": body[:80], "detail": ""})
+        elif upper.startswith("SOURCE:"):
+            sources.append(line.split(":", 1)[1].strip())
+        elif upper.startswith("NEXT:"):
+            next_steps.append(line.split(":", 1)[1].strip())
+    return summary, findings, sources, next_steps
+
+
+def save_report_to_kb(business_id: str, report: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Write a structured research report into the RAG knowledge base so future
+    queries can cite it. Returns {document_id, chunks_added}.
+
+    The vector store keeps its own copy; we also log a `nexus_documents` row
+    so it shows on the Documents page.
+    """
+    from rag import vector_store
+    import uuid as _uuid
+    import json as _json
+    import sqlite3 as _sq
+    from config.settings import DB_PATH
+
+    subject = (report.get("subject") or "Research").strip()[:200]
+    body_parts = [f"# Research: {subject}", ""]
+    if report.get("summary"):
+        body_parts += ["## Summary", report["summary"], ""]
+    if report.get("findings"):
+        body_parts += ["## Findings"]
+        for f in report["findings"]:
+            body_parts.append(f"- **{f.get('title','')}** — {f.get('detail','')}")
+        body_parts.append("")
+    if report.get("sources"):
+        body_parts += ["## Sources"] + [f"- {s}" for s in report["sources"]] + [""]
+    if report.get("next_steps"):
+        body_parts += ["## Next steps"] + [f"- {s}" for s in report["next_steps"]] + [""]
+    body = "\n".join(body_parts)
+
+    doc_id = f"research-{_uuid.uuid4().hex[:10]}"
+    added = vector_store.add_documents(
+        texts=[body],
+        metadatas=[{"business_id": business_id, "source": "research",
+                    "title": f"Research: {subject}"}],
+        ids=[doc_id],
+    )
+
+    try:
+        conn = _sq.connect(DB_PATH)
+        conn.execute(
+            "INSERT INTO nexus_documents "
+            "(id, business_id, template_key, title, format, file_path, "
+            " variables, created_at, created_by) "
+            "VALUES (?, ?, 'research_report', ?, 'md', '', ?, ?, 'system')",
+            (doc_id, business_id, f"Research: {subject}",
+             _json.dumps({"subject": subject}), __import__("datetime").datetime.utcnow().isoformat()),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning(f"[Research] save_report_to_kb: document row write failed: {e}")
+
+    return {"document_id": doc_id, "chunks_added": added or 1}

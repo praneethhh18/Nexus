@@ -1303,6 +1303,164 @@ def bulk_stage_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
     return {"updated": n}
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#   RAG collections + document expiry (2.6)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/rag/collections")
+def rag_collections_list(ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    return rag_collections.list_collections(ctx["business_id"])
+
+
+@app.post("/api/rag/collections")
+def rag_collections_create(body: dict, ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    try:
+        return rag_collections.create_collection(
+            ctx["business_id"],
+            name=body.get("name", ""),
+            description=body.get("description", ""),
+            color=body.get("color"),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/rag/collections/{collection_id}")
+def rag_collections_delete(collection_id: str, ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    rag_collections.delete_collection(ctx["business_id"], collection_id)
+    return {"ok": True}
+
+
+@app.put("/api/rag/documents/{document_id}/collection")
+def rag_assign_document(document_id: str, body: dict,
+                        ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    try:
+        rag_collections.assign_document(
+            ctx["business_id"], document_id, body.get("collection_id"),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.put("/api/rag/documents/{document_id}/expiry")
+def rag_set_expiry(document_id: str, body: dict,
+                   ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    try:
+        rag_collections.set_expiry(
+            ctx["business_id"], document_id, body.get("expires_at"),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    return {"ok": True}
+
+
+@app.get("/api/rag/documents/stale")
+def rag_stale_documents(ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    return {"documents": rag_collections.stale_documents(ctx["business_id"])}
+
+
+@app.post("/api/rag/documents/{document_id}/reingest")
+def rag_reingest_document(document_id: str, ctx: dict = Depends(get_current_context)):
+    from api import rag_collections
+    try:
+        return rag_collections.mark_for_reingest(ctx["business_id"], document_id)
+    except KeyError:
+        raise HTTPException(404, "Document not found")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Saved queries + templates (2.7)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/saved-queries")
+def saved_queries_list(ctx: dict = Depends(get_current_context)):
+    from api import saved_queries
+    return saved_queries.list_queries(ctx["business_id"])
+
+
+@app.post("/api/saved-queries")
+def saved_queries_create(body: dict, ctx: dict = Depends(get_current_context)):
+    from api import saved_queries
+    try:
+        return saved_queries.create_query(ctx["business_id"], body)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/saved-queries/templates")
+def saved_queries_templates(ctx: dict = Depends(get_current_context)):
+    from api import saved_queries
+    return saved_queries.list_templates()
+
+
+@app.post("/api/saved-queries/from-template")
+def saved_queries_from_template(body: dict, ctx: dict = Depends(get_current_context)):
+    from api import saved_queries
+    try:
+        return saved_queries.create_from_template(
+            ctx["business_id"], body.get("template_key") or "",
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.patch("/api/saved-queries/{query_id}")
+def saved_queries_update(query_id: str, body: dict,
+                         ctx: dict = Depends(get_current_context)):
+    from api import saved_queries
+    try:
+        return saved_queries.update_query(ctx["business_id"], query_id, body)
+    except KeyError:
+        raise HTTPException(404, "Saved query not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/saved-queries/{query_id}")
+def saved_queries_delete(query_id: str, ctx: dict = Depends(get_current_context)):
+    from api import saved_queries
+    saved_queries.delete_query(ctx["business_id"], query_id)
+    return {"ok": True}
+
+
+@app.post("/api/saved-queries/{query_id}/record-run")
+def saved_queries_record_run(query_id: str, ctx: dict = Depends(get_current_context)):
+    """Called by the SQL runner after a saved query is executed."""
+    from api import saved_queries
+    saved_queries.record_run(ctx["business_id"], query_id)
+    return {"ok": True}
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Research agent — structured reports + save to knowledge base (2.9)
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.post("/api/research/structured")
+def research_structured(body: dict, ctx: dict = Depends(get_current_context)):
+    from agents.research_agent import structured_research
+    subject = (body.get("subject") or "").strip()
+    if not subject:
+        raise HTTPException(400, "subject is required")
+    try:
+        return structured_research(subject, context=(body.get("context") or ""))
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/research/save-to-kb")
+def research_save_to_kb(body: dict, ctx: dict = Depends(get_current_context)):
+    """Save a structured research report into the RAG knowledge base."""
+    from agents.research_agent import save_report_to_kb
+    report = body.get("report") or {}
+    if not report.get("subject"):
+        raise HTTPException(400, "report.subject is required")
+    return save_report_to_kb(ctx["business_id"], report)
+
+
 @app.get("/api/suggestions/{entity_type}/{entity_id}")
 def suggestions_for_entity_api(entity_type: str, entity_id: str,
                                ctx: dict = Depends(get_current_context)):

@@ -182,6 +182,14 @@ def _get_conn() -> sqlite3.Connection:
         created_by TEXT
     )""")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_docs_biz ON {DOCS_TABLE}(business_id, created_at)")
+    # Additive migration for RAG collections + document expiry — safe to re-run.
+    for col, decl in [
+        ("collection_id", "TEXT"),
+        ("expires_at",    "TEXT"),
+    ]:
+        existing = [r[1] for r in conn.execute(f"PRAGMA table_info({DOCS_TABLE})").fetchall()]
+        if col not in existing:
+            conn.execute(f"ALTER TABLE {DOCS_TABLE} ADD COLUMN {col} {decl}")
     conn.commit()
     return conn
 
