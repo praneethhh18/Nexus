@@ -5,7 +5,7 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'playwright-report', 'test-results']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
@@ -15,6 +15,9 @@ export default defineConfig([
     ],
     languageOptions: {
       ecmaVersion: 2020,
+      // Application code runs in the browser. Node-only files
+      // (configs, Playwright specs) get their own block below with
+      // Node + test globals added.
       globals: globals.browser,
       parserOptions: {
         ecmaVersion: 'latest',
@@ -48,6 +51,24 @@ export default defineConfig([
       // on patterns like `Date.now()` for id generation. Warn, don't error.
       'react-hooks/purity':      'warn',
       'react-hooks/immutability': 'warn',
+    },
+  },
+
+  // Node-side files — Vite + Playwright configs and the E2E spec folder all
+  // run under Node, not in the browser. They need `process`, `__dirname`,
+  // plus Playwright's test globals. Without this block the lint step trips
+  // on `process.env.CI` etc.
+  {
+    files: [
+      '**/vite.config.{js,mjs}',
+      '**/playwright.config.{js,mjs}',
+      'e2e/**/*.{js,mjs}',
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.browser, // specs use `window`, `localStorage`
+      },
     },
   },
 ])
