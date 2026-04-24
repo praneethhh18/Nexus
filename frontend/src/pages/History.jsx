@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Star, Play, Trash2, Clock } from 'lucide-react';
 import { getHistory, toggleStar, deleteHistoryEntry } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import EmptyState from '../components/EmptyState';
 
 export default function History() {
   const [data, setData] = useState({ queries: [], stats: {} });
@@ -42,9 +43,13 @@ export default function History() {
         </div>
 
         {data.queries.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-            <Clock size={28} style={{ margin: '0 auto 8px' }} /><p style={{ fontSize: 13 }}>No queries found</p>
-          </div>
+          <EmptyState
+            icon={Clock}
+            title="No query history yet"
+            description="Every question you ask in Chat shows up here with its intent, tools used, and a replay button. Start by asking something in Chat."
+            primaryLabel="Go to chat"
+            onPrimary={() => navigate('/chat')}
+          />
         ) : data.queries.map(q => (
           <div key={q.id} className="history-item">
             <div className="history-query">{q.query}</div>

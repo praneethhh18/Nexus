@@ -396,10 +396,13 @@ export default function CRM() {
 
         {tab === 'companies' && (
           companies.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-              <Building2 size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <p style={{ fontSize: 13 }}>No companies yet. Click "Add company".</p>
-            </div>
+            <EmptyState
+              icon={Building2}
+              title="No companies yet"
+              description="Add the companies you sell to or work with — deals and contacts hang off them."
+              primaryLabel="Add company"
+              onPrimary={() => setModal({ kind: 'company', record: null })}
+            />
           ) : (
             <div className="table-panel">
               <table className="data-table">
@@ -426,10 +429,13 @@ export default function CRM() {
 
         {tab === 'deals' && (
           deals.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-              <Briefcase size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <p style={{ fontSize: 13 }}>No deals yet. Click "Add deal" — you can drag deals between stages.</p>
-            </div>
+            <EmptyState
+              icon={Briefcase}
+              title="No deals in the pipeline"
+              description="Create your first deal — Arjun will flag it as stale if it hasn't moved in 2+ weeks, so the pipeline stays alive."
+              primaryLabel="Add deal"
+              onPrimary={() => setModal({ kind: 'deal', record: null })}
+            />
           ) : (
             <div style={{ display: 'flex', gap: 10, minHeight: 400 }}>
               {DEAL_STAGES.map((s) => (

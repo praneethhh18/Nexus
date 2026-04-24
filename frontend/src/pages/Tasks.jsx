@@ -1,8 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, STATUSES, PRIORITIES } from '../services/tasks';
+import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
+import { TagPicker, TagChips } from '../components/TagChips';
+import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
+
+const RECURRENCES = ['none', 'daily', 'weekly', 'monthly'];
 
 const PRIORITY_COLORS = { urgent: 'var(--color-err)', high: 'var(--color-warn)', normal: 'var(--color-info)', low: 'var(--color-text-dim)' };
 const STATUS_COLORS = { open: 'var(--color-text-dim)', in_progress: 'var(--color-warn)', done: 'var(--color-ok)', cancelled: 'var(--color-text-dim)' };
@@ -46,7 +51,7 @@ function Modal({ title, onClose, children }) {
 function TaskForm({ initial, onSubmit, onCancel }) {
   const [f, setF] = useState({
     title: '', description: '', priority: 'normal', status: 'open',
-    due_date: '', tags: '', ...(initial || {}),
+    due_date: '', tags: '', recurrence: 'none', ...(initial || {}),
   });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
   return (
@@ -77,10 +82,27 @@ function TaskForm({ initial, onSubmit, onCancel }) {
           <input className="field-input" type="date" value={f.due_date || ''} onChange={(e) => set('due_date', e.target.value)} />
         </div>
       </div>
-      <div style={{ marginTop: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Tags</label>
-        <input className="field-input" placeholder="comma-separated" value={f.tags} onChange={(e) => set('tags', e.target.value)} />
+      <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Legacy tags (text)</label>
+          <input className="field-input" placeholder="comma-separated" value={f.tags} onChange={(e) => set('tags', e.target.value)} />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>
+            <Repeat size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
+            Repeats
+          </label>
+          <select className="field-select" value={f.recurrence || 'none'} onChange={(e) => set('recurrence', e.target.value)} style={{ width: '100%' }}>
+            {RECURRENCES.map(r => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </div>
       </div>
+      {initial?.id && (
+        <div style={{ marginTop: 10 }}>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Tags</label>
+          <TagPicker entityType="task" entityId={initial.id} />
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary">{initial ? 'Save' : 'Add Task'}</button>
@@ -89,15 +111,18 @@ function TaskForm({ initial, onSubmit, onCancel }) {
   );
 }
 
-function TaskRow({ task, onToggle, onEdit, onDelete }) {
+function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, onDelete }) {
   const done = task.status === 'done';
   const overdue = task.due_date && task.due_date < todayStr() && !done && task.status !== 'cancelled';
+  const isRecurring = task.recurrence && task.recurrence !== 'none';
   return (
     <div className="panel" style={{
       display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
       opacity: done ? 0.55 : 1,
       borderLeft: `3px solid ${PRIORITY_COLORS[task.priority] || 'var(--color-text-dim)'}`,
+      background: selected ? 'color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-2))' : undefined,
     }}>
+      <BulkCheckbox checked={selected} onChange={() => onToggleSelect(task.id)} title="Select for bulk action" />
       <button onClick={() => onToggle(task)} style={{ background: 'none', border: 'none', color: done ? 'var(--color-ok)' : 'var(--color-text-dim)', cursor: 'pointer' }}>
         {done ? <CheckSquare size={18} /> : <Square size={18} />}
       </button>
@@ -106,10 +131,12 @@ function TaskRow({ task, onToggle, onEdit, onDelete }) {
           fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
           textDecoration: done ? 'line-through' : 'none',
           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          display: 'flex', alignItems: 'center', gap: 6,
         }}>
+          {isRecurring && <Repeat size={11} color="var(--color-accent)" title={`Repeats ${task.recurrence}`} />}
           {task.title}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 2, fontSize: 10, color: 'var(--color-text-dim)' }}>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 2, fontSize: 10, color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
           <span style={{ color: PRIORITY_COLORS[task.priority], fontWeight: 600 }}>{task.priority}</span>
           <span style={{ color: STATUS_COLORS[task.status] }}>{task.status.replace('_', ' ')}</span>
           {task.due_date && (
@@ -117,6 +144,7 @@ function TaskRow({ task, onToggle, onEdit, onDelete }) {
               <Calendar size={10} /> {isoToDateLabel(task.due_date)}
             </span>
           )}
+          {tagChips && tagChips.length > 0 && <TagChips tags={tagChips} size="xs" />}
           {task.tags && <span>· {task.tags}</span>}
         </div>
       </div>
@@ -135,6 +163,11 @@ export default function Tasks() {
   const [dueWindow, setDueWindow] = useState('');
   const [modal, setModal] = useState(null); // { record: task | null }
   const [msg, setMsg] = useState('');
+  const [tagsByTask, setTagsByTask] = useState({});
+  const [undoToast, setUndoToast] = useState(null);
+  const undoTimerRef = useRef(null);
+
+  const selection = useBulkSelection(tasks);
 
   const reload = useCallback(async () => {
     try {
@@ -144,6 +177,15 @@ export default function Tasks() {
       const [list, s] = await Promise.all([listTasks(opts), taskSummary(false)]);
       setTasks(list);
       setSummary(s);
+      // Fetch tag chips for all visible tasks in one batch
+      if (list.length > 0) {
+        try {
+          const map = await bulkTagsFor('task', list.map(t => t.id));
+          setTagsByTask(map);
+        } catch { setTagsByTask({}); }
+      } else {
+        setTagsByTask({});
+      }
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [filter, dueWindow]);
 
@@ -179,6 +221,52 @@ export default function Tasks() {
       await deleteTask(t.id);
       reload();
     } catch (e) { flash(`Failed: ${e.message}`); }
+  };
+
+  const doBulkDelete = async () => {
+    const ids = Array.from(selection.selected);
+    if (ids.length === 0) return;
+    if (!confirm(`Delete ${ids.length} task${ids.length === 1 ? '' : 's'}?`)) return;
+    // Snapshot for undo
+    const snapshot = tasks.filter(t => ids.includes(t.id));
+    try {
+      await bulkDeleteTasks(ids);
+      selection.clear();
+      showUndo(
+        `${ids.length} task${ids.length === 1 ? '' : 's'} deleted`,
+        async () => {
+          // Undo = re-create each snapshotted task from its fields
+          for (const t of snapshot) {
+            try {
+              await createTask({
+                title: t.title, description: t.description, status: t.status,
+                priority: t.priority, due_date: t.due_date, tags: t.tags,
+                recurrence: t.recurrence || 'none',
+              });
+            } catch {}
+          }
+          reload();
+        },
+      );
+      reload();
+    } catch (e) { flash(`Bulk delete failed: ${e.message}`); }
+  };
+
+  const doBulkStatus = async (status) => {
+    const ids = Array.from(selection.selected);
+    if (ids.length === 0) return;
+    try {
+      await bulkTaskStatus(ids, status);
+      selection.clear();
+      flash(`Marked ${ids.length} task${ids.length === 1 ? '' : 's'} as ${status}`);
+      reload();
+    } catch (e) { flash(`Bulk update failed: ${e.message}`); }
+  };
+
+  const showUndo = (message, onUndo) => {
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current);
+    setUndoToast({ message, onUndo });
+    undoTimerRef.current = setTimeout(() => setUndoToast(null), 5000);
   };
 
   return (
@@ -231,6 +319,22 @@ export default function Tasks() {
         ))}
       </div>
 
+      {/* Select-all strip — only shows when there are tasks */}
+      {tasks.length > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '6px 24px', fontSize: 11, color: 'var(--color-text-dim)',
+        }}>
+          <BulkCheckbox
+            checked={selection.all}
+            indeterminate={selection.some}
+            onChange={() => selection.toggleAll()}
+            title="Select all visible"
+          />
+          <span>Select all visible ({tasks.length})</span>
+        </div>
+      )}
+
       <div style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tasks.length === 0 ? (
           <EmptyState
@@ -243,14 +347,39 @@ export default function Tasks() {
             onSecondary={() => window.location.assign('/chat')}
           />
         ) : (
-          tasks.map((t) => (
-            <TaskRow key={t.id} task={t}
-              onToggle={handleToggle}
-              onEdit={(t) => setModal({ record: t })}
-              onDelete={handleDelete} />
-          ))
+          <>
+            {tasks.map((t) => (
+              <TaskRow key={t.id} task={t}
+                selected={selection.isSelected(t.id)}
+                onToggleSelect={selection.toggle}
+                tagChips={tagsByTask[t.id] || []}
+                onToggle={handleToggle}
+                onEdit={(t) => setModal({ record: t })}
+                onDelete={handleDelete} />
+            ))}
+
+            <BulkActionBar count={selection.count} onCancel={selection.clear}>
+              <button onClick={() => doBulkStatus('done')} className="btn-ghost" style={{ fontSize: 11 }}>
+                Mark done
+              </button>
+              <button onClick={() => doBulkStatus('open')} className="btn-ghost" style={{ fontSize: 11 }}>
+                Reopen
+              </button>
+              <button onClick={doBulkDelete} className="btn-ghost" style={{ fontSize: 11, color: 'var(--color-err)' }}>
+                <Trash2 size={11} /> Delete
+              </button>
+            </BulkActionBar>
+          </>
         )}
       </div>
+
+      {undoToast && (
+        <UndoToast
+          message={undoToast.message}
+          onUndo={() => { undoToast.onUndo?.(); setUndoToast(null); }}
+          onClose={() => setUndoToast(null)}
+        />
+      )}
 
       {modal && (
         <Modal title={modal.record ? 'Edit task' : 'New task'} onClose={() => setModal(null)}>

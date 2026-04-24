@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy, Bell, Sparkles } from 'lucide-react';
 import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusiness, deleteBusiness } from '../services/api';
 import { getNotificationPrefs, setNotificationPrefs, reopenOnboarding } from '../services/onboarding';
+import { downloadFullExport } from '../services/tags';
+import { Download } from 'lucide-react';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
 import { getToken as getTok, getBusinessId as getBiz } from '../services/auth';
@@ -122,6 +124,7 @@ export default function Settings() {
 
         <NotificationPrefsPanel />
         <OnboardingReopenPanel />
+        <ExportPanel flash={flash} />
 
         {/* Developer Mode — moved to top as the master toggle */}
         <div className="panel" style={{ borderColor: devMode ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--color-border)' }}>
@@ -672,6 +675,38 @@ function NotificationPrefsPanel() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// ── Workspace export ────────────────────────────────────────────────────────
+function ExportPanel({ flash }) {
+  const [busy, setBusy] = useState(false);
+  const run = async () => {
+    setBusy(true);
+    try {
+      await downloadFullExport();
+      flash?.('Export downloaded.');
+    } catch (e) {
+      flash?.(`Export failed: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="panel" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Download size={16} color="var(--color-accent)" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+          Export my data
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+          Downloads a ZIP of every record owned by this business — contacts, tasks, invoices, documents, briefings, agent runs, and more. Your backup copy, portable anywhere.
+        </div>
+      </div>
+      <button onClick={run} disabled={busy} className="btn-ghost" style={{ fontSize: 12 }}>
+        {busy ? 'Building…' : 'Download ZIP'}
+      </button>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Brain, Plus, Pin, PinOff, Search, Trash2, Edit3, X, Sparkles } from 'lucide-react';
 import { listMemoryApi, addMemoryApi, updateMemoryApi, deleteMemoryApi } from '../services/agent';
+import EmptyState from '../components/EmptyState';
 import { getToken, getBusinessId } from '../services/auth';
 
 function Modal({ title, onClose, children }) {
@@ -155,11 +156,13 @@ export default function Memory() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {items.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-            <Brain size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p style={{ fontSize: 13 }}>No memories yet. Add things the agent should know about how you run this business.</p>
-            <p style={{ fontSize: 11, marginTop: 6 }}>e.g. <em>"Our pricing tiers are A: $5k/mo, B: $12k/mo."</em> or <em>"Slack alerts go to #sales-ops"</em></p>
-          </div>
+          <EmptyState
+            icon={Brain}
+            title="No memories yet"
+            description={'Teach the agents about how you run this business. Example: "Our pricing tiers are A: $5k/mo, B: $12k/mo" or "Slack alerts go to #sales-ops".'}
+            primaryLabel="Add memory"
+            onPrimary={() => setModal({ record: null })}
+          />
         ) : (
           items.map((m) => {
             const color = KIND_COLORS[m.kind] || 'var(--color-text-dim)';

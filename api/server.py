@@ -761,6 +761,92 @@ def notifications_delete_one(notif_id: str, ctx: dict = Depends(get_current_cont
     return {"ok": True}
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Tags — universal labels for any record type
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/tags")
+def tags_list_all(ctx: dict = Depends(get_current_context)):
+    """Every tag in the current business, with usage counts."""
+    from api import tags as _tags
+    return _tags.list_tags(ctx["business_id"])
+
+
+@app.post("/api/tags")
+def tags_create(body: dict, ctx: dict = Depends(get_current_context)):
+    """Create a tag (or return the existing one with the same name)."""
+    from api import tags as _tags
+    try:
+        return _tags.create_tag(
+            ctx["business_id"],
+            name=body.get("name", ""),
+            color=body.get("color"),
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/tags/{tag_id}")
+def tags_delete(tag_id: str, ctx: dict = Depends(get_current_context)):
+    from api import tags as _tags
+    _tags.delete_tag(ctx["business_id"], tag_id)
+    return {"ok": True}
+
+
+@app.get("/api/tags/for/{entity_type}/{entity_id}")
+def tags_for_entity(entity_type: str, entity_id: str,
+                    ctx: dict = Depends(get_current_context)):
+    from api import tags as _tags
+    try:
+        return _tags.tags_for(ctx["business_id"], entity_type, entity_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.put("/api/tags/for/{entity_type}/{entity_id}")
+def tags_set_for_entity(entity_type: str, entity_id: str, body: dict,
+                        ctx: dict = Depends(get_current_context)):
+    """Replace the entity's tags with `tag_ids`."""
+    from api import tags as _tags
+    tag_ids = body.get("tag_ids") or []
+    try:
+        return _tags.set_tags(ctx["business_id"], entity_type, entity_id, tag_ids)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/tags/bulk-for/{entity_type}")
+def tags_bulk_for(entity_type: str, body: dict,
+                  ctx: dict = Depends(get_current_context)):
+    """Fetch tags for many entities at once — used by list pages."""
+    from api import tags as _tags
+    ids = body.get("ids") or []
+    try:
+        return _tags.bulk_tags_for(ctx["business_id"], entity_type, ids)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Workspace export — download the whole business as a ZIP of CSVs
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/export/all")
+def export_all(ctx: dict = Depends(get_current_context)):
+    """Bundle every business-scoped table into a ZIP. Owner/admin only."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can export the full workspace")
+    from api import data_export
+    from fastapi.responses import Response
+    blob = data_export.build_export_zip(ctx["business_id"])
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return Response(
+        content=blob,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="nexusagent-export-{ts}.zip"',
+        },
+    )
+
+
 @app.get("/api/audit/export")
 def audit_log_export_csv(
     limit: int = 5000,
@@ -1124,6 +1210,23 @@ def update_task_api(task_id: str, body: dict, ctx: dict = Depends(get_current_co
 def delete_task_api(task_id: str, ctx: dict = Depends(get_current_context)):
     _tasks.delete_task(ctx["business_id"], task_id)
     return {"ok": True}
+
+
+@app.post("/api/tasks/bulk-delete")
+def bulk_delete_tasks_api(body: dict, ctx: dict = Depends(get_current_context)):
+    """Delete multiple tasks in one call. body = {ids: [...]}"""
+    ids = body.get("ids") or []
+    n = _tasks.bulk_delete(ctx["business_id"], ids)
+    return {"deleted": n}
+
+
+@app.post("/api/tasks/bulk-status")
+def bulk_status_tasks_api(body: dict, ctx: dict = Depends(get_current_context)):
+    """Change status on many tasks. body = {ids: [...], status: 'done'}"""
+    ids = body.get("ids") or []
+    status = body.get("status") or ""
+    n = _tasks.bulk_update_status(ctx["business_id"], ids, status)
+    return {"updated": n}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

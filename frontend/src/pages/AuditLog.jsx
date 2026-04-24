@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Activity, Search, Download, Check, X } from 'lucide-react';
 import { auditList } from '../services/security';
 import { getToken, getBusinessId } from '../services/auth';
+import EmptyState from '../components/EmptyState';
 
 function formatWhen(iso) {
   if (!iso) return '—';
@@ -83,10 +84,11 @@ export default function AuditLog() {
         {loading && rows.length === 0 ? (
           <p style={{ color: 'var(--color-text-dim)', fontSize: 12, textAlign: 'center' }}>Loading…</p>
         ) : rows.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-            <Activity size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p style={{ fontSize: 13 }}>No events match these filters.</p>
-          </div>
+          <EmptyState
+            icon={Activity}
+            title="No audit events match"
+            description="Every tool call by the AI shows up here — approvals, emails, SQL queries, report generation. Clear filters or wait for the next action."
+          />
         ) : (
           <div className="table-panel">
             <table className="data-table">

@@ -22,6 +22,7 @@ TASKS_TABLE = "nexus_tasks"
 
 STATUSES = ("open", "in_progress", "done", "cancelled")
 PRIORITIES = ("low", "normal", "high", "urgent")
+RECURRENCES = ("none", "daily", "weekly", "monthly")
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -48,6 +49,14 @@ def _get_conn() -> sqlite3.Connection:
     )""")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_tasks_biz ON {TASKS_TABLE}(business_id, status, due_date)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON {TASKS_TABLE}(assignee_id)")
+    # Additive migrations for recurring tasks — safe to re-run.
+    for col, decl in [
+        ("recurrence", "TEXT DEFAULT 'none'"),
+        ("recurrence_parent_id", "TEXT"),
+    ]:
+        existing = [r[1] for r in conn.execute(f"PRAGMA table_info({TASKS_TABLE})").fetchall()]
+        if col not in existing:
+            conn.execute(f"ALTER TABLE {TASKS_TABLE} ADD COLUMN {col} {decl}")
     conn.commit()
     return conn
 
@@ -97,6 +106,11 @@ def create_task(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
 
     due = _validate_due_date(data.get("due_date"))
 
+    recurrence = (data.get("recurrence") or "none").strip().lower()
+    if recurrence not in RECURRENCES:
+        raise HTTPException(400, f"Invalid recurrence. Must be one of: {', '.join(RECURRENCES)}")
+    recurrence_parent_id = data.get("recurrence_parent_id") or None
+
     # Optional CRM links — only validate if present
     from api import crm as _crm
     contact_id = data.get("contact_id") or None
@@ -120,14 +134,16 @@ def create_task(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
         contact_id, company_id, deal_id,
         _validate_text(data.get("tags", ""), "Tags", 300),
         _now(), _now(), None, user_id,
+        recurrence, recurrence_parent_id,
     )
     conn = _get_conn()
     try:
         conn.execute(
             f"INSERT INTO {TASKS_TABLE} "
             f"(id, business_id, title, description, status, priority, due_date, assignee_id, "
-            f"contact_id, company_id, deal_id, tags, created_at, updated_at, completed_at, created_by) "
-            f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row,
+            f"contact_id, company_id, deal_id, tags, created_at, updated_at, completed_at, created_by, "
+            f"recurrence, recurrence_parent_id) "
+            f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row,
         )
         conn.commit()
     finally:
@@ -222,7 +238,8 @@ def list_tasks(
 def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict:
     get_task(business_id, task_id)
     allowed = {"title", "description", "status", "priority", "due_date",
-               "assignee_id", "contact_id", "company_id", "deal_id", "tags"}
+               "assignee_id", "contact_id", "company_id", "deal_id", "tags",
+               "recurrence"}
     fields = {k: v for k, v in updates.items() if k in allowed}
     if not fields:
         raise HTTPException(400, "No editable fields provided")
@@ -231,6 +248,10 @@ def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict
         raise HTTPException(400, f"Invalid status. Must be one of: {', '.join(STATUSES)}")
     if "priority" in fields and fields["priority"] not in PRIORITIES:
         raise HTTPException(400, f"Invalid priority. Must be one of: {', '.join(PRIORITIES)}")
+    if "recurrence" in fields:
+        fields["recurrence"] = (fields["recurrence"] or "none").strip().lower()
+        if fields["recurrence"] not in RECURRENCES:
+            raise HTTPException(400, f"Invalid recurrence. Must be one of: {', '.join(RECURRENCES)}")
     if "due_date" in fields:
         fields["due_date"] = _validate_due_date(fields["due_date"])
     if "title" in fields:
@@ -270,6 +291,15 @@ def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict
         conn.commit()
     finally:
         conn.close()
+
+    # If this update just marked a recurring task as done, spawn the next
+    # occurrence so the user doesn't have to re-create it manually.
+    if fields.get("status") == "done":
+        try:
+            spawn_next_if_recurring(business_id, task_id)
+        except Exception as e:
+            logger.warning(f"[tasks] spawn_next_if_recurring failed for {task_id}: {e}")
+
     return get_task(business_id, task_id)
 
 
@@ -332,3 +362,117 @@ def task_summary(business_id: str, user_id: Optional[str] = None) -> Dict[str, A
         "open_total": open_total,
         "done_today": done_today,
     }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Bulk helpers — used by the list-page bulk action bar
+# ═══════════════════════════════════════════════════════════════════════════════
+def bulk_delete(business_id: str, task_ids: List[str]) -> int:
+    """Delete many tasks in one transaction. Returns count actually removed."""
+    if not task_ids:
+        return 0
+    placeholders = ",".join("?" for _ in task_ids)
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            f"DELETE FROM {TASKS_TABLE} "
+            f"WHERE business_id = ? AND id IN ({placeholders})",
+            [business_id, *task_ids],
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+def bulk_update_status(business_id: str, task_ids: List[str], status: str) -> int:
+    """Change status on many tasks. Useful for 'mark selected as done'."""
+    if status not in STATUSES:
+        raise HTTPException(400, f"Invalid status. Must be one of: {', '.join(STATUSES)}")
+    if not task_ids:
+        return 0
+    placeholders = ",".join("?" for _ in task_ids)
+    completed_clause = ", completed_at = ?" if status == "done" else (
+        ", completed_at = NULL" if status != "done" else ""
+    )
+    params: List = [status, _now()]
+    if status == "done":
+        params.append(_now())
+    params += [business_id, *task_ids]
+    conn = _get_conn()
+    try:
+        cur = conn.execute(
+            f"UPDATE {TASKS_TABLE} SET status = ?, updated_at = ?{completed_clause} "
+            f"WHERE business_id = ? AND id IN ({placeholders})",
+            params,
+        )
+        conn.commit()
+        return cur.rowcount or 0
+    finally:
+        conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  Recurrence — spawn the next occurrence when the current one is marked done
+# ═══════════════════════════════════════════════════════════════════════════════
+def _next_due(current_due: Optional[str], recurrence: str) -> Optional[str]:
+    """Compute the due date for the next occurrence. None means 'no next'."""
+    if recurrence == "none" or not current_due:
+        return None
+    try:
+        d = date.fromisoformat(current_due)
+    except Exception:
+        return None
+    if recurrence == "daily":
+        return (d + timedelta(days=1)).isoformat()
+    if recurrence == "weekly":
+        return (d + timedelta(days=7)).isoformat()
+    if recurrence == "monthly":
+        # Naïve but correct for 99% of cases: jump 30 days forward.
+        return (d + timedelta(days=30)).isoformat()
+    return None
+
+
+def spawn_next_if_recurring(business_id: str, completed_task_id: str) -> Optional[Dict]:
+    """
+    If `completed_task_id` is part of a recurring series and has just been
+    marked done, create the next occurrence with the same shape. Returns the
+    new task or None. Idempotent — won't create duplicates if called twice.
+    """
+    src = get_task(business_id, completed_task_id)
+    recurrence = (src.get("recurrence") or "none").lower()
+    if recurrence == "none":
+        return None
+    if src.get("status") != "done":
+        return None
+    # Parent id chain: root task's id is reused as parent for all children.
+    parent_id = src.get("recurrence_parent_id") or src["id"]
+    # Has a pending next already been created?
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        existing = conn.execute(
+            f"SELECT id FROM {TASKS_TABLE} "
+            f"WHERE business_id = ? AND recurrence_parent_id = ? AND status IN ('open','in_progress')",
+            (business_id, parent_id),
+        ).fetchone()
+    finally:
+        conn.close()
+    if existing:
+        return None
+    next_due = _next_due(src.get("due_date"), recurrence)
+    spawn_data = {
+        "title": src["title"],
+        "description": src.get("description", ""),
+        "status": "open",
+        "priority": src.get("priority", "normal"),
+        "due_date": next_due,
+        "assignee_id": src.get("assignee_id"),
+        "contact_id": src.get("contact_id"),
+        "company_id": src.get("company_id"),
+        "deal_id": src.get("deal_id"),
+        "tags": src.get("tags", ""),
+        "recurrence": recurrence,
+        "recurrence_parent_id": parent_id,
+    }
+    return create_task(business_id, src.get("created_by") or "system", spawn_data)
