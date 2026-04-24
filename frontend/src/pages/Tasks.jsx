@@ -4,6 +4,7 @@ import { listTasks, createTask, updateTask, deleteTask, taskSummary, STATUSES, P
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
+import SuggestionPanel from '../components/SuggestionPanel';
 import { TagPicker, TagChips } from '../components/TagChips';
 import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
 
@@ -383,6 +384,11 @@ export default function Tasks() {
 
       {modal && (
         <Modal title={modal.record ? 'Edit task' : 'New task'} onClose={() => setModal(null)}>
+          {modal.record?.id && (
+            <div style={{ marginBottom: 12 }}>
+              <SuggestionPanel entityType="task" entityId={modal.record.id} compact />
+            </div>
+          )}
           <TaskForm initial={modal.record} onSubmit={handleSubmit} onCancel={() => setModal(null)} />
         </Modal>
       )}

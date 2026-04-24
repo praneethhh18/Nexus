@@ -16,7 +16,7 @@ from workflows.node_registry import get_node_def
 # ── Node dispatch table ───────────────────────────────────────────────────────
 def _get_runner(node_type: str):
     from workflows.nodes import (
-        triggers, conditions, data_nodes, ai_nodes, action_nodes
+        triggers, conditions, data_nodes, ai_nodes, action_nodes, control_nodes,
     )
     RUNNERS = {
         # Triggers
@@ -46,8 +46,11 @@ def _get_runner(node_type: str):
         "save_file":       action_nodes.run_save_file,
         "desktop_notify":  action_nodes.run_desktop_notify,
         # Control
-        "wait_node":  action_nodes.run_wait_node,
-        "merge_node": action_nodes.run_merge_node,
+        "wait_node":        action_nodes.run_wait_node,
+        "merge_node":       action_nodes.run_merge_node,
+        "for_each_node":    control_nodes.run_for_each_node,
+        "error_handler":    control_nodes.run_error_handler,
+        "trigger_agent":    control_nodes.run_trigger_agent,
     }
     return RUNNERS.get(node_type)
 

@@ -16,6 +16,7 @@ import { TagChips, TagPicker } from '../components/TagChips';
 import TagFilterBar, { filterItems } from '../components/TagFilterBar';
 import EntityImportWizard from '../components/EntityImportWizard';
 import ActivityTimeline from '../components/ActivityTimeline';
+import SuggestionPanel from '../components/SuggestionPanel';
 
 const STAGE_COLORS = {
   lead: 'var(--color-info)', qualified: '#a78bfa', proposal: 'var(--color-warn)',
@@ -574,6 +575,11 @@ export default function CRM() {
           <div style={{ marginBottom: 12 }}>
             <TagPicker entityType={activityFor.kind} entityId={activityFor.record.id} onChange={reload} />
           </div>
+          {(activityFor.kind === 'contact' || activityFor.kind === 'deal') && (
+            <div style={{ marginBottom: 14 }}>
+              <SuggestionPanel entityType={activityFor.kind} entityId={activityFor.record.id} />
+            </div>
+          )}
           <ActivityTimeline entityType={activityFor.kind} entityId={activityFor.record.id} />
         </Modal>
       )}

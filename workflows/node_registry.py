@@ -545,6 +545,94 @@ NODE_TYPES: dict = {
         },
         "outputs": ["merged"],
     },
+
+    "for_each_node": {
+        "category": "control",
+        "name": "For each",
+        "icon": "🔁",
+        "color": "#7c3aed",
+        "description": "Iterate over a list in the previous output and run an inner action once per item",
+        "config": {
+            "source_field": {
+                "type": "text", "label": "Source field (dotted path into ctx)",
+                "default": "output",
+            },
+            "max_items": {
+                "type": "number", "label": "Max items (safety cap)",
+                "default": 50, "min": 1, "max": 200,
+            },
+            "action_type": {
+                "type": "select", "label": "Per-item action",
+                "options": ["send_email", "discord_notify", "slack_notify",
+                            "http_request", "llm_prompt", "save_file"],
+                "default": "llm_prompt",
+            },
+            "action_config": {
+                "type": "json", "label": "Per-item action config",
+                "default": {},
+            },
+        },
+        "outputs": ["done"],
+    },
+
+    "error_handler": {
+        "category": "control",
+        "name": "Try / Fallback",
+        "icon": "🛟",
+        "color": "#ef4444",
+        "description": "Attempt one action; on failure run a fallback (e.g. send email → notify Discord on failure)",
+        "config": {
+            "action_type": {
+                "type": "select", "label": "Primary action",
+                "options": ["send_email", "http_request", "discord_notify",
+                            "slack_notify", "save_file", "llm_prompt"],
+                "default": "send_email",
+            },
+            "action_config": {
+                "type": "json", "label": "Primary action config",
+                "default": {},
+            },
+            "fallback_type": {
+                "type": "select", "label": "Fallback action",
+                "options": ["discord_notify", "slack_notify", "desktop_notify",
+                            "http_request", "save_file"],
+                "default": "discord_notify",
+            },
+            "fallback_config": {
+                "type": "json", "label": "Fallback action config",
+                "default": {},
+            },
+        },
+        "outputs": ["success", "fallback"],
+    },
+
+    "trigger_agent": {
+        "category": "control",
+        "name": "Trigger Agent",
+        "icon": "🤖",
+        "color": "#0891b2",
+        "description": "Run a built-in or custom agent as a step inside this workflow",
+        "config": {
+            "agent_type": {
+                "type": "select", "label": "Agent kind",
+                "options": ["builtin", "custom"],
+                "default": "builtin",
+            },
+            "agent_key": {
+                "type": "select", "label": "Built-in agent",
+                "options": ["morning_briefing", "email_triage", "invoice_reminder",
+                            "stale_deal_watcher", "meeting_prep", "memory_consolidate"],
+                "default": "morning_briefing",
+                "show_if": {"agent_type": "builtin"},
+            },
+            "custom_agent_id": {
+                "type": "text", "label": "Custom agent id",
+                "default": "",
+                "show_if": {"agent_type": "custom"},
+            },
+        },
+        "outputs": ["done"],
+    },
 }
 
 # ── Lookup helpers ────────────────────────────────────────────────────────────

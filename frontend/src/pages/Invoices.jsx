@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { FileText, Plus, Download, Trash2, Edit3, Send, X, DollarSign, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
+import SuggestionPanel from '../components/SuggestionPanel';
 import {
   listInvoices, createInvoice, updateInvoice, deleteInvoice,
   renderInvoicePdf, invoicePdfUrl, invoiceSummary,
@@ -310,6 +311,11 @@ export default function Invoices() {
 
       {modal && (
         <Modal title={modal.record ? `Edit ${modal.record.number}` : 'New invoice'} onClose={() => setModal(null)} wide>
+          {modal.record?.id && (
+            <div style={{ marginBottom: 12 }}>
+              <SuggestionPanel entityType="invoice" entityId={modal.record.id} compact />
+            </div>
+          )}
           <InvoiceForm initial={modal.record} companies={companies} contacts={contacts}
             onSubmit={handleSubmit} onCancel={() => setModal(null)} />
         </Modal>

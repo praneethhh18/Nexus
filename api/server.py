@@ -1303,6 +1303,28 @@ def bulk_stage_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
     return {"updated": n}
 
 
+@app.get("/api/suggestions/{entity_type}/{entity_id}")
+def suggestions_for_entity_api(entity_type: str, entity_id: str,
+                               ctx: dict = Depends(get_current_context)):
+    """Passive per-record nudges (follow-up overdue, client pays late, etc)."""
+    from api import suggestions
+    try:
+        return {"suggestions": suggestions.for_entity(
+            ctx["business_id"], entity_type, entity_id,
+        )}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/suggestions/{suggestion_id}/dismiss")
+def suggestions_dismiss_api(suggestion_id: str,
+                            ctx: dict = Depends(get_current_context)):
+    """Dismiss a suggestion — it stops surfacing on the related record."""
+    from api import suggestions
+    suggestions.dismiss(ctx["business_id"], suggestion_id)
+    return {"ok": True}
+
+
 @app.get("/api/activity/{entity_type}/{entity_id}")
 def activity_timeline_api(entity_type: str, entity_id: str, limit: int = 200,
                           ctx: dict = Depends(get_current_context)):
