@@ -2272,6 +2272,45 @@ def setup_reset(ctx: dict = Depends(get_current_context)):
     return setup_wizard.reset()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Admin metrics (11.1 / 11.2) — per-tenant usage counters + dashboard
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/admin/metrics")
+def admin_metrics_global(days: int = 30,
+                         ctx: dict = Depends(get_current_context)):
+    """Global metrics across every tenant — owner/admin only."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can view admin metrics")
+    from api import usage_metrics
+    return usage_metrics.dashboard(business_id=None, days=max(1, min(days, 180)))
+
+
+@app.get("/api/admin/metrics/tenant")
+def admin_metrics_tenant(days: int = 30,
+                         ctx: dict = Depends(get_current_context)):
+    """Metrics scoped to the current business — any logged-in user."""
+    from api import usage_metrics
+    return usage_metrics.dashboard(
+        business_id=ctx["business_id"],
+        days=max(1, min(days, 180)),
+    )
+
+
+@app.post("/api/admin/metrics/record")
+def admin_metrics_record(body: dict, ctx: dict = Depends(get_current_context)):
+    """Record an ad-hoc event. Lets the frontend log high-signal UI events."""
+    from api import usage_metrics
+    event = (body.get("event") or "").strip()
+    if not event:
+        raise HTTPException(400, "event is required")
+    usage_metrics.record(
+        ctx["business_id"], event,
+        user_id=ctx["user"]["id"],
+        count=int(body.get("count") or 1),
+    )
+    return {"ok": True}
+
+
 @app.get("/api/health/deep")
 def health_deep():
     """Comprehensive health snapshot for monitoring. No auth required."""

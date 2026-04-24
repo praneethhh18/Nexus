@@ -102,6 +102,16 @@ async def rate_limit_middleware(request: Request, call_next):
     _last_touch[key] = now
     if len(_buckets) % 500 == 0:
         _prune()
+
+    # Count this call in the usage metrics log. Best-effort; failure here
+    # must not block the request.
+    try:
+        business_id = request.headers.get("x-business-id") or "anonymous"
+        from api import usage_metrics
+        usage_metrics.record(business_id, "api_call", user_id=client)
+    except Exception:
+        pass
+
     return await call_next(request)
 
 

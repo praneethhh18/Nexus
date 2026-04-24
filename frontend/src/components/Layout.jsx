@@ -26,6 +26,7 @@ const NAV_MAIN = [
   { to: '/memory', icon: Brain, label: 'Memory' },
   { to: '/security', icon: Shield, label: 'Security' },
   { to: '/audit', icon: Activity, label: 'Audit log' },
+  { to: '/admin/metrics', icon: BarChart3, label: 'Metrics' },
   { to: '/history', icon: Clock, label: 'History' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
