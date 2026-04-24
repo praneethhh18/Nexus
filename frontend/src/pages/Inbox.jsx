@@ -15,6 +15,7 @@ import {
   Check, X, AlertTriangle, Clock, ChevronDown, ChevronRight, Inbox as InboxIcon,
   CheckSquare, Square, Calendar as CalendarIcon, ArrowRight,
 } from 'lucide-react';
+import EmptyState from '../components/EmptyState';
 import { listApprovals, approveAction, rejectAction } from '../services/agent';
 import { listPersonas, listNudges, dismissNudge, acceptNudge } from '../services/agents';
 import { listTasks, updateTask } from '../services/tasks';
@@ -369,13 +370,14 @@ export default function Inbox() {
         {loading && totalItems === 0 ? (
           <p style={{ color: 'var(--color-text-dim)', fontSize: 12, textAlign: 'center' }}>Loading…</p>
         ) : totalItems === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-            <InboxIcon size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p style={{ fontSize: 13 }}>Inbox zero. Nothing needs you right now.</p>
-            <p style={{ fontSize: 11, marginTop: 4 }}>
-              Your team will drop items here as they come up.
-            </p>
-          </div>
+          <EmptyState
+            icon={InboxIcon}
+            title="You're all caught up"
+            description="Nothing needs you right now. Your team will drop approvals, nudges, and overdue items here as they come up."
+            accent="var(--color-ok)"
+            primaryLabel="Go to agents"
+            onPrimary={() => navigate('/agents')}
+          />
         ) : (
           <>
             <Section title="Your team suggests" count={nudges.length} color="var(--color-accent)" icon={Bot}>

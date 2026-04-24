@@ -2,10 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
+import { markNotificationRead, deleteNotification } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
 import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
 import CommandPalette from './CommandPalette';
+import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 
 const NAV_MAIN = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -115,14 +117,36 @@ export default function Layout() {
     }
   };
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — owned here. Cmd+K is handled by CommandPalette,
+  // `?` is handled by KeyboardShortcutsModal. Everything else lives below.
   useEffect(() => {
     const handler = (e) => {
-      // Ctrl+K is owned by the CommandPalette component
-      // (it opens a global search overlay — more useful than "jump to chat")
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') { e.preventDefault(); navigate('/chat'); window.dispatchEvent(new Event('nexus-new-chat')); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); navigate('/'); }
-      if (e.key === 'Escape') { setShowNotifs(false); }
+      const t = e.target;
+      const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault();
+        navigate('/chat');
+        window.dispatchEvent(new Event('nexus-new-chat'));
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        navigate('/');
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+        e.preventDefault();
+        setCollapsed(c => !c);
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === '/') {
+        e.preventDefault();
+        navigate('/chat');
+        // Focus the chat input after the page mounts
+        setTimeout(() => {
+          const el = document.querySelector('textarea[placeholder*="sk" i], textarea[placeholder*="message" i], input[placeholder*="ask" i]');
+          if (el) el.focus();
+        }, 120);
+      }
+      if (e.key === 'Escape' && !typing) { setShowNotifs(false); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
@@ -293,17 +317,52 @@ export default function Layout() {
           <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
             {notifData.notifications.length === 0 ? (
               <p style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)', fontSize: 12 }}>No notifications</p>
-            ) : notifData.notifications.map((n, i) => (
-              <div key={i} style={{
-                padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
-                background: n.read ? 'transparent' : 'var(--color-surface-2)',
-                borderLeft: `3px solid ${{ critical: 'var(--color-err)', warning: 'var(--color-warn)', success: 'var(--color-ok)', info: 'var(--color-accent)' }[n.severity] || 'var(--color-text-dim)'}`,
-              }}>
-                <p style={{ fontSize: 12, fontWeight: n.read ? 400 : 600, color: 'var(--color-text)' }}>{n.title}</p>
-                <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.message}</p>
-                <p style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.created_at?.substring(0, 16)}</p>
-              </div>
-            ))}
+            ) : notifData.notifications.map((n) => {
+              const markOne = async () => {
+                await markNotificationRead(n.id).catch(() => {});
+                setNotifData(d => ({
+                  ...d,
+                  unread_count: Math.max(0, (d.unread_count || 0) - (n.read ? 0 : 1)),
+                  notifications: d.notifications.map(x => x.id === n.id ? { ...x, read: 1 } : x),
+                }));
+              };
+              const removeOne = async (e) => {
+                e.stopPropagation();
+                await deleteNotification(n.id).catch(() => {});
+                setNotifData(d => ({
+                  ...d,
+                  unread_count: Math.max(0, (d.unread_count || 0) - (n.read ? 0 : 1)),
+                  notifications: d.notifications.filter(x => x.id !== n.id),
+                }));
+              };
+              return (
+                <div
+                  key={n.id}
+                  onClick={markOne}
+                  style={{
+                    padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
+                    background: n.read ? 'transparent' : 'var(--color-surface-2)',
+                    borderLeft: `3px solid ${{ critical: 'var(--color-err)', warning: 'var(--color-warn)', success: 'var(--color-ok)', info: 'var(--color-accent)' }[n.severity] || 'var(--color-text-dim)'}`,
+                    position: 'relative',
+                  }}
+                >
+                  <p style={{ fontSize: 12, fontWeight: n.read ? 400 : 600, color: 'var(--color-text)', paddingRight: 20 }}>{n.title}</p>
+                  <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.message}</p>
+                  <p style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.created_at?.substring(0, 16)}</p>
+                  <button
+                    onClick={removeOne}
+                    title="Remove this notification"
+                    style={{
+                      position: 'absolute', top: 6, right: 6,
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--color-text-dim)', padding: 2, opacity: 0.6,
+                    }}
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -350,6 +409,7 @@ export default function Layout() {
       {showOnboarding && <OnboardingWizard onClose={() => setShowOnboarding(false)} />}
 
       <CommandPalette />
+      <KeyboardShortcutsModal />
 
       {/* Main */}
       <main className="main-content">
@@ -361,6 +421,7 @@ export default function Layout() {
         <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+K Search</span>
         <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+N New chat</span>
         <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}><Command size={9} style={{ display: 'inline', verticalAlign: 'middle' }} />+D Dashboard</span>
+        <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>? Shortcuts</span>
       </div>
     </>
   );

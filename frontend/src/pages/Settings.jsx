@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy } from 'lucide-react';
+import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy, Bell, Sparkles } from 'lucide-react';
 import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusiness, deleteBusiness } from '../services/api';
+import { getNotificationPrefs, setNotificationPrefs, reopenOnboarding } from '../services/onboarding';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
 import { getToken as getTok, getBusinessId as getBiz } from '../services/auth';
@@ -118,6 +119,9 @@ export default function Settings() {
       <div className="page-header"><h1>Settings</h1><p>Manage your business, integrations, and system</p></div>
       <div className="page-body">
         {msg && <div className="panel" style={{ color: 'var(--color-info)', marginBottom: 12 }}>{msg}</div>}
+
+        <NotificationPrefsPanel />
+        <OnboardingReopenPanel />
 
         {/* Developer Mode — moved to top as the master toggle */}
         <div className="panel" style={{ borderColor: devMode ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--color-border)' }}>
@@ -590,6 +594,112 @@ export default function Settings() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Notification preferences ────────────────────────────────────────────────
+const EVENT_LABELS = {
+  agent_completed:    { label: 'Agent completed a run',       description: 'When a scheduled agent finishes its work' },
+  approval_waiting:   { label: 'Approval waiting',            description: 'A drafted action needs your review' },
+  anomaly_detected:   { label: 'Anomaly detected',            description: 'A KPI moved outside its expected range' },
+  invoice_overdue:    { label: 'Invoice overdue',             description: 'An invoice passed its due date' },
+  meeting_soon:       { label: 'Meeting in 30 minutes',       description: 'Heads-up when a meeting is approaching' },
+  document_processed: { label: 'Document processed',          description: 'A document finished ingestion into the knowledge base' },
+  workflow_completed: { label: 'Workflow completed',          description: 'A workflow finished its run' },
+  email_sent:         { label: 'Email sent',                  description: 'Quieter by default — noisy for heavy email users' },
+};
+
+function NotificationPrefsPanel() {
+  const [prefs, setPrefs] = useState(null);
+  const [busy, setBusy] = useState(null);
+
+  useEffect(() => {
+    getNotificationPrefs().then(setPrefs).catch(() => {});
+  }, []);
+
+  if (!prefs) return null;
+
+  const toggle = async (key, next) => {
+    setBusy(key);
+    try {
+      const fresh = await setNotificationPrefs({ [key]: next });
+      setPrefs(fresh);
+    } catch {} finally { setBusy(null); }
+  };
+
+  return (
+    <div className="panel" style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+        <Bell size={16} color="var(--color-accent)" />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Notifications</div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+            Pick which events ring the bell. Muted events still happen — they just stay out of your way.
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {Object.entries(EVENT_LABELS).map(([key, meta]) => {
+          const on = prefs[key];
+          return (
+            <div key={key} style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '8px 10px', borderRadius: 'var(--r-sm)',
+              background: 'var(--color-surface-1)',
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, color: 'var(--color-text)', fontWeight: 500 }}>{meta.label}</div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{meta.description}</div>
+              </div>
+              <button
+                onClick={() => toggle(key, !on)}
+                disabled={busy === key}
+                aria-pressed={on}
+                style={{
+                  position: 'relative', width: 36, height: 20, borderRadius: 10,
+                  background: on ? 'var(--color-accent)' : 'var(--color-surface-3)',
+                  border: 'none', cursor: 'pointer', flexShrink: 0,
+                }}
+              >
+                <div style={{
+                  position: 'absolute', top: 2, left: on ? 18 : 2,
+                  width: 16, height: 16, borderRadius: '50%', background: 'white',
+                  transition: 'left 0.15s',
+                }} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Onboarding reopener ─────────────────────────────────────────────────────
+function OnboardingReopenPanel() {
+  const [done, setDone] = useState(false);
+  const reopen = async () => {
+    try {
+      await reopenOnboarding();
+      setDone(true);
+      setTimeout(() => window.location.assign('/'), 400);
+    } catch {}
+  };
+  return (
+    <div className="panel" style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Sparkles size={16} color="var(--color-accent)" />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+          Replay setup guide
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+          Brings back the onboarding checklist on the dashboard — useful after dismissing it too early.
+        </div>
+      </div>
+      <button onClick={reopen} className="btn-ghost" style={{ fontSize: 12 }}>
+        {done ? 'Opening…' : 'Reopen'}
+      </button>
     </div>
   );
 }

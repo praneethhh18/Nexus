@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, STATUSES, PRIORITIES } from '../services/tasks';
 import FlowBanner from '../components/FlowBanner';
+import EmptyState from '../components/EmptyState';
 
 const PRIORITY_COLORS = { urgent: 'var(--color-err)', high: 'var(--color-warn)', normal: 'var(--color-info)', low: 'var(--color-text-dim)' };
 const STATUS_COLORS = { open: 'var(--color-text-dim)', in_progress: 'var(--color-warn)', done: 'var(--color-ok)', cancelled: 'var(--color-text-dim)' };
@@ -232,10 +233,15 @@ export default function Tasks() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
         {tasks.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-            <CheckSquare size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p style={{ fontSize: 13 }}>No tasks match this filter.</p>
-          </div>
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks here"
+            description="Create a task directly, or ask the AI to generate tasks from a meeting note or a document."
+            primaryLabel="Add task"
+            onPrimary={() => setModal({ record: null })}
+            secondaryLabel="Ask the AI"
+            onSecondary={() => window.location.assign('/chat')}
+          />
         ) : (
           tasks.map((t) => (
             <TaskRow key={t.id} task={t}

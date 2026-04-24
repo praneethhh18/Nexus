@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FileText, Download, Loader } from 'lucide-react';
 import { generateReport, getReports, downloadReport } from '../services/api';
+import EmptyState from '../components/EmptyState';
 
 export default function Reports() {
   const [query, setQuery] = useState('');
@@ -37,9 +38,13 @@ export default function Reports() {
 
         <h3 style={{ fontSize: 13, fontWeight: 600, color: 'white', marginBottom: 10 }}>Recent Reports</h3>
         {reports.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)' }}>
-            <FileText size={28} style={{ margin: '0 auto 8px' }} /><p style={{ fontSize: 13 }}>No reports yet. Generate one above.</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="No reports yet"
+            description="Type a natural-language request above — totals, trends, comparisons — and a narrated PDF will appear here."
+            size="sm"
+            minHeight={180}
+          />
         ) : reports.map((r, i) => (
           <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 12, marginBottom: 6 }} className="panel">
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

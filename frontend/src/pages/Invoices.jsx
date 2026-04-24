@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileText, Plus, Download, Trash2, Edit3, Send, X, DollarSign, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import FlowBanner from '../components/FlowBanner';
+import EmptyState from '../components/EmptyState';
 import {
   listInvoices, createInvoice, updateInvoice, deleteInvoice,
   renderInvoicePdf, invoicePdfUrl, invoiceSummary,
@@ -265,10 +266,13 @@ export default function Invoices() {
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
         {invoices.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-            <FileText size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <p style={{ fontSize: 13 }}>No invoices yet. Click "New invoice" to create one.</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="No invoices yet"
+            description="Draft your first invoice in 30 seconds. Kira will then spot overdue ones and queue reminder emails for your approval."
+            primaryLabel="New invoice"
+            onPrimary={() => setModal({ record: null })}
+          />
         ) : (
           <div className="table-panel">
             <table className="data-table">

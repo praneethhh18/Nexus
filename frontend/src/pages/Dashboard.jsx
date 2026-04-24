@@ -12,6 +12,7 @@ import { briefingLatest, briefingRun } from '../services/briefing';
 import { listPersonas } from '../services/agents';
 import ReactMarkdown from 'react-markdown';
 import { Sparkles, Loader2, Sun, Lock } from 'lucide-react';
+import OnboardingChecklist from '../components/OnboardingChecklist';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
@@ -175,6 +176,11 @@ export default function Dashboard() {
       </div>
 
       <div className="page-body">
+        {/* Onboarding checklist — self-hides when complete or skipped */}
+        <div style={{ marginBottom: 14 }}>
+          <OnboardingChecklist />
+        </div>
+
         {/* Morning briefing card — the daily-use moment */}
         {!isEmptyBusiness && (
           <div className="panel" style={{

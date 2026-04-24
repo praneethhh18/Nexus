@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare } from 'lucide-react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload } from 'lucide-react';
 import FlowBanner from '../components/FlowBanner';
+import EmptyState from '../components/EmptyState';
 import {
   crmOverview, pipeline,
   listCompanies, createCompany, updateCompany, deleteCompany,
@@ -360,10 +361,15 @@ export default function CRM() {
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
         {tab === 'contacts' && (
           contacts.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-              <Users size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <p style={{ fontSize: 13 }}>No contacts yet. Click "Add contact" to create one.</p>
-            </div>
+            <EmptyState
+              icon={Users}
+              title="No contacts yet"
+              description="Add your first lead manually or import a CSV of contacts to let Arjun track your pipeline and Sage prep meetings."
+              primaryLabel="Add contact"
+              onPrimary={() => setModal({ kind: 'contact', record: null })}
+              secondaryLabel="Import CSV"
+              onSecondary={() => window.location.assign('/database')}
+            />
           ) : (
             <div className="table-panel">
               <table className="data-table">

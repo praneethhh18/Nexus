@@ -3,6 +3,7 @@ import { ReactFlow, Background, Controls, MiniMap, addEdge, useNodesState, useEd
 import '@xyflow/react/dist/style.css';
 import { Play, Plus, Trash2, Power, Save, GitBranch, Zap, Sparkles, Clock, Edit3, Code2, ArrowLeft, Check } from 'lucide-react';
 import { getWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, toggleWorkflow, runWorkflow, getNodeTypes, getWorkflowTemplates, getWorkflowHistory, generateWorkflowFromText } from '../services/api';
+import EmptyState from '../components/EmptyState';
 
 const CAT_COLORS = { trigger: 'var(--color-accent-hover)', condition: '#7c3aed', data: 'var(--color-ok)', ai: 'var(--color-warn)', action: 'var(--color-err)', control: 'var(--color-text-dim)' };
 const CAT_ICONS = { trigger: 'T', condition: '?', data: 'D', ai: 'AI', action: 'A', control: 'C' };
@@ -380,11 +381,15 @@ export default function Workflows() {
       {view === 'my' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
           {workflows.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 48, color: 'var(--color-text-dim)' }}>
-              <GitBranch size={36} style={{ opacity: 0.3, marginBottom: 12 }} />
-              <p style={{ fontSize: 14, marginBottom: 4 }}>No workflows yet</p>
-              <p style={{ fontSize: 11 }}>Head to the <strong>Templates</strong> tab to enable one with one click, or click <strong>Build custom</strong> above.</p>
-            </div>
+            <EmptyState
+              icon={GitBranch}
+              title="No workflows yet"
+              description="Enable a pre-built template in one click, or build a custom flow in the drag-and-drop editor."
+              primaryLabel="Browse templates"
+              onPrimary={() => setView('templates')}
+              secondaryLabel="Build custom"
+              onSecondary={() => setView('builder')}
+            />
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
               {workflows.map(wf => (

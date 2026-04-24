@@ -684,6 +684,83 @@ def privacy_audit_clear(ctx: dict = Depends(get_current_context)):
     return {"ok": True}
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Onboarding — 6-step first-run flow, tracked server-side so it resumes
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/onboarding")
+def onboarding_state(ctx: dict = Depends(get_current_context)):
+    """Current onboarding progress for the logged-in user in the active business."""
+    from api import onboarding
+    return onboarding.get_state(ctx["business_id"], ctx["user"]["id"])
+
+
+@app.post("/api/onboarding/complete/{step_key}")
+def onboarding_complete(step_key: str, ctx: dict = Depends(get_current_context)):
+    """Mark an onboarding step as done."""
+    from api import onboarding
+    try:
+        return onboarding.complete_step(ctx["business_id"], ctx["user"]["id"], step_key)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/onboarding/skip")
+def onboarding_skip(ctx: dict = Depends(get_current_context)):
+    """Dismiss the whole wizard. Checklist widget hides until /reopen is called."""
+    from api import onboarding
+    return onboarding.skip_all(ctx["business_id"], ctx["user"]["id"])
+
+
+@app.post("/api/onboarding/reopen")
+def onboarding_reopen(ctx: dict = Depends(get_current_context)):
+    """Bring the wizard back — useful if the user accidentally clicked Skip."""
+    from api import onboarding
+    return onboarding.reopen(ctx["business_id"], ctx["user"]["id"])
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Notification preferences — per-user toggles for what triggers a bell entry
+# ═══════════════════════════════════════════════════════════════════════════════
+from api import notification_prefs as _notif_prefs
+
+
+@app.get("/api/notifications/prefs")
+def notification_prefs_get(ctx: dict = Depends(get_current_context)):
+    return _notif_prefs.get_prefs(ctx["user"]["id"])
+
+
+@app.patch("/api/notifications/prefs")
+def notification_prefs_set(body: dict, ctx: dict = Depends(get_current_context)):
+    """Accepts {event_type: bool} pairs. Unknown keys are ignored."""
+    return _notif_prefs.set_prefs(ctx["user"]["id"], body or {})
+
+
+@app.post("/api/notifications/{notif_id}/read")
+def notifications_mark_one_read(notif_id: str, ctx: dict = Depends(get_current_context)):
+    """Mark a single notification as read."""
+    from api.notifications import mark_read
+    mark_read(notif_id, business_id=ctx["business_id"])
+    return {"ok": True}
+
+
+@app.delete("/api/notifications/{notif_id}")
+def notifications_delete_one(notif_id: str, ctx: dict = Depends(get_current_context)):
+    """Remove a single notification."""
+    import sqlite3
+    from api.notifications import TABLE
+    from config.settings import DB_PATH
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(
+            f"DELETE FROM {TABLE} WHERE id = ? AND business_id = ?",
+            (notif_id, ctx["business_id"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
 @app.get("/api/audit/export")
 def audit_log_export_csv(
     limit: int = 5000,

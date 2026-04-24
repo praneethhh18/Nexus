@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileText, Download, Trash2, Plus, X, FileType2, Sparkles } from 'lucide-react';
 import { listDocTemplates, listDocuments, generateDocument, deleteDocument, downloadDocument } from '../services/documents';
+import EmptyState from '../components/EmptyState';
 
 function Modal({ title, onClose, children }) {
   return (
@@ -165,9 +166,13 @@ export default function Documents() {
             <FileText size={15} color="var(--color-ok)" /> Recent documents
           </h3>
           {documents.length === 0 ? (
-            <p style={{ fontSize: 12, color: 'var(--color-text-dim)', textAlign: 'center', padding: 32 }}>
-              No documents generated yet. Pick a template above to create your first one.
-            </p>
+            <EmptyState
+              icon={FileType2}
+              title="No documents yet"
+              description="Pick a template above to generate your first document, or upload a PDF to the knowledge base to start asking questions about it."
+              size="sm"
+              minHeight={180}
+            />
           ) : (
             <div className="table-panel">
               <table className="data-table">
