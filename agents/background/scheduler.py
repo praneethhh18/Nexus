@@ -74,10 +74,43 @@ def _iter_active_businesses():
         return
 
 
+def _interval_elapsed(business_id: str, agent_key: str) -> bool:
+    """
+    True if enough time has passed since this agent's last *successful* run for
+    this business. Honors the per-business override configured in
+    `api.agent_schedule`; falls back to the shipped default.
+
+    Lets users tighten / loosen cadence from the UI without us spawning one
+    APScheduler job per (business, agent) pair.
+    """
+    try:
+        from api import agent_schedule
+        from agents import run_log
+        from datetime import datetime, timedelta, timezone
+
+        minutes = agent_schedule.effective_interval(business_id, agent_key)
+        last = run_log.last_run(business_id, agent_key)
+        if not last or not last.get("started_at"):
+            return True
+        started = last["started_at"]
+        try:
+            d = datetime.fromisoformat(started.replace("Z", "+00:00"))
+        except Exception:
+            return True
+        if d.tzinfo is None:
+            d = d.replace(tzinfo=timezone.utc)
+        now = datetime.now(timezone.utc)
+        return (now - d) >= timedelta(minutes=minutes)
+    except Exception:
+        # Fail open — never block an agent because the pref lookup exploded.
+        return True
+
+
 def _run_per_business(agent_key: str, runner: Callable[[str], dict | None]):
     """
-    Iterate over active businesses, honor each one's enabled flag, and log the
-    outcome (success / skipped / error) for every attempt.
+    Iterate over active businesses, honor each one's enabled flag + per-business
+    interval override, and log the outcome (success / skipped / error) for every
+    attempt that actually executed.
     """
     from agents import run_log
 
@@ -86,6 +119,12 @@ def _run_per_business(agent_key: str, runner: Callable[[str], dict | None]):
             rid = run_log.start(bid, agent_key, trigger="scheduler")
             run_log.finish(rid, status="skipped", items_produced=0,
                            error="disabled by user")
+            continue
+
+        if not _interval_elapsed(bid, agent_key):
+            # Global job fires faster than this business's configured interval
+            # — quietly skip without a run_log entry, otherwise the history view
+            # fills up with no-op skips.
             continue
 
         rid = run_log.start(bid, agent_key, trigger="scheduler")
@@ -175,7 +214,59 @@ def start_agent_scheduler():
         _run_per_business("email_triage", run_for_business)
     _register("agent-email-triage", IntervalTrigger(minutes=15), _triage_all)
 
+    # Register user-defined custom agents from the DB
+    try:
+        rebuild_custom_jobs()
+    except Exception as e:
+        logger.warning(f"[AgentScheduler] rebuild_custom_jobs failed at boot: {e}")
+
     logger.info(f"[AgentScheduler] {len(sched.get_jobs())} jobs registered")
+
+
+def rebuild_custom_jobs():
+    """
+    (Re)register every enabled custom agent from `nexus_custom_agents`.
+    Called at boot and after any CRUD on a custom agent.
+
+    Each custom agent gets its own APScheduler job so interval changes take
+    effect immediately without restarting the process.
+    """
+    sched = _get_scheduler()
+    if sched is None:
+        return
+
+    from apscheduler.triggers.interval import IntervalTrigger
+    from api import custom_agents
+
+    # Drop existing custom-* jobs so we can rebuild cleanly.
+    for j in list(sched.get_jobs()):
+        if j.id.startswith("custom-"):
+            try:
+                sched.remove_job(j.id)
+            except Exception:
+                pass
+
+    agents = custom_agents.list_all_enabled()
+    for a in agents:
+        job_id = f"custom-{a['id']}"
+        interval_min = max(5, int(a.get("interval_minutes") or 60))
+        def _make_runner(agent_id: str):
+            def _runner():
+                try:
+                    custom_agents.run_agent_now(agent_id, trigger="scheduler")
+                except Exception as e:
+                    logger.exception(f"[AgentScheduler] custom agent {agent_id} failed")
+            return _runner
+        try:
+            sched.add_job(
+                _make_runner(a["id"]),
+                IntervalTrigger(minutes=interval_min),
+                id=job_id, replace_existing=True,
+            )
+        except Exception as e:
+            logger.warning(f"[AgentScheduler] register custom agent {a['id']} failed: {e}")
+
+    logger.info(f"[AgentScheduler] {len(agents)} custom agent job(s) active")
 
 
 def list_jobs():

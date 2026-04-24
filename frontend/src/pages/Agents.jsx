@@ -1,8 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity, Play,
-         Pause, PlayCircle, AlertTriangle, ShieldCheck, History } from 'lucide-react';
+         Pause, PlayCircle, AlertTriangle, ShieldCheck, History, Plus, Sparkles, Settings2 } from 'lucide-react';
 import { listPersonas, renamePersona, togglePersonaEnabled, listActivity, runAgent, listRuns } from '../services/agents';
+import {
+  listCustomAgents, runCustomAgent, getAgentSchedule, setAgentInterval, resetAgentInterval,
+} from '../services/customAgents';
+import IntervalPicker from '../components/IntervalPicker';
+import CustomAgentBuilder from '../components/CustomAgentBuilder';
+import CustomAgentGallery from '../components/CustomAgentGallery';
 
 function formatWhen(iso) {
   if (!iso) return null;
@@ -57,7 +63,7 @@ function LastRunChip({ lastRun, stats24h }) {
   );
 }
 
-function PersonaCard({ persona, onRenamed, onEnabledChanged, onOpenSurface, onRanAgent, onOpenRuns }) {
+function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onIntervalChanged, onOpenSurface, onRanAgent, onOpenRuns }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(persona.name);
   const [busy, setBusy] = useState(false);
@@ -240,6 +246,14 @@ function PersonaCard({ persona, onRenamed, onEnabledChanged, onOpenSurface, onRa
           <History size={11} /> History
         </button>
         <LastRunChip lastRun={persona.last_run} stats24h={persona.run_stats_24h} />
+        {schedule && (
+          <IntervalPicker
+            value={schedule.interval_minutes}
+            defaultValue={schedule.default_minutes}
+            onChange={(n) => onIntervalChanged?.(persona.agent_key, n)}
+            onReset={() => onIntervalChanged?.(persona.agent_key, null)}
+          />
+        )}
         {runMsg && <span style={{ fontSize: 11, color: 'var(--color-ok)' }}>{runMsg}</span>}
       </div>
 
@@ -467,17 +481,32 @@ function RunsDrawer({ persona, onClose }) {
 
 export default function Agents() {
   const [personas, setPersonas] = useState([]);
+  const [scheduleByKey, setScheduleByKey] = useState({});
+  const [customAgents, setCustomAgentsList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [runsDrawer, setRunsDrawer] = useState(null);
+  const [builderInitial, setBuilderInitial] = useState(null);
+  const [showBuilder, setShowBuilder] = useState(false);
+  const [showGallery, setShowGallery] = useState(false);
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
-    try { setPersonas(await listPersonas()); }
-    catch (e) { setErr(e.message); }
+    try {
+      const [ppl, sch, ca] = await Promise.all([
+        listPersonas(),
+        getAgentSchedule().catch(() => ({ schedule: [] })),
+        listCustomAgents().catch(() => []),
+      ]);
+      setPersonas(ppl);
+      const byKey = {};
+      for (const s of (sch.schedule || [])) byKey[s.agent_key] = s;
+      setScheduleByKey(byKey);
+      setCustomAgentsList(ca);
+    } catch (e) { setErr(e.message); }
     finally { setLoading(false); }
   }, []);
 
@@ -497,11 +526,52 @@ export default function Agents() {
     setPersonas(prev => prev.map(p => p.agent_key === updated.agent_key ? { ...p, ...updated } : p));
   };
 
+  const onIntervalChanged = async (agent_key, minutes) => {
+    try {
+      const r = minutes == null
+        ? await resetAgentInterval(agent_key)
+        : await setAgentInterval(agent_key, minutes);
+      setScheduleByKey(prev => ({ ...prev, [agent_key]: r }));
+    } catch (e) {
+      alert(`Couldn't save: ${e.message}`);
+    }
+  };
+
+  const onCustomRun = async (id) => {
+    try {
+      await runCustomAgent(id);
+      loadActivity();
+      load();
+    } catch (e) {
+      alert(`Run failed: ${e.message}`);
+    }
+  };
+
+  const onCustomSaved = (saved) => {
+    setShowBuilder(false);
+    setBuilderInitial(null);
+    load();
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="page-header">
-        <h1>Agents</h1>
-        <p>Your autonomous team — each agent has a name, a role, and a shift. Rename them anything you like.</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1>Agents</h1>
+          <p>Your autonomous team — each agent has a name, a role, and a shift. Rename them anything you like.</p>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn-ghost" onClick={() => setShowGallery(true)} title="Start from a template">
+            <Sparkles size={13} /> Templates
+          </button>
+          <button
+            className="btn-primary"
+            onClick={() => { setBuilderInitial(null); setShowBuilder(true); }}
+            title="Build a custom agent from scratch"
+          >
+            <Plus size={13} /> New custom agent
+          </button>
+        </div>
       </div>
 
       <div className="page-body">
@@ -518,13 +588,75 @@ export default function Agents() {
               <PersonaCard
                 key={p.agent_key}
                 persona={p}
+                schedule={scheduleByKey[p.agent_key]}
                 onRenamed={onRenamed}
                 onEnabledChanged={onEnabledChanged}
+                onIntervalChanged={onIntervalChanged}
                 onOpenSurface={(path) => navigate(path)}
                 onRanAgent={() => { loadActivity(); load(); }}
                 onOpenRuns={(persona) => setRunsDrawer(persona)}
               />
             ))}
+          </div>
+        )}
+
+        {/* Custom agents (user-built) */}
+        {!loading && customAgents.length > 0 && (
+          <div style={{ marginTop: 22 }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: 14, color: 'var(--color-text)', marginBottom: 10 }}>
+              <Sparkles size={15} color="var(--color-accent)" />
+              Custom agents
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)', fontWeight: 400 }}>
+                built by you
+              </span>
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
+              {customAgents.map(ca => (
+                <div key={ca.id} className="panel" style={{
+                  padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
+                  opacity: ca.enabled ? 1 : 0.6,
+                  borderStyle: ca.enabled ? 'solid' : 'dashed',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 22 }}>{ca.emoji || '🤖'}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{ca.name}</div>
+                      <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
+                        {ca.description || <em>No description</em>}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => onCustomRun(ca.id)}
+                      className="btn-primary"
+                      style={{ fontSize: 11, padding: '5px 12px' }}
+                      disabled={!ca.enabled}
+                    >
+                      <Play size={10} /> Run now
+                    </button>
+                    <button
+                      onClick={() => { setBuilderInitial(ca); setShowBuilder(true); }}
+                      className="btn-ghost"
+                      style={{ fontSize: 11, padding: '5px 10px' }}
+                    >
+                      <Settings2 size={10} /> Edit
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <span>
+                      <Clock size={9} style={{ verticalAlign: 'middle' }} />
+                      {' '}every {ca.interval_minutes < 60 ? `${ca.interval_minutes} min`
+                        : ca.interval_minutes % 1440 === 0 ? `${ca.interval_minutes / 1440} d`
+                        : ca.interval_minutes % 60 === 0 ? `${ca.interval_minutes / 60} hr`
+                        : `${ca.interval_minutes} min`}
+                    </span>
+                    <span>→ {ca.output_target}</span>
+                    <span>· {ca.tool_whitelist.length} tool{ca.tool_whitelist.length === 1 ? '' : 's'}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -592,6 +724,19 @@ export default function Agents() {
 
       {runsDrawer && (
         <RunsDrawer persona={runsDrawer} onClose={() => setRunsDrawer(null)} />
+      )}
+      {showBuilder && (
+        <CustomAgentBuilder
+          initial={builderInitial}
+          onClose={() => { setShowBuilder(false); setBuilderInitial(null); }}
+          onSaved={onCustomSaved}
+        />
+      )}
+      {showGallery && (
+        <CustomAgentGallery
+          onClose={() => setShowGallery(false)}
+          onCreated={() => { setShowGallery(false); load(); }}
+        />
       )}
     </div>
   );

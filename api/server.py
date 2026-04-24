@@ -408,6 +408,153 @@ def agents_list_personas(ctx: dict = Depends(get_current_context)):
     return personas
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+#   Custom agents — user-defined autonomous agents
+# ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/custom-agents")
+def custom_agents_list(ctx: dict = Depends(get_current_context)):
+    from api import custom_agents
+    return custom_agents.list_agents(ctx["business_id"])
+
+
+@app.post("/api/custom-agents")
+def custom_agents_create(body: dict, ctx: dict = Depends(get_current_context)):
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can create custom agents")
+    from api import custom_agents
+    try:
+        agent = custom_agents.create_agent(ctx["business_id"], ctx["user"]["id"], body)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    # Wake the scheduler so the new agent starts ticking without a restart
+    try:
+        from agents.background.scheduler import rebuild_custom_jobs
+        rebuild_custom_jobs()
+    except Exception as e:
+        logger.warning(f"[CustomAgents] rebuild_custom_jobs after create failed: {e}")
+    return agent
+
+
+@app.get("/api/custom-agents/templates")
+def custom_agents_templates(ctx: dict = Depends(get_current_context)):
+    from api import custom_agents
+    return custom_agents.list_templates()
+
+
+@app.post("/api/custom-agents/from-template")
+def custom_agents_from_template(body: dict, ctx: dict = Depends(get_current_context)):
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can create custom agents")
+    from api import custom_agents
+    try:
+        agent = custom_agents.create_from_template(
+            ctx["business_id"], ctx["user"]["id"],
+            body.get("template_key") or "",
+            overrides=body.get("overrides") or {},
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        from agents.background.scheduler import rebuild_custom_jobs
+        rebuild_custom_jobs()
+    except Exception:
+        pass
+    return agent
+
+
+@app.get("/api/custom-agents/{agent_id}")
+def custom_agents_get(agent_id: str, ctx: dict = Depends(get_current_context)):
+    from api import custom_agents
+    try:
+        return custom_agents.get_agent(ctx["business_id"], agent_id)
+    except KeyError:
+        raise HTTPException(404, "Custom agent not found")
+
+
+@app.patch("/api/custom-agents/{agent_id}")
+def custom_agents_update(agent_id: str, body: dict,
+                         ctx: dict = Depends(get_current_context)):
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can edit custom agents")
+    from api import custom_agents
+    try:
+        agent = custom_agents.update_agent(ctx["business_id"], agent_id, body)
+    except KeyError:
+        raise HTTPException(404, "Custom agent not found")
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    try:
+        from agents.background.scheduler import rebuild_custom_jobs
+        rebuild_custom_jobs()
+    except Exception:
+        pass
+    return agent
+
+
+@app.delete("/api/custom-agents/{agent_id}")
+def custom_agents_delete(agent_id: str, ctx: dict = Depends(get_current_context)):
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can delete custom agents")
+    from api import custom_agents
+    custom_agents.delete_agent(ctx["business_id"], agent_id)
+    try:
+        from agents.background.scheduler import rebuild_custom_jobs
+        rebuild_custom_jobs()
+    except Exception:
+        pass
+    return {"ok": True}
+
+
+@app.post("/api/custom-agents/{agent_id}/run")
+def custom_agents_run_now(agent_id: str, ctx: dict = Depends(get_current_context)):
+    """On-demand fire. Owner/admin only — mirrors built-in Run Now policy."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can run agents on demand")
+    from api import custom_agents
+    try:
+        return custom_agents.run_agent_now(
+            agent_id, trigger="manual", business_id=ctx["business_id"],
+        )
+    except KeyError:
+        raise HTTPException(404, "Custom agent not found")
+
+
+@app.get("/api/agents/schedule")
+def agents_schedule_list(ctx: dict = Depends(get_current_context)):
+    """Per-agent interval schedule for this business."""
+    from api import agent_schedule
+    return {
+        "schedule": agent_schedule.list_schedule(ctx["business_id"]),
+        "presets":  agent_schedule.INTERVAL_PRESETS_MIN,
+    }
+
+
+@app.patch("/api/agents/schedule/{agent_key}")
+def agents_schedule_set(agent_key: str, body: dict,
+                        ctx: dict = Depends(get_current_context)):
+    """Set a per-agent interval override for this business."""
+    from api import agent_schedule
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can change agent schedules")
+    minutes = body.get("interval_minutes")
+    try:
+        return agent_schedule.set_interval(ctx["business_id"], agent_key, minutes)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.delete("/api/agents/schedule/{agent_key}")
+def agents_schedule_reset(agent_key: str, ctx: dict = Depends(get_current_context)):
+    """Remove the override — agent goes back to the shipped default."""
+    from api import agent_schedule
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(403, "Only owner/admin can change agent schedules")
+    try:
+        return agent_schedule.reset_interval(ctx["business_id"], agent_key)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
 @app.get("/api/agents/runs")
 def agents_list_runs(agent_key: Optional[str] = None, limit: int = 50,
                      ctx: dict = Depends(get_current_context)):

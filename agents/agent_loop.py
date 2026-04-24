@@ -94,6 +94,8 @@ def run_agent(
     user_name: str,
     user_role: str = "member",
     max_steps: int = MAX_STEPS,
+    tool_whitelist: Optional[List[str]] = None,
+    system_override: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Run the full agent loop.
@@ -123,8 +125,11 @@ def run_agent(
                 last_user_text = " ".join(b.get("text", "") for b in c if b.get("type") == "text")
             break
 
-    system = _build_system_prompt(business_id, business_name, user_name, last_user_text)
+    system = system_override or _build_system_prompt(business_id, business_name, user_name, last_user_text)
     tools = tool_registry.list_tools(for_llm=True)
+    if tool_whitelist:
+        allowed = set(tool_whitelist)
+        tools = [t for t in tools if t["name"] in allowed]
 
     # Compress long conversations before handing them to the LLM — keeps
     # context windows reasonable and costs down.
