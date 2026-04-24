@@ -62,6 +62,13 @@ try:
 except Exception as e:
     logger.warning(f"Agent scheduler start failed: {e}")
 
+# Apply composite indexes on frequently filtered columns (idempotent).
+try:
+    from api.db_indexes import apply_indexes
+    apply_indexes()
+except Exception as e:
+    logger.warning(f"Index pass failed: {e}")
+
 # ── FastAPI App ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="NexusAgent API",
@@ -77,6 +84,11 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["X-Business-Id"],
 )
+
+# Per-IP rate limiter — rejects after 120 req/min default, tighter on
+# /api/voice (20/min) and /api/auth (30/min).
+from api.reliability import rate_limit_middleware as _rate_limit_middleware
+app.middleware("http")(_rate_limit_middleware)
 
 
 # ── Pydantic Models ───────────────────────────────────────────────────────────
@@ -2215,6 +2227,13 @@ def read_all_notifications(ctx: dict = Depends(get_current_context)):
 # ═══════════════════════════════════════════════════════════════════════════════
 #   HEALTH & STATUS
 # ═══════════════════════════════════════════════════════════════════════════════
+@app.get("/api/health/deep")
+def health_deep():
+    """Comprehensive health snapshot for monitoring. No auth required."""
+    from api.reliability import deep_health
+    return deep_health()
+
+
 @app.get("/api/health")
 def health():
     """Public health check. Does not leak tenant data."""

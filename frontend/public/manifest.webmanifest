@@ -1,0 +1,14 @@
+{
+  "name": "NexusAgent",
+  "short_name": "NexusAgent",
+  "description": "Private AI business OS — runs local-first, cloud only on redacted aggregates.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0a0b0f",
+  "theme_color": "#0a0b0f",
+  "orientation": "any",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any",     "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
