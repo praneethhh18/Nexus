@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_saved_queries"
 
@@ -85,7 +86,7 @@ def create_query(business_id: str, data: Dict) -> Dict:
         raise ValueError(f"Invalid chart_type. Must be one of: {', '.join(VALID_CHART_TYPES)}")
 
     qid = f"sq-{uuid.uuid4().hex[:10]}"
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _conn()
     try:
         try:
@@ -177,7 +178,7 @@ def record_run(business_id: str, query_id: str) -> None:
         conn.execute(
             f"UPDATE {TABLE} SET run_count = run_count + 1, last_run_at = ? "
             f"WHERE id = ? AND business_id = ?",
-            (datetime.utcnow().isoformat(), query_id, business_id),
+            (now_iso(), query_id, business_id),
         )
         conn.commit()
     finally:

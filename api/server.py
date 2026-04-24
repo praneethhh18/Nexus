@@ -209,7 +209,7 @@ def login(req: LoginRequest, request: Request):
                 user_agent=(request.headers.get("user-agent") or "")[:300],
                 ip=(request.client.host if request.client else "") or "",
                 expires_at=datetime.utcfromtimestamp(payload["exp"]) if isinstance(payload.get("exp"), (int, float))
-                else datetime.utcnow() + _td(hours=24),
+                else now_utc_naive() + _td(hours=24),
             )
     except Exception as e:
         logger.debug(f"[Auth] session recording skipped: {e}")
@@ -2225,97 +2225,12 @@ def read_all_notifications(ctx: dict = Depends(get_current_context)):
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#   HEALTH & STATUS
+#   Modular routers — see api/routers/ for per-domain endpoint groups.
+#   Setup wizard + admin metrics + deep health live there.
 # ═══════════════════════════════════════════════════════════════════════════════
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Self-hosted setup wizard (9.3) — runs before any user signs up
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/setup/status")
-def setup_status():
-    """Snapshot of install readiness. Unauthenticated — no users may exist yet."""
-    from api import setup_wizard
-    return setup_wizard.status()
-
-
-@app.post("/api/setup/pull-model")
-def setup_pull_model(body: dict):
-    """Trigger `ollama pull` for the chosen model. May take minutes on a cold pull."""
-    from api import setup_wizard
-    try:
-        return setup_wizard.pull_model(body.get("name") or "")
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/setup/choose-model")
-def setup_choose_model(body: dict):
-    from api import setup_wizard
-    try:
-        return setup_wizard.choose_model(body.get("name") or "")
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/setup/complete")
-def setup_complete():
-    """Mark setup done. Idempotent."""
-    from api import setup_wizard
-    return setup_wizard.complete()
-
-
-@app.post("/api/setup/reset")
-def setup_reset(ctx: dict = Depends(get_current_context)):
-    """Reopen the wizard — admin/owner only."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can reset setup")
-    from api import setup_wizard
-    return setup_wizard.reset()
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Admin metrics (11.1 / 11.2) — per-tenant usage counters + dashboard
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/admin/metrics")
-def admin_metrics_global(days: int = 30,
-                         ctx: dict = Depends(get_current_context)):
-    """Global metrics across every tenant — owner/admin only."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can view admin metrics")
-    from api import usage_metrics
-    return usage_metrics.dashboard(business_id=None, days=max(1, min(days, 180)))
-
-
-@app.get("/api/admin/metrics/tenant")
-def admin_metrics_tenant(days: int = 30,
-                         ctx: dict = Depends(get_current_context)):
-    """Metrics scoped to the current business — any logged-in user."""
-    from api import usage_metrics
-    return usage_metrics.dashboard(
-        business_id=ctx["business_id"],
-        days=max(1, min(days, 180)),
-    )
-
-
-@app.post("/api/admin/metrics/record")
-def admin_metrics_record(body: dict, ctx: dict = Depends(get_current_context)):
-    """Record an ad-hoc event. Lets the frontend log high-signal UI events."""
-    from api import usage_metrics
-    event = (body.get("event") or "").strip()
-    if not event:
-        raise HTTPException(400, "event is required")
-    usage_metrics.record(
-        ctx["business_id"], event,
-        user_id=ctx["user"]["id"],
-        count=int(body.get("count") or 1),
-    )
-    return {"ok": True}
-
-
-@app.get("/api/health/deep")
-def health_deep():
-    """Comprehensive health snapshot for monitoring. No auth required."""
-    from api.reliability import deep_health
-    return deep_health()
+from api.routers import setup as _setup_router, admin as _admin_router
+app.include_router(_setup_router.router)
+app.include_router(_admin_router.router)
 
 
 @app.get("/api/health")
@@ -3550,6 +3465,7 @@ def activity_feed_api(limit: int = 60, ctx: dict = Depends(get_current_context))
 #   WHATSAPP — bridge webhook, link flow, status
 # ═══════════════════════════════════════════════════════════════════════════════
 from api import whatsapp as _wa
+from utils.timez import now_utc_naive
 
 
 @app.post("/api/whatsapp/link/generate")

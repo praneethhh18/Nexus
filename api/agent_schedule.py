@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_agent_schedule_prefs"
 
@@ -97,7 +98,7 @@ def set_interval(business_id: str, agent_key: str, interval_minutes: int) -> Dic
     if agent_key not in DEFAULT_INTERVALS_MIN:
         raise ValueError(f"Unknown agent: {agent_key}")
     n = _clamp(interval_minutes)
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _conn()
     try:
         conn.execute(

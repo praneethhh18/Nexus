@@ -36,6 +36,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 ACCOUNTS_TABLE = "nexus_whatsapp_accounts"
 TOKENS_TABLE = "nexus_whatsapp_link_tokens"
@@ -79,7 +80,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return now_iso()
 
 
 # ── Shared-secret auth for the bridge ────────────────────────────────────────
@@ -124,7 +125,7 @@ def _new_code() -> str:
 def generate_link_token(user_id: str, business_id: str) -> Dict[str, Any]:
     """Issue a short-lived link code to be sent over WhatsApp to the bot."""
     code = _new_code()
-    now = datetime.utcnow()
+    now = now_utc_naive()
     expires = now + timedelta(minutes=LINK_TOKEN_TTL_MIN)
     conn = _get_conn()
     try:
@@ -177,8 +178,8 @@ def _consume_link_code(phone: str, text: str) -> Optional[Dict[str, Any]]:
         try:
             exp = datetime.fromisoformat(row["expires_at"])
         except Exception:
-            exp = datetime.utcnow() - timedelta(seconds=1)
-        if datetime.utcnow() > exp:
+            exp = now_utc_naive() - timedelta(seconds=1)
+        if now_utc_naive() > exp:
             return {"error": "This link code has expired. Generate a new one from Settings."}
 
         now = _now_iso()

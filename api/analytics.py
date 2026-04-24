@@ -21,6 +21,7 @@ from typing import Dict, Any, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_utc_naive
 from api.crm import (
     DEALS_TABLE, CONTACTS_TABLE, COMPANIES_TABLE, INTERACTIONS_TABLE,
     DEAL_STAGE_EVENTS_TABLE, DEAL_STAGES,
@@ -68,7 +69,7 @@ def pipeline_velocity(business_id: str) -> Dict[str, Any]:
     entered_stage: Dict[str, int] = {s: 0 for s in DEAL_STAGES}
     won_after_stage: Dict[str, int] = {s: 0 for s in DEAL_STAGES}
 
-    now = datetime.utcnow()
+    now = now_utc_naive()
     for deal_id, ev_list in per_deal.items():
         seen_stages: set = set()
         reached_won = any(e["to_stage"] == "won" for e in ev_list)
@@ -142,7 +143,7 @@ def revenue_forecast(business_id: str, horizon_months: int = 6) -> Dict[str, Any
         ).fetchall()
 
         # Historical won total this period — for comparison
-        last_90 = (datetime.utcnow() - timedelta(days=90)).isoformat()
+        last_90 = (now_utc_naive() - timedelta(days=90)).isoformat()
         won_row = conn.execute(
             f"SELECT COUNT(*), COALESCE(SUM(value), 0) FROM {DEALS_TABLE} "
             f"WHERE business_id = ? AND stage = 'won' AND updated_at >= ?",
@@ -222,7 +223,7 @@ def agent_impact(business_id: str, days: int = 30) -> Dict[str, Any]:
       - estimated_minutes_saved: crude heuristic (each tool call ~= 3 minutes
         of manual work, overrideable).
     """
-    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    cutoff = (now_utc_naive() - timedelta(days=days)).isoformat()
     conn = _conn()
     try:
         rows = conn.execute(
@@ -309,7 +310,7 @@ def churn_risk(business_id: str, max_deals: int = 15) -> Dict[str, Any]:
     finally:
         conn.close()
 
-    now = datetime.utcnow()
+    now = now_utc_naive()
     today = date.today()
 
     scored: List[Dict[str, Any]] = []

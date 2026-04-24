@@ -17,6 +17,7 @@ from typing import Dict, Any, Optional
 from loguru import logger
 
 from config.llm_provider import invoke as llm_invoke
+from utils.timez import now_iso
 
 
 def _web_search(query: str, max_results: int = 6) -> str:
@@ -252,7 +253,7 @@ def save_report_to_kb(business_id: str, report: Dict[str, Any]) -> Dict[str, Any
             " variables, created_at, created_by) "
             "VALUES (?, ?, 'research_report', ?, 'md', '', ?, ?, 'system')",
             (doc_id, business_id, f"Research: {subject}",
-             _json.dumps({"subject": subject}), __import__("datetime").datetime.utcnow().isoformat()),
+             _json.dumps({"subject": subject}), __import__("datetime").now_iso()),
         )
         conn.commit()
         conn.close()

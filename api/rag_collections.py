@@ -23,6 +23,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_document_collections"
 
@@ -101,7 +102,7 @@ def list_collections(business_id: str) -> List[Dict]:
     d = _docs_conn()
     d.row_factory = sqlite3.Row
     try:
-        now = datetime.utcnow().isoformat()
+        now = now_iso()
         for r in rows:
             counts = d.execute(
                 "SELECT COUNT(*) AS total, "
@@ -129,7 +130,7 @@ def create_collection(business_id: str, name: str, description: str = "",
     if not color:
         color = _pick_color(business_id)
     cid = f"col-{uuid.uuid4().hex[:10]}"
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _conn()
     try:
         try:
@@ -242,7 +243,7 @@ def list_documents_in_collection(business_id: str, collection_id: str,
         params = [business_id, collection_id]
         if not include_stale:
             sql += " AND (expires_at IS NULL OR expires_at >= ?)"
-            params.append(datetime.utcnow().isoformat())
+            params.append(now_iso())
         sql += " ORDER BY created_at DESC"
         rows = d.execute(sql, params).fetchall()
     finally:
@@ -259,7 +260,7 @@ def stale_documents(business_id: str) -> List[Dict]:
             "SELECT id, title, collection_id, expires_at FROM nexus_documents "
             "WHERE business_id = ? AND expires_at IS NOT NULL AND expires_at < ? "
             "ORDER BY expires_at ASC",
-            (business_id, datetime.utcnow().isoformat()),
+            (business_id, now_iso()),
         ).fetchall()
     finally:
         d.close()

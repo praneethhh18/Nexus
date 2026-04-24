@@ -24,6 +24,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 MEMORY_TABLE = "nexus_business_memory"
 
@@ -49,7 +50,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat()
+    return now_iso()
 
 
 def _validate_content(content: str) -> str:

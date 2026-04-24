@@ -17,6 +17,7 @@ from pathlib import Path
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 # Only re-nag once every N days per invoice
 REMINDER_INTERVAL_DAYS = int(os.getenv("INVOICE_REMINDER_INTERVAL_DAYS", "7"))
@@ -25,7 +26,7 @@ TAG = "invoice-reminder"
 
 def _already_reminded_recently(business_id: str, invoice_id: str) -> bool:
     from agents.approval_queue import APPROVALS_TABLE
-    cutoff = (datetime.utcnow() - timedelta(days=REMINDER_INTERVAL_DAYS)).isoformat()
+    cutoff = (now_utc_naive() - timedelta(days=REMINDER_INTERVAL_DAYS)).isoformat()
     conn = sqlite3.connect(DB_PATH)
     try:
         row = conn.execute(
@@ -105,7 +106,7 @@ def run_for_business(business_id: str) -> dict:
             logger.warning(f"[InvoiceReminder] queue failed for {inv['id']}: {e}")
 
     # Also mark invoices that are past due but still 'sent' as 'overdue' for UI clarity
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     for inv in candidates:
         try:
             _inv.update_invoice(business_id, inv["id"], {"status": "overdue"})

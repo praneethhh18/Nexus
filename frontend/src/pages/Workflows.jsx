@@ -226,7 +226,13 @@ export default function Workflows() {
     const ndef = nodeTypeDefs[type] || {};
     const config = {};
     for (const [k, v] of Object.entries(ndef.config || {})) config[k] = v.default ?? '';
-    const id = `node-${Date.now().toString(36)}`;
+    // crypto.randomUUID is available in every modern browser; fall back to
+    // a random string if the context is non-secure (unlikely in our app).
+    const id = `node-${
+      (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID().slice(0, 8)
+        : Math.random().toString(36).slice(2, 10)
+    }`;
     setRfNodes(nds => [...nds, {
       id, type: 'workflowNode',
       position: { x: 200 + nds.length * 250, y: 200 + (nds.length % 3) * 80 },

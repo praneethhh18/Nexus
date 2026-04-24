@@ -37,6 +37,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_custom_agents"
 
@@ -150,7 +151,7 @@ def create_agent(business_id: str, user_id: str, data: Dict) -> Dict:
     template = (data.get("template_key") or "").strip()[:60] or None
 
     aid = f"ca-{uuid.uuid4().hex[:10]}"
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _conn()
     try:
         conn.execute(
@@ -237,7 +238,7 @@ def update_agent(business_id: str, agent_id: str, updates: Dict) -> Dict:
     if not fields:
         return get_agent(business_id, agent_id)
 
-    fields["updated_at"] = datetime.utcnow().isoformat()
+    fields["updated_at"] = now_iso()
     sets = ", ".join(f"{k} = ?" for k in fields.keys())
     params = list(fields.values()) + [agent_id, business_id]
     conn = _conn()

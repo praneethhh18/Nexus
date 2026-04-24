@@ -35,6 +35,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 ACCOUNTS_TABLE = "nexus_email_accounts"
 LOG_TABLE = "nexus_email_triage_log"
@@ -112,7 +113,7 @@ def save_account(business_id: str, imap_host: str, username: str,
                  enabled: bool = True, auto_draft_reply: bool = True) -> Dict[str, Any]:
     if not imap_host or not username or not password:
         raise HTTPException(400, "imap_host, username, password are all required")
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _get_conn()
     try:
         row = conn.execute(f"SELECT business_id FROM {ACCOUNTS_TABLE} WHERE business_id = ?",
@@ -437,7 +438,7 @@ def run_for_business(business_id: str) -> Dict[str, Any]:
                     sender[:200], subject[:300],
                     classification["classification"], classification["urgency"],
                     classification["summary"], classification["suggested_action"],
-                    interaction_id, approval_id, datetime.utcnow().isoformat(),
+                    interaction_id, approval_id, now_iso(),
                 ),
             )
             processed_records.append({

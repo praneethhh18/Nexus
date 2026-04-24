@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TAGS_TABLE = "nexus_tags"
 ASSIGN_TABLE = "nexus_tag_assignments"
@@ -131,7 +132,7 @@ def create_tag(business_id: str, name: str, color: Optional[str] = None) -> Dict
     if not color:
         color = _pick_color(business_id)
     tag_id = uuid.uuid4().hex
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _conn()
     try:
         try:
@@ -197,7 +198,7 @@ def assign(business_id: str, tag_id: str, entity_type: str, entity_id: str) -> N
         conn.execute(
             f"INSERT OR IGNORE INTO {ASSIGN_TABLE} "
             f"(tag_id, entity_type, entity_id, created_at) VALUES (?, ?, ?, ?)",
-            (tag_id, entity_type, entity_id, datetime.utcnow().isoformat()),
+            (tag_id, entity_type, entity_id, now_iso()),
         )
         conn.commit()
     finally:
@@ -241,7 +242,7 @@ def set_tags(business_id: str, entity_type: str, entity_id: str, tag_ids: List[s
             f"AND tag_id IN (SELECT id FROM {TAGS_TABLE} WHERE business_id = ?)",
             (entity_type, entity_id, business_id),
         )
-        now = datetime.utcnow().isoformat()
+        now = now_iso()
         for tid in valid_ids:
             conn.execute(
                 f"INSERT OR IGNORE INTO {ASSIGN_TABLE} "

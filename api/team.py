@@ -31,6 +31,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 INVITES_TABLE = "nexus_business_invites"
 
@@ -62,7 +63,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat()
+    return now_iso()
 
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
@@ -92,7 +93,7 @@ def create_invite(business_id: str, inviter_id: str, email: str, role: str = "me
     email = _validate_email(email)
 
     token = secrets.token_urlsafe(28)
-    now = datetime.utcnow()
+    now = now_utc_naive()
     expires = now + timedelta(days=INVITE_TTL_DAYS)
 
     conn = _get_conn()
@@ -182,7 +183,7 @@ def get_invite_preview(token: str) -> Dict[str, Any]:
     if inv.get("revoked_at"):
         return {"status": "revoked"}
     try:
-        if datetime.utcnow() > datetime.fromisoformat(inv["expires_at"]):
+        if now_utc_naive() > datetime.fromisoformat(inv["expires_at"]):
             return {"status": "expired"}
     except Exception:
         return {"status": "expired"}
@@ -206,7 +207,7 @@ def accept_invite(token: str, user_id: str, user_email: str) -> Dict[str, Any]:
     if inv.get("revoked_at"):
         raise HTTPException(400, "Invite has been revoked")
     try:
-        if datetime.utcnow() > datetime.fromisoformat(inv["expires_at"]):
+        if now_utc_naive() > datetime.fromisoformat(inv["expires_at"]):
             raise HTTPException(400, "Invite has expired")
     except Exception:
         raise HTTPException(400, "Invite has expired")

@@ -24,6 +24,7 @@ from typing import List, Tuple
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 # (table_name, filter_column) — None filter means "whole table" (tags table has
 # business_id too; assignments table joins through tags).
@@ -117,7 +118,7 @@ def build_export_zip(business_id: str) -> bytes:
         # README so the user knows what they're looking at.
         readme = (
             "NexusAgent — Workspace Export\n"
-            f"Generated: {datetime.utcnow().isoformat()}Z\n"
+            f"Generated: {now_iso()}Z\n"
             f"Business ID: {business_id}\n\n"
             "Each CSV corresponds to one table, filtered to records owned by this "
             "business. Re-import is not yet automated — this archive is for your "

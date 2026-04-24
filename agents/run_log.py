@@ -20,6 +20,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_agent_runs"
 
@@ -59,7 +60,7 @@ def start(business_id: str, agent_key: str, trigger: str = "scheduler") -> str:
             conn.execute(
                 f"INSERT INTO {TABLE} (id, business_id, agent_key, trigger, started_at, status) "
                 f"VALUES (?, ?, ?, ?, ?, 'running')",
-                (run_id, business_id, agent_key, trigger, datetime.utcnow().isoformat()),
+                (run_id, business_id, agent_key, trigger, now_iso()),
             )
             conn.commit()
         finally:
@@ -85,7 +86,7 @@ def finish(
             conn.execute(
                 f"UPDATE {TABLE} SET finished_at = ?, status = ?, "
                 f"items_produced = ?, error = ? WHERE id = ?",
-                (datetime.utcnow().isoformat(), status, int(items_produced or 0), err, run_id),
+                (now_iso(), status, int(items_produced or 0), err, run_id),
             )
             conn.commit()
         finally:

@@ -28,6 +28,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 # ── JWT secret — persisted so tokens survive restarts ─────────────────────────
 def _load_or_create_secret() -> str:
@@ -140,13 +141,13 @@ def _validate_name(name: str) -> str:
 # ── JWT Tokens ────────────────────────────────────────────────────────────────
 def create_access_token(user_id: str, email: str, role: str) -> str:
     jti = uuid.uuid4().hex
-    exp = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
+    exp = now_utc_naive() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     payload = {
         "sub": user_id,
         "email": email,
         "role": role,
         "exp": exp,
-        "iat": datetime.utcnow(),
+        "iat": now_utc_naive(),
         "jti": jti,
         "type": "access",
     }
@@ -156,8 +157,8 @@ def create_access_token(user_id: str, email: str, role: str) -> str:
 def create_refresh_token(user_id: str) -> str:
     payload = {
         "sub": user_id,
-        "exp": datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
-        "iat": datetime.utcnow(),
+        "exp": now_utc_naive() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        "iat": now_utc_naive(),
         "type": "refresh",
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
@@ -276,7 +277,7 @@ def request_password_reset(email: str) -> Optional[tuple[str, dict]]:
 
         token = secrets.token_urlsafe(32)
         token_hash = _hash_token(token)
-        now = datetime.utcnow()
+        now = now_utc_naive()
         expires = now + timedelta(hours=1)
 
         # Invalidate any previous unused tokens for this user
@@ -316,12 +317,12 @@ def consume_password_reset(token: str, new_password: str) -> None:
         try:
             expires = datetime.fromisoformat(row["expires_at"])
         except Exception:
-            expires = datetime.utcnow()
-        if datetime.utcnow() > expires:
+            expires = now_utc_naive()
+        if now_utc_naive() > expires:
             raise HTTPException(400, "This reset link has expired")
 
         new_hash = hash_password(new_password)
-        now = datetime.utcnow().isoformat()
+        now = now_iso()
         conn.execute(
             "UPDATE nexus_users SET password_hash = ? WHERE id = ?",
             (new_hash, row["user_id"]),

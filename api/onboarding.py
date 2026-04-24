@@ -30,6 +30,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_onboarding_state"
 
@@ -111,7 +112,7 @@ def _row(business_id: str, user_id: str) -> Dict:
             (business_id, user_id),
         ).fetchone()
         if row is None:
-            now = datetime.utcnow().isoformat()
+            now = now_iso()
             conn.execute(
                 f"INSERT INTO {TABLE} (business_id, user_id, updated_at) VALUES (?, ?, ?)",
                 (business_id, user_id, now),
@@ -127,7 +128,7 @@ def _row(business_id: str, user_id: str) -> Dict:
 
 
 def _write(business_id: str, user_id: str, updates: Dict) -> None:
-    updates = {**updates, "updated_at": datetime.utcnow().isoformat()}
+    updates = {**updates, "updated_at": now_iso()}
     cols = ", ".join(f"{k} = ?" for k in updates.keys())
     values = list(updates.values()) + [business_id, user_id]
     conn = _conn()
@@ -259,7 +260,7 @@ def complete_step(business_id: str, user_id: str, step_key: str) -> Dict:
     state = get_state(business_id, user_id)
     remaining = [s for s in state["steps"] if not s["done"] and s["key"] != step_key]
     if not remaining:
-        updates["completed_at"] = datetime.utcnow().isoformat()
+        updates["completed_at"] = now_iso()
     _write(business_id, user_id, updates)
     return get_state(business_id, user_id)
 

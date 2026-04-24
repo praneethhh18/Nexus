@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_notification_prefs"
 
@@ -63,7 +64,7 @@ def get_prefs(user_id: str) -> Dict[str, bool]:
 
 def set_prefs(user_id: str, updates: Dict[str, bool]) -> Dict[str, bool]:
     """Merge partial updates. Unknown event types are ignored."""
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     clean = {k: bool(v) for k, v in (updates or {}).items() if k in DEFAULTS}
     if not clean:
         return get_prefs(user_id)

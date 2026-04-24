@@ -24,6 +24,7 @@ from pathlib import Path
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_utc_naive
 
 LOOKAHEAD_MINUTES = 45
 TAG = "meeting-prep"
@@ -32,7 +33,7 @@ TAG = "meeting-prep"
 def _already_notified(business_id: str, event_id: str) -> bool:
     """Check whether we already pushed a prep for this event today."""
     from api.notifications import TABLE as NOTIF_TABLE
-    today = datetime.utcnow().date().isoformat()
+    today = now_utc_naive().date().isoformat()
     conn = sqlite3.connect(DB_PATH)
     try:
         row = conn.execute(

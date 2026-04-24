@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 DISMISS_TABLE = "nexus_suggestion_dismissals"
 
@@ -76,7 +77,7 @@ def dismiss(business_id: str, suggestion_id: str) -> None:
         conn.execute(
             f"INSERT OR IGNORE INTO {DISMISS_TABLE} "
             f"(business_id, suggestion_id, dismissed_at) VALUES (?, ?, ?)",
-            (business_id, suggestion_id, datetime.utcnow().isoformat()),
+            (business_id, suggestion_id, now_iso()),
         )
         conn.commit()
     finally:
@@ -97,7 +98,7 @@ def _contact_suggestions(conn, business_id: str, contact_id: str) -> List[Dict]:
 
     # Rule: no task referencing this contact in the last 21 days → follow-up overdue
     try:
-        cutoff = (datetime.utcnow() - timedelta(days=21)).isoformat()
+        cutoff = (now_utc_naive() - timedelta(days=21)).isoformat()
         last_task = conn.execute(
             "SELECT MAX(created_at) FROM nexus_tasks "
             "WHERE business_id = ? AND contact_id = ?",
@@ -153,7 +154,7 @@ def _deal_suggestions(conn, business_id: str, deal_id: str) -> List[Dict]:
     if row["stage"] not in ("won", "lost") and row["updated_at"]:
         try:
             last = datetime.fromisoformat(row["updated_at"])
-            if datetime.utcnow() - last > timedelta(days=14):
+            if now_utc_naive() - last > timedelta(days=14):
                 out.append({
                     "rule_key":    "deal_stale",
                     "agent":       "Arjun",

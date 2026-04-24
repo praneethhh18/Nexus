@@ -25,6 +25,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 APPROVALS_TABLE = "nexus_agent_approvals"
 
@@ -58,7 +59,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat()
+    return now_iso()
 
 
 # ── Queue operations ────────────────────────────────────────────────────────
@@ -72,7 +73,7 @@ def queue_action(
 ) -> Dict[str, Any]:
     """Create a pending action and return the full record."""
     aid = f"ap-{uuid.uuid4().hex[:10]}"
-    created = datetime.utcnow()
+    created = now_utc_naive()
     expires = created + timedelta(hours=max(1, min(ttl_hours, 720)))
     row = (
         aid, business_id, user_id, tool_name,
@@ -204,8 +205,8 @@ def approve_action(business_id: str, user_id: str, action_id: str) -> Dict[str, 
     try:
         expires = datetime.fromisoformat(action["expires_at"])
     except Exception:
-        expires = datetime.utcnow()
-    if datetime.utcnow() > expires:
+        expires = now_utc_naive()
+    if now_utc_naive() > expires:
         _update_status(action_id, business_id, "expired")
         raise HTTPException(400, "Action has expired")
 

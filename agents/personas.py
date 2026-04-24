@@ -26,6 +26,7 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_agent_personas"
 
@@ -188,7 +189,7 @@ def set_name(business_id: str, agent_key: str, name: str) -> Dict:
                 f"VALUES (?, ?, ?, 1, ?) "
                 f"ON CONFLICT(business_id, agent_key) DO UPDATE SET "
                 f"custom_name = excluded.custom_name, updated_at = excluded.updated_at",
-                (business_id, agent_key, name, datetime.utcnow().isoformat()),
+                (business_id, agent_key, name, now_iso()),
             )
         conn.commit()
     finally:
@@ -206,7 +207,7 @@ def set_enabled(business_id: str, agent_key: str, enabled: bool) -> Dict:
             f"VALUES (?, ?, '', ?, ?) "
             f"ON CONFLICT(business_id, agent_key) DO UPDATE SET "
             f"enabled = excluded.enabled, updated_at = excluded.updated_at",
-            (business_id, agent_key, 1 if enabled else 0, datetime.utcnow().isoformat()),
+            (business_id, agent_key, 1 if enabled else 0, now_iso()),
         )
         conn.commit()
     finally:

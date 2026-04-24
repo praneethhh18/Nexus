@@ -18,6 +18,7 @@ from pathlib import Path
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_utc_naive
 
 STALE_THRESHOLD_DAYS = int(os.getenv("STALE_DEAL_DAYS", "14"))
 AGENT_TAG = "stale-deal-watcher"
@@ -40,7 +41,7 @@ def _opt_out(business_id: str) -> bool:
 def _already_handled_today(business_id: str, deal_id: str) -> bool:
     """Check whether we've already created a follow-up task for this deal today."""
     from api.tasks import TASKS_TABLE
-    today = datetime.utcnow().date().isoformat()
+    today = now_utc_naive().date().isoformat()
     conn = sqlite3.connect(DB_PATH)
     try:
         row = conn.execute(
@@ -63,7 +64,7 @@ def run_for_business(business_id: str) -> dict:
         return {"business_id": business_id, "skipped": True, "created": 0}
 
     # Find open deals in non-terminal stages
-    threshold = datetime.utcnow() - timedelta(days=STALE_THRESHOLD_DAYS)
+    threshold = now_utc_naive() - timedelta(days=STALE_THRESHOLD_DAYS)
     stale = []
     for stage in ("lead", "qualified", "proposal", "negotiation"):
         for d in _crm.list_deals(business_id, stage=stage, limit=200):
@@ -79,7 +80,7 @@ def run_for_business(business_id: str) -> dict:
         if _already_handled_today(business_id, d["id"]):
             continue
         title = f"Follow up: {d['name']} ({d['stage']})"
-        days_stale = (datetime.utcnow() - datetime.fromisoformat(d["updated_at"])).days
+        days_stale = (now_utc_naive() - datetime.fromisoformat(d["updated_at"])).days
         description = (
             f"This deal has not moved for {days_stale} days. "
             f"Current stage: {d['stage']}, value: {d.get('value', 0)} {d.get('currency', 'USD')}. "

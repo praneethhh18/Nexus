@@ -30,6 +30,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso, now_utc_naive
 
 TWOFA_TABLE = "nexus_user_2fa"
 RECOVERY_TABLE = "nexus_recovery_codes"
@@ -107,7 +108,7 @@ def _get_conn() -> sqlite3.Connection:
 
 
 def _now() -> str:
-    return datetime.utcnow().isoformat()
+    return now_iso()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -373,7 +374,7 @@ def is_session_valid(jti: str) -> bool:
     if revoked:
         return False
     try:
-        if datetime.utcnow() > datetime.fromisoformat(expires):
+        if now_utc_naive() > datetime.fromisoformat(expires):
             return False
     except Exception:
         pass

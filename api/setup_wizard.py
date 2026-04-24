@@ -24,6 +24,7 @@ import requests
 from loguru import logger
 
 from config.settings import DB_PATH, OLLAMA_BASE_URL
+from utils.timez import now_iso
 
 
 TABLE = "nexus_setup"
@@ -228,7 +229,7 @@ def complete() -> Dict[str, Any]:
     try:
         conn.execute(
             f"UPDATE {TABLE} SET completed = 1, completed_at = ? WHERE id = 1",
-            (datetime.utcnow().isoformat(),),
+            (now_iso(),),
         )
         conn.commit()
     finally:

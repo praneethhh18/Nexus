@@ -29,6 +29,7 @@ from typing import Any, Dict, List
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 
 BRIEFINGS_TABLE = "nexus_briefings"
@@ -59,7 +60,7 @@ def _get_conn() -> sqlite3.Connection:
 
 def _save(business_id: str, narrative: str, data: Dict, mode: str, delivered: List[str]) -> Dict:
     bid = f"br-{uuid.uuid4().hex[:10]}"
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _get_conn()
     try:
         conn.execute(

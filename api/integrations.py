@@ -34,6 +34,7 @@ from typing import Any, Callable, Dict, List, Optional
 from loguru import logger
 
 from config.settings import DB_PATH
+from utils.timez import now_iso
 
 TABLE = "nexus_integrations"
 
@@ -307,7 +308,7 @@ def connect(business_id: str, provider: str, config: Dict[str, Any]) -> Dict:
     if PROVIDERS[provider].get("status") == "coming_soon":
         raise ValueError(f"{PROVIDERS[provider]['name']} is not yet available")
 
-    now = datetime.utcnow().isoformat()
+    now = now_iso()
     conn = _conn()
     try:
         existing = conn.execute(
@@ -355,8 +356,8 @@ def record_health(business_id: str, provider: str, ok: bool, error: str = "") ->
             f"UPDATE {TABLE} SET last_health_at = ?, last_health_ok = ?, "
             f"last_health_error = ?, updated_at = ? "
             f"WHERE business_id = ? AND provider = ?",
-            (datetime.utcnow().isoformat(), 1 if ok else 0,
-             (error or "")[:400], datetime.utcnow().isoformat(),
+            (now_iso(), 1 if ok else 0,
+             (error or "")[:400], now_iso(),
              business_id, provider),
         )
         conn.commit()

@@ -26,6 +26,7 @@ from loguru import logger
 
 from agents.personas import get_persona
 from config.settings import DB_PATH
+from utils.timez import now_utc_naive
 
 
 def _connect() -> sqlite3.Connection:
@@ -182,7 +183,7 @@ def recent(business_id: str, hours: int = 48, limit: int = 50) -> List[Dict]:
     Return recent agent activity, newest first, across all agents.
     Each event carries agent_name + role_tag + emoji resolved from personas.
     """
-    since = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+    since = (now_utc_naive() - timedelta(hours=hours)).isoformat()
     events: List[Dict] = []
     for fn in (_from_briefings, _from_invoice_approvals, _from_email_triage, _from_notifications):
         try:

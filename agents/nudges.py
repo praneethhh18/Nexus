@@ -23,6 +23,7 @@ from loguru import logger
 
 from agents.personas import get_persona
 from config.settings import DB_PATH
+from utils.timez import now_utc_naive
 
 DISMISS_TABLE = "nexus_nudge_dismissals"
 
@@ -102,7 +103,7 @@ def _nudge_invoice_reminder(business_id: str) -> Optional[Dict]:
 
     # Filter to invoices without a recent reminder approval
     pending = []
-    cutoff = (datetime.utcnow() - timedelta(days=7)).isoformat()
+    cutoff = (now_utc_naive() - timedelta(days=7)).isoformat()
     conn = sqlite3.connect(DB_PATH)
     try:
         for r in rows:
@@ -142,7 +143,7 @@ def _nudge_invoice_reminder(business_id: str) -> Optional[Dict]:
 def _nudge_stale_deals(business_id: str) -> Optional[Dict]:
     """Arjun: deals that haven't moved in 14+ days."""
     try:
-        cutoff = (datetime.utcnow() - timedelta(days=14)).isoformat()
+        cutoff = (now_utc_naive() - timedelta(days=14)).isoformat()
         conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
@@ -176,7 +177,7 @@ def _nudge_stale_deals(business_id: str) -> Optional[Dict]:
 def _nudge_email_triage(business_id: str) -> Optional[Dict]:
     """Iris: drafts waiting in the approval queue from her last triage run."""
     try:
-        cutoff = (datetime.utcnow() - timedelta(hours=24)).isoformat()
+        cutoff = (now_utc_naive() - timedelta(hours=24)).isoformat()
         conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
@@ -255,7 +256,7 @@ def _nudge_morning_briefing(business_id: str) -> Optional[Dict]:
 def _nudge_meeting_prep(business_id: str) -> Optional[Dict]:
     """Sage: upcoming meetings in the next 2 hours."""
     try:
-        now = datetime.utcnow()
+        now = now_utc_naive()
         cutoff = (now + timedelta(hours=2)).isoformat()
         conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
         try:

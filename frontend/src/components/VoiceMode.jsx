@@ -120,6 +120,61 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
     if (mountedRef.current) setter(v);
   }, []);
 
+  // ── Handle one recorded utterance end-to-end ──────────────────────────────
+  // Declared BEFORE startListening so the MediaRecorder.onstop closure picks
+  // up the real function, not a `undefined` temporal-dead-zone capture.
+  const handleUtterance = useCallback(async (blob) => {
+    if (!mountedRef.current) return;
+    setState('thinking');
+
+    const abort = new AbortController();
+    abortRef.current = abort;
+
+    try {
+      // 1. Transcribe
+      const text = await transcribeBlob(blob, abort.signal);
+      if (!mountedRef.current) return;
+      if (!text) {
+        // Whisper returned nothing — go straight back to listening instead of
+        // showing a scary error. Users frequently just paused.
+        setState('listening');
+        return;
+      }
+      setTranscript(text);
+
+      // Hook back into parent chat so the voice turn is persisted alongside
+      // regular typed messages.
+      onTranscript?.(text);
+
+      // 2. Ask the agent (always agent mode so tool use works)
+      const res = await agentChat(text, convId);
+      if (!mountedRef.current) return;
+      if (!convId && res.conversation_id && setConvId) setConvId(res.conversation_id);
+
+      const full = res?.message?.content || '';
+      setAnswer(full);
+      // Surface the full turn back to the parent chat log
+      onAgentReply?.(res?.message);
+
+      // 3. Speak the short version
+      setState('speaking');
+      await speakText(full, {
+        onEnd: () => {
+          if (!mountedRef.current) return;
+          // Auto-loop back to listening for the next question
+          setState('listening');
+        },
+      });
+    } catch (e) {
+      if (!mountedRef.current) return;
+      if (e.name === 'AbortError') return;  // user exited
+      setErrorMsg(e.message || 'Voice turn failed');
+      setState('error');
+    } finally {
+      abortRef.current = null;
+    }
+  }, [convId, setConvId, onTranscript, onAgentReply]);
+
   // ── Start listening (runs once per turn) ──────────────────────────────────
   const startListening = useCallback(async () => {
     setErrorMsg('');
@@ -230,59 +285,6 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [safeSet]);
-
-  // ── Handle one recorded utterance end-to-end ──────────────────────────────
-  const handleUtterance = useCallback(async (blob) => {
-    if (!mountedRef.current) return;
-    setState('thinking');
-
-    const abort = new AbortController();
-    abortRef.current = abort;
-
-    try {
-      // 1. Transcribe
-      const text = await transcribeBlob(blob, abort.signal);
-      if (!mountedRef.current) return;
-      if (!text) {
-        // Whisper returned nothing — go straight back to listening instead of
-        // showing a scary error. Users frequently just paused.
-        setState('listening');
-        return;
-      }
-      setTranscript(text);
-
-      // Hook back into parent chat so the voice turn is persisted alongside
-      // regular typed messages.
-      onTranscript?.(text);
-
-      // 2. Ask the agent (always agent mode so tool use works)
-      const res = await agentChat(text, convId);
-      if (!mountedRef.current) return;
-      if (!convId && res.conversation_id && setConvId) setConvId(res.conversation_id);
-
-      const full = res?.message?.content || '';
-      setAnswer(full);
-      // Surface the full turn back to the parent chat log
-      onAgentReply?.(res?.message);
-
-      // 3. Speak the short version
-      setState('speaking');
-      await speakText(full, {
-        onEnd: () => {
-          if (!mountedRef.current) return;
-          // Auto-loop back to listening for the next question
-          setState('listening');
-        },
-      });
-    } catch (e) {
-      if (!mountedRef.current) return;
-      if (e.name === 'AbortError') return;  // user exited
-      setErrorMsg(e.message || 'Voice turn failed');
-      setState('error');
-    } finally {
-      abortRef.current = null;
-    }
-  }, [convId, setConvId, onTranscript]);
 
   // Kick off listening when the user confirms they want voice mode
   const handleStart = () => { if (state === 'idle' || state === 'error') startListening(); };
