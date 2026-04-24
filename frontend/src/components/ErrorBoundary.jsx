@@ -10,6 +10,7 @@
  */
 import { Component } from 'react';
 import { AlertTriangle, Home, RefreshCw, Bug } from 'lucide-react';
+import { reportError } from '../services/errorReporter';
 
 
 export default class ErrorBoundary extends Component {
@@ -20,14 +21,10 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Route to a telemetry hook if one is configured; otherwise just log.
-    try {
-      if (window?.nexusReportError) {
-        window.nexusReportError({ error: String(error), stack: info?.componentStack });
-      }
-    } catch {}
+    // Ship the error to whatever reporter is configured (Sentry /
+    // custom endpoint / in-memory buffer). reportError never throws.
+    reportError(error, { componentStack: info?.componentStack });
     this.setState({ info });
-    // eslint-disable-next-line no-console
     console.error('[ErrorBoundary] unhandled render error:', error, info);
   }
 

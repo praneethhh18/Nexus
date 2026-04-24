@@ -920,90 +920,7 @@ def notifications_delete_one(notif_id: str, ctx: dict = Depends(get_current_cont
     return {"ok": True}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Tags — universal labels for any record type
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/tags")
-def tags_list_all(ctx: dict = Depends(get_current_context)):
-    """Every tag in the current business, with usage counts."""
-    from api import tags as _tags
-    return _tags.list_tags(ctx["business_id"])
-
-
-@app.post("/api/tags")
-def tags_create(body: dict, ctx: dict = Depends(get_current_context)):
-    """Create a tag (or return the existing one with the same name)."""
-    from api import tags as _tags
-    try:
-        return _tags.create_tag(
-            ctx["business_id"],
-            name=body.get("name", ""),
-            color=body.get("color"),
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.delete("/api/tags/{tag_id}")
-def tags_delete(tag_id: str, ctx: dict = Depends(get_current_context)):
-    from api import tags as _tags
-    _tags.delete_tag(ctx["business_id"], tag_id)
-    return {"ok": True}
-
-
-@app.get("/api/tags/for/{entity_type}/{entity_id}")
-def tags_for_entity(entity_type: str, entity_id: str,
-                    ctx: dict = Depends(get_current_context)):
-    from api import tags as _tags
-    try:
-        return _tags.tags_for(ctx["business_id"], entity_type, entity_id)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.put("/api/tags/for/{entity_type}/{entity_id}")
-def tags_set_for_entity(entity_type: str, entity_id: str, body: dict,
-                        ctx: dict = Depends(get_current_context)):
-    """Replace the entity's tags with `tag_ids`."""
-    from api import tags as _tags
-    tag_ids = body.get("tag_ids") or []
-    try:
-        return _tags.set_tags(ctx["business_id"], entity_type, entity_id, tag_ids)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/tags/bulk-for/{entity_type}")
-def tags_bulk_for(entity_type: str, body: dict,
-                  ctx: dict = Depends(get_current_context)):
-    """Fetch tags for many entities at once — used by list pages."""
-    from api import tags as _tags
-    ids = body.get("ids") or []
-    try:
-        return _tags.bulk_tags_for(ctx["business_id"], entity_type, ids)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Workspace export — download the whole business as a ZIP of CSVs
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/export/all")
-def export_all(ctx: dict = Depends(get_current_context)):
-    """Bundle every business-scoped table into a ZIP. Owner/admin only."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can export the full workspace")
-    from api import data_export
-    from fastapi.responses import Response
-    blob = data_export.build_export_zip(ctx["business_id"])
-    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return Response(
-        content=blob,
-        media_type="application/zip",
-        headers={
-            "Content-Disposition": f'attachment; filename="nexusagent-export-{ts}.zip"',
-        },
-    )
+# Tags + workspace export moved to api/routers/tags.py.
 
 
 @app.get("/api/audit/export")
@@ -1315,114 +1232,7 @@ def bulk_stage_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
     return {"updated": n}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Integrations — provider catalog + connections + webhook receiver (3.4)
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/integrations/providers")
-def integrations_providers(ctx: dict = Depends(get_current_context)):
-    """Catalog of every shipped integration provider."""
-    from api import integrations
-    return {
-        "providers": integrations.list_providers(),
-        "categories": integrations.CATEGORY_LABELS,
-    }
-
-
-@app.get("/api/integrations")
-def integrations_list(ctx: dict = Depends(get_current_context)):
-    """Integrations connected for this business."""
-    from api import integrations
-    return integrations.list_connections(ctx["business_id"])
-
-
-@app.post("/api/integrations/{provider}/connect")
-def integrations_connect(provider: str, body: dict,
-                         ctx: dict = Depends(get_current_context)):
-    """Store connection config for a provider. Owner/admin only."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can connect integrations")
-    from api import integrations
-    try:
-        return integrations.connect(ctx["business_id"], provider, body or {})
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.delete("/api/integrations/{provider}")
-def integrations_disconnect(provider: str,
-                            ctx: dict = Depends(get_current_context)):
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can disconnect integrations")
-    from api import integrations
-    integrations.disconnect(ctx["business_id"], provider)
-    return {"ok": True}
-
-
-@app.post("/api/integrations/{provider}/ping")
-def integrations_ping(provider: str, ctx: dict = Depends(get_current_context)):
-    """Refresh health status for a connected integration."""
-    from api import integrations
-    return integrations.ping(ctx["business_id"], provider)
-
-
-@app.post("/api/webhooks/{provider}")
-async def generic_webhook_receiver(provider: str, request: Request):
-    """
-    Generic inbound webhook endpoint. Adapters register themselves by setting
-    `nexus_integrations.config_json.webhook_secret` per business; the body is
-    HMAC-verified against any signature header the provider sends (x-hub-
-    signature-256 style), then stored in `nexus_notifications` as a record
-    the user can review.
-
-    The URL is `/api/webhooks/{provider}?business_id=...` — the business_id
-    query param is REQUIRED since the request is unauthenticated.
-    """
-    import sqlite3
-    from api import integrations
-    business_id = request.query_params.get("business_id", "")
-    if not business_id:
-        raise HTTPException(400, "business_id query param is required")
-
-    body = await request.body()
-    row = integrations.get_connection(business_id, provider, scrub=False)
-    if not row:
-        raise HTTPException(404, f"{provider} is not connected for this business")
-
-    secret = (row.get("config") or {}).get("webhook_secret", "")
-    # Best-effort signature header probe — providers use different headers.
-    sig = (request.headers.get("x-hub-signature-256") or
-           request.headers.get("x-signature") or
-           request.headers.get("x-nexus-signature") or "")
-    if sig.startswith("sha256="):
-        sig = sig[len("sha256="):]
-
-    if secret and sig and not integrations.verify_webhook_signature(secret, body, sig):
-        integrations.record_health(business_id, provider, ok=False,
-                                   error="Webhook signature verification failed")
-        raise HTTPException(401, "Signature verification failed")
-
-    # Log as a notification so the user sees what arrived.
-    try:
-        import json as _json
-        preview = body.decode("utf-8", errors="replace")[:500]
-        try:
-            parsed = _json.loads(body)
-            preview = _json.dumps(parsed)[:500]
-        except Exception:
-            pass
-        from api import notifications
-        notifications.push(
-            title=f"{row['provider_meta'].get('name', provider)} webhook",
-            message=preview,
-            type=f"webhook_{provider}",
-            severity="info",
-            business_id=business_id,
-        )
-    except Exception as e:
-        logger.warning(f"[webhook:{provider}] notify failed: {e}")
-
-    integrations.record_health(business_id, provider, ok=True, error="")
-    return {"ok": True}
+# Integrations + webhook receiver extracted to api/routers/integrations.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1496,66 +1306,7 @@ def rag_reingest_document(document_id: str, ctx: dict = Depends(get_current_cont
         raise HTTPException(404, "Document not found")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Saved queries + templates (2.7)
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/saved-queries")
-def saved_queries_list(ctx: dict = Depends(get_current_context)):
-    from api import saved_queries
-    return saved_queries.list_queries(ctx["business_id"])
-
-
-@app.post("/api/saved-queries")
-def saved_queries_create(body: dict, ctx: dict = Depends(get_current_context)):
-    from api import saved_queries
-    try:
-        return saved_queries.create_query(ctx["business_id"], body)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.get("/api/saved-queries/templates")
-def saved_queries_templates(ctx: dict = Depends(get_current_context)):
-    from api import saved_queries
-    return saved_queries.list_templates()
-
-
-@app.post("/api/saved-queries/from-template")
-def saved_queries_from_template(body: dict, ctx: dict = Depends(get_current_context)):
-    from api import saved_queries
-    try:
-        return saved_queries.create_from_template(
-            ctx["business_id"], body.get("template_key") or "",
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.patch("/api/saved-queries/{query_id}")
-def saved_queries_update(query_id: str, body: dict,
-                         ctx: dict = Depends(get_current_context)):
-    from api import saved_queries
-    try:
-        return saved_queries.update_query(ctx["business_id"], query_id, body)
-    except KeyError:
-        raise HTTPException(404, "Saved query not found")
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.delete("/api/saved-queries/{query_id}")
-def saved_queries_delete(query_id: str, ctx: dict = Depends(get_current_context)):
-    from api import saved_queries
-    saved_queries.delete_query(ctx["business_id"], query_id)
-    return {"ok": True}
-
-
-@app.post("/api/saved-queries/{query_id}/record-run")
-def saved_queries_record_run(query_id: str, ctx: dict = Depends(get_current_context)):
-    """Called by the SQL runner after a saved query is executed."""
-    from api import saved_queries
-    saved_queries.record_run(ctx["business_id"], query_id)
-    return {"ok": True}
+# Saved queries, suggestions extracted to api/routers/.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1581,28 +1332,6 @@ def research_save_to_kb(body: dict, ctx: dict = Depends(get_current_context)):
     if not report.get("subject"):
         raise HTTPException(400, "report.subject is required")
     return save_report_to_kb(ctx["business_id"], report)
-
-
-@app.get("/api/suggestions/{entity_type}/{entity_id}")
-def suggestions_for_entity_api(entity_type: str, entity_id: str,
-                               ctx: dict = Depends(get_current_context)):
-    """Passive per-record nudges (follow-up overdue, client pays late, etc)."""
-    from api import suggestions
-    try:
-        return {"suggestions": suggestions.for_entity(
-            ctx["business_id"], entity_type, entity_id,
-        )}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/suggestions/{suggestion_id}/dismiss")
-def suggestions_dismiss_api(suggestion_id: str,
-                            ctx: dict = Depends(get_current_context)):
-    """Dismiss a suggestion — it stops surfacing on the related record."""
-    from api import suggestions
-    suggestions.dismiss(ctx["business_id"], suggestion_id)
-    return {"ok": True}
 
 
 @app.get("/api/activity/{entity_type}/{entity_id}")
@@ -2226,11 +1955,19 @@ def read_all_notifications(ctx: dict = Depends(get_current_context)):
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #   Modular routers — see api/routers/ for per-domain endpoint groups.
-#   Setup wizard + admin metrics + deep health live there.
 # ═══════════════════════════════════════════════════════════════════════════════
-from api.routers import setup as _setup_router, admin as _admin_router
-app.include_router(_setup_router.router)
-app.include_router(_admin_router.router)
+from api.routers import (
+    setup         as _r_setup,
+    admin         as _r_admin,
+    tags          as _r_tags,
+    integrations  as _r_integrations,
+    suggestions   as _r_suggestions,
+    saved_queries as _r_saved_queries,
+    errors        as _r_errors,
+)
+for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
+           _r_suggestions, _r_saved_queries, _r_errors):
+    app.include_router(_r.router)
 
 
 @app.get("/api/health")
