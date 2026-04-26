@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
          PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search, AudioLines,
-         Sun, ArrowRight, Lock, Unlock } from 'lucide-react';
+         Sun, Moon, ArrowRight, Lock, Unlock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { sendMessage, getConversation, getConversations, deleteConversation,
@@ -11,7 +11,7 @@ import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { transcribeBlob, voiceSupported } from '../services/voice';
 import { privacyStatus } from '../services/security';
-import { briefingLatest } from '../services/briefing';
+import { briefingLatest, eveningLatest } from '../services/briefing';
 import VoiceMode from '../components/VoiceMode';
 import { Zap } from 'lucide-react';
 
@@ -257,6 +257,7 @@ export default function Chat() {
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [privacy, setPrivacy] = useState(null);
   const [briefing, setBriefing] = useState(null);
+  const [evening, setEvening] = useState(null);
   const [convSensitive, setConvSensitive] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -268,14 +269,19 @@ export default function Chat() {
   // Load privacy posture once for the footer label.
   useEffect(() => { privacyStatus().then(setPrivacy).catch(() => {}); }, []);
 
-  // Pull today's briefing for the welcome ribbon. Dashboard handles auto-run;
+  // Pull today's briefing(s) for the welcome ribbon. Dashboard handles auto-run;
   // here we just display whatever's fresh, so users who land on /chat directly
-  // still see the daily-habit hook.
+  // still see the daily-habit hook. Evening only renders after 4 PM local.
   useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
     briefingLatest().then(b => {
-      const today = new Date().toISOString().slice(0, 10);
       if (b?.id && b?.data?.date === today) setBriefing(b);
     }).catch(() => {});
+    if (new Date().getHours() >= 16) {
+      eveningLatest().then(e => {
+        if (e?.id && e?.data?.date === today) setEvening(e);
+      }).catch(() => {});
+    }
   }, []);
 
   // Conversation history — loaded here, not in the app sidebar
@@ -727,6 +733,66 @@ export default function Chat() {
                   <Link to="/" style={{
                     flexShrink: 0, fontSize: 11, fontWeight: 600,
                     color: 'var(--color-accent)', textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                    padding: '6px 10px', borderRadius: 'var(--r-sm)',
+                  }}>
+                    Open <ArrowRight size={12} />
+                  </Link>
+                </div>
+              )}
+
+              {evening && (
+                <div style={{
+                  marginBottom: 16, padding: '12px 14px',
+                  borderRadius: 'var(--r-md)',
+                  background: 'linear-gradient(135deg, color-mix(in srgb, var(--color-info) 8%, var(--color-surface-2)), var(--color-surface-2))',
+                  border: '1px solid color-mix(in srgb, var(--color-info) 22%, transparent)',
+                  display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left',
+                  maxWidth: 720, width: '100%',
+                }}>
+                  <div style={{
+                    width: 32, height: 32, borderRadius: 'var(--r-sm)', flexShrink: 0,
+                    background: 'color-mix(in srgb, var(--color-info) 16%, transparent)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Moon size={16} color="var(--color-info)" />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-info)', letterSpacing: 0.5 }}>TODAY'S WRAP</span>
+                      {evening.data?.tasks?.completed_today_count > 0 && (
+                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                          {evening.data.tasks.completed_today_count} task{evening.data.tasks.completed_today_count > 1 ? 's' : ''} closed
+                        </span>
+                      )}
+                      {evening.data?.invoices?.paid_today_count > 0 && (
+                        <span style={{ fontSize: 11, color: 'var(--color-ok)' }}>
+                          · {evening.data.invoices.paid_today_count} paid
+                        </span>
+                      )}
+                      {evening.data?.invoices?.sent_today_count > 0 && (
+                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                          · {evening.data.invoices.sent_today_count} sent
+                        </span>
+                      )}
+                      {evening.data?.pipeline?.advanced_today_count > 0 && (
+                        <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                          · {evening.data.pipeline.advanced_today_count} deal{evening.data.pipeline.advanced_today_count > 1 ? 's' : ''} moved
+                        </span>
+                      )}
+                    </div>
+                    <div style={{
+                      fontSize: 12, color: 'var(--color-text)',
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      lineHeight: 1.5,
+                    }}>
+                      {(evening.narrative || '').replace(/[#*_`]/g, '').split('\n').filter(Boolean)[0] || 'See your full wrap on the dashboard.'}
+                    </div>
+                  </div>
+                  <Link to="/" style={{
+                    flexShrink: 0, fontSize: 11, fontWeight: 600,
+                    color: 'var(--color-info)', textDecoration: 'none',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     padding: '6px 10px', borderRadius: 'var(--r-sm)',
                   }}>
