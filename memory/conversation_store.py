@@ -42,6 +42,9 @@ def _get_conn():
 
     # Migrations: add business_id to existing installs
     _ensure_column(conn, TABLE, "business_id", "TEXT DEFAULT 'default'")
+    # `sensitive=1` locks a conversation to local-only LLM regardless of
+    # whether the cloud provider is configured. Off by default.
+    _ensure_column(conn, TABLE, "sensitive", "INTEGER DEFAULT 0")
 
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_conv_biz ON {TABLE}(business_id, updated_at)")
     conn.commit()
@@ -143,6 +146,23 @@ def update_title(conversation_id, title):
     conn.execute(f"UPDATE {TABLE} SET title=? WHERE conversation_id=?", (title, conversation_id))
     conn.commit()
     conn.close()
+
+
+def set_sensitive(conversation_id: str, value: bool) -> None:
+    """Toggle the local-only lock on a conversation."""
+    conn = _get_conn()
+    conn.execute(
+        f"UPDATE {TABLE} SET sensitive=? WHERE conversation_id=?",
+        (1 if value else 0, conversation_id),
+    )
+    conn.commit()
+    conn.close()
+
+
+def is_sensitive(conversation_id: str) -> bool:
+    """True if the conversation is locked to local-only LLM."""
+    info = get_conversation_info(conversation_id)
+    return bool(info and info.get("sensitive"))
 
 
 def auto_title(conversation_id, first_message):

@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
          PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search, AudioLines,
-         Sun, ArrowRight } from 'lucide-react';
+         Sun, ArrowRight, Lock, Unlock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { sendMessage, getConversation, getConversations, deleteConversation,
-         exportMarkdown, uploadDocument, downloadReport } from '../services/api';
+         exportMarkdown, uploadDocument, downloadReport,
+         setConversationSensitive } from '../services/api';
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { transcribeBlob, voiceSupported } from '../services/voice';
@@ -256,6 +257,7 @@ export default function Chat() {
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [privacy, setPrivacy] = useState(null);
   const [briefing, setBriefing] = useState(null);
+  const [convSensitive, setConvSensitive] = useState(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
@@ -298,16 +300,42 @@ export default function Chat() {
   };
 
   const loadConversation = async (id) => {
-    try { const data = await getConversation(id); setMessages(data.messages || []); setConvId(id); setChartData(null); }
+    try {
+      const data = await getConversation(id);
+      setMessages(data.messages || []);
+      setConvId(id);
+      setChartData(null);
+      setConvSensitive(!!data.info?.sensitive);
+    }
     catch {}
   };
+
+  const toggleConvSensitive = async () => {
+    const next = !convSensitive;
+    setConvSensitive(next);  // optimistic
+    if (!convId) return;     // new chats: synced after first send creates the row
+    try {
+      await setConversationSensitive(convId, next);
+    } catch (e) {
+      setConvSensitive(!next);  // revert on failure
+      console.error('Failed to set sensitive flag', e);
+    }
+  };
+
+  // If the user toggled "lock" on a brand-new chat, push the flag once the
+  // first send creates the server-side conversation row.
+  useEffect(() => {
+    if (convId && convSensitive) {
+      setConversationSensitive(convId, true).catch(() => {});
+    }
+  }, [convId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const removeConversation = async (e, id) => {
     e.stopPropagation();
     if (!confirm('Delete this conversation?')) return;
     await deleteConversation(id).catch(() => {});
     setConversations(c => c.filter(x => x.conversation_id !== id));
-    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); }
+    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); }
   };
 
   const filteredConvs = conversations.filter(c =>
@@ -316,9 +344,18 @@ export default function Chat() {
 
   useEffect(() => {
     const onLoad = async (e) => {
-      try { const data = await getConversation(e.detail); setMessages(data.messages || []); setConvId(e.detail); } catch {}
+      try {
+        const data = await getConversation(e.detail);
+        setMessages(data.messages || []);
+        setConvId(e.detail);
+        setConvSensitive(!!data.info?.sensitive);
+      } catch {}
     };
-    const onNew = () => { setMessages([]); setConvId(null); setChartData(null); inputRef.current?.focus(); };
+    const onNew = () => {
+      setMessages([]); setConvId(null); setChartData(null);
+      setConvSensitive(false);
+      inputRef.current?.focus();
+    };
     const onRerun = (e) => { send(e.detail); };
     window.addEventListener('nexus-load-conv', onLoad);
     window.addEventListener('nexus-new-chat', onNew);
@@ -523,6 +560,22 @@ export default function Chat() {
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
           <button
+            onClick={toggleConvSensitive}
+            title={convSensitive
+              ? 'This chat is locked to local-only LLM. Click to unlock.'
+              : 'Lock this chat to local-only LLM (no cloud calls).'}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '5px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
+              border: `1px solid ${convSensitive ? 'color-mix(in srgb, var(--color-warn) 45%, transparent)' : 'var(--color-border-strong)'}`,
+              background: convSensitive ? 'color-mix(in srgb, var(--color-warn) 10%, transparent)' : 'transparent',
+              color: convSensitive ? 'var(--color-warn)' : 'var(--color-text-muted)',
+            }}
+          >
+            {convSensitive ? <Lock size={12} /> : <Unlock size={12} />}
+            {convSensitive ? 'Local only' : 'Hybrid'}
+          </button>
+          <button
             onClick={toggleAgentMode}
             title={agentMode ? 'Switch to passive chat (answers only, no actions)' : 'Switch to agent mode (can take actions)'}
             style={{
@@ -553,7 +606,7 @@ export default function Chat() {
           {messages.length > 0 && (
             <>
               <button className="action-btn" onClick={doExport}><Download size={13} /> Export</button>
-              <button className="action-btn" onClick={() => { setMessages([]); setConvId(null); setChartData(null); }}><Plus size={13} /> New</button>
+              <button className="action-btn" onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); }}><Plus size={13} /> New</button>
             </>
           )}
         </div>
@@ -571,7 +624,7 @@ export default function Chat() {
           }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 6, alignItems: 'center' }}>
               <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '7px 10px' }}
-                onClick={() => { setMessages([]); setConvId(null); setChartData(null); inputRef.current?.focus(); }}>
+                onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); inputRef.current?.focus(); }}>
                 <Plus size={13} /> New chat
               </button>
             </div>

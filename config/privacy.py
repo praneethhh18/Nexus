@@ -55,6 +55,27 @@ _STATS_VAR: contextvars.ContextVar[dict] = contextvars.ContextVar(
     "privacy_stats", default=None
 )
 
+# Per-request override: when set True, every LLM call in this request is
+# forced local even if the caller passed sensitive=False. Used by the
+# "lock this conversation" feature so a chat marked sensitive never leaks
+# to the cloud regardless of which call site dispatches the prompt.
+_SENSITIVE_VAR: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "privacy_sensitive_ctx", default=False
+)
+
+
+def set_sensitive_context(value: bool) -> None:
+    """Force every LLM call in this request to stay local."""
+    _SENSITIVE_VAR.set(bool(value))
+
+
+def is_sensitive_context() -> bool:
+    """True if the current request was marked sensitive at its entry point."""
+    try:
+        return bool(_SENSITIVE_VAR.get())
+    except LookupError:
+        return False
+
 
 def _empty_stats() -> dict:
     return {
@@ -242,7 +263,7 @@ def should_use_cloud(sensitive: bool, cloud_available: bool) -> bool:
     if not ALLOW_CLOUD_LLM:
         note_forced_local("kill_switch")
         return False
-    if sensitive:
+    if sensitive or is_sensitive_context():
         note_forced_local("sensitive")
         return False
     return True

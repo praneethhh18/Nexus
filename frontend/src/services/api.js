@@ -53,6 +53,11 @@ export const getConversations = () => request('/conversations');
 export const getConversation = (id) => request(`/conversations/${id}`);
 export const createConversation = () => request('/conversations', { method: 'POST' });
 export const deleteConversation = (id) => request(`/conversations/${id}`, { method: 'DELETE' });
+export const setConversationSensitive = (id, sensitive) =>
+  request(`/conversations/${id}/sensitive`, {
+    method: 'PATCH',
+    body: JSON.stringify({ sensitive }),
+  });
 export const updateConversation = (id, title) =>
   request(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) });
 

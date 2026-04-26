@@ -333,6 +333,10 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
 
     from config import privacy as _privacy
     _privacy.reset_stats()
+    # Honor the per-conversation lock — if the user toggled "treat as sensitive",
+    # every LLM call in this request is forced local.
+    from memory.conversation_store import is_sensitive as _is_sensitive
+    _privacy.set_sensitive_context(_is_sensitive(conv_id))
 
     start = time.time()
     loop = asyncio.get_event_loop()
@@ -650,6 +654,9 @@ async def chat(req: ChatRequest, ctx: dict = Depends(get_current_context)):
     else:
         assert_conversation_access(conv_id, business_id)
 
+    from memory.conversation_store import is_sensitive as _is_sensitive
+    _privacy.set_sensitive_context(_is_sensitive(conv_id))
+
     try:
         loop = asyncio.get_event_loop()
         result_state = await loop.run_in_executor(None, lambda: run(req.query, user_id=user["id"]))
@@ -794,7 +801,7 @@ async def ws_chat(websocket: WebSocket):
             from memory.short_term import get_default_memory
             from memory.conversation_store import (
                 create_conversation, auto_title, save_full_conversation, load_messages,
-                assert_conversation_access,
+                assert_conversation_access, is_sensitive as _is_sensitive,
             )
 
             if not conv_id:
@@ -806,6 +813,8 @@ async def ws_chat(websocket: WebSocket):
                 except HTTPException as e:
                     await websocket.send_json({"type": "error", "error": e.detail})
                     continue
+
+            _privacy.set_sensitive_context(_is_sensitive(conv_id))
 
             if _is_just_chitchat(query):
                 mem = get_default_memory()

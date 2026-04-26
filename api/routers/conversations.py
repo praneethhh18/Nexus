@@ -39,6 +39,24 @@ def update_conversation(conv_id: str, body: ConversationUpdate,
     return {"ok": True}
 
 
+class SensitiveToggle(BaseModel):
+    sensitive: bool
+
+
+@router.patch("/api/conversations/{conv_id}/sensitive")
+def set_conversation_sensitive(conv_id: str, body: SensitiveToggle,
+                               ctx: dict = Depends(get_current_context)):
+    """
+    Lock or unlock a conversation to local-only LLM. When locked, every
+    subsequent LLM call in this conversation is forced to Ollama regardless
+    of whether a cloud provider is configured.
+    """
+    from memory.conversation_store import set_sensitive, assert_conversation_access
+    assert_conversation_access(conv_id, ctx["business_id"])
+    set_sensitive(conv_id, body.sensitive)
+    return {"ok": True, "sensitive": body.sensitive}
+
+
 @router.delete("/api/conversations/{conv_id}")
 def delete_conversation_api(conv_id: str, ctx: dict = Depends(get_current_context)):
     from memory.conversation_store import delete_conversation as dc, assert_conversation_access
