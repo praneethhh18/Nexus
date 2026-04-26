@@ -439,10 +439,20 @@ def privacy_status(user: dict = Depends(get_current_user)):
     from config import privacy
     from config.llm_provider import get_provider, USE_CLAUDE, USE_BEDROCK, CLAUDE_MODEL
 
+    cloud_model = None
+    if USE_CLAUDE:
+        cloud_model = CLAUDE_MODEL
+    elif USE_BEDROCK:
+        try:
+            from config.llm_bedrock import primary_model_id
+            cloud_model = primary_model_id()
+        except Exception:
+            cloud_model = "bedrock"
+
     return {
         "provider": get_provider(),
         "cloud_configured": bool(USE_CLAUDE or USE_BEDROCK),
-        "cloud_model": CLAUDE_MODEL if USE_CLAUDE else "nova-pro" if USE_BEDROCK else None,
+        "cloud_model": cloud_model,
         "allow_cloud_llm": privacy.ALLOW_CLOUD_LLM,
         "redact_pii": privacy.REDACT_PII,
         "audit_enabled": privacy.AUDIT_CLOUD_CALLS,

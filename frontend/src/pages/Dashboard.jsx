@@ -112,7 +112,26 @@ export default function Dashboard() {
   const loadBriefing = useCallback(async () => {
     try {
       const b = await briefingLatest();
-      setBriefing(b && b.id ? b : null);
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const isToday = b?.data?.date === todayIso;
+      if (b?.id && isToday) {
+        setBriefing(b);
+      } else {
+        // No briefing for today yet — generate one silently so the user
+        // never lands on a stale dashboard. We mark the previous briefing
+        // as stale so it stays visible while the new one is being built.
+        if (b?.id) setBriefing({ ...b, _stale: true });
+        else setBriefing(null);
+        setBriefingBusy(true);
+        try {
+          const fresh = await briefingRun();
+          if (fresh?.id) setBriefing(fresh);
+        } catch {
+          // Auto-generation failures stay silent — manual "Run now" still works
+        } finally {
+          setBriefingBusy(false);
+        }
+      }
     } catch { /* ignore — non-critical */ }
     try {
       const all = await listPersonas();
@@ -217,11 +236,23 @@ export default function Dashboard() {
                       </span>
                     )}
                   </div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {briefing
                       ? <>Generated {new Date(briefing.created_at + 'Z').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · <span style={{ color: briefing.narrative_mode === 'cloud' ? 'var(--color-info)' : 'var(--color-text-dim)' }}>{briefing.narrative_mode === 'cloud' ? 'cloud narrative' : 'local'}</span></>
-                      : 'Not generated yet today — runs automatically each morning at 08:00 UTC.'}
-                    {briefing && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Lock size={10} /> aggregates only</span>}
+                      : briefingBusy
+                        ? 'Generating today\'s briefing…'
+                        : 'Not generated yet today — runs automatically each morning at 08:00 UTC.'}
+                    {briefing?._stale && (
+                      <span style={{
+                        padding: '1px 6px', borderRadius: 'var(--r-pill)',
+                        background: 'color-mix(in srgb, var(--color-warn) 12%, transparent)',
+                        border: '1px solid color-mix(in srgb, var(--color-warn) 30%, transparent)',
+                        color: 'var(--color-warn)', fontSize: 10, fontWeight: 600,
+                      }}>
+                        from {briefing.data?.date} · refreshing
+                      </span>
+                    )}
+                    {briefing && !briefing._stale && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Lock size={10} /> aggregates only</span>}
                   </div>
                 </div>
               </div>
