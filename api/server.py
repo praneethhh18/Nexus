@@ -281,8 +281,6 @@ def calendar_disconnect(user: dict = Depends(get_current_user)):
 #   AGENT — tool-using chat, approvals, memory
 # ═══════════════════════════════════════════════════════════════════════════════
 from agents import agent_loop as _agent_loop
-from agents import approval_queue as _approvals
-from agents import business_memory as _mem
 from agents import tool_registry as _tool_registry
 
 
@@ -401,62 +399,7 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
     }
 
 
-# ── Approvals ────────────────────────────────────────────────────────────────
-@app.get("/api/approvals")
-def list_approvals(status: Optional[str] = None, limit: int = 100,
-                   ctx: dict = Depends(get_current_context)):
-    return {
-        "actions": _approvals.list_actions(ctx["business_id"], status=status, limit=limit),
-        "pending_count": _approvals.pending_count(ctx["business_id"]),
-    }
-
-
-@app.get("/api/approvals/pending-count")
-def approvals_pending_count(ctx: dict = Depends(get_current_context)):
-    return {"pending_count": _approvals.pending_count(ctx["business_id"])}
-
-
-@app.get("/api/approvals/{action_id}")
-def get_approval(action_id: str, ctx: dict = Depends(get_current_context)):
-    return _approvals.get_action(ctx["business_id"], action_id)
-
-
-@app.post("/api/approvals/{action_id}/approve")
-def approve_action(action_id: str, ctx: dict = Depends(get_current_context)):
-    return _approvals.approve_action(ctx["business_id"], ctx["user"]["id"], action_id)
-
-
-@app.post("/api/approvals/{action_id}/reject")
-def reject_action(action_id: str, body: dict = None, ctx: dict = Depends(get_current_context)):
-    reason = (body or {}).get("reason", "")
-    return _approvals.reject_action(ctx["business_id"], ctx["user"]["id"], action_id, reason=reason)
-
-
-# ── Background agents ───────────────────────────────────────────────────────
-from agents.background import scheduler as _agent_sched
-
-
-@app.get("/api/agents/background")
-def list_background_agents(ctx: dict = Depends(get_current_context)):
-    return {"jobs": _agent_sched.list_jobs()}
-
-
-@app.post("/api/agents/background/stale-deals/run")
-def run_stale_deals_now(ctx: dict = Depends(get_current_context)):
-    from agents.background.stale_deal_watcher import run_for_business
-    return run_for_business(ctx["business_id"])
-
-
-@app.post("/api/agents/background/invoice-reminders/run")
-def run_invoice_reminders_now(ctx: dict = Depends(get_current_context)):
-    from agents.background.invoice_reminder import run_for_business
-    return run_for_business(ctx["business_id"])
-
-
-@app.post("/api/agents/background/meeting-prep/run")
-def run_meeting_prep_now(ctx: dict = Depends(get_current_context)):
-    from agents.background.meeting_prep import run_for_user
-    return run_for_user(ctx["user"]["id"], ctx["business_id"])
+# Approvals + background-agent triggers live in api/routers/.
 
 
 # ── Email triage ─────────────────────────────────────────────────────────────
@@ -503,45 +446,7 @@ def email_triage_log(limit: int = 50, ctx: dict = Depends(get_current_context)):
     return _email_triage.get_recent_log(ctx["business_id"], limit=limit)
 
 
-# ── Business memory ─────────────────────────────────────────────────────────
-@app.get("/api/memory")
-def list_memory_api(search: Optional[str] = None, limit: int = 100,
-                    ctx: dict = Depends(get_current_context)):
-    return _mem.list_memory(ctx["business_id"], search=search, limit=limit)
-
-
-@app.post("/api/memory")
-def add_memory_api(body: dict, ctx: dict = Depends(get_current_context)):
-    return _mem.add_memory(
-        ctx["business_id"], ctx["user"]["id"],
-        content=body.get("content", ""),
-        kind=body.get("kind", "fact"),
-        tags=body.get("tags", ""),
-        is_pinned=bool(body.get("is_pinned", False)),
-    )
-
-
-@app.patch("/api/memory/{memory_id}")
-def update_memory_api(memory_id: str, body: dict, ctx: dict = Depends(get_current_context)):
-    return _mem.update_memory(ctx["business_id"], memory_id, body)
-
-
-@app.delete("/api/memory/{memory_id}")
-def delete_memory_api(memory_id: str, ctx: dict = Depends(get_current_context)):
-    _mem.delete_memory(ctx["business_id"], memory_id)
-    return {"ok": True}
-
-
-@app.post("/api/memory/consolidate")
-def consolidate_memory_api(body: dict = None, ctx: dict = Depends(get_current_context)):
-    """Dry-run (apply=false) or apply the consolidation plan for this business."""
-    from agents.summarizer import consolidate_business_memory
-    body = body or {}
-    return consolidate_business_memory(
-        ctx["business_id"],
-        apply_changes=bool(body.get("apply", False)),
-        preserve_pinned=bool(body.get("preserve_pinned", True)),
-    )
+# Business memory CRUD + consolidation live in api/routers/memory.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -569,12 +474,16 @@ from api.routers import (
     audit         as _r_audit,
     onboarding    as _r_onboarding,
     notifications as _r_notifications,
+    approvals          as _r_approvals,
+    background_agents  as _r_bg_agents,
+    memory             as _r_memory,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
            _r_crm, _r_tasks, _r_invoices, _r_documents,
            _r_briefing, _r_privacy, _r_conversations, _r_auth,
-           _r_businesses, _r_rag, _r_audit, _r_onboarding, _r_notifications):
+           _r_businesses, _r_rag, _r_audit, _r_onboarding, _r_notifications,
+           _r_approvals, _r_bg_agents, _r_memory):
     app.include_router(_r.router)
 
 
