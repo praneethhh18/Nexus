@@ -1,13 +1,22 @@
 """
 Background agent scheduler — registers the autonomous agents with APScheduler.
 
-Schedule (all times UTC):
+Schedule (times in the configured scheduler timezone — see `_scheduler_tz`):
     stale_deal_watcher  — daily at 08:30
     invoice_reminder    — daily at 09:00
     meeting_prep        — every 10 minutes during business hours
     morning_briefing    — daily at 08:00
+    evening_digest      — daily at 18:00
     email_triage        — every 15 minutes
     memory_consolidate  — weekly, Sunday 03:00
+
+Timezone:
+    Defaults to the system local timezone (so "08:00" means 08:00 wherever
+    the server runs). Override with `SCHEDULER_TZ`, e.g. `SCHEDULER_TZ=UTC`
+    or `SCHEDULER_TZ=America/Los_Angeles`. The chosen timezone is applied to
+    BOTH the scheduler AND each CronTrigger explicitly — APScheduler 3.x
+    triggers do NOT inherit the scheduler's timezone, which used to make
+    the previous `timezone="UTC"` config silently ineffective.
 
 Per-business controls:
     - Each business can disable an agent via the personas `enabled` flag.
@@ -21,11 +30,33 @@ Activation:
 """
 from __future__ import annotations
 
+import os
 from typing import Callable
 
 from loguru import logger
 
 _scheduler = None
+
+
+def _scheduler_tz():
+    """
+    Resolve the scheduler timezone. Honors SCHEDULER_TZ env var, otherwise
+    defaults to system local. Returns a tzinfo-compatible object suitable
+    for both BackgroundScheduler and CronTrigger.
+    """
+    name = (os.getenv("SCHEDULER_TZ") or "").strip()
+    if name:
+        try:
+            from zoneinfo import ZoneInfo
+            return ZoneInfo(name)
+        except Exception as e:
+            logger.warning(f"[AgentScheduler] SCHEDULER_TZ={name!r} invalid ({e}); falling back to local")
+    try:
+        from tzlocal import get_localzone
+        return get_localzone()
+    except Exception:
+        from datetime import timezone
+        return timezone.utc
 
 
 def _get_scheduler():
@@ -37,9 +68,10 @@ def _get_scheduler():
     except ImportError:
         logger.warning("[AgentScheduler] APScheduler not installed — background agents disabled")
         return None
-    _scheduler = BackgroundScheduler(timezone="UTC")
+    tz = _scheduler_tz()
+    _scheduler = BackgroundScheduler(timezone=tz)
     _scheduler.start()
-    logger.info("[AgentScheduler] Started")
+    logger.info(f"[AgentScheduler] Started (timezone: {tz})")
     return _scheduler
 
 
@@ -159,6 +191,13 @@ def start_agent_scheduler():
     from apscheduler.triggers.cron import CronTrigger
     from apscheduler.triggers.interval import IntervalTrigger
 
+    tz = sched.timezone
+
+    def _cron(**kw):
+        # Always pin the trigger to the scheduler's timezone — APScheduler 3.x
+        # CronTrigger picks up tzlocal at construction time otherwise.
+        return CronTrigger(timezone=tz, **kw)
+
     existing_ids = {j.id for j in sched.get_jobs()}
 
     def _register(job_id: str, trigger, runner_fn: Callable[[], None]):
@@ -170,13 +209,13 @@ def start_agent_scheduler():
     def _stale_all():
         from agents.background.stale_deal_watcher import run_for_business
         _run_per_business("stale_deal_watcher", run_for_business)
-    _register("agent-stale-deal-watcher", CronTrigger(hour=8, minute=30), _stale_all)
+    _register("agent-stale-deal-watcher", _cron(hour=8, minute=30), _stale_all)
 
     # Invoice reminders — per business, daily 09:00
     def _invoice_all():
         from agents.background.invoice_reminder import run_for_business
         _run_per_business("invoice_reminder", run_for_business)
-    _register("agent-invoice-reminder", CronTrigger(hour=9, minute=0), _invoice_all)
+    _register("agent-invoice-reminder", _cron(hour=9, minute=0), _invoice_all)
 
     # Meeting prep — uses its own per-user iteration, so we wrap it once.
     def _meeting_all():
@@ -200,21 +239,21 @@ def start_agent_scheduler():
             return consolidate_business_memory(bid, apply_changes=True)
         _run_per_business("memory_consolidate", _runner)
     _register("agent-memory-consolidate",
-              CronTrigger(day_of_week="sun", hour=3, minute=0), _memory_all)
+              _cron(day_of_week="sun", hour=3, minute=0), _memory_all)
 
-    # Morning briefing — daily 08:00
+    # Morning briefing — daily 08:00 (scheduler tz)
     def _briefing_all():
         from agents.briefing import run_for_business
         _run_per_business("morning_briefing", run_for_business)
-    _register("agent-morning-briefing", CronTrigger(hour=8, minute=0), _briefing_all)
+    _register("agent-morning-briefing", _cron(hour=8, minute=0), _briefing_all)
 
-    # Evening digest — daily 18:00 UTC. The dashboard also auto-runs after
-    # 4 PM local; this scheduler entry is the safety net for users who don't
-    # open the app, ensuring the digest still gets generated and notified.
+    # Evening digest — daily 18:00 (scheduler tz). The dashboard also auto-runs
+    # after 4 PM local; this scheduler entry is the safety net for users who
+    # don't open the app, ensuring the digest still gets generated and notified.
     def _evening_all():
         from agents.briefing import run_evening_for_business
         _run_per_business("evening_digest", run_evening_for_business)
-    _register("agent-evening-digest", CronTrigger(hour=18, minute=0), _evening_all)
+    _register("agent-evening-digest", _cron(hour=18, minute=0), _evening_all)
 
     # Email triage — every 15 minutes
     def _triage_all():
