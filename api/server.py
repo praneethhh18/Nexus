@@ -154,78 +154,7 @@ migrate_legacy_data()
 # ═══════════════════════════════════════════════════════════════════════════════
 #   GOOGLE CALENDAR (per-user connection, read-only)
 # ═══════════════════════════════════════════════════════════════════════════════
-from api import calendar as _cal
-from fastapi.responses import RedirectResponse, HTMLResponse
-
-
-@app.get("/api/calendar/status")
-def calendar_status(user: dict = Depends(get_current_user)):
-    import os
-    conn = _cal.get_connection(user["id"])
-    configured = bool(os.getenv("GOOGLE_CLIENT_ID") and os.getenv("GOOGLE_CLIENT_SECRET"))
-    return {
-        "configured": configured,
-        "connected": bool(conn),
-        "connection": conn,
-    }
-
-
-@app.post("/api/calendar/oauth/start")
-def calendar_oauth_start(user: dict = Depends(get_current_user)):
-    url = _cal.build_authorize_url(user["id"])
-    return {"authorize_url": url}
-
-
-@app.get("/api/calendar/oauth/callback")
-def calendar_oauth_callback(code: str = "", state: str = "", error: str = ""):
-    """
-    This endpoint is hit by Google (browser redirect). We verify the signed
-    state to recover the user_id, swap the code for tokens, and render a
-    small HTML page that tells the user they can close the window.
-    """
-    import os
-    if error:
-        return HTMLResponse(f"<h3>Google sign-in failed</h3><p>{error}</p>", status_code=400)
-    if not code or not state:
-        return HTMLResponse("<h3>Missing code or state.</h3>", status_code=400)
-    try:
-        user_id = _cal._verify_state(state)
-    except HTTPException as e:
-        return HTMLResponse(f"<h3>Invalid state.</h3><p>{e.detail}</p>", status_code=400)
-
-    redirect_uri = os.getenv(
-        "GOOGLE_OAUTH_REDIRECT_URI",
-        "http://localhost:8000/api/calendar/oauth/callback",
-    ).strip()
-    tokens = _cal.exchange_code_for_tokens(code, redirect_uri)
-    info = _cal.save_connection(user_id, tokens)
-
-    return HTMLResponse(
-        f"""
-        <html><head><title>Calendar connected</title>
-        <style>body{{font-family:Segoe UI,system-ui,sans-serif;background:#0c1222;color:#e2e8f0;
-        display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
-        .card{{background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:32px;max-width:420px;text-align:center}}
-        h2{{color:#22c55e;margin-top:0}}</style></head><body>
-        <div class="card">
-          <h2>Calendar connected</h2>
-          <p>Connected account: <strong>{info.get('account_email') or 'unknown'}</strong></p>
-          <p style="color:#94a3b8;font-size:13px">You can close this window and return to NexusAgent.</p>
-          <script>setTimeout(()=>window.close(), 1500)</script>
-        </div></body></html>
-        """,
-    )
-
-
-@app.get("/api/calendar/events")
-def calendar_events(days: int = 14, limit: int = 20, user: dict = Depends(get_current_user)):
-    return _cal.list_upcoming_events(user["id"], days_ahead=days, max_results=limit)
-
-
-@app.delete("/api/calendar/disconnect")
-def calendar_disconnect(user: dict = Depends(get_current_user)):
-    _cal.disconnect(user["id"])
-    return {"ok": True}
+# Calendar OAuth + events live in api/routers/calendar.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -389,6 +318,8 @@ from api.routers import (
     research           as _r_research,
     activity           as _r_activity,
     seed               as _r_seed,
+    calendar           as _r_calendar,
+    database           as _r_database,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -396,7 +327,8 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_briefing, _r_privacy, _r_conversations, _r_auth,
            _r_businesses, _r_rag, _r_audit, _r_onboarding, _r_notifications,
            _r_approvals, _r_bg_agents, _r_memory,
-           _r_email_triage, _r_research, _r_activity, _r_seed):
+           _r_email_triage, _r_research, _r_activity, _r_seed,
+           _r_calendar, _r_database):
     app.include_router(_r.router)
 
 
@@ -714,85 +646,9 @@ async def ws_chat(websocket: WebSocket):
 # Conversation CRUD endpoints live in api/routers/conversations.py.
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   DATABASE (developer/admin only — exposes raw schema)
-# ═══════════════════════════════════════════════════════════════════════════════
-_SYSTEM_TABLE_PREFIXES = ("nexus_", "sqlite_")
-
-
-@app.get("/api/database/tables")
-def list_tables(ctx: dict = Depends(get_current_context)):
-    import sqlite3
-    import pandas as pd
-    from config.settings import DB_PATH
-
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        tables = pd.read_sql_query(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name", conn
-        )["name"].tolist()
-
-        result = []
-        for t in tables:
-            try:
-                count = conn.execute(f"SELECT COUNT(*) FROM [{t}]").fetchone()[0]
-            except Exception:
-                count = 0
-            cols = pd.read_sql_query(f"PRAGMA table_info([{t}])", conn)
-            result.append({
-                "name": t,
-                "row_count": count,
-                "column_count": len(cols),
-                "is_system": t.startswith(_SYSTEM_TABLE_PREFIXES),
-            })
-    finally:
-        conn.close()
-    return result
-
-
-@app.get("/api/database/tables/{table_name}")
-def get_table_detail(table_name: str, limit: int = 50, ctx: dict = Depends(get_current_context)):
-    import sqlite3
-    import pandas as pd
-    from config.settings import DB_PATH
-
-    if not table_name.replace("_", "").isalnum():
-        raise HTTPException(400, "Invalid table name")
-
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        cols = pd.read_sql_query(f"PRAGMA table_info([{table_name}])", conn)
-        if cols.empty:
-            raise HTTPException(404, "Table not found")
-        fks = pd.read_sql_query(f"PRAGMA foreign_key_list([{table_name}])", conn)
-        row_count = conn.execute(f"SELECT COUNT(*) FROM [{table_name}]").fetchone()[0]
-
-        limit = max(1, min(limit, 500))
-        df = pd.read_sql_query(f"SELECT * FROM [{table_name}] LIMIT {limit}", conn)
-
-        stats = []
-        for _, col in cols.iterrows():
-            if col["type"] in ("INTEGER", "REAL", "NUMERIC"):
-                try:
-                    s = pd.read_sql_query(
-                        f"SELECT MIN([{col['name']}]) as min, MAX([{col['name']}]) as max, "
-                        f"ROUND(AVG([{col['name']}]), 2) as avg FROM [{table_name}]",
-                        conn,
-                    )
-                    stats.append({"column": col["name"], **s.iloc[0].to_dict()})
-                except Exception:
-                    pass
-    finally:
-        conn.close()
-
-    return {
-        "name": table_name,
-        "row_count": row_count,
-        "columns": cols.to_dict(orient="records"),
-        "foreign_keys": fks.to_dict(orient="records") if not fks.empty else [],
-        "data": df.to_dict(orient="records"),
-        "column_stats": stats,
-    }
+# Database explorer (read schema, list tables, table detail) lives in
+# api/routers/database.py. The bulk-import endpoints (database/import,
+# database/import/preview) also moved to that router.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -869,80 +725,6 @@ def entity_import_commit(body: dict, ctx: dict = Depends(get_current_context)):
         Path(path).unlink(missing_ok=True)
         _ENTITY_IMPORT_STASH.pop(session_id, None)
     return result
-
-
-@app.post("/api/database/import")
-async def import_data(
-    file: UploadFile = File(...),
-    table_name: str = Query(""),
-    if_exists: str = Query("fail"),
-    ctx: dict = Depends(get_current_context),
-):
-    import tempfile
-    from sql_agent.data_import import preview_file, import_to_database
-
-    suffix = Path(file.filename).suffix
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        content = await file.read()
-        if len(content) > 50 * 1024 * 1024:  # 50 MB max
-            raise HTTPException(413, "File too large (max 50 MB)")
-        tmp.write(content)
-        tmp_path = tmp.name
-
-    try:
-        preview = preview_file(tmp_path)
-        if preview.get("error"):
-            raise HTTPException(400, preview["error"])
-
-        # Prefix tenant tables with biz id to prevent cross-tenant imports
-        name = table_name or preview["suggested_table_name"]
-        if name.startswith(_SYSTEM_TABLE_PREFIXES):
-            raise HTTPException(400, "Cannot overwrite system tables")
-        full_df = preview.get("_full_df")
-
-        result = import_to_database(full_df, name, if_exists=if_exists)
-    finally:
-        Path(tmp_path).unlink(missing_ok=True)
-
-    if not result["success"]:
-        raise HTTPException(400, result["error"])
-
-    try:
-        from sql_agent.query_generator import clear_cache
-        clear_cache()
-    except Exception:
-        pass
-
-    return result
-
-
-@app.post("/api/database/import/preview")
-async def preview_import(file: UploadFile = File(...), ctx: dict = Depends(get_current_context)):
-    import tempfile
-    from sql_agent.data_import import preview_file
-
-    suffix = Path(file.filename).suffix
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        content = await file.read()
-        if len(content) > 50 * 1024 * 1024:
-            raise HTTPException(413, "File too large (max 50 MB)")
-        tmp.write(content)
-        tmp_path = tmp.name
-
-    try:
-        preview = preview_file(tmp_path, max_rows=20)
-    finally:
-        Path(tmp_path).unlink(missing_ok=True)
-
-    if preview.get("error"):
-        raise HTTPException(400, preview["error"])
-
-    preview.pop("_full_df", None)
-    df = preview.pop("dataframe", None)
-    if df is not None:
-        preview["preview_data"] = df.to_dict(orient="records")
-
-    return preview
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
