@@ -7,6 +7,7 @@ import { sendMessage, getConversation, getConversations, deleteConversation,
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { transcribeBlob, voiceSupported } from '../services/voice';
+import { privacyStatus } from '../services/security';
 import VoiceMode from '../components/VoiceMode';
 import { Zap } from 'lucide-react';
 
@@ -47,20 +48,18 @@ function parseSlash(input) {
 // reply came from the local model or the cloud, and if cloud, how many PII
 // values were redacted before the prompt left the machine.
 function PrivacyBadge({ stats }) {
+  const [expanded, setExpanded] = useState(false);
   if (!stats) return null;
   const cloud = (stats.cloud_calls || 0) > 0;
   const local = (stats.local_calls || 0) > 0;
   if (!cloud && !local) return null;
 
   const kinds = stats.by_kind || {};
-  const kindList = Object.entries(kinds)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => `${n} ${k.toLowerCase()}`)
-    .join(', ');
+  const kindEntries = Object.entries(kinds).sort((a, b) => b[1] - a[1]);
+  const provider = stats.provider || (cloud ? 'cloud' : 'ollama');
+  const forcedLocal = stats.sensitive_forced_local || stats.kill_switch_blocked;
 
-  const color = cloud
-    ? 'var(--color-info)'
-    : 'var(--color-ok)';
+  const color = cloud ? 'var(--color-info)' : 'var(--color-ok)';
   const bg = cloud
     ? 'color-mix(in srgb, var(--color-info) 10%, transparent)'
     : 'color-mix(in srgb, var(--color-ok) 10%, transparent)';
@@ -70,28 +69,67 @@ function PrivacyBadge({ stats }) {
 
   let label;
   if (cloud && stats.redactions > 0) {
-    label = `Cloud · ${stats.redactions} value${stats.redactions === 1 ? '' : 's'} redacted`;
+    label = `Sent to ${provider} · ${stats.redactions} value${stats.redactions === 1 ? '' : 's'} redacted`;
   } else if (cloud) {
-    label = 'Cloud · no PII detected';
+    label = `Sent to ${provider} · no PII detected`;
+  } else if (forcedLocal) {
+    label = `Local only · ${stats.sensitive_forced_local ? 'sensitive data' : 'cloud disabled'}`;
   } else {
-    label = 'Local · nothing left the machine';
+    label = `Local · ${provider}`;
   }
 
+  const hasDetails = kindEntries.length > 0 || forcedLocal;
+
   return (
-    <div
-      title={kindList ? `Redacted: ${kindList}` : (cloud ? 'Prompt sent to cloud provider' : 'Handled entirely by local Ollama')}
-      style={{
-        marginTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6,
-        fontSize: 10, fontWeight: 600, letterSpacing: 0.3,
-        padding: '2px 8px', borderRadius: 'var(--r-pill)',
-        color, background: bg, border: `1px solid ${border}`,
-      }}
-    >
-      <span style={{
-        width: 6, height: 6, borderRadius: '50%',
-        background: color, boxShadow: `0 0 6px ${color}`,
-      }} />
-      {label}
+    <div style={{ marginTop: 6 }}>
+      <button
+        onClick={() => hasDetails && setExpanded(v => !v)}
+        title={hasDetails ? (expanded ? 'Hide details' : 'Show what was redacted') : ''}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 10, fontWeight: 600, letterSpacing: 0.3,
+          padding: '2px 8px', borderRadius: 'var(--r-pill)',
+          color, background: bg, border: `1px solid ${border}`,
+          cursor: hasDetails ? 'pointer' : 'default',
+        }}
+      >
+        <span style={{
+          width: 6, height: 6, borderRadius: '50%',
+          background: color, boxShadow: `0 0 6px ${color}`,
+        }} />
+        {label}
+        {hasDetails && (
+          <span style={{ fontSize: 9, opacity: 0.7 }}>{expanded ? '▾' : '▸'}</span>
+        )}
+      </button>
+      {expanded && hasDetails && (
+        <div style={{
+          marginTop: 4, padding: '6px 10px', borderRadius: 'var(--r-sm)',
+          background: 'var(--color-surface-1)', border: `1px solid ${border}`,
+          fontSize: 10, color: 'var(--color-text-muted)',
+          display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
+        }}>
+          {kindEntries.map(([k, n]) => (
+            <span key={k} style={{
+              padding: '1px 6px', borderRadius: 'var(--r-pill)',
+              background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+              fontWeight: 600, color: 'var(--color-text)',
+            }}>
+              {n} {k.toLowerCase()}{n > 1 ? 's' : ''}
+            </span>
+          ))}
+          {stats.sensitive_forced_local && (
+            <span style={{ color: 'var(--color-warn)' }}>
+              · sensitive flag forced local
+            </span>
+          )}
+          {stats.kill_switch_blocked && (
+            <span style={{ color: 'var(--color-warn)' }}>
+              · cloud disabled (kill switch)
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -178,12 +216,16 @@ export default function Chat() {
   const [historySearch, setHistorySearch] = useState('');
   const [slashIdx, setSlashIdx] = useState(0);
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [privacy, setPrivacy] = useState(null);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
   const wsRef = useRef(null);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading, streamingText]);
+
+  // Load privacy posture once for the footer label.
+  useEffect(() => { privacyStatus().then(setPrivacy).catch(() => {}); }, []);
 
   // Conversation history — loaded here, not in the app sidebar
   const loadConversations = useCallback(() => {
@@ -752,7 +794,24 @@ export default function Chat() {
             <Send size={15} />
           </button>
         </div>
-        <div className="chat-footer">NexusAgent v2.0 &middot; 100% Local &middot; Zero API Cost</div>
+        <div className="chat-footer">
+          NexusAgent v2.0
+          {privacy && (
+            <>
+              {' '}&middot;{' '}
+              {privacy.cloud_configured && privacy.allow_cloud_llm ? (
+                <>
+                  Hybrid ({privacy.provider}
+                  {privacy.cloud_model ? ` · ${privacy.cloud_model}` : ''})
+                  {privacy.redact_pii && ' · PII redacted'}
+                </>
+              ) : (
+                <>100% Local &middot; nothing leaves your machine</>
+              )}
+              {privacy.audit_enabled && ' · audited'}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Voice mode modal */}

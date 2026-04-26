@@ -1490,6 +1490,9 @@ async def ws_chat(websocket: WebSocket):
 
             await websocket.send_json({"type": "status", "status": "thinking"})
 
+            from config import privacy as _privacy
+            _privacy.reset_stats()
+
             from orchestrator.graph import _is_just_chitchat
             from config.llm_provider import stream
             from memory.short_term import get_default_memory
@@ -1532,15 +1535,22 @@ async def ws_chat(websocket: WebSocket):
                 mem.add_turn("assistant", full_text, tools_used=[])
 
                 ts = datetime.now().strftime("%H:%M")
+                privacy_stats = _privacy.get_stats()
                 messages = load_messages(conv_id)
                 messages.append({"role": "user", "content": query, "tools_used": [], "timestamp": ts})
-                messages.append({"role": "assistant", "content": full_text, "tools_used": [], "timestamp": ts})
+                messages.append({
+                    "role": "assistant", "content": full_text, "tools_used": [],
+                    "timestamp": ts, "privacy": privacy_stats,
+                })
                 save_full_conversation(conv_id, messages)
 
                 await websocket.send_json({
                     "type": "done",
                     "conversation_id": conv_id,
-                    "message": {"role": "assistant", "content": full_text, "tools_used": [], "timestamp": ts},
+                    "message": {
+                        "role": "assistant", "content": full_text, "tools_used": [],
+                        "timestamp": ts, "privacy": privacy_stats,
+                    },
                 })
             else:
                 loop = asyncio.get_event_loop()
@@ -1557,6 +1567,7 @@ async def ws_chat(websocket: WebSocket):
                     "sources_used": result_state.get("sources_used", []),
                     "multi_agent": result_state.get("multi_agent", False),
                     "agents_used": result_state.get("agents_used", []),
+                    "privacy": _privacy.get_stats(),
                 })
                 save_full_conversation(conv_id, messages)
 
