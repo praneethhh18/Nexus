@@ -105,18 +105,6 @@ class ReportRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
 
 
-class SignupRequest(BaseModel):
-    email: str
-    name: str
-    password: str
-
-
-class LoginRequest(BaseModel):
-    email: str
-    password: str
-    totp_code: Optional[str] = None  # required if 2FA is enabled
-
-
 class BusinessCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     industry: str = ""
@@ -151,181 +139,7 @@ ensure_default_admin()
 migrate_legacy_data()
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   AUTH ENDPOINTS (public)
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.post("/api/auth/signup")
-def signup(req: SignupRequest):
-    user = create_user(req.email, req.name, req.password)
-    # Every new user gets a starter business
-    biz_id = ensure_business_for_user(user["id"], user["name"])
-    access = create_access_token(user["id"], user["email"], user["role"])
-    refresh = create_refresh_token(user["id"])
-    return {
-        "user": user,
-        "access_token": access,
-        "refresh_token": refresh,
-        "businesses": list_user_businesses(user["id"]),
-        "current_business_id": biz_id,
-    }
-
-
-@app.post("/api/auth/login")
-def login(req: LoginRequest, request: Request):
-    user = authenticate_user(req.email, req.password, request=request)
-    if not user:
-        raise HTTPException(401, "Invalid email or password")
-
-    # 2FA gate — if the user has enrolled, require a valid code
-    from api.security import is_2fa_required, verify_login_factor, record_session
-    if is_2fa_required(user["id"]):
-        if not req.totp_code:
-            # Signal to the client: password OK, now we need the code.
-            # Don't issue a token yet.
-            return {
-                "requires_2fa": True,
-                "email": user["email"],
-                "message": "Enter the 6-digit code from your authenticator app.",
-            }
-        if not verify_login_factor(user["id"], req.totp_code):
-            raise HTTPException(401, "Invalid 2FA code")
-
-    biz_id = ensure_business_for_user(user["id"], user["name"])
-    access = create_access_token(user["id"], user["email"], user["role"])
-    refresh = create_refresh_token(user["id"])
-
-    # Record this session for visibility + revocation
-    try:
-        from datetime import timedelta as _td
-        payload = decode_token(access)
-        jti = payload.get("jti", "")
-        if jti:
-            record_session(
-                jti=jti, user_id=user["id"],
-                user_agent=(request.headers.get("user-agent") or "")[:300],
-                ip=(request.client.host if request.client else "") or "",
-                expires_at=datetime.utcfromtimestamp(payload["exp"]) if isinstance(payload.get("exp"), (int, float))
-                else now_utc_naive() + _td(hours=24),
-            )
-    except Exception as e:
-        logger.debug(f"[Auth] session recording skipped: {e}")
-
-    return {
-        "user": user,
-        "access_token": access,
-        "refresh_token": refresh,
-        "businesses": list_user_businesses(user["id"]),
-        "current_business_id": biz_id,
-    }
-
-
-@app.post("/api/auth/refresh")
-def refresh_token(body: dict):
-    token = body.get("refresh_token", "")
-    payload = decode_token(token)
-    if payload.get("type") != "refresh":
-        raise HTTPException(401, "Invalid refresh token")
-    user = get_user_by_id(payload["sub"])
-    if not user:
-        raise HTTPException(401, "User not found")
-    access = create_access_token(user["id"], user["email"], user["role"])
-    return {"access_token": access, "user": user}
-
-
-@app.get("/api/auth/me")
-def get_me(user: dict = Depends(get_current_user)):
-    return {
-        "user": user,
-        "businesses": list_user_businesses(user["id"]),
-    }
-
-
-@app.get("/api/auth/users")
-def get_users(user: dict = Depends(get_current_user)):
-    if user["role"] != "admin":
-        raise HTTPException(403, "Admin only")
-    return list_users()
-
-
-class ChangePasswordRequest(BaseModel):
-    current_password: str
-    new_password: str
-
-
-@app.post("/api/auth/change-password")
-def change_password_api(req: ChangePasswordRequest, user: dict = Depends(get_current_user)):
-    from api.auth import change_password
-    change_password(user["id"], req.current_password, req.new_password)
-    return {"ok": True}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   2FA — TOTP enrollment, verify, disable, recovery codes
-# ═══════════════════════════════════════════════════════════════════════════════
-from api import security as _sec
-
-
-class TotpCode(BaseModel):
-    code: str
-
-
-@app.get("/api/auth/2fa/status")
-def twofa_status(user: dict = Depends(get_current_user)):
-    return _sec.get_2fa_state(user["id"])
-
-
-@app.post("/api/auth/2fa/enroll")
-def twofa_enroll(user: dict = Depends(get_current_user)):
-    """Start enrollment. Returns the secret + QR code. 2FA is NOT active yet."""
-    return _sec.start_2fa_enrollment(user["id"], user["email"])
-
-
-@app.post("/api/auth/2fa/verify")
-def twofa_verify(req: TotpCode, user: dict = Depends(get_current_user)):
-    """Verify the first code to finalize enrollment. Returns recovery codes ONCE."""
-    recovery = _sec.verify_and_enable_2fa(user["id"], req.code)
-    return {"enabled": True, "recovery_codes": recovery,
-            "message": "2FA is now active. Save these recovery codes somewhere safe — they won't be shown again."}
-
-
-@app.post("/api/auth/2fa/disable")
-def twofa_disable(req: TotpCode, user: dict = Depends(get_current_user)):
-    _sec.disable_2fa(user["id"], req.code)
-    return {"ok": True}
-
-
-@app.post("/api/auth/2fa/regenerate-codes")
-def twofa_regenerate_codes(req: TotpCode, user: dict = Depends(get_current_user)):
-    codes = _sec.regenerate_recovery_codes(user["id"], req.code)
-    return {"recovery_codes": codes}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Sessions — view & revoke active logins
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/auth/sessions")
-def sessions_list(user: dict = Depends(get_current_user)):
-    sessions = _sec.list_sessions(user["id"])
-    current_jti = user.get("_jti")
-    for s in sessions:
-        s["is_current"] = (s["jti"] == current_jti)
-    return sessions
-
-
-@app.delete("/api/auth/sessions/{jti}")
-def revoke_session(jti: str, user: dict = Depends(get_current_user)):
-    if jti == user.get("_jti"):
-        raise HTTPException(400, "Use /logout to end your current session")
-    _sec.revoke_session(user["id"], jti)
-    return {"ok": True}
-
-
-@app.post("/api/auth/sessions/revoke-all-other")
-def revoke_all_other(user: dict = Depends(get_current_user)):
-    current = user.get("_jti", "")
-    count = _sec.revoke_all_other_sessions(user["id"], current)
-    return {"ok": True, "revoked": count}
-
+# Auth + 2FA + sessions endpoints live in api/routers/auth.py.
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #   Audit log — admin-only browse
@@ -527,82 +341,7 @@ def audit_log_export_csv(
     )
 
 
-class ForgotPasswordRequest(BaseModel):
-    email: str
-
-
-class ResetPasswordRequest(BaseModel):
-    token: str
-    new_password: str
-
-
-def _send_reset_email(to_email: str, to_name: str, token: str) -> bool:
-    """Send the reset email. Returns True on success, False if email is disabled."""
-    import os
-    from config.settings import EMAIL_ENABLED, GMAIL_USER, GMAIL_APP_PASSWORD
-    base_url = os.getenv("APP_BASE_URL", "http://localhost:5173").rstrip("/")
-    reset_link = f"{base_url}/reset-password?token={token}"
-
-    if not EMAIL_ENABLED:
-        # Log the link so the dev can still use it; never return it to the client.
-        logger.warning(f"[Auth] EMAIL not configured — reset link for {to_email}: {reset_link}")
-        return False
-
-    try:
-        import smtplib
-        from email.mime.text import MIMEText
-        from email.mime.multipart import MIMEMultipart
-
-        subject = "NexusAgent — Reset your password"
-        body = (
-            f"Hi {to_name or 'there'},\n\n"
-            f"Someone (hopefully you) asked to reset your NexusAgent password. "
-            f"Click the link below to set a new one. This link is valid for 1 hour.\n\n"
-            f"{reset_link}\n\n"
-            f"If you didn't request this, you can safely ignore this email — "
-            f"your password will not be changed.\n\n"
-            f"— NexusAgent"
-        )
-        msg = MIMEMultipart()
-        msg["From"] = GMAIL_USER
-        msg["To"] = to_email
-        msg["Subject"] = subject
-        msg.attach(MIMEText(body, "plain"))
-
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
-            server.starttls()
-            server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-            server.send_message(msg)
-        logger.info(f"[Auth] Reset email sent to {to_email}")
-        return True
-    except Exception as e:
-        logger.error(f"[Auth] Reset email failed: {e}")
-        return False
-
-
-@app.post("/api/auth/forgot-password")
-def forgot_password(req: ForgotPasswordRequest):
-    """
-    Always returns the same response regardless of whether the email exists,
-    to avoid email enumeration.
-    """
-    from api.auth import request_password_reset
-    result = request_password_reset(req.email)
-    if result:
-        token, user = result
-        _send_reset_email(user["email"], user.get("name", ""), token)
-    # Identical response in both branches — do NOT leak existence.
-    return {
-        "ok": True,
-        "message": "If that email is registered, a reset link has been sent.",
-    }
-
-
-@app.post("/api/auth/reset-password")
-def reset_password_api(req: ResetPasswordRequest):
-    from api.auth import consume_password_reset
-    consume_password_reset(req.token, req.new_password)
-    return {"ok": True, "message": "Password updated. You can now sign in."}
+# Password-reset endpoints (forgot/reset) live in api/routers/auth.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1171,11 +910,12 @@ from api.routers import (
     briefing      as _r_briefing,
     privacy       as _r_privacy,
     conversations as _r_conversations,
+    auth          as _r_auth,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
            _r_crm, _r_tasks, _r_invoices, _r_documents,
-           _r_briefing, _r_privacy, _r_conversations):
+           _r_briefing, _r_privacy, _r_conversations, _r_auth):
     app.include_router(_r.router)
 
 
