@@ -120,67 +120,7 @@ migrate_legacy_data()
 
 
 # Auth + 2FA + sessions endpoints live in api/routers/auth.py.
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Audit log — admin-only browse
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/audit")
-def audit_log_list(
-    limit: int = 100,
-    tool: Optional[str] = None,
-    user_id_filter: Optional[str] = None,
-    success: Optional[bool] = None,
-    search: Optional[str] = None,
-    ctx: dict = Depends(get_current_context),
-):
-    """Admin/owner can view the full audit log for the current business."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can view the audit log")
-
-    import sqlite3 as _sq
-    from config.settings import DB_PATH
-    limit = max(1, min(limit, 1000))
-    conn = _sq.connect(DB_PATH)
-    conn.row_factory = _sq.Row
-    try:
-        sql = ("SELECT event_id, timestamp, event_type, tool_name, input_summary, "
-               "output_summary, duration_ms, human_approved, success, error_message, "
-               "business_id, user_id FROM nexus_audit_log WHERE business_id = ?")
-        params: list = [ctx["business_id"]]
-        if tool:
-            sql += " AND tool_name LIKE ?"; params.append(f"%{tool}%")
-        if user_id_filter:
-            sql += " AND user_id = ?"; params.append(user_id_filter)
-        if success is not None:
-            sql += " AND success = ?"; params.append(1 if success else 0)
-        if search:
-            sql += " AND (input_summary LIKE ? OR output_summary LIKE ?)"
-            params.extend([f"%{search}%", f"%{search}%"])
-        sql += " ORDER BY timestamp DESC LIMIT ?"
-        params.append(limit)
-        rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
-    finally:
-        conn.close()
-    # Enrich with actor name
-    user_ids = {r["user_id"] for r in rows if r.get("user_id")}
-    names: dict = {}
-    if user_ids:
-        conn = _sq.connect(DB_PATH)
-        conn.row_factory = _sq.Row
-        try:
-            placeholders = ",".join("?" for _ in user_ids)
-            for r in conn.execute(
-                f"SELECT id, name, email FROM nexus_users WHERE id IN ({placeholders})",
-                tuple(user_ids),
-            ).fetchall():
-                names[r["id"]] = r["name"] or r["email"]
-        finally:
-            conn.close()
-    for r in rows:
-        r["actor_name"] = names.get(r.get("user_id"), r.get("user_id") or "system")
-    return rows
-
-
+# Audit log endpoints live in api/routers/audit.py.
 # Agents + custom agents + schedule + nudges live in api/routers/agents.py.
 
 
@@ -202,123 +142,9 @@ def seed_sample(ctx: dict = Depends(get_current_context)):
 # Privacy / cloud-LLM audit endpoints live in api/routers/privacy.py.
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Onboarding — 6-step first-run flow, tracked server-side so it resumes
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/onboarding")
-def onboarding_state(ctx: dict = Depends(get_current_context)):
-    """Current onboarding progress for the logged-in user in the active business."""
-    from api import onboarding
-    return onboarding.get_state(ctx["business_id"], ctx["user"]["id"])
-
-
-@app.post("/api/onboarding/complete/{step_key}")
-def onboarding_complete(step_key: str, ctx: dict = Depends(get_current_context)):
-    """Mark an onboarding step as done."""
-    from api import onboarding
-    try:
-        return onboarding.complete_step(ctx["business_id"], ctx["user"]["id"], step_key)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/onboarding/skip")
-def onboarding_skip(ctx: dict = Depends(get_current_context)):
-    """Dismiss the whole wizard. Checklist widget hides until /reopen is called."""
-    from api import onboarding
-    return onboarding.skip_all(ctx["business_id"], ctx["user"]["id"])
-
-
-@app.post("/api/onboarding/reopen")
-def onboarding_reopen(ctx: dict = Depends(get_current_context)):
-    """Bring the wizard back — useful if the user accidentally clicked Skip."""
-    from api import onboarding
-    return onboarding.reopen(ctx["business_id"], ctx["user"]["id"])
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Notification preferences — per-user toggles for what triggers a bell entry
-# ═══════════════════════════════════════════════════════════════════════════════
-from api import notification_prefs as _notif_prefs
-
-
-@app.get("/api/notifications/prefs")
-def notification_prefs_get(ctx: dict = Depends(get_current_context)):
-    return _notif_prefs.get_prefs(ctx["user"]["id"])
-
-
-@app.patch("/api/notifications/prefs")
-def notification_prefs_set(body: dict, ctx: dict = Depends(get_current_context)):
-    """Accepts {event_type: bool} pairs. Unknown keys are ignored."""
-    return _notif_prefs.set_prefs(ctx["user"]["id"], body or {})
-
-
-@app.post("/api/notifications/{notif_id}/read")
-def notifications_mark_one_read(notif_id: str, ctx: dict = Depends(get_current_context)):
-    """Mark a single notification as read."""
-    from api.notifications import mark_read
-    mark_read(notif_id, business_id=ctx["business_id"])
-    return {"ok": True}
-
-
-@app.delete("/api/notifications/{notif_id}")
-def notifications_delete_one(notif_id: str, ctx: dict = Depends(get_current_context)):
-    """Remove a single notification."""
-    import sqlite3
-    from api.notifications import TABLE
-    from config.settings import DB_PATH
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        conn.execute(
-            f"DELETE FROM {TABLE} WHERE id = ? AND business_id = ?",
-            (notif_id, ctx["business_id"]),
-        )
-        conn.commit()
-    finally:
-        conn.close()
-    return {"ok": True}
-
-
-# Tags + workspace export moved to api/routers/tags.py.
-
-
-@app.get("/api/audit/export")
-def audit_log_export_csv(
-    limit: int = 5000,
-    ctx: dict = Depends(get_current_context),
-):
-    """CSV export of the audit log. Admin/owner only."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can export the audit log")
-
-    import csv, io
-    import sqlite3 as _sq
-    from config.settings import DB_PATH
-    from fastapi.responses import Response
-    limit = max(1, min(limit, 100000))
-    conn = _sq.connect(DB_PATH)
-    conn.row_factory = _sq.Row
-    try:
-        rows = conn.execute(
-            "SELECT event_id, timestamp, event_type, tool_name, user_id, "
-            "input_summary, output_summary, duration_ms, human_approved, success, "
-            "error_message FROM nexus_audit_log WHERE business_id = ? "
-            "ORDER BY timestamp DESC LIMIT ?",
-            (ctx["business_id"], limit),
-        ).fetchall()
-    finally:
-        conn.close()
-    buf = io.StringIO()
-    if rows:
-        w = csv.DictWriter(buf, fieldnames=list(rows[0].keys()))
-        w.writeheader()
-        for r in rows:
-            w.writerow(dict(r))
-    return Response(
-        content=buf.getvalue(),
-        media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename=audit_log.csv"},
-    )
+# Onboarding endpoints live in api/routers/onboarding.py.
+# Notifications + prefs live in api/routers/notifications.py.
+# Tags + workspace export live in api/routers/tags.py.
 
 
 # Password-reset endpoints (forgot/reset) live in api/routers/auth.py.
@@ -715,32 +541,6 @@ def consolidate_memory_api(body: dict = None, ctx: dict = Depends(get_current_co
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#   NOTIFICATIONS
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/notifications")
-def get_notifications(unread: bool = False, limit: int = 30, ctx: dict = Depends(get_current_context)):
-    from api.notifications import get_recent, get_unread_count
-    return {
-        "notifications": get_recent(business_id=ctx["business_id"], limit=limit, unread_only=unread),
-        "unread_count": get_unread_count(business_id=ctx["business_id"]),
-    }
-
-
-@app.post("/api/notifications/{nid}/read")
-def read_notification(nid: str, ctx: dict = Depends(get_current_context)):
-    from api.notifications import mark_read
-    mark_read(nid, business_id=ctx["business_id"])
-    return {"ok": True}
-
-
-@app.post("/api/notifications/read-all")
-def read_all_notifications(ctx: dict = Depends(get_current_context)):
-    from api.notifications import mark_all_read
-    mark_all_read(business_id=ctx["business_id"])
-    return {"ok": True}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 #   Modular routers — see api/routers/ for per-domain endpoint groups.
 # ═══════════════════════════════════════════════════════════════════════════════
 from api.routers import (
@@ -762,12 +562,15 @@ from api.routers import (
     auth          as _r_auth,
     businesses    as _r_businesses,
     rag           as _r_rag,
+    audit         as _r_audit,
+    onboarding    as _r_onboarding,
+    notifications as _r_notifications,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
            _r_crm, _r_tasks, _r_invoices, _r_documents,
            _r_briefing, _r_privacy, _r_conversations, _r_auth,
-           _r_businesses, _r_rag):
+           _r_businesses, _r_rag, _r_audit, _r_onboarding, _r_notifications):
     app.include_router(_r.router)
 
 
