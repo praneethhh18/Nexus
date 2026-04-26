@@ -60,9 +60,9 @@ def _get_claude():
 def _invoke_claude(prompt: str, system: str, max_tokens: int, temperature: float) -> str:
     client = _get_claude()
     red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
-    privacy.audit_cloud_call("claude", CLAUDE_MODEL, red_prompt, redactions=len(mapping))
+    audit_rec = privacy.audit_cloud_call("claude", CLAUDE_MODEL, red_prompt, redactions=len(mapping))
     privacy.note_call("claude", cloud=True, redactions=len(mapping),
-                      kinds=privacy.kind_counts(mapping))
+                      kinds=privacy.kind_counts(mapping), audit_record=audit_rec)
     try:
         messages = [{"role": "user", "content": red_prompt}]
         kwargs = {"model": CLAUDE_MODEL, "max_tokens": max_tokens,
@@ -79,10 +79,10 @@ def _invoke_claude(prompt: str, system: str, max_tokens: int, temperature: float
 def _stream_claude(prompt: str, system: str, max_tokens: int) -> Generator[str, None, None]:
     client = _get_claude()
     red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
-    privacy.audit_cloud_call("claude", CLAUDE_MODEL, red_prompt,
-                             redactions=len(mapping), metadata={"mode": "stream"})
+    audit_rec = privacy.audit_cloud_call("claude", CLAUDE_MODEL, red_prompt,
+                                         redactions=len(mapping), metadata={"mode": "stream"})
     privacy.note_call("claude", cloud=True, redactions=len(mapping),
-                      kinds=privacy.kind_counts(mapping))
+                      kinds=privacy.kind_counts(mapping), audit_record=audit_rec)
     try:
         messages = [{"role": "user", "content": red_prompt}]
         kwargs = {"model": CLAUDE_MODEL, "max_tokens": max_tokens, "messages": messages}

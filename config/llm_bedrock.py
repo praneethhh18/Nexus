@@ -223,9 +223,9 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     client = _get_client()
     model = fast_model_id() if fast else primary_model_id()
     red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
-    privacy.audit_cloud_call("bedrock", model, red_prompt, redactions=len(mapping))
+    audit_rec = privacy.audit_cloud_call("bedrock", model, red_prompt, redactions=len(mapping))
     privacy.note_call("bedrock", cloud=True, redactions=len(mapping),
-                      kinds=privacy.kind_counts(mapping))
+                      kinds=privacy.kind_counts(mapping), audit_record=audit_rec)
     kwargs = {
         "modelId": model,
         "messages": [{"role": "user", "content": [{"text": red_prompt}]}],
@@ -252,10 +252,10 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
     client = _get_client()
     model = fast_model_id() if fast else primary_model_id()
     red_prompt, red_system, mapping = privacy.prepare_for_cloud(prompt, system)
-    privacy.audit_cloud_call("bedrock", model, red_prompt,
-                             redactions=len(mapping), metadata={"mode": "stream"})
+    audit_rec = privacy.audit_cloud_call("bedrock", model, red_prompt,
+                                         redactions=len(mapping), metadata={"mode": "stream"})
     privacy.note_call("bedrock", cloud=True, redactions=len(mapping),
-                      kinds=privacy.kind_counts(mapping))
+                      kinds=privacy.kind_counts(mapping), audit_record=audit_rec)
     kwargs = {
         "modelId": model,
         "messages": [{"role": "user", "content": [{"text": red_prompt}]}],

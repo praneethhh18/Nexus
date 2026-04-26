@@ -78,7 +78,7 @@ function PrivacyBadge({ stats }) {
     label = `Local · ${provider}`;
   }
 
-  const hasDetails = kindEntries.length > 0 || forcedLocal;
+  const hasDetails = kindEntries.length > 0 || forcedLocal || (stats.calls?.length || 0) > 0;
 
   return (
     <div style={{ marginTop: 6 }}>
@@ -104,29 +104,64 @@ function PrivacyBadge({ stats }) {
       </button>
       {expanded && hasDetails && (
         <div style={{
-          marginTop: 4, padding: '6px 10px', borderRadius: 'var(--r-sm)',
+          marginTop: 4, padding: '8px 10px', borderRadius: 'var(--r-sm)',
           background: 'var(--color-surface-1)', border: `1px solid ${border}`,
           fontSize: 10, color: 'var(--color-text-muted)',
-          display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
+          display: 'flex', flexDirection: 'column', gap: 6,
         }}>
-          {kindEntries.map(([k, n]) => (
-            <span key={k} style={{
-              padding: '1px 6px', borderRadius: 'var(--r-pill)',
-              background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
-              fontWeight: 600, color: 'var(--color-text)',
-            }}>
-              {n} {k.toLowerCase()}{n > 1 ? 's' : ''}
-            </span>
-          ))}
+          {kindEntries.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <span style={{ color: 'var(--color-text-dim)' }}>Redacted:</span>
+              {kindEntries.map(([k, n]) => (
+                <span key={k} style={{
+                  padding: '1px 6px', borderRadius: 'var(--r-pill)',
+                  background: 'var(--color-surface-2)', border: '1px solid var(--color-border)',
+                  fontWeight: 600, color: 'var(--color-text)',
+                }}>
+                  {n} {k.toLowerCase()}{n > 1 ? 's' : ''}
+                </span>
+              ))}
+            </div>
+          )}
           {stats.sensitive_forced_local && (
             <span style={{ color: 'var(--color-warn)' }}>
-              · sensitive flag forced local
+              · sensitive flag forced local (cloud was bypassed)
             </span>
           )}
           {stats.kill_switch_blocked && (
             <span style={{ color: 'var(--color-warn)' }}>
-              · cloud disabled (kill switch)
+              · cloud kill switch on (forced local)
             </span>
+          )}
+          {stats.calls?.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <span style={{ color: 'var(--color-text-dim)' }}>
+                {stats.calls.length} call{stats.calls.length > 1 ? 's' : ''}:
+              </span>
+              {stats.calls.map((c, i) => (
+                <div key={i} style={{
+                  display: 'flex', gap: 8, alignItems: 'center',
+                  padding: '3px 8px', borderRadius: 'var(--r-sm)',
+                  background: c.cloud ? 'color-mix(in srgb, var(--color-info) 6%, transparent)' : 'color-mix(in srgb, var(--color-ok) 6%, transparent)',
+                  fontFamily: 'var(--font-mono, monospace)', fontSize: 10,
+                }}>
+                  <span style={{
+                    color: c.cloud ? 'var(--color-info)' : 'var(--color-ok)',
+                    fontWeight: 700, minWidth: 38,
+                  }}>{c.cloud ? 'CLOUD' : 'LOCAL'}</span>
+                  <span style={{ color: 'var(--color-text)' }}>{c.provider}{c.model ? ` · ${c.model.split('-').slice(0, 3).join('-')}` : ''}</span>
+                  {c.sha && (
+                    <span title={`Prompt SHA-256: ${c.sha} (${c.chars} chars)`}
+                          style={{ color: 'var(--color-text-dim)' }}>
+                      sha:{c.sha.slice(0, 8)}
+                    </span>
+                  )}
+                  {c.redactions > 0 && (
+                    <span style={{ color: 'var(--color-warn)' }}>−{c.redactions}</span>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

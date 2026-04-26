@@ -110,14 +110,14 @@ def _invoke_claude_tools(
     red_messages, mapping = _redact_messages(messages)
     red_system, sys_map = privacy.redact(system or "")
     mapping.update(sys_map)
-    privacy.audit_cloud_call(
+    audit_rec = privacy.audit_cloud_call(
         "claude", CLAUDE_MODEL,
         prompt=json.dumps(red_messages)[:4000],
         redactions=len(mapping),
         metadata={"mode": "tools", "tool_count": len(tools)},
     )
     privacy.note_call("claude", cloud=True, redactions=len(mapping),
-                      kinds=privacy.kind_counts(mapping))
+                      kinds=privacy.kind_counts(mapping), audit_record=audit_rec)
     try:
         kwargs = {
             "model": CLAUDE_MODEL,

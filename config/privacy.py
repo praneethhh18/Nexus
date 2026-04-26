@@ -65,6 +65,7 @@ def _empty_stats() -> dict:
         "provider": None,       # last provider actually used
         "kill_switch_blocked": False,
         "sensitive_forced_local": False,
+        "calls": [],            # per-call receipts (timestamp, provider, sha, redactions)
     }
 
 
@@ -92,18 +93,45 @@ def _record(**updates) -> None:
             s["redactions"] = s.get("redactions", 0) + int(v)
         elif k in ("cloud_calls", "local_calls"):
             s[k] = s.get(k, 0) + int(v)
+        elif k == "_call_receipt":
+            s["calls"].append(v)
         else:
             s[k] = v
 
 
-def note_call(provider: str, cloud: bool, redactions: int, kinds: Dict[str, int] | None = None):
-    """Record one LLM call against the active stats."""
+def note_call(
+    provider: str, cloud: bool, redactions: int,
+    kinds: Dict[str, int] | None = None,
+    audit_record: dict | None = None,
+):
+    """Record one LLM call against the active stats.
+
+    `audit_record`, when provided, is the dict returned by audit_cloud_call.
+    For local calls a synthetic receipt is created so the UI can show every
+    call (cloud + local) the request made.
+    """
     _record(
         provider=provider,
         **({"cloud_calls": 1} if cloud else {"local_calls": 1}),
         redactions=redactions,
         by_kind=kinds or {},
     )
+    if audit_record is not None:
+        receipt = {
+            "ts": audit_record.get("ts"),
+            "provider": audit_record.get("provider", provider),
+            "model": audit_record.get("model"),
+            "sha": audit_record.get("prompt_sha256"),
+            "chars": audit_record.get("prompt_chars"),
+            "redactions": audit_record.get("redactions", 0),
+            "cloud": True,
+        }
+    else:
+        receipt = {
+            "ts": time.time(), "provider": provider, "model": None,
+            "sha": None, "chars": 0, "redactions": 0, "cloud": cloud,
+        }
+    _record(_call_receipt=receipt)
 
 
 def note_forced_local(reason: str) -> None:
@@ -228,33 +256,36 @@ def audit_cloud_call(
     redactions: int,
     token_count: int | None = None,
     metadata: dict | None = None,
-) -> None:
+) -> dict:
     """
     Append a one-line JSON record to outputs/cloud_audit.jsonl for every
     cloud call. We deliberately do NOT store the prompt text — only a hash
     and its length, so the log itself can't leak what it's protecting.
+
+    Returns the record (whether or not file logging is enabled) so callers
+    can attach it to per-request privacy stats for inline receipts.
     """
-    if not AUDIT_CLOUD_CALLS:
-        return
-    try:
-        _AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        prompt_bytes = (prompt or "").encode("utf-8", errors="ignore")
-        record = {
-            "ts": time.time(),
-            "provider": provider,
-            "model": model,
-            "prompt_sha256": hashlib.sha256(prompt_bytes).hexdigest()[:16],
-            "prompt_chars": len(prompt or ""),
-            "redactions": redactions,
-        }
-        if token_count is not None:
-            record["tokens"] = token_count
-        if metadata:
-            record["meta"] = metadata
-        with _AUDIT_PATH.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record) + "\n")
-    except Exception as e:
-        logger.warning(f"[Privacy] Audit log write failed: {e}")
+    prompt_bytes = (prompt or "").encode("utf-8", errors="ignore")
+    record = {
+        "ts": time.time(),
+        "provider": provider,
+        "model": model,
+        "prompt_sha256": hashlib.sha256(prompt_bytes).hexdigest()[:16],
+        "prompt_chars": len(prompt or ""),
+        "redactions": redactions,
+    }
+    if token_count is not None:
+        record["tokens"] = token_count
+    if metadata:
+        record["meta"] = metadata
+    if AUDIT_CLOUD_CALLS:
+        try:
+            _AUDIT_PATH.parent.mkdir(parents=True, exist_ok=True)
+            with _AUDIT_PATH.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(record) + "\n")
+        except Exception as e:
+            logger.warning(f"[Privacy] Audit log write failed: {e}")
+    return record
 
 
 # ── Convenience: full outbound pipeline ─────────────────────────────────────
