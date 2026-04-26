@@ -50,6 +50,11 @@ def _get_conn() -> sqlite3.Connection:
             delivered_channels TEXT DEFAULT ''
         )
     """)
+    # Additive migration — older deployments lack `kind`; rows default to morning.
+    try:
+        conn.execute(f"ALTER TABLE {BRIEFINGS_TABLE} ADD COLUMN kind TEXT DEFAULT 'morning'")
+    except sqlite3.OperationalError:
+        pass  # column already exists
     conn.execute(
         f"CREATE INDEX IF NOT EXISTS idx_briefings_biz "
         f"ON {BRIEFINGS_TABLE}(business_id, created_at DESC)"
@@ -58,34 +63,38 @@ def _get_conn() -> sqlite3.Connection:
     return conn
 
 
-def _save(business_id: str, narrative: str, data: Dict, mode: str, delivered: List[str]) -> Dict:
+def _save(business_id: str, narrative: str, data: Dict, mode: str,
+          delivered: List[str], kind: str = "morning") -> Dict:
     bid = f"br-{uuid.uuid4().hex[:10]}"
     now = now_iso()
     conn = _get_conn()
     try:
         conn.execute(
             f"INSERT INTO {BRIEFINGS_TABLE} "
-            f"(id, business_id, created_at, narrative, data_json, narrative_mode, delivered_channels) "
-            f"VALUES (?,?,?,?,?,?,?)",
-            (bid, business_id, now, narrative, json.dumps(data), mode, ",".join(delivered)),
+            f"(id, business_id, created_at, narrative, data_json, narrative_mode, "
+            f"delivered_channels, kind) "
+            f"VALUES (?,?,?,?,?,?,?,?)",
+            (bid, business_id, now, narrative, json.dumps(data), mode,
+             ",".join(delivered), kind),
         )
         conn.commit()
     finally:
         conn.close()
     return {"id": bid, "business_id": business_id, "created_at": now,
             "narrative": narrative, "data": data, "mode": mode,
-            "delivered_channels": delivered}
+            "delivered_channels": delivered, "kind": kind}
 
 
-def latest(business_id: str) -> Dict | None:
-    """Return the most recent briefing for a business, or None."""
+def latest(business_id: str, kind: str = "morning") -> Dict | None:
+    """Return the most recent briefing of a given kind for a business, or None."""
     conn = _get_conn()
     conn.row_factory = sqlite3.Row
     try:
         row = conn.execute(
-            f"SELECT * FROM {BRIEFINGS_TABLE} WHERE business_id = ? "
+            f"SELECT * FROM {BRIEFINGS_TABLE} "
+            f"WHERE business_id = ? AND COALESCE(kind, 'morning') = ? "
             f"ORDER BY created_at DESC LIMIT 1",
-            (business_id,),
+            (business_id, kind),
         ).fetchone()
     finally:
         conn.close()
@@ -230,6 +239,107 @@ def _collect(business_id: str) -> Dict[str, Any]:
     }
 
 
+# ── Evening digest — what got DONE today (backward-looking) ────────────────
+def _collect_evening(business_id: str) -> Dict[str, Any]:
+    """
+    Gather what was actually accomplished today: tasks closed, invoices sent
+    or paid, deals advanced. Pure local SQL — no PII leaves the machine.
+    """
+    today = date.today()
+
+    completed_tasks: List[Dict[str, Any]] = []
+    completed_count = 0
+    sent_invoices: List[Dict[str, Any]] = []
+    paid_invoices: List[Dict[str, Any]] = []
+    paid_total = 0.0
+    advanced_deals: List[Dict[str, Any]] = []
+    won_today = 0
+
+    try:
+        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        try:
+            # Tasks completed today: prefer completed_at, fall back to updated_at
+            for r in conn.execute(
+                "SELECT title, priority, completed_at FROM nexus_tasks "
+                "WHERE business_id = ? AND status = 'done' "
+                "AND (DATE(completed_at) = ? OR (completed_at IS NULL AND DATE(updated_at) = ?)) "
+                "ORDER BY COALESCE(completed_at, updated_at) DESC LIMIT 10",
+                (business_id, today.isoformat(), today.isoformat()),
+            ).fetchall():
+                completed_tasks.append({"title": (r["title"] or "")[:80],
+                                        "priority": r["priority"]})
+            completed_count = conn.execute(
+                "SELECT COUNT(*) FROM nexus_tasks "
+                "WHERE business_id = ? AND status = 'done' "
+                "AND (DATE(completed_at) = ? OR (completed_at IS NULL AND DATE(updated_at) = ?))",
+                (business_id, today.isoformat(), today.isoformat()),
+            ).fetchone()[0]
+
+            # Invoices sent today (status moved out of draft and updated today)
+            for r in conn.execute(
+                "SELECT number, customer_name, total, currency FROM nexus_invoices "
+                "WHERE business_id = ? AND status NOT IN ('draft') "
+                "AND DATE(updated_at) = ? AND DATE(created_at) = ? LIMIT 10",
+                (business_id, today.isoformat(), today.isoformat()),
+            ).fetchall():
+                sent_invoices.append({
+                    "number": r["number"], "customer": r["customer_name"],
+                    "total": float(r["total"] or 0), "currency": r["currency"] or "INR",
+                })
+
+            # Invoices paid today
+            for r in conn.execute(
+                "SELECT number, customer_name, total, currency FROM nexus_invoices "
+                "WHERE business_id = ? AND status = 'paid' AND DATE(paid_at) = ? "
+                "ORDER BY paid_at DESC LIMIT 10",
+                (business_id, today.isoformat()),
+            ).fetchall():
+                amt = float(r["total"] or 0)
+                paid_invoices.append({
+                    "number": r["number"], "customer": r["customer_name"],
+                    "total": amt, "currency": r["currency"] or "INR",
+                })
+                paid_total += amt
+
+            # Deals updated today (treat as "advanced")
+            for r in conn.execute(
+                "SELECT name, stage, value, currency FROM nexus_deals "
+                "WHERE business_id = ? AND DATE(updated_at) = ? "
+                "AND DATE(created_at) != ? LIMIT 10",
+                (business_id, today.isoformat(), today.isoformat()),
+            ).fetchall():
+                advanced_deals.append({
+                    "name": r["name"], "stage": r["stage"],
+                    "value": float(r["value"] or 0), "currency": r["currency"] or "INR",
+                })
+                if (r["stage"] or "").lower() == "won":
+                    won_today += 1
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"[Briefing] evening collect failed: {e}")
+
+    return {
+        "date": today.isoformat(),
+        "tasks": {
+            "completed_today_count": completed_count,
+            "completed_today": completed_tasks,
+        },
+        "invoices": {
+            "sent_today_count": len(sent_invoices),
+            "sent_today": sent_invoices,
+            "paid_today_count": len(paid_invoices),
+            "paid_today_total": paid_total,
+            "paid_today": paid_invoices,
+        },
+        "pipeline": {
+            "advanced_today_count": len(advanced_deals),
+            "won_today": won_today,
+            "advanced_today": advanced_deals,
+        },
+    }
+
+
 # ── Narrative (aggregates → cloud via existing privacy path) ────────────────
 _BRIEFING_SYSTEM = (
     "You are a senior chief-of-staff writing a 1-page morning briefing for "
@@ -287,6 +397,76 @@ def _render_narrative(biz_name: str, data: Dict[str, Any]) -> tuple[str, str]:
         except Exception as e2:
             logger.error(f"[Briefing] both narratives failed: {e2}")
             return _static_narrative(data), "static-fallback"
+
+
+_EVENING_SYSTEM = (
+    "You are a senior chief-of-staff writing a 1-paragraph end-of-day digest "
+    "for a small business owner. Tone: warm, recognising the work that got "
+    "done. Use the numbers provided — do not invent. Keep it short: 4-6 lines, "
+    "scannable. Use task titles and customer names from the data."
+)
+
+
+def _build_evening_prompt(biz_name: str, data: Dict[str, Any]) -> str:
+    return (
+        f"Business: {biz_name}\n"
+        f"Date: {data['date']}\n\n"
+        f"What got done today:\n{json.dumps(data, indent=2)}\n\n"
+        "Write the digest in this exact structure (Markdown):\n"
+        "## Today's wrap — {date}\n\n"
+        "**Headline** — one sentence on the most important thing that got done.\n\n"
+        "**Done** — 2-4 bullets: tasks closed, invoices sent / paid, deals advanced. "
+        "Use the actual titles and customer names from the data.\n\n"
+        "**For tomorrow** — one specific suggestion based on what's still open."
+    )
+
+
+def _render_evening_narrative(biz_name: str, data: Dict[str, Any]) -> tuple[str, str]:
+    """Returns (narrative_markdown, mode) for the evening digest."""
+    from config.llm_provider import invoke as llm_invoke
+
+    totals = (data["tasks"]["completed_today_count"]
+              + data["invoices"]["sent_today_count"]
+              + data["invoices"]["paid_today_count"]
+              + data["pipeline"]["advanced_today_count"])
+    if totals == 0:
+        return (
+            f"## Today's wrap — {data['date']}\n\n"
+            "**Headline** — Quiet day. Nothing closed, sent, or moved on the books today.\n\n"
+            "**For tomorrow** — Pick one overdue task and knock it out first thing.\n",
+            "static",
+        )
+
+    prompt = _build_evening_prompt(biz_name, data)
+    try:
+        text = llm_invoke(prompt, system=_EVENING_SYSTEM,
+                          max_tokens=600, temperature=0.2, sensitive=False)
+        return text.strip(), "cloud"
+    except Exception as e:
+        logger.warning(f"[Briefing] evening cloud narrative failed, falling back local: {e}")
+        try:
+            text = llm_invoke(prompt, system=_EVENING_SYSTEM,
+                              max_tokens=400, temperature=0.2, sensitive=True)
+            return text.strip(), "local-fallback"
+        except Exception as e2:
+            logger.error(f"[Briefing] evening narratives failed: {e2}")
+            return _static_evening_narrative(data), "static-fallback"
+
+
+def _static_evening_narrative(data: Dict[str, Any]) -> str:
+    """Plain-text fallback when no LLM is available."""
+    t = data["tasks"]; inv = data["invoices"]; p = data["pipeline"]
+    lines = [f"## Today's wrap — {data['date']}", ""]
+    if t["completed_today_count"]:
+        lines.append(f"- ✓ {t['completed_today_count']} task(s) closed")
+    if inv["sent_today_count"]:
+        lines.append(f"- 📤 {inv['sent_today_count']} invoice(s) sent")
+    if inv["paid_today_count"]:
+        lines.append(f"- 💰 {inv['paid_today_count']} invoice(s) paid, {inv['paid_today_total']:,.0f}")
+    if p["advanced_today_count"]:
+        lines.append(f"- 📈 {p['advanced_today_count']} deal(s) advanced"
+                     + (f" ({p['won_today']} won)" if p["won_today"] else ""))
+    return "\n".join(lines)
 
 
 def _static_narrative(data: Dict[str, Any]) -> str:
@@ -387,6 +567,39 @@ def run_for_business(business_id: str, deliver: bool = True) -> Dict:
         if _deliver_whatsapp(business_id, narrative):  delivered.append("whatsapp")
 
     return _save(business_id, narrative, data, mode, delivered)
+
+
+def run_evening_for_business(business_id: str, deliver: bool = True) -> Dict:
+    """Generate and persist today's evening digest for one business."""
+    biz_name = "your business"
+    try:
+        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                "SELECT name FROM nexus_businesses WHERE id = ? LIMIT 1",
+                (business_id,),
+            ).fetchone()
+            if row: biz_name = row["name"] or biz_name
+        finally: conn.close()
+    except Exception:
+        pass
+
+    data = _collect_evening(business_id)
+    narrative, mode = _render_evening_narrative(biz_name, data)
+
+    delivered: List[str] = []
+    if deliver:
+        try:
+            from api.notifications import push
+            push(title="Today's wrap is ready",
+                 message="See what got done today on the dashboard.",
+                 type="briefing", business_id=business_id)
+            delivered.append("in_app")
+        except Exception as e:
+            logger.debug(f"[Briefing] evening in-app notif skipped: {e}")
+        if _deliver_discord(narrative): delivered.append("discord")
+
+    return _save(business_id, narrative, data, mode, delivered, kind="evening")
 
 
 def run_for_all_businesses() -> List[Dict]:

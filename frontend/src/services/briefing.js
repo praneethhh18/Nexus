@@ -22,3 +22,5 @@ async function req(path, opts = {}) {
 
 export const briefingLatest = () => req('/api/briefing/latest');
 export const briefingRun = () => req('/api/briefing/run', { method: 'POST' });
+export const eveningLatest = () => req('/api/briefing/evening/latest');
+export const eveningRun = () => req('/api/briefing/evening/run', { method: 'POST' });

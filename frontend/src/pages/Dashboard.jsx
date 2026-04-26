@@ -8,10 +8,10 @@ import { invoiceSummary } from '../services/invoices';
 import { calendarStatus, calendarEvents } from '../services/calendar';
 import { getUser, getCurrentBusiness } from '../services/auth';
 import { seedSampleData } from '../services/seed';
-import { briefingLatest, briefingRun } from '../services/briefing';
+import { briefingLatest, briefingRun, eveningLatest, eveningRun } from '../services/briefing';
 import { listPersonas } from '../services/agents';
 import ReactMarkdown from 'react-markdown';
-import { Sparkles, Loader2, Sun, Lock } from 'lucide-react';
+import { Sparkles, Loader2, Sun, Moon, Lock } from 'lucide-react';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
@@ -67,6 +67,9 @@ export default function Dashboard() {
   const [briefingBusy, setBriefingBusy] = useState(false);
   const [briefingError, setBriefingError] = useState('');
   const [briefingAgent, setBriefingAgent] = useState(null);
+  const [evening, setEvening] = useState(null);
+  const [eveningBusy, setEveningBusy] = useState(false);
+  const [eveningError, setEveningError] = useState('');
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -139,6 +142,44 @@ export default function Dashboard() {
     } catch { /* ignore */ }
   }, []);
   useEffect(() => { loadBriefing(); }, [loadBriefing]);
+
+
+  // Evening digest — surfaces only after 4 PM local. Auto-generates on first
+  // afternoon load if today's doesn't exist yet, mirroring the morning briefing.
+  const loadEvening = useCallback(async () => {
+    if (new Date().getHours() < 16) return;
+    try {
+      const e = await eveningLatest();
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const isToday = e?.data?.date === todayIso;
+      if (e?.id && isToday) {
+        setEvening(e);
+      } else {
+        setEvening(null);
+        setEveningBusy(true);
+        try {
+          const fresh = await eveningRun();
+          if (fresh?.id) setEvening(fresh);
+        } catch { /* silent — manual button still works */ }
+        finally { setEveningBusy(false); }
+      }
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => { loadEvening(); }, [loadEvening]);
+
+
+  const handleRunEvening = async () => {
+    if (eveningBusy) return;
+    setEveningBusy(true); setEveningError('');
+    try {
+      const e = await eveningRun();
+      setEvening(e);
+    } catch (e) {
+      setEveningError(e.message || 'Digest failed.');
+    } finally {
+      setEveningBusy(false);
+    }
+  };
 
 
   const handleRunBriefing = async () => {
@@ -274,6 +315,61 @@ export default function Dashboard() {
                 borderTop: '1px solid var(--color-border)', paddingTop: 12,
               }}>
                 <ReactMarkdown>{briefing.narrative}</ReactMarkdown>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Evening digest — shown after 4 PM local; auto-generates on first afternoon load */}
+        {!isEmptyBusiness && (evening || eveningBusy || new Date().getHours() >= 16) && (
+          <div className="panel" style={{
+            marginBottom: 14,
+            borderColor: evening ? 'color-mix(in srgb, var(--color-info) 28%, transparent)' : 'var(--color-border)',
+            background: evening
+              ? 'linear-gradient(135deg, color-mix(in srgb, var(--color-info) 6%, var(--color-surface-2)), var(--color-surface-2))'
+              : 'var(--color-surface-2)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: evening ? 12 : 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 'var(--r-md)',
+                  background: 'color-mix(in srgb, var(--color-info) 16%, transparent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <Moon size={18} color="var(--color-info)" />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                    Today's wrap
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    {evening
+                      ? <>Generated {new Date(evening.created_at + 'Z').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · <span style={{ color: evening.narrative_mode === 'cloud' ? 'var(--color-info)' : 'var(--color-text-dim)' }}>{evening.narrative_mode === 'cloud' ? 'cloud narrative' : 'local'}</span></>
+                      : eveningBusy
+                        ? 'Generating today\'s wrap…'
+                        : 'Backward-looking digest of what got done today.'}
+                    {evening && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}><Lock size={10} /> aggregates only</span>}
+                  </div>
+                </div>
+              </div>
+              <button className="btn-ghost" onClick={handleRunEvening} disabled={eveningBusy}
+                style={{ flexShrink: 0 }}>
+                {eveningBusy
+                  ? <><Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> Generating…</>
+                  : (evening ? <><Sparkles size={12} /> Re-run</> : <><Sparkles size={12} /> Run now</>)}
+              </button>
+            </div>
+
+            {eveningError && (
+              <div style={{ fontSize: 11, color: 'var(--color-err)', marginTop: 6 }}>{eveningError}</div>
+            )}
+
+            {evening && (
+              <div className="chat-markdown" style={{
+                fontSize: 13, color: 'var(--color-text)', lineHeight: 1.65,
+                borderTop: '1px solid var(--color-border)', paddingTop: 12,
+              }}>
+                <ReactMarkdown>{evening.narrative}</ReactMarkdown>
               </div>
             )}
           </div>
