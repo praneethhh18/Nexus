@@ -126,19 +126,7 @@ migrate_legacy_data()
 
 # Morning briefing endpoints live in api/routers/briefing.py.
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Sample data — fills a new business with realistic records for demo/testing
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.post("/api/seed/sample-data")
-def seed_sample(ctx: dict = Depends(get_current_context)):
-    """Populate the current business with sample companies, contacts, deals,
-    tasks, and invoices. Admin/owner only. Refuses if data already exists."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can seed sample data")
-    from api.seed_data import seed_sample_data
-    return seed_sample_data(ctx["business_id"], ctx["user"]["id"])
-
-
+# Sample-data seed lives in api/routers/seed.py.
 # Privacy / cloud-LLM audit endpoints live in api/routers/privacy.py.
 
 
@@ -159,44 +147,7 @@ def seed_sample(ctx: dict = Depends(get_current_context)):
 # Saved queries, suggestions extracted to api/routers/.
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Research agent — structured reports + save to knowledge base (2.9)
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.post("/api/research/structured")
-def research_structured(body: dict, ctx: dict = Depends(get_current_context)):
-    from agents.research_agent import structured_research
-    subject = (body.get("subject") or "").strip()
-    if not subject:
-        raise HTTPException(400, "subject is required")
-    try:
-        return structured_research(subject, context=(body.get("context") or ""))
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.post("/api/research/save-to-kb")
-def research_save_to_kb(body: dict, ctx: dict = Depends(get_current_context)):
-    """Save a structured research report into the RAG knowledge base."""
-    from agents.research_agent import save_report_to_kb
-    report = body.get("report") or {}
-    if not report.get("subject"):
-        raise HTTPException(400, "report.subject is required")
-    return save_report_to_kb(ctx["business_id"], report)
-
-
-@app.get("/api/activity/{entity_type}/{entity_id}")
-def activity_timeline_api(entity_type: str, entity_id: str, limit: int = 200,
-                          ctx: dict = Depends(get_current_context)):
-    """Per-record activity timeline — tags, tasks, invoices, tool calls."""
-    from api import activity_feed
-    try:
-        return {"events": activity_feed.timeline(
-            ctx["business_id"], entity_type, entity_id, limit=limit,
-        )}
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
+# Research agent + activity timeline live in api/routers/.
 # Tasks, invoices, documents live in their routers under api/routers/.
 
 
@@ -402,50 +353,7 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
 # Approvals + background-agent triggers live in api/routers/.
 
 
-# ── Email triage ─────────────────────────────────────────────────────────────
-from agents import email_triage as _email_triage
-
-
-@app.get("/api/email-triage/account")
-def email_triage_account(ctx: dict = Depends(get_current_context)):
-    return _email_triage.get_account(ctx["business_id"]) or {"connected": False}
-
-
-@app.post("/api/email-triage/account")
-def save_email_triage_account(body: dict, ctx: dict = Depends(get_current_context)):
-    # Only owner/admin can configure the shared inbox
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can configure email triage")
-    return _email_triage.save_account(
-        business_id=ctx["business_id"],
-        imap_host=(body.get("imap_host") or "").strip(),
-        imap_port=int(body.get("imap_port", 993)),
-        username=(body.get("username") or "").strip(),
-        password=body.get("password") or "",
-        folder=(body.get("folder") or "INBOX"),
-        enabled=bool(body.get("enabled", True)),
-        auto_draft_reply=bool(body.get("auto_draft_reply", True)),
-    )
-
-
-@app.delete("/api/email-triage/account")
-def delete_email_triage_account(ctx: dict = Depends(get_current_context)):
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can disconnect email triage")
-    _email_triage.disconnect_account(ctx["business_id"])
-    return {"ok": True}
-
-
-@app.post("/api/email-triage/run")
-def run_email_triage(ctx: dict = Depends(get_current_context)):
-    return _email_triage.run_for_business(ctx["business_id"])
-
-
-@app.get("/api/email-triage/log")
-def email_triage_log(limit: int = 50, ctx: dict = Depends(get_current_context)):
-    return _email_triage.get_recent_log(ctx["business_id"], limit=limit)
-
-
+# Email-triage endpoints live in api/routers/email_triage.py.
 # Business memory CRUD + consolidation live in api/routers/memory.py.
 
 
@@ -477,13 +385,18 @@ from api.routers import (
     approvals          as _r_approvals,
     background_agents  as _r_bg_agents,
     memory             as _r_memory,
+    email_triage       as _r_email_triage,
+    research           as _r_research,
+    activity           as _r_activity,
+    seed               as _r_seed,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
            _r_crm, _r_tasks, _r_invoices, _r_documents,
            _r_briefing, _r_privacy, _r_conversations, _r_auth,
            _r_businesses, _r_rag, _r_audit, _r_onboarding, _r_notifications,
-           _r_approvals, _r_bg_agents, _r_memory):
+           _r_approvals, _r_bg_agents, _r_memory,
+           _r_email_triage, _r_research, _r_activity, _r_seed):
     app.include_router(_r.router)
 
 
