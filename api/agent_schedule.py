@@ -31,6 +31,7 @@ TABLE = "nexus_agent_schedule_prefs"
 # it without us growing a full cron picker yet.
 DEFAULT_INTERVALS_MIN: Dict[str, int] = {
     "morning_briefing":    1440,   # daily
+    "evening_digest":      1440,   # daily
     "email_triage":        15,
     "invoice_reminder":    1440,   # daily
     "stale_deal_watcher":  1440,   # daily

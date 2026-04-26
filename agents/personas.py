@@ -69,6 +69,12 @@ DEFAULTS: Dict[str, Dict[str, str]] = {
         "description":  "Weekly: reviews conversation history and distils what's worth remembering.",
         "emoji":        "🧠",
     },
+    "evening_digest": {
+        "default_name": "Nyx",
+        "role_tag":     "End-of-day recap",
+        "description":  "Wraps up the day with a recap of tasks closed, invoices sent, and deals advanced.",
+        "emoji":        "🌙",
+    },
 }
 
 # Scheduler job-id ↔ agent-key mapping (for activity summary lookup)
@@ -79,6 +85,7 @@ SCHEDULER_JOB_IDS: Dict[str, str] = {
     "meeting_prep":        "agent-meeting-prep",
     "email_triage":        "agent-email-triage",
     "memory_consolidate":  "agent-memory-consolidate",
+    "evening_digest":      "agent-evening-digest",
 }
 
 

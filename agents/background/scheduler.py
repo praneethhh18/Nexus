@@ -208,6 +208,14 @@ def start_agent_scheduler():
         _run_per_business("morning_briefing", run_for_business)
     _register("agent-morning-briefing", CronTrigger(hour=8, minute=0), _briefing_all)
 
+    # Evening digest — daily 18:00 UTC. The dashboard also auto-runs after
+    # 4 PM local; this scheduler entry is the safety net for users who don't
+    # open the app, ensuring the digest still gets generated and notified.
+    def _evening_all():
+        from agents.briefing import run_evening_for_business
+        _run_per_business("evening_digest", run_evening_for_business)
+    _register("agent-evening-digest", CronTrigger(hour=18, minute=0), _evening_all)
+
     # Email triage — every 15 minutes
     def _triage_all():
         from agents.email_triage import run_for_business
@@ -302,3 +310,8 @@ def run_meeting_prep_now():
 def run_briefing_now(business_id: str):
     from agents.briefing import run_for_business
     return run_for_business(business_id)
+
+
+def run_evening_digest_now(business_id: str):
+    from agents.briefing import run_evening_for_business
+    return run_evening_for_business(business_id)

@@ -199,6 +199,11 @@ def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
             result = run_for_business(business_id)
             return result, {"narrative_mode": result.get("mode"),
                             "delivered": result.get("delivered_channels", [])}
+        if agent_key == "evening_digest":
+            from agents.briefing import run_evening_for_business
+            result = run_evening_for_business(business_id)
+            return result, {"narrative_mode": result.get("mode"),
+                            "delivered": result.get("delivered_channels", [])}
         if agent_key == "invoice_reminder":
             from agents.background.invoice_reminder import run_for_business
             result = run_for_business(business_id)
