@@ -105,10 +105,6 @@ class ReportRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
 
 
-class ConversationUpdate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200)
-
-
 class SignupRequest(BaseModel):
     email: str
     name: str
@@ -394,24 +390,7 @@ def audit_log_list(
 # Agents + custom agents + schedule + nudges live in api/routers/agents.py.
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Morning briefing — daily 1-page agent
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/briefing/latest")
-def briefing_latest(ctx: dict = Depends(get_current_context)):
-    """Return today's briefing for this business, or null if none yet."""
-    from agents.briefing import latest
-    return latest(ctx["business_id"]) or {}
-
-
-@app.post("/api/briefing/run")
-def briefing_run_now(ctx: dict = Depends(get_current_context)):
-    """Generate a briefing right now (owner/admin only)."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can trigger a briefing")
-    from agents.briefing import run_for_business
-    return run_for_business(ctx["business_id"])
-
+# Morning briefing endpoints live in api/routers/briefing.py.
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #   Sample data — fills a new business with realistic records for demo/testing
@@ -426,99 +405,7 @@ def seed_sample(ctx: dict = Depends(get_current_context)):
     return seed_sample_data(ctx["business_id"], ctx["user"]["id"])
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   Privacy / Cloud-LLM audit — visible proof that nothing sensitive left
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/privacy/status")
-def privacy_status(user: dict = Depends(get_current_user)):
-    """
-    Summarize the privacy posture: which provider is live, whether the cloud
-    kill-switch is on, redaction on, audit logging on, and where the audit
-    log lives. Any logged-in user can view; no raw data is exposed.
-    """
-    from config import privacy
-    from config.llm_provider import get_provider, USE_CLAUDE, USE_BEDROCK, CLAUDE_MODEL
-
-    cloud_model = None
-    if USE_CLAUDE:
-        cloud_model = CLAUDE_MODEL
-    elif USE_BEDROCK:
-        try:
-            from config.llm_bedrock import primary_model_id
-            cloud_model = primary_model_id()
-        except Exception:
-            cloud_model = "bedrock"
-
-    return {
-        "provider": get_provider(),
-        "cloud_configured": bool(USE_CLAUDE or USE_BEDROCK),
-        "cloud_model": cloud_model,
-        "allow_cloud_llm": privacy.ALLOW_CLOUD_LLM,
-        "redact_pii": privacy.REDACT_PII,
-        "audit_enabled": privacy.AUDIT_CLOUD_CALLS,
-        "audit_log_path": str(privacy._AUDIT_PATH),
-    }
-
-
-@app.get("/api/privacy/audit")
-def privacy_audit_list(
-    limit: int = 100,
-    ctx: dict = Depends(get_current_context),
-):
-    """
-    Return the last N cloud-call records from outputs/cloud_audit.jsonl,
-    newest-first, plus aggregate stats. Admin/owner only — the log reveals
-    call patterns (times, sizes) even though it never contains raw prompts.
-    """
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can view the cloud audit log")
-
-    from config import privacy
-    limit = max(1, min(limit, 1000))
-    path = privacy._AUDIT_PATH
-
-    entries: list = []
-    stats = {
-        "total": 0, "last_24h": 0, "total_redactions": 0,
-        "total_chars": 0, "by_provider": {}, "by_mode": {},
-    }
-    if path.exists():
-        now = time.time()
-        # Efficient enough for a line-delimited file up to ~50 MB.
-        with path.open("r", encoding="utf-8") as f:
-            lines = f.readlines()
-        stats["total"] = len(lines)
-        for line in lines:
-            try:
-                rec = json.loads(line)
-            except Exception:
-                continue
-            stats["total_redactions"] += int(rec.get("redactions", 0) or 0)
-            stats["total_chars"]      += int(rec.get("prompt_chars", 0) or 0)
-            prov = rec.get("provider") or "unknown"
-            stats["by_provider"][prov] = stats["by_provider"].get(prov, 0) + 1
-            mode = (rec.get("meta") or {}).get("mode", "invoke")
-            stats["by_mode"][mode] = stats["by_mode"].get(mode, 0) + 1
-            if now - float(rec.get("ts", 0)) < 86400:
-                stats["last_24h"] += 1
-        # Newest-first, trimmed
-        for line in reversed(lines[-limit:]):
-            try:
-                entries.append(json.loads(line))
-            except Exception:
-                pass
-    return {"stats": stats, "entries": entries}
-
-
-@app.post("/api/privacy/audit/clear")
-def privacy_audit_clear(ctx: dict = Depends(get_current_context)):
-    """Truncate the cloud audit log. Admin/owner only."""
-    if ctx["business_role"] not in ("owner", "admin"):
-        raise HTTPException(403, "Only owner/admin can clear the cloud audit log")
-    from config import privacy
-    if privacy._AUDIT_PATH.exists():
-        privacy._AUDIT_PATH.unlink()
-    return {"ok": True}
+# Privacy / cloud-LLM audit endpoints live in api/routers/privacy.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -1281,10 +1168,14 @@ from api.routers import (
     tasks         as _r_tasks,
     invoices      as _r_invoices,
     documents     as _r_documents,
+    briefing      as _r_briefing,
+    privacy       as _r_privacy,
+    conversations as _r_conversations,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
-           _r_crm, _r_tasks, _r_invoices, _r_documents):
+           _r_crm, _r_tasks, _r_invoices, _r_documents,
+           _r_briefing, _r_privacy, _r_conversations):
     app.include_router(_r.router)
 
 
@@ -1594,43 +1485,7 @@ async def ws_chat(websocket: WebSocket):
         logger.error(f"WebSocket error: {e}")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   CONVERSATIONS
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/conversations")
-def list_conversations_api(limit: int = 20, ctx: dict = Depends(get_current_context)):
-    from memory.conversation_store import list_conversations as lc
-    return lc(business_id=ctx["business_id"], limit=limit)
-
-
-@app.get("/api/conversations/{conv_id}")
-def get_conversation(conv_id: str, ctx: dict = Depends(get_current_context)):
-    from memory.conversation_store import load_messages, assert_conversation_access
-    info = assert_conversation_access(conv_id, ctx["business_id"])
-    return {"info": info, "messages": load_messages(conv_id)}
-
-
-@app.patch("/api/conversations/{conv_id}")
-def update_conversation(conv_id: str, body: ConversationUpdate, ctx: dict = Depends(get_current_context)):
-    from memory.conversation_store import update_title, assert_conversation_access
-    assert_conversation_access(conv_id, ctx["business_id"])
-    update_title(conv_id, body.title)
-    return {"ok": True}
-
-
-@app.delete("/api/conversations/{conv_id}")
-def delete_conversation_api(conv_id: str, ctx: dict = Depends(get_current_context)):
-    from memory.conversation_store import delete_conversation as dc, assert_conversation_access
-    assert_conversation_access(conv_id, ctx["business_id"])
-    dc(conv_id)
-    return {"ok": True}
-
-
-@app.post("/api/conversations")
-def create_new_conversation(ctx: dict = Depends(get_current_context)):
-    from memory.conversation_store import create_conversation
-    conv_id = create_conversation(user_id=ctx["user"]["id"], business_id=ctx["business_id"])
-    return {"conversation_id": conv_id}
+# Conversation CRUD endpoints live in api/routers/conversations.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
