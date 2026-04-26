@@ -5,6 +5,8 @@ __pycache__/
 .DS_Store
 outputs/*.pdf
 outputs/*.png
+outputs/*.json
+outputs/*.jsonl
 outputs/reports/
 outputs/email_drafts/
 data/nexusagent.db

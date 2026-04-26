@@ -1,3 +1,0 @@
-{"ts": 1776961221.6646461, "provider": "claude", "model": "claude-sonnet-4-20250514", "prompt_sha256": "5f014d4cd77e96a2", "prompt_chars": 58, "redactions": 0, "meta": {"mode": "narrative"}}
-{"ts": 1776961221.668346, "provider": "claude", "model": "claude-sonnet-4-20250514", "prompt_sha256": "da693659c9705622", "prompt_chars": 35, "redactions": 1, "meta": {"mode": "invoke"}}
-{"ts": 1776961221.670479, "provider": "bedrock", "model": "us.amazon.nova-pro-v1:0", "prompt_sha256": "1e41c3e67902aa6e", "prompt_chars": 48, "redactions": 1, "meta": {"mode": "narrative"}}

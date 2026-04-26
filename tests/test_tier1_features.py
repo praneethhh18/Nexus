@@ -16,6 +16,7 @@ import pytest
 
 
 # ── Feature 1: Multi-Document RAG ────────────────────────────────────────────
+@pytest.mark.integration
 class TestMultiDocumentRAG:
     """Tests for rag/multi_document_rag.py"""
 
@@ -214,6 +215,7 @@ class TestUserMemory:
 
 
 # ── Feature 3: Multi-Agent Collaboration ─────────────────────────────────────
+@pytest.mark.integration
 class TestMultiAgent:
     """Tests for orchestrator/multi_agent.py"""
 
@@ -317,6 +319,7 @@ class TestMultiAgent:
 
 
 # ── Integration Tests ────────────────────────────────────────────────────────
+@pytest.mark.integration
 class TestIntegration:
     """Tests that verify all three features work together."""
 
