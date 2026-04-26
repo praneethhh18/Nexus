@@ -320,6 +320,9 @@ from api.routers import (
     seed               as _r_seed,
     calendar           as _r_calendar,
     database           as _r_database,
+    analytics          as _r_analytics,
+    team               as _r_team,
+    whatsapp           as _r_whatsapp,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -328,7 +331,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_businesses, _r_rag, _r_audit, _r_onboarding, _r_notifications,
            _r_approvals, _r_bg_agents, _r_memory,
            _r_email_triage, _r_research, _r_activity, _r_seed,
-           _r_calendar, _r_database):
+           _r_calendar, _r_database, _r_analytics, _r_team, _r_whatsapp):
     app.include_router(_r.router)
 
 
@@ -1313,166 +1316,9 @@ def update_runtime_setting(body: dict, user: dict = Depends(get_current_user)):
 # ═══════════════════════════════════════════════════════════════════════════════
 #   ANALYTICS & FORECASTING
 # ═══════════════════════════════════════════════════════════════════════════════
-from api import analytics as _analytics
-
-
-@app.get("/api/analytics/pipeline-velocity")
-def analytics_pipeline_velocity(ctx: dict = Depends(get_current_context)):
-    return _analytics.pipeline_velocity(ctx["business_id"])
-
-
-@app.get("/api/analytics/revenue-forecast")
-def analytics_revenue_forecast(horizon_months: int = 6, ctx: dict = Depends(get_current_context)):
-    horizon_months = max(1, min(12, horizon_months))
-    return _analytics.revenue_forecast(ctx["business_id"], horizon_months=horizon_months)
-
-
-@app.get("/api/analytics/agent-impact")
-def analytics_agent_impact(days: int = 30, ctx: dict = Depends(get_current_context)):
-    days = max(1, min(180, days))
-    return _analytics.agent_impact(ctx["business_id"], days=days)
-
-
-@app.get("/api/analytics/churn-risk")
-def analytics_churn_risk(max_deals: int = 15, ctx: dict = Depends(get_current_context)):
-    max_deals = max(1, min(50, max_deals))
-    return _analytics.churn_risk(ctx["business_id"], max_deals=max_deals)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   TEAM — invites, activity feed
-# ═══════════════════════════════════════════════════════════════════════════════
-from api import team as _team
-
-
-class InviteCreate(BaseModel):
-    email: str
-    role: str = "member"
-
-
-@app.get("/api/team/invites")
-def list_team_invites(include_accepted: bool = False, ctx: dict = Depends(get_current_context)):
-    from api.businesses import assert_member
-    assert_member(ctx["business_id"], ctx["user"]["id"])
-    return _team.list_invites(ctx["business_id"], include_accepted=include_accepted)
-
-
-@app.post("/api/team/invites")
-def create_team_invite(req: InviteCreate, ctx: dict = Depends(get_current_context)):
-    return _team.create_invite(
-        ctx["business_id"], ctx["user"]["id"],
-        email=req.email, role=req.role,
-    )
-
-
-@app.delete("/api/team/invites/{token}")
-def revoke_team_invite(token: str, ctx: dict = Depends(get_current_context)):
-    _team.revoke_invite(ctx["business_id"], ctx["user"]["id"], token)
-    return {"ok": True}
-
-
-# Public — no auth, so someone without an account can see what they're joining
-@app.get("/api/team/invites/preview")
-def preview_invite(token: str):
-    return _team.get_invite_preview(token)
-
-
-class AcceptInvite(BaseModel):
-    token: str
-
-
-@app.post("/api/team/invites/accept")
-def accept_team_invite(body: AcceptInvite, user: dict = Depends(get_current_user)):
-    return _team.accept_invite(body.token, user["id"], user["email"])
-
-
-@app.get("/api/team/activity")
-def activity_feed_api(limit: int = 60, ctx: dict = Depends(get_current_context)):
-    return _team.activity_feed(ctx["business_id"], limit=limit)
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   WHATSAPP — bridge webhook, link flow, status
-# ═══════════════════════════════════════════════════════════════════════════════
-from api import whatsapp as _wa
-from utils.timez import now_utc_naive
-
-
-@app.post("/api/whatsapp/link/generate")
-def whatsapp_generate_link(ctx: dict = Depends(get_current_context)):
-    """Issue a 6-char code the user will text to the WhatsApp bot to link their phone."""
-    return _wa.generate_link_token(ctx["user"]["id"], ctx["business_id"])
-
-
-@app.get("/api/whatsapp/account")
-def whatsapp_account(ctx: dict = Depends(get_current_context)):
-    acc = _wa.get_account_for_user(ctx["user"]["id"])
-    return acc or {"linked": False}
-
-
-@app.delete("/api/whatsapp/account")
-def whatsapp_unlink(ctx: dict = Depends(get_current_context)):
-    _wa.unlink_account(ctx["user"]["id"])
-    return {"ok": True}
-
-
-@app.get("/api/whatsapp/bridge-secret")
-def whatsapp_bridge_secret(user: dict = Depends(get_current_user)):
-    """The shared secret the Node bridge needs. Owner/admin only."""
-    if user["role"] != "admin":
-        raise HTTPException(403, "Admin only")
-    return {"secret": _wa.get_bridge_secret()}
-
-
-@app.post("/api/whatsapp/inbound")
-async def whatsapp_inbound(request: Request):
-    """
-    Receive an incoming WhatsApp message from the local Node bridge.
-    Protected by X-Nexus-Secret header (the same value the bridge reads from
-    its .env). Returns a JSON reply the bridge sends back over WhatsApp.
-    """
-    secret = request.headers.get("X-Nexus-Secret", "")
-    _wa.verify_bridge_secret(secret)
-
-    try:
-        body = await request.json()
-    except Exception:
-        raise HTTPException(400, "Invalid JSON body")
-
-    phone = (body.get("from") or "").strip()
-    text = (body.get("text") or "").strip()
-    message_id = (body.get("message_id") or "").strip()
-
-    if len(text) > 4000:
-        text = text[:4000]
-
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, lambda: _wa.handle_inbound(phone, text, message_id))
-    return result
-
-
-@app.get("/api/whatsapp/attachment")
-def whatsapp_attachment(path: str, request: Request):
-    """
-    Serve a generated file to the bridge so it can forward it over WhatsApp.
-    Protected by X-Nexus-Secret. Only files inside outputs/ are served.
-    """
-    _wa.verify_bridge_secret(request.headers.get("X-Nexus-Secret", ""))
-
-    from config.settings import OUTPUTS_DIR
-    try:
-        absolute = Path(path).resolve()
-        absolute.relative_to(Path(OUTPUTS_DIR).resolve())
-    except (ValueError, OSError):
-        raise HTTPException(400, "Path outside of outputs/")
-    if not absolute.is_file():
-        raise HTTPException(404, "File not found")
-
-    ext = absolute.suffix.lower()
-    mime = "application/pdf" if ext == ".pdf" \
-        else "application/vnd.openxmlformats-officedocument.wordprocessingml.document" \
-        if ext == ".docx" else "application/octet-stream"
-    return FileResponse(str(absolute), filename=absolute.name, media_type=mime)
+# Analytics endpoints live in api/routers/analytics.py.
+# Team invites + activity feed live in api/routers/team.py.
+# WhatsApp bridge + link flow live in api/routers/whatsapp.py.
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
