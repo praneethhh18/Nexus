@@ -105,33 +105,13 @@ class ReportRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
 
 
-class BusinessCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=120)
-    industry: str = ""
-    description: str = ""
-
-
-class BusinessUpdate(BaseModel):
-    name: Optional[str] = Field(None, min_length=1, max_length=120)
-    industry: Optional[str] = None
-    description: Optional[str] = None
-
-
-class MemberAdd(BaseModel):
-    user_id: str
-    role: str = "member"
-
-
 # ── Auth Setup ────────────────────────────────────────────────────────────────
 from api.auth import (
-    ensure_default_admin, create_user, authenticate_user,
-    create_access_token, create_refresh_token, decode_token,
-    get_current_user, get_current_context, get_user_by_id, list_users,
+    ensure_default_admin, decode_token,
+    get_current_user, get_current_context, get_user_by_id,
 )
 from api.businesses import (
-    create_business, get_business, list_user_businesses,
-    update_business, delete_business,
-    list_members, add_member, remove_member, assert_member,
+    list_user_businesses, assert_member,
     ensure_business_for_user, migrate_legacy_data,
 )
 
@@ -344,141 +324,10 @@ def audit_log_export_csv(
 # Password-reset endpoints (forgot/reset) live in api/routers/auth.py.
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#   BUSINESSES
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/businesses")
-def list_my_businesses(user: dict = Depends(get_current_user)):
-    return list_user_businesses(user["id"])
-
-
-@app.post("/api/businesses")
-def create_my_business(req: BusinessCreate, user: dict = Depends(get_current_user)):
-    biz = create_business(
-        name=req.name,
-        owner_id=user["id"],
-        industry=req.industry,
-        description=req.description,
-    )
-    return biz
-
-
-@app.get("/api/businesses/{business_id}")
-def get_my_business(business_id: str, user: dict = Depends(get_current_user)):
-    assert_member(business_id, user["id"])
-    biz = get_business(business_id)
-    biz["members"] = list_members(business_id)
-    biz["my_role"] = next(
-        (m["role"] for m in biz["members"] if m["user_id"] == user["id"]),
-        None,
-    )
-    return biz
-
-
-@app.patch("/api/businesses/{business_id}")
-def update_my_business(business_id: str, req: BusinessUpdate, user: dict = Depends(get_current_user)):
-    updates = {k: v for k, v in req.model_dump().items() if v is not None}
-    return update_business(business_id, user["id"], updates)
-
-
-@app.delete("/api/businesses/{business_id}")
-def delete_my_business(business_id: str, user: dict = Depends(get_current_user)):
-    delete_business(business_id, user["id"])
-    return {"ok": True}
-
-
-@app.get("/api/businesses/{business_id}/members")
-def list_business_members(business_id: str, user: dict = Depends(get_current_user)):
-    assert_member(business_id, user["id"])
-    return list_members(business_id)
-
-
-@app.post("/api/businesses/{business_id}/members")
-def add_business_member(business_id: str, req: MemberAdd, user: dict = Depends(get_current_user)):
-    add_member(business_id, user["id"], req.user_id, req.role)
-    return {"ok": True}
-
-
-@app.delete("/api/businesses/{business_id}/members/{target_user_id}")
-def remove_business_member(business_id: str, target_user_id: str, user: dict = Depends(get_current_user)):
-    remove_member(business_id, user["id"], target_user_id)
-    return {"ok": True}
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# CRM (companies/contacts/deals/interactions/pipeline) lives in api/routers/crm.py.
-# Integrations + webhook receiver extracted to api/routers/integrations.py.
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#   RAG collections + document expiry (2.6)
-# ═══════════════════════════════════════════════════════════════════════════════
-@app.get("/api/rag/collections")
-def rag_collections_list(ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    return rag_collections.list_collections(ctx["business_id"])
-
-
-@app.post("/api/rag/collections")
-def rag_collections_create(body: dict, ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    try:
-        return rag_collections.create_collection(
-            ctx["business_id"],
-            name=body.get("name", ""),
-            description=body.get("description", ""),
-            color=body.get("color"),
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-
-
-@app.delete("/api/rag/collections/{collection_id}")
-def rag_collections_delete(collection_id: str, ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    rag_collections.delete_collection(ctx["business_id"], collection_id)
-    return {"ok": True}
-
-
-@app.put("/api/rag/documents/{document_id}/collection")
-def rag_assign_document(document_id: str, body: dict,
-                        ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    try:
-        rag_collections.assign_document(
-            ctx["business_id"], document_id, body.get("collection_id"),
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    return {"ok": True}
-
-
-@app.put("/api/rag/documents/{document_id}/expiry")
-def rag_set_expiry(document_id: str, body: dict,
-                   ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    try:
-        rag_collections.set_expiry(
-            ctx["business_id"], document_id, body.get("expires_at"),
-        )
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    return {"ok": True}
-
-
-@app.get("/api/rag/documents/stale")
-def rag_stale_documents(ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    return {"documents": rag_collections.stale_documents(ctx["business_id"])}
-
-
-@app.post("/api/rag/documents/{document_id}/reingest")
-def rag_reingest_document(document_id: str, ctx: dict = Depends(get_current_context)):
-    from api import rag_collections
-    try:
-        return rag_collections.mark_for_reingest(ctx["business_id"], document_id)
-    except KeyError:
-        raise HTTPException(404, "Document not found")
+# Businesses + members live in api/routers/businesses.py.
+# CRM lives in api/routers/crm.py.
+# Integrations + webhook receiver live in api/routers/integrations.py.
+# RAG collections + document expiry live in api/routers/rag.py.
 
 
 # Saved queries, suggestions extracted to api/routers/.
@@ -911,11 +760,14 @@ from api.routers import (
     privacy       as _r_privacy,
     conversations as _r_conversations,
     auth          as _r_auth,
+    businesses    as _r_businesses,
+    rag           as _r_rag,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
            _r_crm, _r_tasks, _r_invoices, _r_documents,
-           _r_briefing, _r_privacy, _r_conversations, _r_auth):
+           _r_briefing, _r_privacy, _r_conversations, _r_auth,
+           _r_businesses, _r_rag):
     app.include_router(_r.router)
 
 
