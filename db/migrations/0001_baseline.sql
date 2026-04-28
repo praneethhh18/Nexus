@@ -1,0 +1,9 @@
+-- 0001_baseline.sql — schema marker for the v1 release.
+--
+-- Intentional no-op. The schema as of this migration is whatever
+-- `sql_agent.db_setup.setup_database()` and the per-module
+-- `CREATE TABLE IF NOT EXISTS` calls produce on first boot. Recording
+-- this version in the ledger gives us a starting point that future
+-- migrations can sit on top of.
+--
+-- DO NOT add SQL here. Add a new file — `0002_<description>.sql` — instead.

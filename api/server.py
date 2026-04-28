@@ -69,6 +69,18 @@ try:
 except Exception as e:
     logger.warning(f"Index pass failed: {e}")
 
+# Apply pending schema migrations (idempotent, no-op on already-applied).
+try:
+    from db.migrate import apply_pending
+    _new_migrations = apply_pending()
+    if _new_migrations:
+        logger.info(
+            f"[Boot] applied {len(_new_migrations)} migration(s): "
+            + ", ".join(f"{m['version']:04d}_{m['name']}" for m in _new_migrations)
+        )
+except Exception as e:
+    logger.warning(f"Migration pass failed: {e}")
+
 # ── FastAPI App ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="NexusAgent API",

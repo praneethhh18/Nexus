@@ -89,6 +89,43 @@ cd landing && npm run build                    # verify landing builds
 
 Every new feature that touches data must come with a pytest file. E2E specs are for user-visible flows only — don't reach for them when a unit test would catch the same bug.
 
+## Database migrations
+
+Schema changes go through `db/migrate.py` — a small handwritten runner (no Alembic, no SQLAlchemy ORM). On every server boot, `apply_pending()` runs any new migration files and records them in the `nexus_migrations` ledger.
+
+**To add a migration:**
+
+```bash
+# 1. Pick the next version number (current max + 1, four-digit padded).
+ls db/migrations/    # check existing
+
+# 2. Write the file.
+$EDITOR db/migrations/0002_add_foo_column.sql
+```
+
+```sql
+-- 0002_add_foo_column.sql
+ALTER TABLE nexus_widgets ADD COLUMN foo TEXT DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_widgets_foo ON nexus_widgets(foo);
+```
+
+```bash
+# 3. Apply (or just restart the server — the boot does this automatically).
+python -m db.migrate
+
+# Or check what's pending without applying.
+python -m db.migrate --status
+```
+
+**Rules of the road:**
+
+- **Never edit a migration after it's shipped.** The runner notices (SHA mismatch) and warns, but it can't undo the change for users who already applied it. Add a follow-up migration instead.
+- **Make statements idempotent where you can** — `IF NOT EXISTS`, `IF EXISTS`, `INSERT OR IGNORE`. SQLite's transactional DDL has gotchas, so a partial-failure-safe migration is much easier to recover from.
+- **One concern per migration.** If you're adding a column AND backfilling values, that's two files: `0003_add_status_column.sql` and `0004_backfill_status.sql`. Keeps blast radius small.
+- **The 0001 baseline is intentionally empty.** It's the marker for "the schema as it shipped at v2.0." All future schema lives in 0002+.
+
+The legacy `CREATE TABLE IF NOT EXISTS` calls scattered in `api/*.py` modules still create tables on first boot for new workspaces. The migration runner is for *changing* the schema after v2.0 — adding columns, indexes, drops, renames.
+
 ## Privacy invariants (non-negotiable)
 
 1. Embeddings are **always** local via Ollama. Never send raw documents to a cloud embedder.
