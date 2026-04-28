@@ -150,13 +150,14 @@ def get_persona(business_id: str, agent_key: str) -> Dict:
 
 
 def list_personas(business_id: str) -> List[Dict]:
-    """All 6 personas, in a stable presentation order."""
+    """All personas, in a stable presentation order tracking the day flow."""
     order = [
         "morning_briefing",     # start of day
         "email_triage",         # throughout the day
         "invoice_reminder",     # financial follow-through
         "stale_deal_watcher",   # pipeline health
         "meeting_prep",         # just-in-time
+        "evening_digest",       # end of day
         "memory_consolidate",   # weekly reflection
     ]
     # Attach scheduler next-run times where available
