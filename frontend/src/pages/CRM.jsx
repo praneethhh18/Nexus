@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { listIntakeKeys, createIntakeKey, revokeIntakeKey } from '../services/tags';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import {
@@ -394,7 +395,12 @@ export default function CRM() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)' }}>
-        {[['contacts', 'Contacts', Users], ['companies', 'Companies', Building2], ['deals', 'Deals Pipeline', Briefcase]].map(([k, lbl, Icon]) => (
+        {[
+          ['leads', 'Leads', Inbox],
+          ['contacts', 'Contacts', Users],
+          ['companies', 'Companies', Building2],
+          ['deals', 'Deals Pipeline', Briefcase],
+        ].map(([k, lbl, Icon]) => (
           <button key={k} onClick={() => setTab(k)} className={tab === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>
             <Icon size={12} /> {lbl}
           </button>
@@ -410,6 +416,7 @@ export default function CRM() {
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+        {tab === 'leads' && <LeadsTab contacts={contacts} navigate={navigate} flash={flash} />}
         {tab === 'contacts' && (
           visibleContacts.length === 0 ? (
             <EmptyState
@@ -617,6 +624,477 @@ export default function CRM() {
           onClose={() => setUndoToast(null)}
         />
       )}
+    </div>
+  );
+}
+
+
+// ── Leads tab — inbound lead-gen home ───────────────────────────────────────
+// Surfaces every contact whose `source` isn't 'manual' (i.e. came from the
+// public form, email forwarder, WhatsApp, AI prospecting, etc.) plus the
+// public-form key management UI that used to live in Settings.
+//
+// Two reasons this tab exists:
+//   1. People doing lead-gen work shouldn't have to bounce between Settings
+//      and CRM. Everything lead-related is now one click away.
+//   2. The source breakdown band makes attribution legible — "30% from the
+//      website form, 50% from email forwards, 20% from referrals."
+function LeadsTab({ contacts, navigate, flash }) {
+  // Recent inbound = contacts with a non-manual source. Sorted newest first.
+  const recent = useMemo(() => {
+    return (contacts || [])
+      .filter(c => c.source && c.source !== 'manual')
+      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+      .slice(0, 50);
+  }, [contacts]);
+
+  // Source breakdown across all leads (manual + others).
+  const sourceCounts = useMemo(() => {
+    const out = {};
+    for (const c of contacts || []) {
+      const s = c.source || 'manual';
+      out[s] = (out[s] || 0) + 1;
+    }
+    return Object.entries(out).sort((a, b) => b[1] - a[1]);
+  }, [contacts]);
+
+  const last24h = useMemo(() => {
+    const cutoff = Date.now() - 86400_000;
+    return recent.filter(c => {
+      try { return new Date(c.created_at).getTime() >= cutoff; }
+      catch { return false; }
+    }).length;
+  }, [recent]);
+
+  const totalLeads = recent.length;
+  const totalContacts = (contacts || []).length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Stats band */}
+      <div className="card-grid card-grid--sm">
+        <Stat label="Inbound leads"   value={totalLeads.toLocaleString()} icon={<Inbox size={14} />} tone="accent" />
+        <Stat label="Last 24 hours"   value={last24h.toLocaleString()}    icon={<Sparkles size={14} />} tone="info" />
+        <Stat label="All contacts"    value={totalContacts.toLocaleString()} icon={<Users size={14} />} tone="muted" />
+        <Stat label="Sources active"  value={sourceCounts.length}          icon={<TrendingUp size={14} />} tone="warn" />
+      </div>
+
+      {/* Source breakdown */}
+      {sourceCounts.length > 0 && (
+        <div className="panel">
+          <div className="section-h" style={{ margin: '0 0 10px' }}>
+            <h2>Where leads come from</h2>
+            <span className="meta">all-time, this workspace</span>
+          </div>
+          <SourceBars counts={sourceCounts} total={totalContacts} />
+        </div>
+      )}
+
+      {/* Recent inbound leads list */}
+      <div className="panel">
+        <div className="section-h" style={{ margin: '0 0 10px' }}>
+          <h2>Recent inbound · {recent.length}</h2>
+          <span className="meta">contacts captured automatically</span>
+        </div>
+        {recent.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No inbound leads yet"
+            description="Once you set up a public lead form, email forwarder, or AI prospecting, captured leads will land here. Generate a public-form key below to get started in 2 minutes."
+            size="sm"
+            minHeight={140}
+          />
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {recent.slice(0, 12).map(c => (
+              <LeadRow key={c.id} contact={c} onClick={() => navigate(`/crm/contacts/${c.id}`)} />
+            ))}
+            {recent.length > 12 && (
+              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', padding: '6px 0' }}>
+                + {recent.length - 12} more inbound leads — switch to the Contacts tab to see them all.
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Public form key management */}
+      <IntakeKeyCard flash={flash} />
+
+      {/* Future channels — placeholders that link to the doc */}
+      <div className="panel" style={{ background: 'var(--color-surface-1)' }}>
+        <div className="section-h" style={{ margin: '0 0 10px' }}>
+          <h2>Other lead channels</h2>
+          <span className="meta">on the roadmap</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          <ChannelTile
+            icon={<Mail size={14} />} title="Email forwarder"
+            description="Forward inbound emails to a magic inbox; Iris parses senders into leads."
+            status="planned"
+          />
+          <ChannelTile
+            icon={<MessageSquare size={14} />} title="WhatsApp"
+            description="Strangers messaging your WhatsApp number become leads automatically."
+            status="extends bridge"
+          />
+          <ChannelTile
+            icon={<Sparkles size={14} />} title="AI prospecting"
+            description='"Find me 30 D2C brands in Bangalore with 20-100 staff" → ranked candidate list.'
+            status="next"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Source breakdown bars ────────────────────────────────────────────────────
+function SourceBars({ counts, total }) {
+  const SOURCE_TONE = {
+    public_form: 'var(--color-accent)',
+    email:       'var(--color-info)',
+    whatsapp:    '#22c55e',
+    csv_import:  'var(--color-warn)',
+    manual:      'var(--color-text-dim)',
+    ai_outbound: '#a78bfa',
+    referral:    '#ec4899',
+  };
+  const SOURCE_LABEL = {
+    public_form: 'Public form',
+    email:       'Email forward',
+    whatsapp:    'WhatsApp',
+    csv_import:  'CSV import',
+    manual:      'Added manually',
+    ai_outbound: 'AI prospecting',
+    referral:    'Referral',
+  };
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {counts.map(([source, count]) => {
+        const tone = SOURCE_TONE[source] || 'var(--color-text-muted)';
+        const label = SOURCE_LABEL[source] || source;
+        const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+        return (
+          <div key={source}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 3 }}>
+              <span style={{ fontSize: 12, color: 'var(--color-text)' }}>{label}</span>
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)', fontFeatureSettings: '"tnum"' }}>
+                {count} <span style={{ marginLeft: 4 }}>· {pct}%</span>
+              </span>
+            </div>
+            <div style={{ height: 6, background: 'var(--color-surface-1)', borderRadius: 'var(--r-pill)', overflow: 'hidden' }}>
+              <div style={{
+                width: `${Math.max(2, pct)}%`, height: '100%', background: tone,
+                transition: 'width var(--dur-base) var(--ease-out)',
+              }} />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+// ── Single inbound-lead row ──────────────────────────────────────────────────
+function LeadRow({ contact: c, onClick }) {
+  const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed';
+  const SOURCE_TONE = {
+    public_form: 'var(--color-accent)', email: 'var(--color-info)',
+    whatsapp: '#22c55e', ai_outbound: '#a78bfa', referral: '#ec4899',
+    csv_import: 'var(--color-warn)',
+  };
+  const tone = SOURCE_TONE[c.source] || 'var(--color-text-muted)';
+  const ago = (() => {
+    if (!c.created_at) return '';
+    try {
+      const d = new Date(c.created_at);
+      const diff = Date.now() - d.getTime();
+      if (diff < 3600_000) return `${Math.max(1, Math.floor(diff / 60_000))}m ago`;
+      if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`;
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    } catch { return ''; }
+  })();
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '10px 12px',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--r-md)',
+        cursor: 'pointer', textAlign: 'left',
+        color: 'var(--color-text)',
+      }}
+    >
+      <div style={{
+        width: 30, height: 30, borderRadius: 'var(--r-pill)',
+        background: 'var(--color-surface-3)',
+        color: 'var(--color-text-muted)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 11, fontWeight: 700, flexShrink: 0,
+      }}>
+        {(fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join('') || '?').toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500 }}>{fullName}</div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+          {c.email || c.phone || '—'}{c.company_name ? ` · ${c.company_name}` : ''}
+        </div>
+      </div>
+      <span className="pill-base" style={{
+        background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+        color: tone,
+        border: `1px solid color-mix(in srgb, ${tone} 28%, transparent)`,
+      }}>{c.source}</span>
+      <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)', minWidth: 60, textAlign: 'right' }}>{ago}</span>
+      <ChevronRight size={12} color="var(--color-text-dim)" />
+    </button>
+  );
+}
+
+
+// ── Future-channel tile ──────────────────────────────────────────────────────
+function ChannelTile({ icon, title, description, status }) {
+  return (
+    <div style={{
+      padding: 12,
+      background: 'var(--color-surface-2)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--r-md)',
+      opacity: 0.85,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+        <span style={{ color: 'var(--color-text-muted)' }}>{icon}</span>
+        <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-text)' }}>{title}</span>
+        <span className="pill-base pill-muted" style={{ marginLeft: 'auto', fontSize: 10 }}>{status}</span>
+      </div>
+      <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+        {description}
+      </p>
+    </div>
+  );
+}
+
+
+// ── Public-form key management (moved from Settings) ────────────────────────
+function IntakeKeyCard({ flash }) {
+  const [keys, setKeys] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [label, setLabel] = useState('');
+  const [justCreated, setJustCreated] = useState(null);
+  const [showSnippet, setShowSnippet] = useState(false);
+
+  const reload = async () => {
+    try { setKeys(await listIntakeKeys()); }
+    catch (e) { flash?.(`Could not load keys: ${e.message || e}`); }
+  };
+  useEffect(() => { reload(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCreate = async () => {
+    setBusy(true);
+    try {
+      const r = await createIntakeKey(label.trim() || 'New key');
+      setJustCreated(r);
+      setLabel('');
+      reload();
+    } catch (e) { flash?.(`Create failed: ${e.message || e}`); }
+    setBusy(false);
+  };
+
+  const handleRevoke = async (id) => {
+    if (!confirm('Revoke this key? Any forms still using it will start failing immediately.')) return;
+    try {
+      await revokeIntakeKey(id);
+      flash?.('Key revoked.');
+      reload();
+    } catch (e) { flash?.(`Revoke failed: ${e.message || e}`); }
+  };
+
+  const copyText = (txt) => {
+    try { navigator.clipboard.writeText(txt); flash?.('Copied.'); }
+    catch { flash?.('Copy failed — select manually.'); }
+  };
+
+  const activeKey = justCreated || keys.find(k => !k.revoked_at);
+  const sampleSnippet = activeKey ? buildSnippet(activeKey.key || activeKey.key_prefix) : '';
+
+  return (
+    <div className="panel">
+      <div className="section-h" style={{ margin: '0 0 10px' }}>
+        <h2>Public form keys</h2>
+        <span className="meta">drop a 5-line snippet on any website</span>
+      </div>
+
+      {/* Just-created banner */}
+      {justCreated && (
+        <div style={{
+          padding: '10px 12px', marginBottom: 12,
+          background: 'var(--color-accent-soft)',
+          border: '1px solid color-mix(in srgb, var(--color-accent) 32%, transparent)',
+          borderRadius: 'var(--r-md)',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6,
+            fontSize: 11, fontWeight: 600, color: 'var(--color-accent)',
+            letterSpacing: 0.5, textTransform: 'uppercase',
+          }}>
+            <Check size={11} /> New key — copy it now
+          </div>
+          <div style={{
+            display: 'flex', gap: 6, alignItems: 'center',
+            background: 'var(--color-bg)',
+            padding: '6px 10px', borderRadius: 'var(--r-sm)',
+            border: '1px solid var(--color-border)',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            fontSize: 11, wordBreak: 'break-all',
+          }}>
+            <span style={{ flex: 1, color: 'var(--color-text)' }}>{justCreated.key}</span>
+            <button className="btn-ghost btn-sm" onClick={() => copyText(justCreated.key)}>
+              <Copy size={11} /> Copy
+            </button>
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: 6 }}>
+            We don't store the raw key — only its hash. Save it somewhere safe.
+          </div>
+          <button className="btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setJustCreated(null)}>
+            Got it
+          </button>
+        </div>
+      )}
+
+      {/* Existing keys */}
+      {keys.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+          {keys.map(k => (
+            <div key={k.id} style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              padding: '8px 10px',
+              background: 'var(--color-surface-1)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 11.5,
+              opacity: k.revoked_at ? 0.5 : 1,
+            }}>
+              <code style={{ fontSize: 10.5, color: 'var(--color-text)' }}>{k.key_prefix}</code>
+              <span style={{ color: 'var(--color-text-muted)' }}>{k.label || '(unlabelled)'}</span>
+              <span style={{ color: 'var(--color-text-dim)', marginLeft: 'auto', fontSize: 10 }}>
+                {k.use_count || 0} uses
+                {k.last_used_at && ` · last ${new Date(k.last_used_at).toLocaleDateString()}`}
+              </span>
+              {k.revoked_at ? (
+                <span style={{ fontSize: 10, color: 'var(--color-err)', fontWeight: 600 }}>REVOKED</span>
+              ) : (
+                <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }}
+                  onClick={() => handleRevoke(k.id)} title="Revoke key">
+                  <Trash2 size={10} />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+        <input
+          className="field-input"
+          placeholder='Label (e.g. "homepage form", "footer signup")'
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          maxLength={80}
+          style={{ fontSize: 12, flex: 1 }}
+        />
+        <button className="btn-primary" onClick={handleCreate} disabled={busy} style={{ fontSize: 12 }}>
+          {busy ? 'Creating…' : <><Plus size={12} /> Generate key</>}
+        </button>
+      </div>
+
+      {/* Embed snippet */}
+      {activeKey && (
+        <>
+          <button className="btn-ghost btn-sm" onClick={() => setShowSnippet(v => !v)}>
+            {showSnippet ? 'Hide' : 'Show'} embed snippet
+          </button>
+          {showSnippet && (
+            <pre style={{
+              marginTop: 6, padding: 10,
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 11, lineHeight: 1.5,
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              color: 'var(--color-text)',
+              whiteSpace: 'pre-wrap', wordBreak: 'break-all',
+              overflowX: 'auto',
+            }}>
+              {sampleSnippet}
+            </pre>
+          )}
+          {showSnippet && (
+            <button className="btn-ghost btn-sm" style={{ marginTop: 6 }}
+              onClick={() => copyText(sampleSnippet)}>
+              <Copy size={11} /> Copy snippet
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+
+function buildSnippet(keyOrPlaceholder) {
+  const looksRaw = keyOrPlaceholder && keyOrPlaceholder.startsWith('nx_pub_') && !keyOrPlaceholder.endsWith('…');
+  const keyToken = looksRaw ? keyOrPlaceholder : 'YOUR_KEY_HERE';
+  return `<!-- Drop on any website to capture leads into NexusAgent. -->
+<form id="lead-form">
+  <input name="name" placeholder="Your name" required />
+  <input name="email" placeholder="Email" required />
+  <input name="company" placeholder="Company (optional)" />
+  <textarea name="message" placeholder="What can we help with?"></textarea>
+  <button type="submit">Send</button>
+</form>
+<script>
+document.getElementById('lead-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const data = Object.fromEntries(new FormData(e.target));
+  data.intake_key = '${keyToken}';
+  const r = await fetch('https://YOUR-NEXUS-HOST/api/public/leads', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  alert(r.ok ? 'Thanks — we\\'ll be in touch.' : 'Send failed, please email us.');
+  e.target.reset();
+});
+</script>`;
+}
+
+
+// ── Stat card (mirrors the History page's pattern) ──────────────────────────
+function Stat({ label, value, icon, tone = 'dim' }) {
+  const toneColor = {
+    accent: 'var(--color-accent)',
+    info:   'var(--color-info)',
+    ok:     'var(--color-ok)',
+    warn:   'var(--color-warn)',
+    err:    'var(--color-err)',
+    dim:    'var(--color-text-dim)',
+    muted:  'var(--color-text-muted)',
+  }[tone];
+  return (
+    <div className="kpi">
+      <div className="kpi-icon" style={{ background: `color-mix(in srgb, ${toneColor} 14%, transparent)`, color: toneColor }}>
+        {icon}
+      </div>
+      <div className="kpi-body">
+        <div className="kpi-label">{label}</div>
+        <div className="kpi-value">{value}</div>
+      </div>
     </div>
   );
 }

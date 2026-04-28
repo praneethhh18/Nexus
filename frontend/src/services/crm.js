@@ -71,5 +71,11 @@ export const listInteractions = (opts = {}) => {
 export const createInteraction = (body) => req('/interactions', { method: 'POST', body: JSON.stringify(body) });
 export const deleteInteraction = (id) => req(`/interactions/${id}`, { method: 'DELETE' });
 
+// AI-drafted outreach — returns { variants: [{ tone, subject, body }, ...] }.
+// Privacy: this endpoint runs the prompt with sensitive=True on the backend
+// so the LLM call stays on local Ollama.
+export const draftOutreach = (contactId) =>
+  req(`/contacts/${contactId}/draft-outreach`, { method: 'POST' });
+
 export const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 export const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note'];

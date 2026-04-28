@@ -13,10 +13,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Mail, Phone, Building2, Briefcase, Calendar, MessageSquare,
   Edit3, Trash2, Plus, Receipt, CheckSquare, Send, AlertCircle, Loader2,
+  Sparkles, Copy, RefreshCw, X,
 } from 'lucide-react';
 import {
   getContact, updateContact, deleteContact,
-  listInteractions, createInteraction, listDeals,
+  listInteractions, createInteraction, listDeals, draftOutreach,
 } from '../services/crm';
 import { listInvoices } from '../services/invoices';
 import { createTask } from '../services/tasks';
@@ -62,6 +63,7 @@ export default function ContactDetail() {
   const [logging, setLogging] = useState(false);
   const [newInter, setNewInter] = useState({ type: 'call', subject: '', summary: '' });
   const [msg, setMsg] = useState('');
+  const [draftModal, setDraftModal] = useState(null);  // { variants: [...], busy, error }
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -169,6 +171,26 @@ export default function ContactDetail() {
     // alternative is to route through the agent's send_email tool, but
     // that requires SMTP config which not every workspace has.
     window.open(`mailto:${contact.email}`, '_blank');
+  };
+
+  // ── AI-drafted outreach ─────────────────────────────────────────────
+  const openDraftModal = async () => {
+    setDraftModal({ variants: null, busy: true, error: '' });
+    try {
+      const r = await draftOutreach(id);
+      setDraftModal({ variants: r.variants || [], busy: false, error: '' });
+    } catch (e) {
+      setDraftModal({ variants: null, busy: false, error: e.message || 'Draft failed.' });
+    }
+  };
+  const regenerateDraft = async () => {
+    setDraftModal((m) => ({ ...(m || {}), busy: true, error: '' }));
+    try {
+      const r = await draftOutreach(id);
+      setDraftModal({ variants: r.variants || [], busy: false, error: '' });
+    } catch (e) {
+      setDraftModal({ variants: null, busy: false, error: e.message || 'Draft failed.' });
+    }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────
@@ -505,6 +527,13 @@ export default function ContactDetail() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               <ActionButton
+                icon={<Sparkles size={13} />}
+                label="AI draft outreach"
+                detail="Three personalised email variants"
+                disabled={!contact.email}
+                onClick={openDraftModal}
+              />
+              <ActionButton
                 icon={<Send size={13} />}
                 label="Send email"
                 detail={contact.email || 'No email on file'}
@@ -552,6 +581,227 @@ export default function ContactDetail() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* AI Outreach modal */}
+      {draftModal && (
+        <DraftOutreachModal
+          state={draftModal}
+          contact={contact}
+          onRegenerate={regenerateDraft}
+          onClose={() => setDraftModal(null)}
+          onCopied={() => flash('Copied to clipboard.')}
+          onSent={() => flash('Opened in your mail client.')}
+        />
+      )}
+    </div>
+  );
+}
+
+
+// ── AI Outreach modal ───────────────────────────────────────────────────────
+// Renders the three variants returned by /api/crm/contacts/{id}/draft-outreach
+// in a tabbed view. Each variant is editable in place; the user can copy
+// to clipboard or open in their mail client (mailto:) without sending
+// through the agent — keeps the privacy story simple (no SMTP needed).
+function DraftOutreachModal({ state, contact, onRegenerate, onClose, onCopied, onSent }) {
+  const [active, setActive] = useState(0);
+  const [edits, setEdits] = useState({});  // tone -> {subject, body}
+
+  const variants = state.variants || [];
+  const current = variants[active];
+  const currentEdits = current ? (edits[current.tone] || current) : null;
+
+  const setSubject = (val) => {
+    if (!current) return;
+    setEdits((e) => ({ ...e, [current.tone]: { ...currentEdits, subject: val } }));
+  };
+  const setBody = (val) => {
+    if (!current) return;
+    setEdits((e) => ({ ...e, [current.tone]: { ...currentEdits, body: val } }));
+  };
+
+  const copyToClipboard = async () => {
+    if (!currentEdits) return;
+    const text = `Subject: ${currentEdits.subject}\n\n${currentEdits.body}`;
+    try { await navigator.clipboard.writeText(text); onCopied?.(); }
+    catch { /* no clipboard permission, user can select manually */ }
+  };
+
+  const openInMail = () => {
+    if (!currentEdits || !contact?.email) return;
+    const url = `mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(currentEdits.subject)}&body=${encodeURIComponent(currentEdits.body)}`;
+    window.open(url, '_blank');
+    onSent?.();
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 720,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '14px 18px',
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              AI-drafted outreach
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              Personalised for {[contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'this contact'} · runs locally on Ollama
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        {state.busy ? (
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)' }}>
+            <Loader2 size={18} className="animate-spin" style={{ marginBottom: 8 }} />
+            <div style={{ fontSize: 12.5 }}>Drafting three personalised variants…</div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 4 }}>
+              Pulling signals from this contact + recent interactions + linked deals.
+            </div>
+          </div>
+        ) : state.error ? (
+          <div style={{ padding: 24 }}>
+            <div style={{
+              padding: 12,
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-md)',
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}>
+              <AlertCircle size={16} color="var(--color-err)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-err)', marginBottom: 4 }}>
+                  Couldn't draft
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
+                  {state.error}
+                </div>
+                <button className="btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={onRegenerate}>
+                  <RefreshCw size={11} /> Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : variants.length === 0 ? (
+          <div style={{ padding: 30, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>
+            No variants returned.
+          </div>
+        ) : (
+          <>
+            {/* Tabs */}
+            <div style={{
+              display: 'flex', gap: 2,
+              padding: '0 18px',
+              borderBottom: '1px solid var(--color-border)',
+            }}>
+              {variants.map((v, i) => {
+                const isActive = i === active;
+                return (
+                  <button
+                    key={v.tone}
+                    onClick={() => setActive(i)}
+                    style={{
+                      padding: '10px 14px',
+                      border: 'none', cursor: 'pointer',
+                      background: 'transparent',
+                      color: isActive ? 'var(--color-accent)' : 'var(--color-text-muted)',
+                      fontSize: 12, fontWeight: 600, textTransform: 'capitalize',
+                      borderBottom: isActive
+                        ? '2px solid var(--color-accent)'
+                        : '2px solid transparent',
+                      marginBottom: -1,
+                    }}
+                  >
+                    {v.tone}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Editable preview */}
+            <div style={{ padding: 18, overflow: 'auto', flex: 1 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                Subject
+              </label>
+              <input
+                className="field-input"
+                value={currentEdits?.subject || ''}
+                onChange={(e) => setSubject(e.target.value)}
+                style={{ marginTop: 4, marginBottom: 12 }}
+              />
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                Body
+              </label>
+              <textarea
+                className="field-input"
+                rows={10}
+                value={currentEdits?.body || ''}
+                onChange={(e) => setBody(e.target.value)}
+                style={{ marginTop: 4, fontFamily: 'inherit', lineHeight: 1.55 }}
+              />
+            </div>
+
+            {/* Footer actions */}
+            <div style={{
+              padding: '12px 18px',
+              borderTop: '1px solid var(--color-border)',
+              display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+            }}>
+              <button className="btn-ghost btn-sm" onClick={onRegenerate}>
+                <RefreshCw size={11} /> Regenerate
+              </button>
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                <button className="btn-ghost btn-sm" onClick={copyToClipboard}>
+                  <Copy size={11} /> Copy
+                </button>
+                <button
+                  className="btn-primary btn-sm"
+                  onClick={openInMail}
+                  disabled={!contact?.email}
+                  title={contact?.email ? 'Open in your mail client' : 'No email on file for this contact'}
+                >
+                  <Send size={11} /> Open in mail
+                </button>
+              </span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

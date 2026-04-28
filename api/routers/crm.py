@@ -150,3 +150,20 @@ def create_interaction_api(body: dict, ctx: dict = Depends(get_current_context))
 def delete_interaction_api(interaction_id: str, ctx: dict = Depends(get_current_context)):
     _crm.delete_interaction(ctx["business_id"], interaction_id)
     return {"ok": True}
+
+
+# ── AI: draft outreach ──────────────────────────────────────────────────────
+@router.post("/api/crm/contacts/{contact_id}/draft-outreach")
+def draft_outreach_api(contact_id: str, ctx: dict = Depends(get_current_context)):
+    """
+    Generate three personalised outreach email variants (warm / professional
+    / direct) for a contact. Pulls signals from the contact record, recent
+    interactions, the linked open deal (if any), and the linked company.
+
+    Privacy: this prompt sees customer name + email + interaction history,
+    so it runs `sensitive=True` — forced local Ollama, never leaves the
+    machine. Tenant isolation is enforced by `_crm.get_contact` (404s on
+    cross-tenant access; covered by test_multitenant_isolation).
+    """
+    from api.routers.crm_drafts import draft_outreach
+    return draft_outreach(business_id=ctx["business_id"], contact_id=contact_id)
