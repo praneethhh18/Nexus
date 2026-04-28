@@ -78,3 +78,33 @@ export async function downloadFullExport() {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+
+// ── Disaster-recovery backup (admin-only) ─────────────────────────────────
+// Different from `downloadFullExport` — this includes the raw SQLite DB
+// + ChromaDB so the result is restorable on a new machine, not just
+// human-readable.
+export async function downloadFullBackup() {
+  const res = await fetch('/api/admin/backup', {
+    method: 'POST',
+    headers: headers(),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  a.download = `nexus-backup-${stamp}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+
+export async function getBackupInfo() {
+  const res = await fetch('/api/admin/backup/info', { headers: headers() });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

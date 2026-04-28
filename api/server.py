@@ -327,6 +327,7 @@ from api.routers import (
     voice              as _r_voice,
     settings           as _r_settings,
     search             as _r_search,
+    backup             as _r_backup,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -336,7 +337,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_approvals, _r_bg_agents, _r_memory,
            _r_email_triage, _r_research, _r_activity, _r_seed,
            _r_calendar, _r_database, _r_analytics, _r_team, _r_whatsapp,
-           _r_workflows, _r_voice, _r_settings, _r_search):
+           _r_workflows, _r_voice, _r_settings, _r_search, _r_backup):
     app.include_router(_r.router)
 
 

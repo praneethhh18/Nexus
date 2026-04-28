@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy, Bell, Sparkles } from 'lucide-react';
+import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy, Bell, Sparkles, Database, Loader2, ShieldCheck } from 'lucide-react';
 import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusiness, deleteBusiness } from '../services/api';
 import { getNotificationPrefs, setNotificationPrefs, reopenOnboarding } from '../services/onboarding';
-import { downloadFullExport } from '../services/tags';
+import { downloadFullExport, downloadFullBackup, getBackupInfo } from '../services/tags';
 import { Download } from 'lucide-react';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
@@ -125,6 +125,7 @@ export default function Settings() {
         <NotificationPrefsPanel />
         <OnboardingReopenPanel />
         <ExportPanel flash={flash} />
+        {isAdmin && <BackupPanel flash={flash} />}
 
         {/* Developer Mode — moved to top as the master toggle */}
         <div className="panel" style={{ borderColor: devMode ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--color-border)' }}>
@@ -710,6 +711,138 @@ function ExportPanel({ flash }) {
     </div>
   );
 }
+
+
+// ── Disaster-recovery backup (admin-only) ────────────────────────────────────
+// Different from ExportPanel above:
+//   ExportPanel  → CSV per table, human-readable, portable, no vector store.
+//   BackupPanel  → SQLite snapshot + ChromaDB folder + manifest. Restorable
+//                  on a new machine. Bigger; admin-only.
+function BackupPanel({ flash }) {
+  const [info, setInfo] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    getBackupInfo().then(setInfo).catch(() => setInfo(null));
+  }, []);
+
+  const fmtBytes = (n) => {
+    if (!n) return '—';
+    const u = ['B', 'KB', 'MB', 'GB'];
+    let i = 0; let v = n;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
+  };
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      await downloadFullBackup();
+      flash?.('Backup downloaded.');
+    } catch (e) {
+      flash?.(`Backup failed: ${e.message || e}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const total = info ? (info.db_bytes + info.chroma_bytes) : 0;
+  const estZip = info ? info.estimated_zip_bytes : 0;
+  const isLarge = total > 500 * 1024 * 1024;  // >500 MB
+
+  return (
+    <div className="panel" style={{
+      marginBottom: 12, padding: 14,
+      borderColor: 'color-mix(in srgb, var(--color-accent) 22%, var(--color-border))',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 'var(--r-md)',
+          background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <ShieldCheck size={18} />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+              Disaster-recovery backup
+            </span>
+            <span className="pill-base pill-warn" style={{ fontSize: 9 }}>
+              admin-only
+            </span>
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55, marginBottom: 8 }}>
+            A full snapshot you can restore on a new machine: SQLite database,
+            vector store (RAG embeddings), and a manifest.
+          </div>
+
+          {info && (
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8,
+              padding: '8px 10px',
+              background: 'var(--color-surface-1)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 11, color: 'var(--color-text-muted)',
+              fontFeatureSettings: '"tnum"',
+              marginBottom: 8,
+            }}>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Database</div>
+                <div style={{ color: 'var(--color-text)' }}>{fmtBytes(info.db_bytes)}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Vector store</div>
+                <div style={{ color: 'var(--color-text)' }}>
+                  {fmtBytes(info.chroma_bytes)} <span style={{ color: 'var(--color-text-dim)' }}>({info.chroma_files} files)</span>
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5 }}>Estimated zip</div>
+                <div style={{ color: 'var(--color-text)' }}>~{fmtBytes(estZip)}</div>
+              </div>
+            </div>
+          )}
+
+          {isLarge && (
+            <div style={{
+              padding: '6px 10px', marginBottom: 8,
+              background: 'color-mix(in srgb, var(--color-warn) 12%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-warn) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 11, color: 'var(--color-warn)',
+              display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <AlertTriangle size={11} />
+              Large workspace — the backup may take 30+ seconds to build.
+            </div>
+          )}
+
+          <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', lineHeight: 1.55 }}>
+            Restore is currently manual: stop the server, replace
+            <code style={{ margin: '0 4px' }}>data/nexusagent.db</code>
+            and the <code>chroma_db/</code> folder with the contents of the zip,
+            then restart. A guided one-click restore is on the roadmap.
+          </div>
+        </div>
+
+        <button
+          onClick={run}
+          disabled={busy}
+          className="btn-primary"
+          style={{ fontSize: 12, alignSelf: 'flex-start' }}
+        >
+          {busy
+            ? <><Loader2 size={12} className="animate-spin" /> Building…</>
+            : <><Database size={12} /> Download backup</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 // ── Onboarding reopener ─────────────────────────────────────────────────────
 function OnboardingReopenPanel() {
