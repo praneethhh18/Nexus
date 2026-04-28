@@ -29,7 +29,9 @@ test.describe('Bulk actions on tasks', () => {
     await page.locator('input[type="checkbox"]').nth(1).check();
 
     // The sticky BulkActionBar renders "1 selected" / "2 selected" etc.
-    await expect(page.getByText(/\d+ selected/i)).toBeVisible({ timeout: 3000 });
+    // Anchor the regex so we don't also match the "X of N selected" strip
+    // that the redesigned Tasks page now shows above the rows.
+    await expect(page.getByText(/^\d+ selected$/i)).toBeVisible({ timeout: 3000 });
   });
 
   test('bulk delete fires the bulk endpoint', async ({ page }) => {
