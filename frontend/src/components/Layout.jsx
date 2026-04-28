@@ -257,9 +257,7 @@ export default function Layout() {
           {devMode && (
             <>
               {!collapsed && (
-                <div style={{ padding: '8px 12px 4px', fontSize: 9, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 1 }}>
-                  Developer
-                </div>
+                <div className="nav-group-label">Developer</div>
               )}
               {NAV_DEV.map(({ to, icon: Icon, label }) => (
                 <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}

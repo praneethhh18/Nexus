@@ -138,7 +138,33 @@ body {
 }
 .sidebar-logo span { font-weight: 600; color: var(--color-text); font-size: 14px; letter-spacing: -0.01em; }
 
-.nav-section { display: flex; flex-direction: column; gap: 2px; padding: 8px; }
+.nav-section {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px;
+  /* Take all remaining vertical space and scroll inside if the list is
+     taller than the viewport (e.g. dev mode adds 3 extra items). The
+     `min-height: 0` is required for flex children to shrink past their
+     intrinsic size — without it, the bottom status bar gets pushed off
+     and nothing scrolls. */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Soft fade at top + bottom edges so users see "there's more above/below". */
+  scrollbar-gutter: stable;
+}
+.nav-section::-webkit-scrollbar { width: 4px; }
+.nav-section::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: var(--r-pill); }
+.nav-section:hover::-webkit-scrollbar-thumb { background: var(--color-border-strong); }
+/* Group label (e.g. "DEVELOPER") sticks to the top while you scroll past it. */
+.nav-section .nav-group-label {
+  position: sticky; top: 0; z-index: 1;
+  background: var(--color-surface-1);
+  padding: 8px 12px 4px;
+  margin-top: 4px;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 1px; text-transform: uppercase;
+  color: var(--color-text-dim);
+}
 .nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 8px 12px; border-radius: var(--r-md);
