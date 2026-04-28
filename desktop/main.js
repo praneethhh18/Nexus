@@ -2,6 +2,7 @@
  * NexusAgent desktop — main process entry point.
  *
  * Packages the React frontend as a native app with:
+ *   - First-run setup wizard (Ollama detect → model pull → backend probe)
  *   - Single-instance lock (second launch focuses the running window)
  *   - System tray with menu actions
  *   - Global hotkey (Cmd/Ctrl+Shift+N) to focus/toggle the window
@@ -12,9 +13,12 @@
  *   - DEV:  process.env.NEXUS_DEV_URL (default http://localhost:5173)
  *   - PROD: file://<app>/frontend/dist/index.html bundled next to this file
  *
- * The backend FastAPI server is NOT spawned by this main process — users
- * start it themselves via start.bat or `uvicorn api.server:app`. Auto-spawn
- * is a follow-up once we decide on a PyInstaller bundle.
+ * Boot order:
+ *   1. app.whenReady
+ *   2. setup.registerIpc()
+ *   3. if setup-complete marker is missing → openSetupWindow(); else
+ *      directly createWindow().
+ *   4. tray + hotkey come up regardless.
  */
 'use strict';
 
@@ -25,6 +29,7 @@ const path = require('node:path');
 const { buildTrayMenu } = require('./tray');
 const { registerHotkeys, unregisterHotkeys } = require('./hotkey');
 const { probeOllama } = require('./ollama');
+const setup = require('./setup');
 
 const isDev = !!process.env.NEXUS_DEV_URL || !app.isPackaged;
 const DEV_URL = process.env.NEXUS_DEV_URL || 'http://localhost:5173';
@@ -49,6 +54,11 @@ if (!gotLock) {
 
 
 function createWindow() {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
+    return;
+  }
   mainWindow = new BrowserWindow({
     width: 1380,
     height: 860,
@@ -93,6 +103,8 @@ function createWindow() {
       mainWindow.hide();
     }
   });
+
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
 
@@ -119,13 +131,22 @@ function setupTray() {
   tray = new Tray(image);
   tray.setToolTip('NexusAgent — private AI business OS');
   const refresh = async () => {
-    const menu = await buildTrayMenu({
+    const baseMenu = await buildTrayMenu({
       toggle: toggleWindow,
       quit: () => {
         app.isQuittingForReal = true;
         app.quit();
       },
       backendUrl: BACKEND_URL,
+    });
+    // Append a "Re-run setup wizard" item.
+    const menu = baseMenu.slice();
+    menu.splice(menu.length - 1, 0, {
+      label: 'Re-run setup wizard…',
+      click: () => {
+        setup.resetSetup();
+        setup.openSetupWindow({ onDone: () => createWindow() });
+      },
     });
     tray.setContextMenu(Menu.buildFromTemplate(menu));
   };
@@ -167,14 +188,24 @@ ipcMain.handle('nexus:open-external', (_evt, url) => {
 
 // ── App lifecycle ───────────────────────────────────────────────────────────
 app.whenReady().then(() => {
-  createWindow();
+  setup.registerIpc();
+
+  if (setup.isSetupComplete()) {
+    createWindow();
+  } else {
+    setup.openSetupWindow({ onDone: () => createWindow() });
+  }
+
   setupTray();
   registerHotkeys({
     toggle: toggleWindow,
   });
 
   app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    if (BrowserWindow.getAllWindows().length === 0) {
+      if (setup.isSetupComplete()) createWindow();
+      else setup.openSetupWindow({ onDone: () => createWindow() });
+    }
   });
 });
 

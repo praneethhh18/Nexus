@@ -35,13 +35,34 @@ function Modal({ title, onClose, children, wide = false }) {
   );
 }
 
+// ── Form field primitive ────────────────────────────────────────────────────
+// Every input gets: a clear label, a required marker if applicable, an
+// optional helper line under the input, and consistent spacing. Drop-in
+// for the bare-placeholder approach we used to have, which was unguided.
+function Field({ label, required, helper, children, span }) {
+  return (
+    <div style={{ gridColumn: span ? `span ${span}` : undefined, display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+        {label}
+        {required && <span style={{ color: 'var(--color-err)', marginLeft: 4 }}>*</span>}
+      </label>
+      {children}
+      {helper && <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)', lineHeight: 1.45 }}>{helper}</span>}
+    </div>
+  );
+}
+
+const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AED', 'SGD', 'AUD', 'CAD'];
+
 // ── Invoice form ────────────────────────────────────────────────────────────
 function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
+  const today = new Date().toISOString().substring(0, 10);
+  const defaultDue = new Date(Date.now() + 30 * 86400_000).toISOString().substring(0, 10);
   const [f, setF] = useState({
     customer_name: '', customer_email: '', customer_address: '',
     customer_company_id: '', customer_contact_id: '',
-    currency: 'USD', issue_date: new Date().toISOString().substring(0, 10),
-    due_date: '', notes: '', tax_pct: 0,
+    currency: 'USD', issue_date: today,
+    due_date: defaultDue, notes: '', tax_pct: 0,
     line_items: [{ description: '', quantity: 1, unit_price: 0 }],
     status: 'draft',
     ...(initial || {}),
@@ -59,93 +80,191 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
   const addLine = () => setF((p) => ({ ...p, line_items: [...p.line_items, { description: '', quantity: 1, unit_price: 0 }] }));
   const removeLine = (idx) => setF((p) => ({ ...p, line_items: p.line_items.filter((_, i) => i !== idx) }));
 
+  // Auto-fill from CRM picks — the user shouldn't have to retype data.
+  const onPickCompany = (id) => {
+    set('customer_company_id', id);
+    if (!id) return;
+    const c = companies.find(x => String(x.id) === String(id));
+    if (c) {
+      if (!f.customer_name) set('customer_name', c.name || '');
+      if (!f.customer_email && c.email) set('customer_email', c.email);
+      if (!f.customer_address && c.address) set('customer_address', c.address);
+    }
+  };
+  const onPickContact = (id) => {
+    set('customer_contact_id', id);
+    if (!id) return;
+    const c = contacts.find(x => String(x.id) === String(id));
+    if (c) {
+      const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
+      if (!f.customer_name && fullName) set('customer_name', fullName);
+      if (!f.customer_email && c.email) set('customer_email', c.email);
+    }
+  };
+
   const subtotal = f.line_items.reduce((s, it) => s + (Number(it.quantity) * Number(it.unit_price) || 0), 0);
   const taxAmount = subtotal * (Number(f.tax_pct) / 100);
   const total = subtotal + taxAmount;
+  const lineValid = f.line_items.length > 0 && f.line_items.every(it => it.description.trim() && Number(it.quantity) > 0);
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
+      {/* First-time hint — only on a fresh form. */}
+      {!initial && (
+        <div style={{
+          padding: '8px 12px', marginBottom: 14,
+          background: 'var(--color-accent-soft)',
+          border: '1px solid color-mix(in srgb, var(--color-accent) 28%, transparent)',
+          borderRadius: 'var(--r-md)',
+          fontSize: 11.5, color: 'var(--color-accent)',
+          lineHeight: 1.5,
+        }}>
+          Required fields are marked with <strong>*</strong>. Pick a CRM company or
+          contact above to auto-fill name, email, and address.
+        </div>
+      )}
+
       {/* Customer */}
-      <div style={{ marginBottom: 12, padding: 12, background: 'var(--color-surface-1)', borderRadius: 8 }}>
-        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Customer</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
-          <div>
-            <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>From CRM Company (optional)</label>
-            <select className="field-select" value={f.customer_company_id || ''} onChange={(e) => set('customer_company_id', e.target.value)} style={{ width: '100%' }}>
+      <div className="divider-h">Bill to</div>
+      <div style={{
+        marginBottom: 14, padding: 14,
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--r-md)',
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <Field label="From CRM company" helper="Optional. Auto-fills name, email, address.">
+            <select className="field-select" value={f.customer_company_id || ''} onChange={(e) => onPickCompany(e.target.value)} style={{ width: '100%' }}>
               <option value="">— none —</option>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
-          </div>
-          <div>
-            <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>From CRM Contact (optional)</label>
-            <select className="field-select" value={f.customer_contact_id || ''} onChange={(e) => set('customer_contact_id', e.target.value)} style={{ width: '100%' }}>
+          </Field>
+          <Field label="From CRM contact" helper="Optional. Auto-fills name and email.">
+            <select className="field-select" value={f.customer_contact_id || ''} onChange={(e) => onPickContact(e.target.value)} style={{ width: '100%' }}>
               <option value="">— none —</option>
               {contacts.map((c) => <option key={c.id} value={c.id}>{(c.first_name + ' ' + c.last_name).trim()}</option>)}
             </select>
-          </div>
+          </Field>
         </div>
-        <input className="field-input" placeholder="Customer name *" value={f.customer_name} onChange={(e) => set('customer_name', e.target.value)} maxLength={200} style={{ marginBottom: 6 }} />
-        <input className="field-input" placeholder="Customer email" value={f.customer_email} onChange={(e) => set('customer_email', e.target.value)} maxLength={200} style={{ marginBottom: 6 }} />
-        <textarea className="field-input" rows={2} placeholder="Billing address" value={f.customer_address} onChange={(e) => set('customer_address', e.target.value)} maxLength={500} />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <Field label="Customer name" required helper="Will appear at the top of the PDF. e.g. Acme Inc.">
+            <input className="field-input" required value={f.customer_name} onChange={(e) => set('customer_name', e.target.value)} maxLength={200} placeholder="Acme Inc." />
+          </Field>
+          <Field label="Customer email" helper="Used for sending. Leave blank if posting the PDF manually.">
+            <input className="field-input" type="email" value={f.customer_email} onChange={(e) => set('customer_email', e.target.value)} maxLength={200} placeholder="billing@acme.com" />
+          </Field>
+        </div>
+        <Field label="Billing address" helper="Free-form — newlines are kept as-is in the PDF.">
+          <textarea className="field-input" rows={2} value={f.customer_address} onChange={(e) => set('customer_address', e.target.value)} maxLength={500} placeholder={'2nd Floor, Building 9\nKoramangala, Bangalore 560034\nIndia'} />
+        </Field>
       </div>
 
-      {/* Dates + Currency */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-        <div>
-          <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Issue date</label>
-          <input className="field-input" type="date" value={f.issue_date} onChange={(e) => set('issue_date', e.target.value)} />
-        </div>
-        <div>
-          <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Due date</label>
-          <input className="field-input" type="date" value={f.due_date} onChange={(e) => set('due_date', e.target.value)} />
-        </div>
-        <div>
-          <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Currency</label>
-          <input className="field-input" value={f.currency} onChange={(e) => set('currency', e.target.value.toUpperCase())} maxLength={8} />
-        </div>
-        <div>
-          <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Status</label>
+      {/* Dates + Currency + Status */}
+      <div className="divider-h">Invoice details</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+        <Field label="Issue date" required helper="Defaults to today.">
+          <input className="field-input" type="date" required value={f.issue_date} onChange={(e) => set('issue_date', e.target.value)} />
+        </Field>
+        <Field label="Due date" required helper="Net-30 by default.">
+          <input className="field-input" type="date" required value={f.due_date} onChange={(e) => set('due_date', e.target.value)} />
+        </Field>
+        <Field label="Currency" required helper="3-letter code.">
+          <select className="field-select" value={f.currency} onChange={(e) => set('currency', e.target.value)} style={{ width: '100%' }}>
+            {COMMON_CURRENCIES.map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </Field>
+        <Field label="Status" helper="Start as draft, mark sent later.">
           <select className="field-select" value={f.status} onChange={(e) => set('status', e.target.value)} style={{ width: '100%' }}>
             {INVOICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
           </select>
-        </div>
+        </Field>
       </div>
 
       {/* Line items */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 1 }}>Line items</div>
+      <div className="divider-h">Line items</div>
+      <div style={{ marginBottom: 14 }}>
+        {/* Header row — column labels so the per-line inputs stay slim. */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px',
+          gap: 6, marginBottom: 4,
+          fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
+          textTransform: 'uppercase', color: 'var(--color-text-dim)',
+        }}>
+          <span>Description *</span>
+          <span>Qty *</span>
+          <span>Unit price</span>
+          <span>Subtotal</span>
+          <span></span>
+        </div>
         {f.line_items.map((it, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px', gap: 6, marginBottom: 6 }}>
-            <input className="field-input" placeholder="Description" value={it.description} onChange={(e) => setLine(i, 'description', e.target.value)} maxLength={400} required />
-            <input className="field-input" type="number" step="0.01" min={0} placeholder="Qty" value={it.quantity} onChange={(e) => setLine(i, 'quantity', parseFloat(e.target.value) || 0)} />
-            <input className="field-input" type="number" step="0.01" min={0} placeholder="Unit" value={it.unit_price} onChange={(e) => setLine(i, 'unit_price', parseFloat(e.target.value) || 0)} />
-            <div style={{ display: 'flex', alignItems: 'center', fontSize: 11, color: 'var(--color-text-muted)', padding: '0 6px' }}>
+            <input className="field-input" placeholder="e.g. Q1 retainer — strategy" value={it.description} onChange={(e) => setLine(i, 'description', e.target.value)} maxLength={400} required />
+            <input className="field-input" type="number" step="0.01" min={0} placeholder="1" value={it.quantity} onChange={(e) => setLine(i, 'quantity', parseFloat(e.target.value) || 0)} />
+            <input className="field-input" type="number" step="0.01" min={0} placeholder="0.00" value={it.unit_price} onChange={(e) => setLine(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+            <div style={{ display: 'flex', alignItems: 'center', fontSize: 11.5, color: 'var(--color-text-muted)', padding: '0 6px', fontFeatureSettings: '"tnum"' }}>
               {money(Number(it.quantity) * Number(it.unit_price), f.currency)}
             </div>
-            <button type="button" onClick={() => removeLine(i)} style={{ background: 'none', border: 'none', color: 'var(--color-err)', cursor: 'pointer' }}>
+            <button
+              type="button"
+              onClick={() => removeLine(i)}
+              disabled={f.line_items.length === 1}
+              style={{ background: 'none', border: 'none', color: 'var(--color-err)', cursor: f.line_items.length === 1 ? 'not-allowed' : 'pointer', opacity: f.line_items.length === 1 ? 0.3 : 1 }}
+              title={f.line_items.length === 1 ? 'At least one line item is required' : 'Remove this line'}
+            >
               <Trash2 size={12} />
             </button>
           </div>
         ))}
-        <button type="button" className="btn-ghost" onClick={addLine} style={{ fontSize: 11 }}><Plus size={12} /> Add line</button>
+        <button type="button" className="btn-ghost btn-sm" onClick={addLine}><Plus size={12} /> Add line</button>
       </div>
 
-      {/* Totals */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 8, alignItems: 'end', marginBottom: 12 }}>
-        <div>
-          <label style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>Notes (payment terms, thank-you, etc.)</label>
-          <textarea className="field-input" rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
-        </div>
-        <div style={{ padding: 12, background: 'var(--color-surface-1)', borderRadius: 8, fontSize: 11 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: 4 }}>
+      {/* Totals + notes */}
+      <div className="divider-h">Notes &amp; totals</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 12, alignItems: 'start', marginBottom: 14 }}>
+        <Field label="Notes" helper="Payment terms, bank details, thank-you message — appears at the bottom of the PDF.">
+          <textarea
+            className="field-input"
+            rows={4}
+            value={f.notes}
+            onChange={(e) => set('notes', e.target.value)}
+            maxLength={2000}
+            placeholder={'Net-30. Bank: HDFC ··· 1234.\nThanks for your business!'}
+          />
+        </Field>
+        <div style={{
+          padding: 14,
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--r-md)',
+          fontSize: 12, fontFeatureSettings: '"tnum"',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: 6 }}>
             <span>Subtotal</span><span>{money(subtotal, f.currency)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: 4 }}>
-            <span>Tax</span>
-            <input type="number" step="0.01" min={0} max={100} value={f.tax_pct} onChange={(e) => set('tax_pct', parseFloat(e.target.value) || 0)} style={{ width: 60, fontSize: 11, padding: '2px 4px', background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 4, color: 'var(--color-text)', textAlign: 'right' }} />
-            <span>% = {money(taxAmount, f.currency)}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+            <span style={{ color: 'var(--color-text-muted)' }}>Tax</span>
+            <input
+              type="number"
+              step="0.01" min={0} max={100}
+              value={f.tax_pct}
+              onChange={(e) => set('tax_pct', parseFloat(e.target.value) || 0)}
+              style={{
+                width: 56, fontSize: 11.5, padding: '3px 6px',
+                background: 'var(--color-bg)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--r-sm)',
+                color: 'var(--color-text)', textAlign: 'right',
+              }}
+              title="Tax percentage (0–100)"
+            />
+            <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>%</span>
+            <span style={{ marginLeft: 'auto', color: 'var(--color-text-muted)' }}>{money(taxAmount, f.currency)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: 'var(--color-text)', fontSize: 13, paddingTop: 6, borderTop: '1px solid var(--color-surface-2)', marginTop: 6 }}>
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            fontWeight: 700, color: 'var(--color-text)', fontSize: 14,
+            paddingTop: 8, borderTop: '1px solid var(--color-border)', marginTop: 6,
+          }}>
             <span>Total</span><span>{money(total, f.currency)}</span>
           </div>
         </div>
@@ -153,7 +272,9 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
 
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="btn-primary">{initial ? 'Save' : 'Create invoice'}</button>
+        <button type="submit" className="btn-primary" disabled={!lineValid || !f.customer_name.trim()}>
+          {initial ? 'Save' : 'Create invoice'}
+        </button>
       </div>
     </form>
   );

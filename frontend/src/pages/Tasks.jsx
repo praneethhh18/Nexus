@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat } from 'lucide-react';
+import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat, Check } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
 import FlowBanner from '../components/FlowBanner';
@@ -117,16 +117,35 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
   const overdue = task.due_date && task.due_date < todayStr() && !done && task.status !== 'cancelled';
   const isRecurring = task.recurrence && task.recurrence !== 'none';
   return (
-    <div className="panel" style={{
-      display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
-      opacity: done ? 0.55 : 1,
-      borderLeft: `3px solid ${PRIORITY_COLORS[task.priority] || 'var(--color-text-dim)'}`,
-      background: selected ? 'color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-2))' : undefined,
-    }}>
-      <BulkCheckbox checked={selected} onChange={() => onToggleSelect(task.id)} title="Select for bulk action" />
-      <button onClick={() => onToggle(task)} style={{ background: 'none', border: 'none', color: done ? 'var(--color-ok)' : 'var(--color-text-dim)', cursor: 'pointer' }}>
-        {done ? <CheckSquare size={18} /> : <Square size={18} />}
+    <div
+      className="panel row"
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+        opacity: done ? 0.6 : 1,
+        borderLeft: `3px solid ${PRIORITY_COLORS[task.priority] || 'var(--color-text-dim)'}`,
+        background: selected ? 'color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-2))' : undefined,
+      }}
+    >
+      {/* Round checkbox — "Mark done." Always visible. Status, not selection. */}
+      <button
+        type="button"
+        onClick={() => onToggle(task)}
+        className={`round-check${done ? ' is-done' : ''}`}
+        title={done ? 'Mark as not done' : 'Mark as done'}
+        aria-label={done ? 'Mark as not done' : 'Mark as done'}
+      >
+        {done && <Check size={12} strokeWidth={3} />}
       </button>
+
+      {/* Bulk checkbox — "Select." Hidden until hover or bulk mode. Square. */}
+      <span
+        className="row-bulk"
+        title="Select for bulk action"
+        aria-label="Select task for bulk actions"
+      >
+        <BulkCheckbox checked={selected} onChange={() => onToggleSelect(task.id)} />
+      </span>
+
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
@@ -150,8 +169,8 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
         </div>
       </div>
       <div style={{ display: 'flex', gap: 4 }}>
-        <button className="btn-ghost" style={{ padding: 4 }} onClick={() => onEdit(task)}>Edit</button>
-        <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => onDelete(task)}><Trash2 size={12} /></button>
+        <button className="btn-ghost btn-sm" onClick={() => onEdit(task)}>Edit</button>
+        <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }} onClick={() => onDelete(task)} title="Delete task" aria-label="Delete task"><Trash2 size={12} /></button>
       </div>
     </div>
   );
@@ -320,11 +339,16 @@ export default function Tasks() {
         ))}
       </div>
 
-      {/* Select-all strip — only shows when there are tasks */}
-      {tasks.length > 0 && (
+      {/* Select-all strip — only appears when bulk mode is active (something
+          already selected). Keeps the chrome clean for first-time users who
+          don't know about bulk yet. */}
+      {tasks.length > 0 && selection.any && (
         <div style={{
           display: 'flex', alignItems: 'center', gap: 10,
-          padding: '6px 24px', fontSize: 11, color: 'var(--color-text-dim)',
+          padding: '8px 24px', fontSize: 12, color: 'var(--color-text-muted)',
+          background: 'var(--color-surface-1)',
+          borderTop: '1px solid var(--color-border)',
+          borderBottom: '1px solid var(--color-border)',
         }}>
           <BulkCheckbox
             checked={selection.all}
@@ -332,11 +356,25 @@ export default function Tasks() {
             onChange={() => selection.toggleAll()}
             title="Select all visible"
           />
-          <span>Select all visible ({tasks.length})</span>
+          <span>
+            {selection.count === tasks.length
+              ? `All ${tasks.length} selected`
+              : `${selection.count} of ${tasks.length} selected`}
+          </span>
+          <button
+            className="btn-ghost btn-sm"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => selection.clear()}
+          >
+            Clear
+          </button>
         </div>
       )}
 
-      <div style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div
+        data-bulk-active={selection.any || undefined}
+        style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}
+      >
         {tasks.length === 0 ? (
           <EmptyState
             icon={CheckSquare}

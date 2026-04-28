@@ -5,10 +5,17 @@
  * helpers are best-effort: they never throw, always resolve to a plain
  * object the renderer can render directly.
  *
- * probeOllama()        → { online, version?, models?, installHintUrl }
- * listModels()         → { ok, models[] }
- * pullModel(name)      → { ok, stream }        (streamed progress events)
- * deleteModel(name)    → { ok }
+ *   probeOllama()             → { online, version?, models?, installHintUrl }
+ *   listModels()              → { ok, models[] }
+ *   pullModel(name)           → { ok, error?, body? }    (one-shot, no progress)
+ *   pullModelStream(name, cb) → { ok, error? }           (streams progress to cb)
+ *   deleteModel(name)         → { ok }
+ *
+ * Streaming pull contract — `cb` is called repeatedly with one of:
+ *   { kind: 'status',   status: 'pulling manifest', ... }
+ *   { kind: 'progress', completed: 12345, total: 67890, percent: 18, status: 'downloading' }
+ *   { kind: 'done',     ok: true }
+ *   { kind: 'error',    message: '...' }
  */
 'use strict';
 
@@ -87,13 +94,104 @@ async function listModels() {
 
 
 async function pullModel(name) {
-  // The Ollama pull endpoint streams progress; for the MVP we just fire it
-  // and return — the UI can poll listModels() until the new name appears.
   const r = await _request('POST', '/api/pull', {
     body: { name, stream: false },
-    timeout: 5 * 60 * 1000,  // 5 min for a cold pull
+    timeout: 30 * 60 * 1000,
   });
   return { ok: r.ok, error: r.error, body: r.body };
+}
+
+
+/**
+ * Stream a model pull. Calls `onEvent` with progress objects until done.
+ * Resolves once the stream closes.
+ */
+function pullModelStream(name, onEvent) {
+  return new Promise((resolve) => {
+    const url = new URL('/api/pull', OLLAMA_HOST);
+    const payload = JSON.stringify({ name, stream: true });
+
+    let buf = '';
+    let lastTotal = 0;
+    let lastCompleted = 0;
+
+    const safeEmit = (e) => { try { onEvent(e); } catch {} };
+
+    const req = http.request({
+      hostname: url.hostname,
+      port: url.port || 80,
+      path: url.pathname,
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload),
+      },
+      // No timeout — the request can take several minutes for a 4GB model.
+      timeout: 0,
+    }, (res) => {
+      if (res.statusCode >= 400) {
+        let body = '';
+        res.on('data', (c) => (body += c));
+        res.on('end', () => {
+          safeEmit({ kind: 'error', message: `HTTP ${res.statusCode}: ${body.slice(0, 200)}` });
+          resolve({ ok: false, error: `HTTP ${res.statusCode}` });
+        });
+        return;
+      }
+
+      res.on('data', (chunk) => {
+        buf += chunk.toString('utf8');
+        let idx;
+        while ((idx = buf.indexOf('\n')) !== -1) {
+          const line = buf.slice(0, idx).trim();
+          buf = buf.slice(idx + 1);
+          if (!line) continue;
+          let evt;
+          try { evt = JSON.parse(line); } catch { continue; }
+
+          if (evt.error) {
+            safeEmit({ kind: 'error', message: String(evt.error) });
+            continue;
+          }
+
+          if (typeof evt.completed === 'number' && typeof evt.total === 'number' && evt.total > 0) {
+            lastCompleted = evt.completed;
+            lastTotal = evt.total;
+            safeEmit({
+              kind: 'progress',
+              status: evt.status || 'downloading',
+              completed: evt.completed,
+              total: evt.total,
+              percent: Math.min(100, Math.round((evt.completed / evt.total) * 100)),
+            });
+          } else if (evt.status) {
+            safeEmit({ kind: 'status', status: evt.status });
+          }
+
+          if (evt.status === 'success') {
+            safeEmit({ kind: 'done', ok: true });
+          }
+        }
+      });
+
+      res.on('end', () => {
+        // If we ended without a 'success' event, treat it as done if we
+        // saw a complete byte count.
+        if (lastTotal > 0 && lastCompleted >= lastTotal) {
+          safeEmit({ kind: 'done', ok: true });
+        }
+        resolve({ ok: true });
+      });
+    });
+
+    req.on('error', (e) => {
+      safeEmit({ kind: 'error', message: String(e.message || e) });
+      resolve({ ok: false, error: String(e.message || e) });
+    });
+
+    req.write(payload);
+    req.end();
+  });
 }
 
 
@@ -106,4 +204,4 @@ async function deleteModel(name) {
 }
 
 
-module.exports = { probeOllama, listModels, pullModel, deleteModel, INSTALL_HINT };
+module.exports = { probeOllama, listModels, pullModel, pullModelStream, deleteModel, INSTALL_HINT };

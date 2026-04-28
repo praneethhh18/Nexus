@@ -178,7 +178,7 @@ function Churn({ data }) {
   );
 }
 
-export default function Analytics() {
+export default function Analytics({ embedded = false }) {
   const [velocity, setVelocity] = useState(null);
   const [forecast, setForecast] = useState(null);
   const [impact, setImpact] = useState(null);
@@ -206,17 +206,25 @@ export default function Analytics() {
     return () => window.removeEventListener('nexus-business-changed', h);
   }, [reload]);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="page-header">
-        <h1>Analytics</h1>
-        <p>Pipeline velocity, revenue forecast, agent impact, and deal churn risk</p>
+  // When `embedded` is true (rendered inside Dashboard's Analytics tab),
+  // we skip the page header + outer padding so it slots into the host page
+  // cleanly. Standalone /analytics route still works for direct links.
+  const Wrapper = ({ children }) => embedded
+    ? <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{children}</div>
+    : (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <div className="page-header">
+          <h1>Analytics</h1>
+          <p>Pipeline velocity, revenue forecast, agent impact, and deal churn risk</p>
+        </div>
+        {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
+        <div className="page-body">{children}</div>
       </div>
+    );
 
-      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
-
-      <div className="page-body">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+  return (
+    <Wrapper>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Panel icon={Clock} title="Pipeline velocity" color="var(--color-info)">
             <Velocity data={velocity} />
           </Panel>
@@ -253,7 +261,6 @@ export default function Analytics() {
             <Churn data={churn} />
           </Panel>
         </div>
-      </div>
-    </div>
+    </Wrapper>
   );
 }

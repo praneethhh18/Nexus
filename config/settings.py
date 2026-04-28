@@ -42,6 +42,17 @@ SLACK_ENABLED: bool = bool(SLACK_WEBHOOK_URL)
 DB_PATH: str = str(_ROOT / _get("DB_PATH", "data/nexusagent.db"))
 CHROMA_PATH: str = str(_ROOT / "chroma_db")
 
+# ── Demo / sandbox ──────────────────────────────────────────────────────────
+# When NEXUS_DEMO=1 the API exposes its current state as "sandbox":
+#   - /api/health returns "demo": true so the UI can show a yellow ribbon
+#   - the seed router auto-loads sample data on first boot (no manual click)
+#   - the onboarding wizard is skipped
+# Auth is NOT bypassed — even the public sandbox needs a login. The hosted
+# build prints the demo credentials on the login page when this flag is on.
+NEXUS_DEMO: bool = (_get("NEXUS_DEMO", "0") or "0").strip().lower() in ("1", "true", "yes", "on")
+DEMO_USERNAME: str = _get("DEMO_USERNAME", "demo@nexusagent.app")
+DEMO_PASSWORD: str = _get("DEMO_PASSWORD", "Try-Nexus-2026!")
+
 # ── Directories ───────────────────────────────────────────────────────────────
 OUTPUTS_DIR: str = str(_ROOT / "outputs")
 REPORTS_DIR: str = str(_ROOT / "outputs" / "reports")

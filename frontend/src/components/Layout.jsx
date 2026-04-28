@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { markNotificationRead, deleteNotification } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
@@ -17,7 +17,6 @@ const NAV_MAIN = [
   { to: '/invoices', icon: Receipt, label: 'Invoices' },
   { to: '/documents', icon: FileType2, label: 'Documents' },
   { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
   { to: '/integrations', icon: Plug, label: 'Integrations' },
   { to: '/inbox', icon: Inbox, label: 'Inbox', badge: 'approvals' },
@@ -28,6 +27,7 @@ const NAV_MAIN = [
   { to: '/audit', icon: Activity, label: 'Audit log' },
   { to: '/admin/metrics', icon: BarChart3, label: 'Metrics' },
   { to: '/history', icon: Clock, label: 'History' },
+  { to: '/pricing', icon: Sparkles, label: 'Plan & billing' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ];
 

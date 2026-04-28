@@ -13,6 +13,7 @@ import { listPersonas } from '../services/agents';
 import ReactMarkdown from 'react-markdown';
 import { Sparkles, Loader2, Sun, Moon, Lock } from 'lucide-react';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import Analytics from './Analytics';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
 
@@ -21,29 +22,25 @@ const STAGE_COLORS = {
   negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
-function KpiCard({ icon: Icon, label, value, sub, color, onClick }) {
+function KpiCard({ icon: Icon, label, value, sub, color, tone, onClick }) {
+  // tone selects the icon background palette; default emerald-accent matches
+  // the rest of the design system. `color` is kept for back-compat: if
+  // passed, it overrides the palette via inline style.
+  const iconStyle = color
+    ? { background: `color-mix(in srgb, ${color} 16%, transparent)`, color }
+    : undefined;
   return (
     <div
       onClick={onClick}
-      className="panel"
-      style={{
-        padding: 14, cursor: onClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 12,
-        transition: 'transform 0.1s',
-      }}
-      onMouseEnter={(e) => { if (onClick) e.currentTarget.style.transform = 'translateY(-1px)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+      className={`kpi${onClick ? ' is-clickable' : ''}`}
     >
-      <div style={{
-        width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-        background: `${color}22`, color,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      <div className="kpi-icon" data-tone={tone} style={iconStyle}>
         <Icon size={20} />
       </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{label}</div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--color-text)' }}>{value}</div>
-        {sub && <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 1 }}>{sub}</div>}
+      <div className="kpi-body">
+        <div className="kpi-label">{label}</div>
+        <div className="kpi-value">{value}</div>
+        {sub && <div className="kpi-sub">{sub}</div>}
       </div>
     </div>
   );
@@ -228,13 +225,61 @@ export default function Dashboard() {
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
+  // Tab state — Overview is the default Dashboard; Analytics shows the
+  // pipeline velocity / forecast / agent impact / churn risk panels that
+  // used to live on a separate sidebar page. Persist the choice across
+  // refreshes so a user who lives in Analytics doesn't get bounced back.
+  const [view, setView] = useState(() => localStorage.getItem('nexus_dashboard_tab') || 'overview');
+  const switchView = (v) => { setView(v); localStorage.setItem('nexus_dashboard_tab', v); };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="page-header">
-        <h1>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
-        <p>Overview for <strong style={{ color: 'var(--color-text)' }}>{current?.name || 'your business'}</strong></p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <h1>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
+          <p>Overview for <strong style={{ color: 'var(--color-text)' }}>{current?.name || 'your business'}</strong></p>
+        </div>
+        {/* Tabs — Overview / Analytics. Pill-style; matches our token system. */}
+        <div style={{
+          display: 'inline-flex', gap: 4,
+          padding: 3,
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--r-pill)',
+        }}>
+          {[
+            { id: 'overview',  label: 'Overview',  Icon: LayoutDashboard },
+            { id: 'analytics', label: 'Analytics', Icon: BarChart3 },
+          ].map(({ id, label, Icon }) => {
+            const active = view === id;
+            return (
+              <button
+                key={id}
+                onClick={() => switchView(id)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '6px 14px', borderRadius: 'var(--r-pill)',
+                  border: 'none', cursor: 'pointer',
+                  fontSize: 12, fontWeight: 600,
+                  background: active ? 'var(--color-accent)' : 'transparent',
+                  color: active ? '#06281e' : 'var(--color-text-muted)',
+                  transition: 'background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)',
+                }}
+              >
+                <Icon size={13} /> {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
+      {view === 'analytics' && (
+        <div className="page-body">
+          <Analytics embedded />
+        </div>
+      )}
+
+      {view === 'overview' && (
       <div className="page-body">
         {/* Onboarding checklist — self-hides when complete or skipped */}
         <div style={{ marginBottom: 14 }}>
@@ -632,6 +677,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

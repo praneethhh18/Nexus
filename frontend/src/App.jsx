@@ -34,6 +34,7 @@ const History       = lazy(() => import('./pages/History'));
 const Integrations  = lazy(() => import('./pages/Integrations'));
 const AdminMetrics  = lazy(() => import('./pages/AdminMetrics'));
 const Settings      = lazy(() => import('./pages/Settings'));
+const Pricing       = lazy(() => import('./pages/Pricing'));
 const Database      = lazy(() => import('./pages/Database'));
 const SQLEditor     = lazy(() => import('./pages/SQLEditor'));
 const WhatIf        = lazy(() => import('./pages/WhatIf'));
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/integrations"  element={L(Integrations)} />
             <Route path="/admin/metrics" element={L(AdminMetrics)} />
             <Route path="/settings"      element={L(Settings)} />
+            <Route path="/pricing"       element={L(Pricing)} />
             {/* Dev-mode pages — still routable even when hidden from nav */}
             <Route path="/database"      element={L(Database)} />
             <Route path="/sql"           element={L(SQLEditor)} />

@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NexusAgent — Setup</title>
+  <style>
+    /* Design tokens — kept in sync with frontend/src/index.css */
+    :root {
+      --bg:           #0a0b10;
+      --surface-1:    #10131b;
+      --surface-2:    #161a25;
+      --surface-3:    #1d2230;
+      --border:       #252a38;
+      --border-strong:#343a4c;
+      --text:         #e6e8ee;
+      --text-muted:   #9197a8;
+      --text-dim:     #5e6377;
+      --accent:       #10b981;
+      --accent-hover: #14c08b;
+      --accent-soft:  rgba(16, 185, 129, 0.12);
+      --accent-ring:  rgba(16, 185, 129, 0.35);
+      --warn:         #f59e0b;
+      --err:          #ef4444;
+      --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px; --r-pill: 999px;
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.55;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Layout ─────────────────────────────────────────────────────────── */
+    header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 18px 28px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-1);
+    }
+    .logo {
+      width: 32px; height: 32px; border-radius: var(--r-md);
+      background: linear-gradient(135deg, var(--accent), #0ea5e9);
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-weight: 800; font-size: 14px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.12);
+    }
+    .brand { font-weight: 700; letter-spacing: -0.01em; }
+    .brand small { color: var(--text-dim); font-weight: 500; margin-left: 6px; font-size: 12px; }
+
+    main {
+      flex: 1;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+    }
+
+    /* ── Steps list ─────────────────────────────────────────────────────── */
+    .step {
+      display: flex; gap: 14px;
+      padding: 16px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      transition: border-color 200ms var(--ease);
+    }
+    .step.active   { border-color: color-mix(in srgb, var(--accent) 50%, transparent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .step.done     { border-color: color-mix(in srgb, var(--accent) 30%, transparent); opacity: 0.85; }
+    .step.error    { border-color: color-mix(in srgb, var(--err) 50%, transparent); }
+
+    .step-icon {
+      width: 32px; height: 32px; border-radius: var(--r-md);
+      flex-shrink: 0;
+      background: var(--surface-3);
+      color: var(--text-muted);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 13px;
+      transition: background 200ms var(--ease), color 200ms var(--ease);
+    }
+    .step.active .step-icon { background: var(--accent-soft); color: var(--accent); }
+    .step.done   .step-icon { background: var(--accent); color: #06281e; }
+    .step.error  .step-icon { background: color-mix(in srgb, var(--err) 18%, transparent); color: var(--err); }
+
+    .step-body { flex: 1; min-width: 0; }
+    .step-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .step-desc  { font-size: 13px; color: var(--text-muted); }
+
+    .step-actions {
+      margin-top: 12px;
+      display: flex; gap: 8px; flex-wrap: wrap;
+    }
+
+    /* ── Buttons ────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 14px;
+      border-radius: var(--r-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 140ms var(--ease), transform 140ms var(--ease), border-color 140ms var(--ease);
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: var(--accent); color: #06281e;
+      border-color: var(--accent);
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.4; cursor: default; transform: none; }
+
+    .btn-ghost {
+      background: var(--surface-3); color: var(--text);
+      border-color: var(--border);
+    }
+    .btn-ghost:hover { border-color: var(--border-strong); }
+
+    /* ── Progress bar ───────────────────────────────────────────────────── */
+    .progress {
+      margin-top: 12px;
+      height: 6px;
+      background: var(--surface-1);
+      border-radius: var(--r-pill);
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #0ea5e9);
+      border-radius: var(--r-pill);
+      transition: width 300ms var(--ease);
+      width: 0%;
+    }
+    .progress-bar.indet {
+      width: 30%;
+      animation: indet 1.4s linear infinite;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+    @keyframes indet {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(330%); }
+    }
+    .progress-meta {
+      margin-top: 6px;
+      font-size: 11.5px;
+      color: var(--text-dim);
+      display: flex; justify-content: space-between; gap: 12px;
+      font-feature-settings: "tnum";
+    }
+
+    /* ── Inline status pills ────────────────────────────────────────────── */
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 2px 10px; border-radius: var(--r-pill);
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 0.4px;
+    }
+    .pill.ok    { background: var(--accent-soft); color: var(--accent); }
+    .pill.warn  { background: color-mix(in srgb, var(--warn) 14%, transparent); color: var(--warn); }
+    .pill.err   { background: color-mix(in srgb, var(--err) 14%, transparent); color: var(--err); }
+    .pill.idle  { background: var(--surface-3); color: var(--text-dim); }
+    .pill .dot  { width: 6px; height: 6px; border-radius: var(--r-pill); background: currentColor; }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    footer {
+      padding: 14px 28px;
+      border-top: 1px solid var(--border);
+      background: var(--surface-1);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px;
+    }
+    footer small { color: var(--text-dim); font-size: 11.5px; }
+
+    code, pre {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 12px;
+      background: var(--surface-1);
+      padding: 2px 7px; border-radius: var(--r-sm);
+      color: var(--accent);
+      border: 1px solid var(--border);
+    }
+    pre {
+      display: block; padding: 10px 12px; margin-top: 8px;
+      color: var(--text); white-space: pre-wrap; word-break: break-all;
+    }
+
+    a { color: var(--accent); }
+
+    @keyframes fade-up { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .step { animation: fade-up 240ms var(--ease) both; }
+    .step:nth-child(1) { animation-delay: 0.04s; }
+    .step:nth-child(2) { animation-delay: 0.10s; }
+    .step:nth-child(3) { animation-delay: 0.16s; }
+    .step:nth-child(4) { animation-delay: 0.22s; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">N</div>
+    <div class="brand">NexusAgent <small>Setup</small></div>
+    <div style="margin-left:auto" id="overall-pill"><span class="pill idle"><span class="dot"></span> Checking…</span></div>
+  </header>
+
+  <main>
+    <p style="color: var(--text-muted); font-size: 13px;">
+      Five quick checks before you start. Everything here runs locally — nothing
+      is sent over the network except the model download from
+      <a href="https://ollama.com" target="_blank" rel="noreferrer">ollama.com</a>.
+    </p>
+
+    <!-- Step 1: Ollama -->
+    <section class="step idle" id="step-ollama">
+      <div class="step-icon" id="icon-ollama">1</div>
+      <div class="step-body">
+        <div class="step-title">Local AI runtime (Ollama)</div>
+        <div class="step-desc" id="desc-ollama">Looking for the Ollama daemon on http://127.0.0.1:11434…</div>
+        <div class="step-actions" id="actions-ollama" style="display:none">
+          <button class="btn btn-primary" data-action="install-ollama">Install Ollama</button>
+          <button class="btn btn-ghost"   data-action="recheck-ollama">I installed it — recheck</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 2: Required model -->
+    <section class="step idle" id="step-model">
+      <div class="step-icon" id="icon-model">2</div>
+      <div class="step-body">
+        <div class="step-title">Reasoning model</div>
+        <div class="step-desc" id="desc-model">Will check after Ollama is online…</div>
+        <div class="progress" id="progress-model" style="display:none">
+          <div class="progress-bar" id="bar-model"></div>
+        </div>
+        <div class="progress-meta" id="meta-model" style="display:none">
+          <span id="meta-model-status">starting…</span>
+          <span id="meta-model-bytes"></span>
+        </div>
+        <div class="step-actions" id="actions-model" style="display:none">
+          <button class="btn btn-primary" data-action="pull-model">Download model (~4 GB)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 3: Embedding model -->
+    <section class="step idle" id="step-embed">
+      <div class="step-icon" id="icon-embed">3</div>
+      <div class="step-body">
+        <div class="step-title">Embedding model (for RAG)</div>
+        <div class="step-desc" id="desc-embed">Required for document Q&amp;A. Tiny — under 300 MB.</div>
+        <div class="progress" id="progress-embed" style="display:none">
+          <div class="progress-bar" id="bar-embed"></div>
+        </div>
+        <div class="progress-meta" id="meta-embed" style="display:none">
+          <span id="meta-embed-status">starting…</span>
+          <span id="meta-embed-bytes"></span>
+        </div>
+        <div class="step-actions" id="actions-embed" style="display:none">
+          <button class="btn btn-primary" data-action="pull-embed">Download embedding model</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Step 4: Backend -->
+    <section class="step idle" id="step-backend">
+      <div class="step-icon" id="icon-backend">4</div>
+      <div class="step-body">
+        <div class="step-title">NexusAgent backend</div>
+        <div class="step-desc" id="desc-backend">Looking for the FastAPI server on http://localhost:8000…</div>
+        <div class="step-actions" id="actions-backend" style="display:none">
+          <button class="btn btn-ghost" data-action="recheck-backend">Recheck</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small id="footer-tip">This window will close automatically when everything is ready.</small>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-ghost"   id="btn-skip">Skip for now</button>
+      <button class="btn btn-primary" id="btn-finish" disabled>Open NexusAgent</button>
+    </div>
+  </footer>
+
+  <script>
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    const $  = (sel) => document.querySelector(sel);
+    const setStep = (id, state) => {
+      const el = $(`#step-${id}`);
+      if (!el) return;
+      el.classList.remove('idle', 'active', 'done', 'error');
+      el.classList.add(state);
+      const icon = $(`#icon-${id}`);
+      if (state === 'done')  icon.textContent = '✓';
+      if (state === 'error') icon.textContent = '!';
+    };
+    const setDesc   = (id, text) => { $(`#desc-${id}`).textContent = text; };
+    const setHTML   = (id, html) => { $(`#desc-${id}`).innerHTML = html; };
+    const showActions = (id, show) => { $(`#actions-${id}`).style.display = show ? 'flex' : 'none'; };
+    const fmtBytes  = (n) => {
+      if (!n) return '';
+      const u = ['B','KB','MB','GB'];
+      let i = 0; let v = n;
+      while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+      return `${v.toFixed(1)} ${u[i]}`;
+    };
+
+    let state = {
+      ollama:  { ready: false },
+      model:   { ready: false, name: null, pulling: false },
+      embed:   { ready: false, name: null, pulling: false },
+      backend: { ready: false },
+    };
+
+    function refreshOverall() {
+      const pill = $('#overall-pill');
+      const allOk = state.ollama.ready && state.model.ready && state.embed.ready && state.backend.ready;
+      const anyError = !state.ollama.ready && !state.model.pulling && !state.embed.pulling;
+      $('#btn-finish').disabled = !allOk;
+      if (allOk) {
+        pill.innerHTML = '<span class="pill ok"><span class="dot"></span> Ready</span>';
+        $('#footer-tip').textContent = 'All set. Click "Open NexusAgent" — or this window will close on its own.';
+      } else if (anyError && !state.model.pulling && !state.embed.pulling) {
+        pill.innerHTML = '<span class="pill warn"><span class="dot"></span> Action needed</span>';
+      } else {
+        pill.innerHTML = '<span class="pill idle"><span class="dot"></span> Checking…</span>';
+      }
+    }
+
+    // ── Probing ─────────────────────────────────────────────────────────────
+    async function probe() {
+      const r = await window.nexus.setupProbe();
+
+      // Ollama
+      if (r.ollama.online) {
+        state.ollama.ready = true;
+        setStep('ollama', 'done');
+        setDesc('ollama', `Connected at ${r.ollama.host}.`);
+        showActions('ollama', false);
+      } else {
+        state.ollama.ready = false;
+        setStep('ollama', 'error');
+        setHTML('ollama',
+          'Ollama is not running. Install it and start the daemon. ' +
+          'On Windows it usually launches automatically after install.');
+        showActions('ollama', true);
+      }
+
+      // Model
+      state.model.name = r.model.required;
+      const modelDescNode = $('#desc-model');
+      if (!r.ollama.online) {
+        state.model.ready = false;
+        setStep('model', 'idle');
+        modelDescNode.innerHTML = `Will check after Ollama is online. Required: <code>${r.model.required}</code>.`;
+        showActions('model', false);
+      } else if (r.model.present) {
+        state.model.ready = true;
+        setStep('model', 'done');
+        modelDescNode.innerHTML = `<code>${r.model.required}</code> is installed and ready.`;
+        showActions('model', false);
+      } else {
+        state.model.ready = false;
+        if (!state.model.pulling) {
+          setStep('model', 'active');
+          modelDescNode.innerHTML = `Need to download <code>${r.model.required}</code> (~4 GB, one-time).`;
+          showActions('model', true);
+        }
+      }
+
+      // Embed
+      state.embed.name = r.embed.required;
+      const embedDescNode = $('#desc-embed');
+      if (!r.ollama.online) {
+        state.embed.ready = false;
+        setStep('embed', 'idle');
+        embedDescNode.innerHTML = `Will check after Ollama is online. Required: <code>${r.embed.required}</code>.`;
+        showActions('embed', false);
+      } else if (r.embed.present) {
+        state.embed.ready = true;
+        setStep('embed', 'done');
+        embedDescNode.innerHTML = `<code>${r.embed.required}</code> is installed.`;
+        showActions('embed', false);
+      } else {
+        state.embed.ready = false;
+        if (!state.embed.pulling) {
+          setStep('embed', 'active');
+          embedDescNode.innerHTML = `Need to download <code>${r.embed.required}</code> (~270 MB).`;
+          showActions('embed', true);
+        }
+      }
+
+      // Backend
+      if (r.backend.online) {
+        state.backend.ready = true;
+        setStep('backend', 'done');
+        setDesc('backend', `Connected at ${r.backend.url}.`);
+        showActions('backend', false);
+      } else {
+        state.backend.ready = false;
+        setStep('backend', 'error');
+        setHTML('backend',
+          'The backend is not running. Open a terminal in the project folder and run:' +
+          '<pre>uvicorn api.server:app --port 8000</pre>' +
+          'Or use <code>start.bat</code> on Windows.');
+        showActions('backend', true);
+      }
+
+      refreshOverall();
+    }
+
+    // ── Pulls ───────────────────────────────────────────────────────────────
+    async function pull(modelKey) {
+      const target = modelKey === 'model' ? state.model.name : state.embed.name;
+      if (!target) return;
+
+      state[modelKey].pulling = true;
+      setStep(modelKey, 'active');
+      showActions(modelKey, false);
+      $(`#progress-${modelKey}`).style.display = 'block';
+      $(`#meta-${modelKey}`).style.display = 'flex';
+
+      const bar = $(`#bar-${modelKey}`);
+      bar.classList.add('indet'); bar.style.width = '';
+      $(`#meta-${modelKey}-status`).textContent = 'starting…';
+      $(`#meta-${modelKey}-bytes`).textContent  = '';
+
+      window.nexus.setupPullModel(target);
+    }
+
+    function onPullProgress(payload) {
+      // Figure out which step this belongs to by model name.
+      const which = (payload.model === state.model.name) ? 'model'
+                  : (payload.model === state.embed.name) ? 'embed'
+                  : null;
+      if (!which) return;
+
+      const bar    = $(`#bar-${which}`);
+      const status = $(`#meta-${which}-status`);
+      const bytes  = $(`#meta-${which}-bytes`);
+
+      if (payload.kind === 'progress') {
+        bar.classList.remove('indet');
+        bar.style.width = `${payload.percent}%`;
+        status.textContent = payload.status || 'downloading';
+        bytes.textContent  = `${fmtBytes(payload.completed)} / ${fmtBytes(payload.total)} · ${payload.percent}%`;
+      } else if (payload.kind === 'status') {
+        status.textContent = payload.status;
+      } else if (payload.kind === 'done') {
+        bar.classList.remove('indet');
+        bar.style.width = '100%';
+        status.textContent = 'done';
+        state[which].pulling = false;
+        // Re-probe to flip the step to done state and update overall pill.
+        setTimeout(probe, 250);
+      } else if (payload.kind === 'error') {
+        state[which].pulling = false;
+        setStep(which, 'error');
+        $(`#desc-${which}`).textContent = `Download failed: ${payload.message}`;
+        showActions(which, true);
+        refreshOverall();
+      }
+    }
+
+    // ── Wire actions ────────────────────────────────────────────────────────
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      if (action === 'install-ollama')   window.nexus.openExternal('https://ollama.com/download');
+      if (action === 'recheck-ollama')   probe();
+      if (action === 'recheck-backend')  probe();
+      if (action === 'pull-model')       pull('model');
+      if (action === 'pull-embed')       pull('embed');
+    });
+
+    $('#btn-finish').addEventListener('click', () => window.nexus.setupDone());
+    $('#btn-skip').addEventListener('click', () => window.nexus.setupDone());
+
+    // Listen for streamed pull progress
+    window.nexus.onPullProgress(onPullProgress);
+
+    // Initial probe + auto-rechecks every 5s while anything isn't ready.
+    probe();
+    setInterval(() => {
+      if (state.ollama.ready && state.model.ready && state.embed.ready && state.backend.ready) return;
+      if (state.model.pulling || state.embed.pulling) return;  // don't probe mid-pull
+      probe();
+    }, 5000);
+  </script>
+</body>
+</html>

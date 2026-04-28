@@ -25,4 +25,24 @@ contextBridge.exposeInMainWorld('nexus', {
   },
   /** True when running inside the Electron desktop app. */
   isDesktop: true,
+
+  // ── Setup wizard surface ────────────────────────────────────────────────
+  /** Probe Ollama + required model + embed model + backend in one call. */
+  setupProbe() {
+    return ipcRenderer.invoke('nexus:setup/probe');
+  },
+  /** Kick off a streamed model pull. Listen for progress with onPullProgress. */
+  setupPullModel(name) {
+    return ipcRenderer.invoke('nexus:setup/pull-model', name);
+  },
+  /** Mark setup complete + close the wizard window. */
+  setupDone() {
+    return ipcRenderer.invoke('nexus:setup/done');
+  },
+  /** Subscribe to streamed pull-progress events. Returns an unsubscribe fn. */
+  onPullProgress(handler) {
+    const fn = (_evt, payload) => { try { handler(payload); } catch {} };
+    ipcRenderer.on('nexus:setup/pull-progress', fn);
+    return () => ipcRenderer.removeListener('nexus:setup/pull-progress', fn);
+  },
 });

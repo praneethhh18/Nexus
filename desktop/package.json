@@ -36,6 +36,8 @@
       "tray.js",
       "hotkey.js",
       "ollama.js",
+      "setup.js",
+      "setup.html",
       "assets/**/*",
       "../frontend/dist/**/*"
     ],

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ReactFlow, Background, Controls, MiniMap, addEdge, useNodesState, useEdgesState, Handle, Position, MarkerType } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Play, Plus, Trash2, Power, Save, GitBranch, Zap, Sparkles, Clock, Edit3, Code2, ArrowLeft, Check } from 'lucide-react';
+import { Play, Plus, Trash2, Power, Save, GitBranch, Zap, Sparkles, Clock, Edit3, Code2, ArrowLeft, Check, X, BookOpen, ArrowRight } from 'lucide-react';
 import { getWorkflows, getWorkflow, saveWorkflow, deleteWorkflow, toggleWorkflow, runWorkflow, getNodeTypes, getWorkflowTemplates, getWorkflowHistory, generateWorkflowFromText } from '../services/api';
 import EmptyState from '../components/EmptyState';
 
@@ -59,6 +59,126 @@ function TemplateCard({ tmpl, onEnable, onOpen }) {
     </div>
   );
 }
+
+// ── How-to guide ─────────────────────────────────────────────────────────────
+// First-timer onboarding for the Workflows page. Explains the 4 concepts in
+// the language of the product (trigger → optional condition → action), shows
+// one concrete example, and points at templates. Dismissible per-user via
+// localStorage so it doesn't keep appearing.
+function WorkflowsGuide() {
+  const KEY = 'nexus_workflows_guide_dismissed';
+  const [dismissed, setDismissed] = useState(() => localStorage.getItem(KEY) === '1');
+
+  if (dismissed) {
+    return (
+      <button
+        className="btn-ghost btn-sm"
+        style={{ marginBottom: 12 }}
+        onClick={() => { localStorage.removeItem(KEY); setDismissed(false); }}
+      >
+        <BookOpen size={11} /> Show how-to
+      </button>
+    );
+  }
+
+  const concepts = [
+    { tone: 'trigger',   title: '1. Trigger',   body: 'When the workflow runs. e.g. every weekday at 9 AM, on a webhook, when an anomaly is detected.' },
+    { tone: 'condition', title: '2. Condition', body: 'Optional. A filter that decides whether to continue. e.g. "only if revenue dropped more than 10%."' },
+    { tone: 'action',    title: '3. Action',    body: 'What happens. e.g. send Slack, draft an email, generate a PDF, call an HTTP endpoint.' },
+    { tone: 'control',   title: '4. Control',   body: 'Optional. Wait, branch on a result, loop over a list, or trigger another agent.' },
+  ];
+
+  const TONE_BG = {
+    trigger:   'color-mix(in srgb, var(--color-accent) 14%, transparent)',
+    condition: 'color-mix(in srgb, #a78bfa 14%, transparent)',
+    action:    'color-mix(in srgb, var(--color-warn) 14%, transparent)',
+    control:   'var(--color-surface-3)',
+  };
+  const TONE_FG = {
+    trigger:   'var(--color-accent)',
+    condition: '#c4b5fd',
+    action:    'var(--color-warn)',
+    control:   'var(--color-text-muted)',
+  };
+
+  return (
+    <div className="panel" style={{
+      padding: 16, marginBottom: 16,
+      background: 'linear-gradient(135deg, var(--color-surface-2), var(--color-surface-1))',
+      border: '1px solid var(--color-border-strong)',
+      position: 'relative',
+    }}>
+      <button
+        onClick={() => { localStorage.setItem(KEY, '1'); setDismissed(true); }}
+        title="Hide this guide"
+        style={{
+          position: 'absolute', top: 8, right: 10,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          color: 'var(--color-text-dim)',
+        }}
+      >
+        <X size={14} />
+      </button>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <BookOpen size={15} color="var(--color-accent)" />
+        <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+          How workflows work
+        </span>
+      </div>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px', maxWidth: 720, lineHeight: 1.55 }}>
+        A workflow is a chain of steps that runs on its own. You wire them in this order:
+        <strong style={{ color: 'var(--color-text)' }}> trigger</strong> →
+        <strong style={{ color: 'var(--color-text)' }}> condition (optional)</strong> →
+        <strong style={{ color: 'var(--color-text)' }}> action</strong>. Use a template, describe one in plain English, or build from scratch.
+      </p>
+
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+        gap: 8, marginBottom: 12,
+      }}>
+        {concepts.map((c) => (
+          <div key={c.title} style={{
+            padding: 10,
+            background: 'var(--color-surface-2)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--r-md)',
+          }}>
+            <span style={{
+              display: 'inline-block',
+              fontSize: 10, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+              padding: '2px 8px', borderRadius: 'var(--r-pill)',
+              background: TONE_BG[c.tone], color: TONE_FG[c.tone],
+              marginBottom: 6,
+            }}>
+              {c.title}
+            </span>
+            <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+              {c.body}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Worked example */}
+      <div style={{
+        padding: 10,
+        background: 'var(--color-surface-1)',
+        border: '1px dashed var(--color-border-strong)',
+        borderRadius: 'var(--r-md)',
+        fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.6,
+      }}>
+        <strong style={{ color: 'var(--color-text)' }}>Worked example.</strong>{' '}
+        <em>Daily sales report.</em> <strong style={{ color: TONE_FG.trigger }}>Trigger:</strong> 9 AM weekdays
+        <ArrowRight size={10} style={{ verticalAlign: 'middle', margin: '0 4px', color: 'var(--color-text-dim)' }} />
+        <strong style={{ color: TONE_FG.condition }}>Action:</strong> SQL "yesterday's revenue"
+        <ArrowRight size={10} style={{ verticalAlign: 'middle', margin: '0 4px', color: 'var(--color-text-dim)' }} />
+        <strong style={{ color: TONE_FG.action }}>Action:</strong> Summarize → build PDF → email it. The "Daily sales report" template below is exactly this.
+      </div>
+    </div>
+  );
+}
+
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function Workflows() {
@@ -308,6 +428,9 @@ export default function Workflows() {
       {/* GALLERY */}
       {view === 'gallery' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+          {/* How-to guide — first-timer onboarding. Dismissible & persisted. */}
+          <WorkflowsGuide />
+
           {/* AI-assisted builder */}
           <div className="panel" style={{ padding: 16, marginBottom: 16, background: 'linear-gradient(135deg, var(--color-bg), var(--color-surface-2))', border: '1px solid color-mix(in srgb, var(--color-ok) 19%, transparent)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
