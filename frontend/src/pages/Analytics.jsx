@@ -206,25 +206,14 @@ export default function Analytics({ embedded = false }) {
     return () => window.removeEventListener('nexus-business-changed', h);
   }, [reload]);
 
-  // When `embedded` is true (rendered inside Dashboard's Analytics tab),
-  // we skip the page header + outer padding so it slots into the host page
+  // When `embedded` is true (rendered inside Dashboard's Analytics tab) we
+  // skip the page header + outer padding so it slots into the host page
   // cleanly. Standalone /analytics route still works for direct links.
-  const Wrapper = ({ children }) => embedded
-    ? <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{children}</div>
-    : (
-      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-        <div className="page-header">
-          <h1>Analytics</h1>
-          <p>Pipeline velocity, revenue forecast, agent impact, and deal churn risk</p>
-        </div>
-        {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
-        <div className="page-body">{children}</div>
-      </div>
-    );
-
-  return (
-    <Wrapper>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+  // Inline conditional rendering avoids creating a Wrapper component during
+  // render, which would reset child state on every parent re-render and is
+  // disallowed by the react-hooks/static-components rule.
+  const grid = (
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <Panel icon={Clock} title="Pipeline velocity" color="var(--color-info)">
             <Velocity data={velocity} />
           </Panel>
@@ -260,7 +249,20 @@ export default function Analytics({ embedded = false }) {
           <Panel icon={AlertTriangle} title="Deal churn risk" color="var(--color-err)">
             <Churn data={churn} />
           </Panel>
-        </div>
-    </Wrapper>
+    </div>
+  );
+
+  if (embedded) {
+    return <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{grid}</div>;
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="page-header">
+        <h1>Analytics</h1>
+        <p>Pipeline velocity, revenue forecast, agent impact, and deal churn risk</p>
+      </div>
+      {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
+      <div className="page-body">{grid}</div>
+    </div>
   );
 }
