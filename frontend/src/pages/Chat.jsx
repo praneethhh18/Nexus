@@ -88,6 +88,15 @@ function renderWhatIfMarkdown(scenarioText, r) {
   if (r.critique) {
     lines.push('', '**CFO critique**', '', r.critique);
   }
+  // Honest disclosure — the simulator runs on the bundled demo dataset, not
+  // on the user's nexus_invoices/nexus_deals. Surface this so users with
+  // real data don't read these numbers as their own.
+  if (r.data_source === 'sample_dataset') {
+    lines.push(
+      '',
+      '> _Heads up — this simulation runs on the bundled demo sales dataset, not your business data. Tenant-scoped simulation against your real invoices is on the roadmap._',
+    );
+  }
   return lines.join('\n');
 }
 

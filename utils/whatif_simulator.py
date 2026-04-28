@@ -225,6 +225,13 @@ def run_full_simulation(query: str) -> Dict[str, Any]:
     """
     Full what-if pipeline: parse → simulate → chart → critique.
     Returns a comprehensive result dict.
+
+    Data source: this simulator currently reads from the global `orders` and
+    `sales_metrics` tables (the bundled demo dataset). It is NOT yet scoped
+    to the caller's business — every business sees numbers off the same
+    seed data. The result is tagged with `data_source` so the frontend
+    can surface this honestly to the user. Tenant-scoped simulation against
+    `nexus_invoices` is a follow-up.
     """
     scenario = parse_scenario(query)
     logger.info(f"[WhatIf] Scenario: {scenario}")
@@ -234,6 +241,7 @@ def run_full_simulation(query: str) -> Dict[str, Any]:
         return {
             "error": sim_result["error"],
             "scenario_description": scenario.get("description"),
+            "data_source": "sample_dataset",
         }
 
     chart_path = generate_comparison(
@@ -259,6 +267,9 @@ def run_full_simulation(query: str) -> Dict[str, Any]:
         "assumptions": f"This simulation assumes a direct linear {direction} in {scenario['metric']}.",
         "critique": critique,
         "confidence": 0.75,
+        # See module docstring — currently always the bundled demo data, not
+        # the caller's business. Frontend should surface this to the user.
+        "data_source": "sample_dataset",
         "before_df": sim_result["before"],
         "after_df": sim_result["after"],
     }
