@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Activity, MessageSquare, GitBranch, AlertTriangle, Clock, CheckSquare, Users, Briefcase, Receipt, TrendingUp, Plus, Calendar, Zap, ExternalLink } from 'lucide-react';
+import { Activity, MessageSquare, GitBranch, AlertTriangle, Clock, CheckSquare, Users, Briefcase, Receipt, TrendingUp, Plus, Calendar, Zap, ExternalLink, LayoutDashboard, BarChart3 } from 'lucide-react';
 import { getStats, getHealth, getNotifications, getWorkflows } from '../services/api';
 import { crmOverview, pipeline } from '../services/crm';
 import { taskSummary, listTasks } from '../services/tasks';
