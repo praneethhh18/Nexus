@@ -34,6 +34,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
@@ -181,7 +182,9 @@ def get_agent(business_id: str, agent_id: str) -> Dict:
     finally:
         conn.close()
     if not row:
-        raise KeyError(f"Custom agent not found: {agent_id}")
+        # 404 (not 500) for both "doesn't exist" and "exists in another tenant"
+        # — same response code so the API doesn't leak which tenant owns an id.
+        raise HTTPException(404, f"Custom agent not found: {agent_id}")
     return _row_to_dict(row)
 
 
@@ -256,13 +259,17 @@ def update_agent(business_id: str, agent_id: str, updates: Dict) -> Dict:
 def delete_agent(business_id: str, agent_id: str) -> None:
     conn = _conn()
     try:
-        conn.execute(
+        cur = conn.execute(
             f"DELETE FROM {TABLE} WHERE id = ? AND business_id = ?",
             (agent_id, business_id),
         )
+        deleted = cur.rowcount
         conn.commit()
     finally:
         conn.close()
+    if deleted == 0:
+        # Same 404 as get/update so cross-tenant ownership stays opaque.
+        raise HTTPException(404, f"Custom agent not found: {agent_id}")
 
 
 # ── Runtime ─────────────────────────────────────────────────────────────────
@@ -327,7 +334,9 @@ def run_agent_now(agent_id: str, trigger: str = "manual",
         finally:
             conn.close()
         if not row:
-            raise KeyError(f"Custom agent not found: {agent_id}")
+            # Same 404 as the public path so this admin entry point doesn't
+            # leak which tenant owns an id either.
+            raise HTTPException(404, f"Custom agent not found: {agent_id}")
         business_id = row["business_id"]
 
     agent = get_agent(business_id, agent_id)

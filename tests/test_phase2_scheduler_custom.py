@@ -132,8 +132,12 @@ def test_update_unknown_agent_raises():
     with tempfile.TemporaryDirectory() as tmp:
         _, ca = _fresh(os.path.join(tmp, "nexus.db"))
         import pytest
-        with pytest.raises(KeyError):
+        from fastapi import HTTPException
+        # Returns HTTPException 404 (was KeyError) so the API layer surfaces
+        # a clean 404 to the client instead of a 500.
+        with pytest.raises(HTTPException) as exc:
             ca.update_agent("biz-1", "ca-missing", {"name": "X"})
+        assert exc.value.status_code == 404
 
 
 def test_invalid_output_target_rejected():
@@ -172,13 +176,21 @@ def test_delete_custom_agent_is_scoped():
     with tempfile.TemporaryDirectory() as tmp:
         _, ca = _fresh(os.path.join(tmp, "nexus.db"))
         a = ca.create_agent("biz-a", "u", {"name": "A", "goal": "g"})
-        # Deleting with wrong business is a no-op
-        ca.delete_agent("biz-b", a["id"])
-        assert ca.get_agent("biz-a", a["id"])["id"] == a["id"]
-        ca.delete_agent("biz-a", a["id"])
         import pytest
-        with pytest.raises(KeyError):
+        from fastapi import HTTPException
+        # Cross-tenant delete now raises 404 (instead of being a silent no-op)
+        # — same response code as get/update so the API never reveals which
+        # tenant owns an id.
+        with pytest.raises(HTTPException) as exc:
+            ca.delete_agent("biz-b", a["id"])
+        assert exc.value.status_code == 404
+        # biz-a's row is intact.
+        assert ca.get_agent("biz-a", a["id"])["id"] == a["id"]
+        # First legitimate delete succeeds; second raises 404.
+        ca.delete_agent("biz-a", a["id"])
+        with pytest.raises(HTTPException) as exc:
             ca.get_agent("biz-a", a["id"])
+        assert exc.value.status_code == 404
 
 
 # ── Templates ───────────────────────────────────────────────────────────────

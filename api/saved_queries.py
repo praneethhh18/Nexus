@@ -18,6 +18,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from fastapi import HTTPException
+
 from config.settings import DB_PATH
 from utils.timez import now_iso
 
@@ -119,7 +121,9 @@ def get_query(business_id: str, query_id: str) -> Dict:
     finally:
         conn.close()
     if not row:
-        raise KeyError("Saved query not found")
+        # 404 covers both "doesn't exist" and "exists in another tenant" so
+        # the API never reveals cross-tenant id ownership.
+        raise HTTPException(404, "Saved query not found")
     return dict(row)
 
 
@@ -162,13 +166,17 @@ def update_query(business_id: str, query_id: str, updates: Dict) -> Dict:
 def delete_query(business_id: str, query_id: str) -> None:
     conn = _conn()
     try:
-        conn.execute(
+        cur = conn.execute(
             f"DELETE FROM {TABLE} WHERE id = ? AND business_id = ?",
             (query_id, business_id),
         )
+        deleted = cur.rowcount
         conn.commit()
     finally:
         conn.close()
+    if deleted == 0:
+        # Same 404 as get/update so cross-tenant ownership stays opaque.
+        raise HTTPException(404, "Saved query not found")
 
 
 def record_run(business_id: str, query_id: str) -> None:

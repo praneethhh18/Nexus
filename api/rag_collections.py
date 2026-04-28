@@ -20,6 +20,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH
@@ -158,16 +159,23 @@ def create_collection(business_id: str, name: str, description: str = "",
 
 
 def delete_collection(business_id: str, collection_id: str) -> None:
-    """Drop the collection — documents unassign (set collection_id = NULL)."""
+    """Drop the collection — documents unassign (set collection_id = NULL).
+
+    Raises HTTPException(404) if the collection doesn't exist OR belongs to
+    another tenant (single response keeps cross-tenant ownership opaque).
+    """
     conn = _conn()
     try:
-        conn.execute(
+        cur = conn.execute(
             f"DELETE FROM {TABLE} WHERE id = ? AND business_id = ?",
             (collection_id, business_id),
         )
+        deleted = cur.rowcount
         conn.commit()
     finally:
         conn.close()
+    if deleted == 0:
+        raise HTTPException(404, "Collection not found")
     d = _docs_conn()
     try:
         d.execute(
