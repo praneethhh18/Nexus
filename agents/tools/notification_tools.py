@@ -1,6 +1,8 @@
 """Notification + email tools for the agent."""
 from __future__ import annotations
 
+from loguru import logger
+
 from agents.tool_registry import register_tool
 
 
@@ -101,8 +103,9 @@ def _send_email(ctx, args):
                     "company_id": c.get("company_id"),
                 })
                 break
-    except Exception:
-        pass
+    except Exception as e:
+        # Email already sent — failing to log it as a CRM interaction shouldn't block.
+        logger.warning(f"[NotificationTools] CRM interaction log failed for {to}: {e}")
 
     return {"sent": True, "to": to, "subject": subject}
 

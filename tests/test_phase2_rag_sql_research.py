@@ -33,7 +33,7 @@ def _insert_doc(db_path: str, business_id: str, doc_id: str, title: str = "Doc",
             " variables, created_at, created_by, collection_id, expires_at) "
             "VALUES (?, ?, 'seed', ?, 'pdf', '/tmp/x.pdf', '{}', ?, 'u', ?, ?)",
             (doc_id, business_id, title,
-             __import__("datetime").datetime.utcnow().isoformat(),
+             __import__("datetime").datetime.now(__import__("datetime").timezone.utc).isoformat(),
              collection_id, expires_at),
         )
         conn.commit()

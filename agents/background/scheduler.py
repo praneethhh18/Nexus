@@ -290,8 +290,8 @@ def rebuild_custom_jobs():
         if j.id.startswith("custom-"):
             try:
                 sched.remove_job(j.id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"[Scheduler] could not remove old custom job {j.id}: {e}")
 
     agents = custom_agents.list_all_enabled()
     for a in agents:

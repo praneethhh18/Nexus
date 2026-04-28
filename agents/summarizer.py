@@ -157,8 +157,9 @@ def _parse_json_blob(raw: str) -> Optional[Dict[str, Any]]:
         stripped = re.sub(r"^```(?:json)?|```$", "", stripped, flags=re.MULTILINE).strip()
     try:
         return json.loads(stripped)
-    except Exception:
-        pass
+    except Exception as e:
+        # Expected — LLM may wrap JSON in extra prose. Fall through to regex.
+        logger.debug(f"[Summarizer] strict JSON parse failed, trying regex: {e}")
     m = re.search(r"\{[\s\S]*\}", stripped)
     if m:
         try:
@@ -272,8 +273,8 @@ def consolidate_business_memory(
             for rid in m["ids"]:
                 try:
                     _bm.delete_memory(business_id, rid)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"[Summarizer] delete memory {rid} after merge failed: {e}")
             applied_merges += 1
         except Exception as e:
             logger.warning(f"[Summarizer] merge failed: {e}")
@@ -283,8 +284,8 @@ def consolidate_business_memory(
         try:
             _bm.delete_memory(business_id, rid)
             applied_drops += 1
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[Summarizer] drop memory {rid} failed: {e}")
 
     result["applied"] = True
     result["plan"]["stats"]["applied_merges"] = applied_merges

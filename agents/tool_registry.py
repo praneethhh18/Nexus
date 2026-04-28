@@ -131,8 +131,8 @@ def execute_tool_now(
             business_id=business_id,
             user_id=user_id,
         )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[ToolRegistry] audit log_tool_call failed for {tool_name}: {e}")
     return result
 
 
@@ -176,8 +176,9 @@ def _summarize(tool: Dict[str, Any], arguments: Dict[str, Any]) -> str:
     if fn:
         try:
             return str(fn(arguments))[:500]
-        except Exception:
-            pass
+        except Exception as e:
+            # Tool's custom summary fn raised; fall through to the default kwargs format.
+            logger.debug(f"[ToolRegistry] custom summary_fn raised for {tool.get('name')}: {e}")
     return f"{tool['name']}({', '.join(f'{k}={_short(v)}' for k, v in arguments.items())})"[:500]
 
 
@@ -205,12 +206,14 @@ def _validate_arguments(tool: Dict[str, Any], arguments: Dict[str, Any]) -> None
             try:
                 arguments[key] = int(val)
             except Exception:
-                pass
+                # Tool will receive the original string; the LLM-side will be
+                # told via the validation error if it matters downstream.
+                logger.debug(f"[ToolRegistry] coerce {key}={val!r} to int failed")
         elif expected == "number" and isinstance(val, str):
             try:
                 arguments[key] = float(val)
             except Exception:
-                pass
+                logger.debug(f"[ToolRegistry] coerce {key}={val!r} to number failed")
         elif expected == "boolean" and isinstance(val, str):
             arguments[key] = val.strip().lower() in ("true", "yes", "1")
 

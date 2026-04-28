@@ -110,8 +110,8 @@ def run_for_business(business_id: str) -> dict:
                 type="agent",
                 business_id=business_id,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[StaleWatcher] notification push failed: {e}")
 
     logger.info(f"[StaleWatcher] biz={business_id} stale={len(stale)} tasks_created={created}")
     return {"business_id": business_id, "stale_deals": len(stale), "created": created}

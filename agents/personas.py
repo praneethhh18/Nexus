@@ -165,8 +165,9 @@ def list_personas(business_id: str) -> List[Dict]:
         from agents.background.scheduler import list_jobs
         for j in list_jobs():
             next_runs[j["id"]] = j.get("next_run") or ""
-    except Exception:
-        pass
+    except Exception as e:
+        # Scheduler may not be running in test/CLI contexts — fall through.
+        logger.debug(f"[Personas] scheduler list_jobs unavailable: {e}")
 
     out = []
     for key in order:

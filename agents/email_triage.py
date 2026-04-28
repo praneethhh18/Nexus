@@ -266,10 +266,12 @@ def _fetch_unread(account: Dict[str, Any], max_messages: int) -> List[Dict[str, 
                 "message_id": msg.get("Message-ID", ""),
             })
     finally:
+        # Idempotent IMAP cleanup — failures here are expected after a half-open
+        # session. Logged at debug only so they don't fill production logs.
         try: conn.close()
-        except Exception: pass
+        except Exception as e: logger.debug(f"[EmailTriage] IMAP close: {e}")
         try: conn.logout()
-        except Exception: pass
+        except Exception as e: logger.debug(f"[EmailTriage] IMAP logout: {e}")
     return messages
 
 
@@ -399,11 +401,11 @@ def run_for_business(business_id: str) -> Dict[str, Any]:
                                     "company_id": c.get("company_id"),
                                 })
                                 interaction_id = inter["id"]
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                logger.warning(f"[EmailTriage] CRM interaction create failed for sender {sender_email}: {e}")
                             break
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"[EmailTriage] contact-match lookup failed for {sender_email}: {e}")
 
             # Draft reply if recommended and user opted in
             approval_id = None
@@ -463,8 +465,8 @@ def run_for_business(business_id: str) -> Dict[str, Any]:
                 type="email-triage",
                 business_id=business_id,
             )
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning(f"[EmailTriage] notification push failed for biz {business_id}: {e}")
 
     return {"processed": len(processed_records), "messages": processed_records}
 

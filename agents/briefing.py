@@ -554,8 +554,9 @@ def run_for_business(business_id: str, deliver: bool = True) -> Dict:
             ).fetchone()
             if row: biz_name = row["name"] or biz_name
         finally: conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        # Non-fatal: the narrative will use the "your business" placeholder.
+        logger.debug(f"[Briefing] biz_name lookup failed for {business_id}: {e}")
 
     data = _collect(business_id)
     narrative, mode = _render_narrative(biz_name, data)
@@ -581,8 +582,9 @@ def run_evening_for_business(business_id: str, deliver: bool = True) -> Dict:
             ).fetchone()
             if row: biz_name = row["name"] or biz_name
         finally: conn.close()
-    except Exception:
-        pass
+    except Exception as e:
+        # Non-fatal: the narrative will use the "your business" placeholder.
+        logger.debug(f"[Briefing] biz_name lookup failed for {business_id}: {e}")
 
     data = _collect_evening(business_id)
     narrative, mode = _render_evening_narrative(biz_name, data)

@@ -94,8 +94,9 @@ def _extract_json(text: str) -> Dict[str, Any] | None:
         stripped = re.sub(r"^```(?:json)?|```$", "", stripped, flags=re.MULTILINE).strip()
     try:
         return json.loads(stripped)
-    except Exception:
-        pass
+    except Exception as e:
+        # Expected — LLM may wrap JSON in extra prose. Fall through to regex.
+        logger.debug(f"[WorkflowBuilder] strict JSON parse failed, trying regex: {e}")
     m = _JSON_OBJ_RE.search(stripped)
     if m:
         try:

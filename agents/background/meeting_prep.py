@@ -87,16 +87,16 @@ def _build_brief(business_id: str, event: dict) -> str:
                 lines.append("Recent interactions:")
                 for it in interactions:
                     lines.append(f"  • {it.get('type', '')}: {it.get('subject', '')[:60]} ({it.get('occurred_at', '')[:10]})")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[MeetingPrep] interactions lookup failed for contact {c.get('id')}: {e}")
         # Open deals
         try:
             open_deals = [d for d in _crm.list_deals(business_id, limit=100)
                           if d.get("contact_id") == c["id"] and d.get("stage") not in ("won", "lost")]
             if open_deals:
                 lines.append(f"Open deals: " + ", ".join(f"{d['name']} ({d['stage']})" for d in open_deals[:3]))
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[MeetingPrep] deals lookup failed for contact {c.get('id')}: {e}")
     elif organizer:
         lines.append(f"No CRM match for {organizer} — consider adding them as a contact.")
 
@@ -111,8 +111,8 @@ def _build_brief(business_id: str, event: dict) -> str:
                     lines.append("Relevant memory:")
                     for m in memos:
                         lines.append(f"  • {m['content'][:120]}")
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"[MeetingPrep] memory lookup failed for keyword {keyword!r}: {e}")
 
     return "\n".join(lines)
 

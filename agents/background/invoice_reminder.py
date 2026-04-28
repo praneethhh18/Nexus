@@ -46,8 +46,9 @@ def _compose_reminder(invoice: dict, business_name: str) -> dict:
     if due:
         try:
             days_overdue = (date.today() - date.fromisoformat(due)).days
-        except Exception:
-            pass
+        except Exception as e:
+            # Bad date format — fall through to the "a date now past" copy.
+            logger.debug(f"[InvoiceReminder] bad due_date {due!r}: {e}")
 
     subject = f"Friendly reminder — invoice {invoice['number']} is past due"
     body = (
@@ -110,8 +111,8 @@ def run_for_business(business_id: str) -> dict:
     for inv in candidates:
         try:
             _inv.update_invoice(business_id, inv["id"], {"status": "overdue"})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[InvoiceReminder] mark-overdue failed for invoice {inv['id']}: {e}")
 
     if queued:
         try:
@@ -123,8 +124,8 @@ def run_for_business(business_id: str) -> dict:
                 type="agent",
                 business_id=business_id,
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[InvoiceReminder] notification push failed: {e}")
 
     logger.info(f"[InvoiceReminder] biz={business_id} candidates={len(candidates)} queued={queued}")
     return {"business_id": business_id, "candidates": len(candidates), "queued": queued}
