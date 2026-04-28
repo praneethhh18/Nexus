@@ -72,6 +72,12 @@ def _get_conn() -> sqlite3.Connection:
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_contacts_biz ON {CONTACTS_TABLE}(business_id, last_name)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_contacts_company ON {CONTACTS_TABLE}(company_id)")
 
+    # Additive: `source` records where this lead came from. Added later for
+    # lead-gen attribution. See db/migrations/0002 + docs/AI_LEAD_GENERATION.md.
+    _contact_cols = {r[1] for r in conn.execute(f"PRAGMA table_info({CONTACTS_TABLE})").fetchall()}
+    if "source" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN source TEXT DEFAULT 'manual'")
+
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {DEALS_TABLE} (
         id TEXT PRIMARY KEY,

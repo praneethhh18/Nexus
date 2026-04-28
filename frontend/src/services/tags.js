@@ -108,3 +108,11 @@ export async function getBackupInfo() {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
+
+
+// ── Public lead-form intake keys ──────────────────────────────────────────
+export const listIntakeKeys = () => req('/api/intake/keys');
+export const createIntakeKey = (label = '') =>
+  req('/api/intake/keys', { method: 'POST', body: JSON.stringify({ label }) });
+export const revokeIntakeKey = (id) =>
+  req(`/api/intake/keys/${id}`, { method: 'DELETE' });
