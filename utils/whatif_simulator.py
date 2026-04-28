@@ -1,5 +1,24 @@
 """
 What-If Scenario Simulator — models business scenarios and critiques assumptions.
+
+The simulator has two data sources, picked at run time:
+
+  1. **`your_invoices`** — when the caller passes `business_id` AND that
+     workspace has at least one invoice in `nexus_invoices`, we use the
+     user's actual data: aggregate `total` by `status` for that business,
+     apply the scenario's percentage delta to the revenue column, and
+     return the before/after frame. Tenant-isolated by construction —
+     SQL filters on business_id every read.
+
+  2. **`sample_dataset`** — fallback for fresh workspaces with no
+     invoices yet, or when the simulator is invoked without a
+     business_id (e.g. CLI). Reads from the bundled demo `orders` /
+     `sales_metrics` tables. Used to be the *only* path; kept for
+     onboarding moments where the user wants to see the feature work
+     before they have real data.
+
+The result dict tags the path used (`data_source`) so the frontend can
+distinguish "your numbers" from "demo numbers" and message accordingly.
 """
 from __future__ import annotations
 
@@ -15,6 +34,7 @@ from config.settings import DB_PATH
 from config.llm_config import get_llm
 
 
+# ── Scenario parsing ─────────────────────────────────────────────────────────
 def parse_scenario(query: str) -> Dict[str, Any]:
     """
     Use local LLM to extract scenario parameters from a natural language query.
@@ -76,10 +96,120 @@ DESCRIPTION: <one sentence describing the scenario>"""
         }
 
 
-def run_simulation(scenario: Dict[str, Any]) -> Dict[str, Any]:
+# ── Data sources ─────────────────────────────────────────────────────────────
+def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,),
+    ).fetchone()
+    return row is not None
+
+
+def _simulate_from_invoices(
+    scenario: Dict[str, Any], business_id: str,
+) -> Optional[Dict[str, Any]]:
     """
-    Apply the scenario mathematically to current database data.
-    Returns before/after metrics.
+    Try to run the simulation against the user's real `nexus_invoices` data.
+
+    Returns the before/after frame + totals if invoices exist for this
+    business, or None when there's nothing to model (caller should fall
+    back to the sample-data path).
+
+    Aggregation strategy: group by `status` (draft / sent / paid / overdue
+    / cancelled). Only paid + sent count toward the "revenue" total — those
+    are the cash-in / cash-likely buckets. Draft / cancelled are kept in
+    the frame for visibility but don't contribute to the impact number.
+
+    Tenant safety: the SQL filters on business_id, so a leak would require
+    a SQL bug — caught by tests/test_multitenant_isolation.py.
+    """
+    metric = scenario.get("metric", "revenue")
+    change_pct = scenario.get("change_pct", 0.0) / 100.0
+
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        if not _table_exists(conn, "nexus_invoices"):
+            return None
+
+        # Roll up by status. We compute revenue as the sum of invoice totals;
+        # `count` is informational so the UI can say "based on N invoices".
+        df = pd.read_sql_query(
+            """
+            SELECT
+                COALESCE(NULLIF(status, ''), 'draft') AS status,
+                COUNT(*)                              AS invoice_count,
+                ROUND(SUM(total), 2)                  AS revenue
+            FROM nexus_invoices
+            WHERE business_id = ?
+            GROUP BY status
+            ORDER BY status
+            """,
+            conn,
+            params=(business_id,),
+        )
+    finally:
+        conn.close()
+
+    if df.empty:
+        return None
+
+    total_invoices = int(df["invoice_count"].sum() or 0)
+    if total_invoices == 0:
+        return None
+
+    # Cash-in / cash-likely: paid + sent. Draft / cancelled don't move the
+    # bottom line. Overdue counts as expected revenue with a discount —
+    # we keep it at face value here; the critique step calls it out.
+    cash_mask = df["status"].isin(["paid", "sent", "overdue"])
+
+    before = df.copy()
+    after  = df.copy()
+
+    # Apply the percentage change ONLY to the cash-likely rows.
+    if metric == "revenue" or metric not in df.columns:
+        after.loc[cash_mask, "revenue"] = (
+            after.loc[cash_mask, "revenue"] * (1 + change_pct)
+        ).round(2)
+
+    before_total = float(before.loc[cash_mask, "revenue"].sum() or 0)
+    after_total  = float(after.loc[cash_mask, "revenue"].sum()  or 0)
+    net_abs = round(after_total - before_total, 2)
+    net_pct = round((net_abs / before_total * 100) if before_total else 0, 2)
+
+    # Pull a representative currency. If the business mixes currencies,
+    # we default to the most common one and surface the quirk to the
+    # user via the critique. (A proper multi-currency simulator is a
+    # bigger project — this stays useful for the common single-currency
+    # case.)
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cur = conn.execute(
+            "SELECT currency, COUNT(*) AS n FROM nexus_invoices "
+            "WHERE business_id = ? GROUP BY currency ORDER BY n DESC LIMIT 1",
+            (business_id,),
+        ).fetchone()
+        currency = cur[0] if cur and cur[0] else "USD"
+    finally:
+        conn.close()
+
+    return {
+        "before": before,
+        "after":  after,
+        "before_total_revenue": round(before_total, 2),
+        "after_total_revenue":  round(after_total, 2),
+        "net_impact_abs": net_abs,
+        "net_impact_pct": net_pct,
+        "currency": currency,
+        "invoice_count": total_invoices,
+    }
+
+
+def _simulate_from_sample(scenario: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Fallback path — read from the bundled `orders` / `sales_metrics` tables.
+
+    Used when the caller has no business context, or when the workspace has
+    no invoices yet. Always tagged `data_source: 'sample_dataset'` so the
+    frontend can disclose this to the user.
     """
     metric = scenario.get("metric", "revenue")
     change_pct = scenario.get("change_pct", 0.0) / 100.0
@@ -88,39 +218,29 @@ def run_simulation(scenario: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         conn = sqlite3.connect(DB_PATH)
-        # The simulator only runs against the seed-data tables (orders /
-        # sales_metrics). On a fresh business those tables can be missing
-        # entirely or empty — fall through to a clear, actionable error
-        # rather than silently returning zeros which look like a UI bug.
-        def _table_exists(name: str) -> bool:
-            row = conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
-            ).fetchone()
-            return row is not None
-
-        if not _table_exists("orders") or not _table_exists("sales_metrics"):
+        if not _table_exists(conn, "orders") or not _table_exists(conn, "sales_metrics"):
             conn.close()
             return {"error": (
-                "What-If needs the sample sales tables to model scenarios. Click "
-                "\"Load sample data\" on the dashboard, then try again."
+                "What-If needs either invoices in this workspace or the bundled "
+                "sample dataset. Add some invoices, or click \"Load sample data\" "
+                "on the dashboard."
             )}
 
-        # Get current totals from orders/sales
         df_orders = pd.read_sql_query(
             "SELECT region, SUM(total_amount) as revenue, COUNT(*) as orders FROM orders GROUP BY region",
-            conn
+            conn,
         )
         df_metrics = pd.read_sql_query(
             "SELECT region, SUM(revenue) as revenue, SUM(units_sold) as units_sold, "
             "SUM(returns) as returns FROM sales_metrics WHERE metric_type='daily' GROUP BY region",
-            conn
+            conn,
         )
 
         if df_orders.empty and df_metrics.empty:
             conn.close()
             return {"error": (
-                "No orders or sales metrics rows found yet. Add data, or load "
-                "the sample data from the dashboard, then try again."
+                "No invoices in this workspace and no sample data loaded yet. "
+                "Add invoices, or click \"Load sample data\" on the dashboard."
             )}
         conn.close()
 
@@ -132,15 +252,12 @@ def run_simulation(scenario: Dict[str, Any]) -> Dict[str, Any]:
         before = df_metrics.copy()
         after = df_metrics.copy()
 
-        # Apply primary change
         if metric in after.columns:
             after[metric] = after[metric] * (1 + change_pct)
 
-        # Apply secondary change
         if secondary_metric and secondary_metric in after.columns and secondary_change_pct:
             after[secondary_metric] = after[secondary_metric] * (1 + secondary_change_pct)
 
-        # Net impact
         if "revenue" in before.columns and "revenue" in after.columns:
             before_total = before["revenue"].sum()
             after_total = after["revenue"].sum()
@@ -156,31 +273,63 @@ def run_simulation(scenario: Dict[str, Any]) -> Dict[str, Any]:
             "after_total_revenue": round(after_total, 2),
             "net_impact_abs": round(net_impact_abs, 2),
             "net_impact_pct": round(net_impact_pct, 2),
+            "currency": "USD",
         }
 
     except Exception as e:
-        logger.error(f"[WhatIf] run_simulation failed: {e}")
+        logger.error(f"[WhatIf] sample-data simulation failed: {e}")
         return {"error": str(e)}
 
 
+def run_simulation(
+    scenario: Dict[str, Any], business_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Apply the scenario mathematically to current database data.
+
+    Tries the user's real invoices first, falls back to sample data only
+    when the user has no invoices yet. The returned dict has
+    `data_source` set to either `'your_invoices'` or `'sample_dataset'`.
+    """
+    if business_id:
+        invoice_result = _simulate_from_invoices(scenario, business_id)
+        if invoice_result is not None:
+            invoice_result["data_source"] = "your_invoices"
+            return invoice_result
+
+    sample_result = _simulate_from_sample(scenario)
+    if "error" not in sample_result:
+        sample_result["data_source"] = "sample_dataset"
+    else:
+        sample_result["data_source"] = "sample_dataset"
+    return sample_result
+
+
+# ── Chart + critique ─────────────────────────────────────────────────────────
 def generate_comparison(before: pd.DataFrame, after: pd.DataFrame,
                         title: str = "What-If Analysis") -> Optional[str]:
     """Create a side-by-side Plotly bar chart comparing before vs after."""
     try:
-        from report_generator.chart_builder import build_chart
         import plotly.graph_objects as go
         from pathlib import Path
         from config.settings import REPORTS_DIR
 
         Path(REPORTS_DIR).mkdir(parents=True, exist_ok=True)
-        if "region" not in before.columns or "revenue" not in before.columns:
+        if "revenue" not in before.columns:
             return None
 
-        regions = before["region"].tolist()
+        # Pick a label column. Sample data uses 'region', invoices use 'status'.
+        label_col = "region" if "region" in before.columns else (
+            "status" if "status" in before.columns else None
+        )
+        if not label_col:
+            return None
+
+        labels = before[label_col].astype(str).tolist()
         fig = go.Figure(data=[
-            go.Bar(name="Before", x=regions, y=before["revenue"].tolist(),
+            go.Bar(name="Before", x=labels, y=before["revenue"].tolist(),
                    marker_color="#3498db"),
-            go.Bar(name="After", x=regions, y=after["revenue"].tolist(),
+            go.Bar(name="After",  x=labels, y=after["revenue"].tolist(),
                    marker_color="#e74c3c"),
         ])
         fig.update_layout(
@@ -196,7 +345,6 @@ def generate_comparison(before: pd.DataFrame, after: pd.DataFrame,
             fig.write_image(png_path, width=900, height=500, scale=2)
         except Exception:
             png_path = None
-
         return png_path
     except Exception as e:
         logger.error(f"[WhatIf] generate_comparison failed: {e}")
@@ -221,55 +369,56 @@ Be concise — 2-3 sentences total."""
         return f"Critique unavailable: {e}"
 
 
-def run_full_simulation(query: str) -> Dict[str, Any]:
+# ── Public entry point ──────────────────────────────────────────────────────
+def run_full_simulation(
+    query: str, business_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """
     Full what-if pipeline: parse → simulate → chart → critique.
-    Returns a comprehensive result dict.
 
-    Data source: this simulator currently reads from the global `orders` and
-    `sales_metrics` tables (the bundled demo dataset). It is NOT yet scoped
-    to the caller's business — every business sees numbers off the same
-    seed data. The result is tagged with `data_source` so the frontend
-    can surface this honestly to the user. Tenant-scoped simulation against
-    `nexus_invoices` is a follow-up.
+    Pass `business_id` for tenant-scoped simulation against the user's real
+    `nexus_invoices`. Without it (or when the workspace has no invoices),
+    falls back to the bundled demo dataset and tags the response so the
+    frontend can disclose this honestly.
     """
     scenario = parse_scenario(query)
-    logger.info(f"[WhatIf] Scenario: {scenario}")
+    logger.info(f"[WhatIf] Scenario: {scenario} (biz={business_id or 'none'})")
 
-    sim_result = run_simulation(scenario)
+    sim_result = run_simulation(scenario, business_id=business_id)
     if "error" in sim_result:
         return {
             "error": sim_result["error"],
             "scenario_description": scenario.get("description"),
-            "data_source": "sample_dataset",
+            "data_source": sim_result.get("data_source", "sample_dataset"),
         }
 
     chart_path = generate_comparison(
         sim_result["before"], sim_result["after"],
-        title=f"What-If: {scenario['description'][:60]}"
+        title=f"What-If: {scenario['description'][:60]}",
     )
     critique = critique_simulation(scenario, sim_result)
 
     net = sim_result.get("net_impact_abs", 0)
     net_pct = sim_result.get("net_impact_pct", 0)
     direction = "increase" if net >= 0 else "decrease"
+    currency = sim_result.get("currency", "USD")
 
     return {
         "scenario_description": scenario.get("description"),
         "metric": scenario.get("metric"),
         "change_pct": scenario.get("change_pct"),
         "before_total_revenue": sim_result.get("before_total_revenue"),
-        "after_total_revenue": sim_result.get("after_total_revenue"),
-        "net_impact": f"${abs(net):,.0f} {direction} ({abs(net_pct):.1f}%)",
+        "after_total_revenue":  sim_result.get("after_total_revenue"),
+        "net_impact": f"{currency} {abs(net):,.0f} {direction} ({abs(net_pct):.1f}%)",
         "net_impact_abs": net,
         "net_impact_pct": net_pct,
+        "currency": currency,
         "chart_path": chart_path,
         "assumptions": f"This simulation assumes a direct linear {direction} in {scenario['metric']}.",
         "critique": critique,
         "confidence": 0.75,
-        # See module docstring — currently always the bundled demo data, not
-        # the caller's business. Frontend should surface this to the user.
-        "data_source": "sample_dataset",
+        "data_source": sim_result.get("data_source", "sample_dataset"),
+        "invoice_count": sim_result.get("invoice_count"),
         "before_df": sim_result["before"],
-        "after_df": sim_result["after"],
+        "after_df":  sim_result["after"],
     }

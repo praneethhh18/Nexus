@@ -66,36 +66,49 @@ function renderWhatIfMarkdown(scenarioText, r) {
     ].join('\n');
   }
 
-  const fmt = (n) => Number.isFinite(n) ? `$${Math.round(n).toLocaleString()}` : '—';
+  // Currency comes from the simulator (most-common currency on this
+  // workspace's invoices, or 'USD' for the sample-data fallback).
+  const currency = r.currency || 'USD';
+  const sym = currency === 'USD' ? '$'
+            : currency === 'EUR' ? '€'
+            : currency === 'GBP' ? '£'
+            : currency === 'INR' ? '₹'
+            : `${currency} `;
+  const fmt = (n) => Number.isFinite(n) ? `${sym}${Math.round(n).toLocaleString()}` : '—';
   const before = r.before_total_revenue;
   const after  = r.after_total_revenue;
   const pct    = r.net_impact_pct;
   const arrow  = (pct ?? 0) >= 0 ? '↑' : '↓';
-  const sign   = (pct ?? 0) >= 0 ? '' : '';
 
   const lines = [
     `**What-If: ${r.scenario_description || scenarioText}**`,
     ``,
     `| | Before | After | Change |`,
     `|---|---:|---:|---:|`,
-    `| Revenue | ${fmt(before)} | ${fmt(after)} | ${arrow} ${sign}${(pct ?? 0).toFixed(1)}% |`,
+    `| Revenue | ${fmt(before)} | ${fmt(after)} | ${arrow} ${(pct ?? 0).toFixed(1)}% |`,
     ``,
     `**Net impact:** ${r.net_impact || '—'}`,
   ];
+
+  // Data-source disclosure. When we have real invoice data, say so —
+  // builds trust. When we fell back to demo data, be honest about it.
+  if (r.data_source === 'your_invoices' && r.invoice_count) {
+    lines.push(
+      '',
+      `_Based on **${r.invoice_count} invoice${r.invoice_count === 1 ? '' : 's'}** in this workspace, in ${currency}._`,
+    );
+  } else if (r.data_source === 'sample_dataset') {
+    lines.push(
+      '',
+      '> _Heads up — this workspace has no invoices yet, so the simulation ran on the bundled demo dataset. Add invoices and re-run to see numbers from your real data._',
+    );
+  }
+
   if (r.assumptions) {
     lines.push('', '**Assumptions**', '', r.assumptions);
   }
   if (r.critique) {
     lines.push('', '**CFO critique**', '', r.critique);
-  }
-  // Honest disclosure — the simulator runs on the bundled demo dataset, not
-  // on the user's nexus_invoices/nexus_deals. Surface this so users with
-  // real data don't read these numbers as their own.
-  if (r.data_source === 'sample_dataset') {
-    lines.push(
-      '',
-      '> _Heads up — this simulation runs on the bundled demo sales dataset, not your business data. Tenant-scoped simulation against your real invoices is on the roadmap._',
-    );
   }
   return lines.join('\n');
 }

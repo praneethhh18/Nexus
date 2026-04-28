@@ -780,7 +780,11 @@ def download_report(filename: str, ctx: dict = Depends(get_current_context)):
 @app.post("/api/whatif")
 def run_whatif(req: WhatIfRequest, ctx: dict = Depends(get_current_context)):
     from utils.whatif_simulator import run_full_simulation
-    result = run_full_simulation(req.scenario)
+    # Pass business_id so the simulator can read this tenant's actual
+    # nexus_invoices instead of the bundled demo dataset whenever real
+    # data is available. The result tags the path used (`data_source`)
+    # so the UI can disclose it.
+    result = run_full_simulation(req.scenario, business_id=ctx["business_id"])
 
     for key in ("before_df", "after_df"):
         df = result.get(key)
