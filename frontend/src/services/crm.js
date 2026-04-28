@@ -107,5 +107,17 @@ export const writeIcp = async (icp_description) => {
   return r.json();
 };
 
+// Email-paste lead capture: extract preview, then save with edits.
+export const extractEmail = (raw_email, override_email = null) =>
+  req('/leads/extract-email', {
+    method: 'POST',
+    body: JSON.stringify({ raw_email, override_email }),
+  });
+export const saveLeadFromEmail = (payload) =>
+  req('/leads/from-email', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
 export const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 export const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note'];

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check } from 'lucide-react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listIntakeKeys, createIntakeKey, revokeIntakeKey } from '../services/tags';
+import { extractEmail, saveLeadFromEmail } from '../services/crm';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import {
@@ -640,6 +641,8 @@ export default function CRM() {
 //   2. The source breakdown band makes attribution legible — "30% from the
 //      website form, 50% from email forwards, 20% from referrals."
 function LeadsTab({ contacts, navigate, flash }) {
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+
   // Recent inbound = contacts with a non-manual source. Sorted newest first.
   const recent = useMemo(() => {
     return (contacts || [])
@@ -694,7 +697,13 @@ function LeadsTab({ contacts, navigate, flash }) {
       <div className="panel">
         <div className="section-h" style={{ margin: '0 0 10px' }}>
           <h2>Recent inbound · {recent.length}</h2>
-          <span className="meta">contacts captured automatically</span>
+          <button
+            className="btn-primary btn-sm"
+            onClick={() => setEmailModalOpen(true)}
+            title="Paste a forwarded email — AI extracts the sender and creates a scored lead"
+          >
+            <Mail size={11} /> Capture from email
+          </button>
         </div>
         {recent.length === 0 ? (
           <EmptyState
@@ -745,6 +754,262 @@ function LeadsTab({ contacts, navigate, flash }) {
           />
         </div>
       </div>
+
+      {emailModalOpen && (
+        <CaptureFromEmailModal
+          onClose={() => setEmailModalOpen(false)}
+          onSaved={(contactId) => {
+            setEmailModalOpen(false);
+            navigate(`/crm/contacts/${contactId}`);
+          }}
+          flash={flash}
+        />
+      )}
+    </div>
+  );
+}
+
+
+// ── Capture-from-email modal ────────────────────────────────────────────────
+// Three-step flow in one modal:
+//   1. paste raw email content (textarea)
+//   2. click Extract — LLM parses, regex falls back if parsing failed
+//   3. user edits the preview fields, clicks Save → contact created + scored
+function CaptureFromEmailModal({ onClose, onSaved, flash }) {
+  const [step, setStep] = useState('paste');  // 'paste' | 'preview'
+  const [rawEmail, setRawEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [extracted, setExtracted] = useState(null);  // { sender_name, sender_email, ... fallback }
+
+  const handleExtract = async () => {
+    if (rawEmail.trim().length < 10) {
+      setError('Paste the email content first.');
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const r = await extractEmail(rawEmail);
+      setExtracted({ ...r });
+      setStep('preview');
+    } catch (e) {
+      setError(e.message || 'Extraction failed.');
+    }
+    setBusy(false);
+  };
+
+  const handleSave = async () => {
+    if (!extracted) return;
+    if (!extracted.sender_name?.trim() && !extracted.sender_email?.trim()) {
+      setError('Add at least a name or email before saving.');
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const r = await saveLeadFromEmail({
+        raw_email: rawEmail,
+        sender_name: extracted.sender_name || '',
+        sender_email: extracted.sender_email || '',
+        sender_company: extracted.sender_company || '',
+        subject: extracted.subject || '',
+        summary: extracted.summary || '',
+      });
+      flash?.(r.deduped
+        ? 'Already in your CRM — logged this email as an interaction.'
+        : 'Lead captured + auto-scored against your ICP.');
+      onSaved?.(r.contact_id);
+    } catch (e) {
+      setError(e.message || 'Save failed.');
+    }
+    setBusy(false);
+  };
+
+  const updateField = (k, v) => setExtracted((x) => ({ ...x, [k]: v }));
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 640,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        {/* Header */}
+        <div style={{
+          padding: '14px 18px',
+          borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Mail size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              Capture lead from email
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              {step === 'paste'
+                ? 'Paste a forwarded email — AI extracts the sender'
+                : 'Review the extracted fields, edit anything, then save'}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: 18, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {error && (
+            <div style={{
+              padding: '8px 10px',
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12, color: 'var(--color-err)',
+              display: 'flex', alignItems: 'flex-start', gap: 6,
+            }}>
+              <AlertCircle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {step === 'paste' && (
+            <>
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
+                Paste anything — a forwarded chain, a raw <code>From: …</code> header,
+                or just the body. The AI will pull out who it's from and what they want.
+              </div>
+              <textarea
+                className="field-input"
+                rows={14}
+                value={rawEmail}
+                onChange={(e) => setRawEmail(e.target.value)}
+                placeholder={"From: Priya Sharma <priya@acme.com>\nSubject: Interested in your CRM\n\nHi there,\n\nWe're a 200-person SaaS team looking for a privacy-first CRM. Could we hop on a 15-minute call this week?\n\nThanks,\nPriya"}
+                style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55 }}
+              />
+            </>
+          )}
+
+          {step === 'preview' && extracted && (
+            <>
+              {extracted.fallback && (
+                <div style={{
+                  padding: '8px 10px',
+                  background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-warn) 28%, transparent)',
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 11.5, color: 'var(--color-warn)',
+                }}>
+                  AI parsing didn't land cleanly — these fields came from a regex fallback.
+                  Edit anything that looks off before saving.
+                </div>
+              )}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <FieldInput label="Sender name"
+                  value={extracted.sender_name || ''}
+                  onChange={(v) => updateField('sender_name', v)} />
+                <FieldInput label="Sender email" type="email"
+                  value={extracted.sender_email || ''}
+                  onChange={(v) => updateField('sender_email', v)} />
+              </div>
+              <FieldInput label="Company"
+                value={extracted.sender_company || ''}
+                onChange={(v) => updateField('sender_company', v)} />
+              <FieldInput label="Original subject"
+                value={extracted.subject || ''}
+                onChange={(v) => updateField('subject', v)} />
+              <div>
+                <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+                  Summary
+                </label>
+                <textarea
+                  className="field-input"
+                  rows={3}
+                  value={extracted.summary || ''}
+                  onChange={(e) => updateField('summary', e.target.value)}
+                  style={{ marginTop: 4 }}
+                />
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '12px 18px',
+          borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end',
+        }}>
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+          {step === 'paste' ? (
+            <button
+              className="btn-primary"
+              onClick={handleExtract}
+              disabled={busy || rawEmail.trim().length < 10}
+            >
+              {busy
+                ? <><Loader2 size={12} className="animate-spin" /> Extracting…</>
+                : <><Sparkles size={12} /> Extract</>}
+            </button>
+          ) : (
+            <>
+              <button className="btn-ghost btn-sm" onClick={() => setStep('paste')}>
+                ← Back
+              </button>
+              <button
+                className="btn-primary"
+                onClick={handleSave}
+                disabled={busy}
+              >
+                {busy
+                  ? <><Loader2 size={12} className="animate-spin" /> Saving…</>
+                  : <><Plus size={12} /> Save as lead</>}
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function FieldInput({ label, value, onChange, type = 'text' }) {
+  return (
+    <div>
+      <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+        {label}
+      </label>
+      <input
+        type={type}
+        className="field-input"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ marginTop: 4 }}
+      />
     </div>
   );
 }
