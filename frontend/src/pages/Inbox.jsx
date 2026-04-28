@@ -116,7 +116,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle, onApprove, onRe
           </div>
         </div>
         {isPending && (
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div className="row-actions">
             <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={() => onReject(action)}>
               <X size={12} /> Reject
             </button>
@@ -220,16 +220,19 @@ function NudgeRow({ nudge, busy, onAccept, onDismiss }) {
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>{nudge.detail}</div>
       </div>
-      <button className="btn-primary" disabled={busy} onClick={onAccept}
-        style={{ flexShrink: 0, fontSize: 12, padding: '6px 12px' }}>
-        {busy
-          ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Working…</>
-          : <>{nudge.cta_label} <ChevronRight size={12} /></>}
-      </button>
-      <button onClick={onDismiss} title="Not now"
-        style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-        <X size={13} />
-      </button>
+      <div className="row-actions">
+        <button className="btn-primary" disabled={busy} onClick={onAccept}
+          style={{ fontSize: 12, padding: '6px 12px' }}>
+          {busy
+            ? <><Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> Working…</>
+            : <>{nudge.cta_label} <ChevronRight size={12} /></>}
+        </button>
+        <button onClick={onDismiss} title="Not now" aria-label="Dismiss nudge"
+          className="tap"
+          style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}>
+          <X size={13} />
+        </button>
+      </div>
     </div>
   );
 }

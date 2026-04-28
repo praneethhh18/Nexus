@@ -637,10 +637,57 @@ body {
 
 @media (max-width: 480px) {
   .page-header   { padding: 10px 12px !important; }
+  .page-header h1{ font-size: 17px !important; }
+  .page-header p { font-size: 11.5px !important; }
   .page-body     { padding: 12px !important; }
   .chat-area     { padding: 12px !important; }
   .chat-input-bar{ padding: 8px 12px !important; }
   .msg-bubble    { max-width: 90% !important; }
+
+  /* On phones, give fingers room — buttons inside rows need real tap targets. */
+  .btn-primary, .btn-ghost {
+    min-height: 36px;
+  }
+  /* Section headers on every page collapse padding too. */
+  .section-h h2 { font-size: 14px !important; }
+  /* Stat cards stack to 2-up on phone for better legibility. */
+  .stat-grid, .card-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  /* Inbox / list-row actions wrap to a second line below the row body. */
+  .row-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+  }
+  /* Filter bars scroll horizontally on phone instead of cramping. */
+  .filter-bar {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE PRIMITIVES — apply these on JSX rows that need mobile-first wrap.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* The row body + its action buttons live on the same flex line on desktop;
+   the actions wrap to their own line on phones (via the .row-actions rule
+   above). Mark the actions container with this class. */
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Tap-target floor — for icon-only buttons that would otherwise be too
+   small to hit reliably on a phone. */
+.tap {
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

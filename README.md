@@ -31,10 +31,10 @@ a SQL agent, a multi-agent orchestrator (LangGraph), a drag-and-drop workflow
 builder, and a four-layer privacy gate on every outbound call — wired into a
 React + FastAPI application.
 
-You get a named team of six agents (Atlas, Kira, Arjun, Iris, Sage, Echo) that
-run on their own schedules, surface proactive nudges, and can be renamed to match
-your team's vocabulary. Everything the agents do is logged in a single activity
-feed and gated behind human approval when it touches the outside world.
+You get a named team of seven agents (Atlas, Iris, Kira, Arjun, Sage, Nyx, Echo)
+that run on their own schedules, surface proactive nudges, and can be renamed
+to match your team's vocabulary. Everything the agents do is logged in a single
+activity feed and gated behind human approval when it touches the outside world.
 
 ---
 
@@ -42,11 +42,11 @@ feed and gated behind human approval when it touches the outside world.
 
 ### Your AI team
 
-- **Six named agents with personas** — Atlas (Chief of staff · morning briefings), Kira (Invoice chaser), Arjun (Pipeline watcher), Iris (Inbox triage), Sage (Meeting prep), Echo (Memory keeper). Rename any of them from the `/agents` page.
+- **Seven named agents with personas** — Atlas (Chief of staff · morning briefings), Iris (Inbox triage), Kira (Invoice chaser), Arjun (Pipeline watcher), Sage (Meeting prep), Nyx (Evening digest), Echo (Memory keeper · weekly). Rename any of them from the `/agents` page.
 - **Morning briefing** — Atlas writes a 1-page summary of tasks, overdue items, and pipeline every day at 08:00 (aggregates only — never raw rows leaving the machine).
 - **Proactive nudges** — agents raise a hand when they notice something: *"Kira noticed 2 overdue invoices — draft reminders?"* One click to accept, one click to dismiss for the day.
 - **Run Now** — trigger any agent on demand from the `/agents` page. Each shows its own "last ran" timestamp and activity count.
-- **Unified activity feed** — everything all 6 agents did in the last 48 hours, newest first, stamped with the persona that did it.
+- **Unified activity feed** — everything all seven agents did in the last 48 hours, newest first, stamped with the persona that did it.
 
 ### Work the product
 
@@ -398,7 +398,7 @@ python -m pytest tests/test_core.py tests/test_new_features.py -v
 python tests/test_e2e.py
 ```
 
-72 unit tests + 6 E2E scenarios.
+278 backend tests (privacy, multi-tenant isolation, persona-schedule contract, migration runner, backup, what-if tenant scope, and more) + 27 Playwright e2e scenarios.
 
 ---
 
@@ -423,7 +423,8 @@ nexusagent/
 ├── workflows/          Node registry, executor, scheduler, templates, storage
 │   └── nodes/          Trigger, condition, data, AI, and action node runners
 ├── utils/              What-if simulator, export, sample doc generator
-├── tests/              72 unit tests + E2E suite
+├── tests/              278 backend tests + Playwright e2e suite
+├── db/                 Migration runner + versioned schema files
 ├── data/               SQLite database + uploaded documents
 ├── outputs/            Generated PDFs, charts, email drafts, exports
 ├── chroma_db/          ChromaDB vector store
