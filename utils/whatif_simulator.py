@@ -88,6 +88,23 @@ def run_simulation(scenario: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         conn = sqlite3.connect(DB_PATH)
+        # The simulator only runs against the seed-data tables (orders /
+        # sales_metrics). On a fresh business those tables can be missing
+        # entirely or empty — fall through to a clear, actionable error
+        # rather than silently returning zeros which look like a UI bug.
+        def _table_exists(name: str) -> bool:
+            row = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
+            ).fetchone()
+            return row is not None
+
+        if not _table_exists("orders") or not _table_exists("sales_metrics"):
+            conn.close()
+            return {"error": (
+                "What-If needs the sample sales tables to model scenarios. Click "
+                "\"Load sample data\" on the dashboard, then try again."
+            )}
+
         # Get current totals from orders/sales
         df_orders = pd.read_sql_query(
             "SELECT region, SUM(total_amount) as revenue, COUNT(*) as orders FROM orders GROUP BY region",
@@ -98,6 +115,13 @@ def run_simulation(scenario: Dict[str, Any]) -> Dict[str, Any]:
             "SUM(returns) as returns FROM sales_metrics WHERE metric_type='daily' GROUP BY region",
             conn
         )
+
+        if df_orders.empty and df_metrics.empty:
+            conn.close()
+            return {"error": (
+                "No orders or sales metrics rows found yet. Add data, or load "
+                "the sample data from the dashboard, then try again."
+            )}
         conn.close()
 
         if df_metrics.empty:

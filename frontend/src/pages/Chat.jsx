@@ -36,6 +36,11 @@ const SLASH_COMMANDS = [
     rewrite: () => `Generate today's morning briefing.` },
   { cmd: '/triage',  args: '',                  desc: 'Run email triage now',
     rewrite: () => `Run email triage on the inbox now.` },
+  { cmd: '/whatif',  args: '<scenario>',         desc: 'Run a what-if simulation',
+    // Marker only — actually handled inline by `runWhatIfInline` so we get
+    // a structured before/after card instead of a free-text agent reply.
+    inline: 'whatif',
+    rewrite: (a) => `What if ${a || 'revenue drops 10%'}?` },
 ];
 
 function parseSlash(input) {
@@ -45,6 +50,45 @@ function parseSlash(input) {
   const match = SLASH_COMMANDS.find(c => c.cmd === head);
   if (!match) return null;
   return { match, args: rest.join(' ').trim() };
+}
+
+
+// ── /whatif renderer ────────────────────────────────────────────────────────
+// Convert the structured what-if response into a markdown card so the
+// existing message renderer can show it without a new component. Keeps the
+// inline rendering pipeline simple — same path as every other reply.
+function renderWhatIfMarkdown(scenarioText, r) {
+  if (!r || r.error) {
+    return [
+      `**What-If: ${scenarioText}**`,
+      ``,
+      `> ${r?.error || 'Simulation failed.'}`,
+    ].join('\n');
+  }
+
+  const fmt = (n) => Number.isFinite(n) ? `$${Math.round(n).toLocaleString()}` : '—';
+  const before = r.before_total_revenue;
+  const after  = r.after_total_revenue;
+  const pct    = r.net_impact_pct;
+  const arrow  = (pct ?? 0) >= 0 ? '↑' : '↓';
+  const sign   = (pct ?? 0) >= 0 ? '' : '';
+
+  const lines = [
+    `**What-If: ${r.scenario_description || scenarioText}**`,
+    ``,
+    `| | Before | After | Change |`,
+    `|---|---:|---:|---:|`,
+    `| Revenue | ${fmt(before)} | ${fmt(after)} | ${arrow} ${sign}${(pct ?? 0).toFixed(1)}% |`,
+    ``,
+    `**Net impact:** ${r.net_impact || '—'}`,
+  ];
+  if (r.assumptions) {
+    lines.push('', '**Assumptions**', '', r.assumptions);
+  }
+  if (r.critique) {
+    lines.push('', '**CFO critique**', '', r.critique);
+  }
+  return lines.join('\n');
 }
 
 // ── Privacy badge ───────────────────────────────────────────────────────────
@@ -436,6 +480,28 @@ export default function Chat() {
     setMessages(prev => [...prev, { role: 'user', content: display, tools_used: [], timestamp: ts }]);
     setLoading(true);
     setStreamingText('');
+
+    // Inline slash commands — bypass the agent pipeline and render a
+    // structured card. Currently only /whatif. Keep this list short — the
+    // default slash path is "rewrite to natural language and run as agent."
+    if (slash?.match.inline === 'whatif') {
+      try {
+        const { runWhatIf } = await import('../services/api');
+        const r = await runWhatIf(slash.args || 'revenue drops 10%');
+        const md = renderWhatIfMarkdown(slash.args || 'revenue drops 10%', r);
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: md, tools_used: ['whatif'], timestamp: ts,
+        }]);
+      } catch (err) {
+        setMessages(prev => [...prev, {
+          role: 'assistant', content: `What-If failed: ${err.message}`,
+          tools_used: [], timestamp: ts,
+        }]);
+      }
+      setLoading(false);
+      setStreamingText('');
+      return;
+    }
 
     // Slash commands imply agent mode — force it on so the tools actually run.
     const useAgentForThisTurn = agentMode || !!slash;

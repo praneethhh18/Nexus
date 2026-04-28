@@ -75,6 +75,13 @@ export const previewImport = async (file) => {
   return formRequest('/database/import/preview', form);
 };
 
+// Raw SQL (dev-mode SQL Editor)
+export const executeSql = (sql, { allowWrites = false, limit = 500 } = {}) =>
+  request('/sql/execute', {
+    method: 'POST',
+    body: JSON.stringify({ sql, allow_writes: allowWrites, limit }),
+  });
+
 // Reports
 export const generateReport = (query) =>
   request('/reports/generate', { method: 'POST', body: JSON.stringify({ query }) });

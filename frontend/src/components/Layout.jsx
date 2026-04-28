@@ -34,7 +34,8 @@ const NAV_MAIN = [
 const NAV_DEV = [
   { to: '/database', icon: Database, label: 'Database' },
   { to: '/sql', icon: Terminal, label: 'SQL Editor' },
-  { to: '/whatif', icon: TrendingUp, label: 'What-If' },
+  // What-If moved into Chat as the /whatif slash command. Direct route at
+  // /whatif still works for legacy bookmarks.
 ];
 
 export default function Layout() {
