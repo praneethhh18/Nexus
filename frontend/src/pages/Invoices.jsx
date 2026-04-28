@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, Plus, Download, Trash2, Edit3, Send, X, DollarSign, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { FileText, Plus, Download, Trash2, Edit3, Send, X, DollarSign, Clock, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import SuggestionPanel from '../components/SuggestionPanel';
@@ -282,6 +283,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
 
 // ── Main page ───────────────────────────────────────────────────────────────
 export default function Invoices() {
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
   const [summary, setSummary] = useState(null);
   const [filter, setFilter] = useState('');
@@ -403,10 +405,15 @@ export default function Invoices() {
               </thead>
               <tbody>
                 {invoices.map((inv) => (
-                  <tr key={inv.id}>
-                    <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{inv.number}</td>
+                  <tr
+                    key={inv.id}
+                    onClick={() => navigate(`/invoices/${inv.id}`)}
+                    style={{ cursor: 'pointer' }}
+                    title="Open invoice"
+                  >
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-text)' }}>{inv.number}</td>
                     <td>
-                      <div style={{ fontWeight: 500 }}>{inv.customer_name}</div>
+                      <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{inv.customer_name}</div>
                       {inv.customer_email && <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{inv.customer_email}</div>}
                     </td>
                     <td>{inv.issue_date || '—'}</td>
@@ -415,7 +422,8 @@ export default function Invoices() {
                     <td>
                       <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 600, background: `${STATUS_COLORS[inv.status]}22`, color: STATUS_COLORS[inv.status] }}>{inv.status}</span>
                     </td>
-                    <td style={{ display: 'flex', gap: 4 }}>
+                    <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                      <button className="btn-ghost" style={{ padding: 4 }} onClick={() => navigate(`/invoices/${inv.id}`)} title="Open"><ChevronRight size={11} /></button>
                       <button className="btn-ghost" style={{ padding: 4 }} onClick={() => handleDownload(inv)} title="Download PDF"><Download size={11} /></button>
                       {inv.status === 'draft' && <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-info)' }} onClick={() => handleMarkStatus(inv, 'sent')} title="Mark sent"><Send size={11} /></button>}
                       {inv.status === 'sent' && <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-ok)' }} onClick={() => handleMarkStatus(inv, 'paid')} title="Mark paid"><CheckCircle size={11} /></button>}

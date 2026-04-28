@@ -11,6 +11,10 @@ import Skeleton, { SkeletonCard } from './components/Skeleton';
 // The main bundle shrinks from ~850 KB to ~150 KB; 20+ smaller chunks
 // stream in on demand.
 const Login         = lazy(() => import('./pages/Login'));
+const ContactDetail = lazy(() => import('./pages/ContactDetail'));
+const CompanyDetail = lazy(() => import('./pages/CompanyDetail'));
+const DealDetail    = lazy(() => import('./pages/DealDetail'));
+const InvoiceDetail = lazy(() => import('./pages/InvoiceDetail'));
 const Setup         = lazy(() => import('./pages/Setup'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const AcceptInvite  = lazy(() => import('./pages/AcceptInvite'));
@@ -89,9 +93,13 @@ export default function App() {
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/"              element={L(Dashboard)} />
             <Route path="/chat"          element={L(Chat)} />
-            <Route path="/crm"           element={L(CRM)} />
+            <Route path="/crm"                          element={L(CRM)} />
+            <Route path="/crm/contacts/:id"             element={L(ContactDetail)} />
+            <Route path="/crm/companies/:id"            element={L(CompanyDetail)} />
+            <Route path="/crm/deals/:id"                element={L(DealDetail)} />
             <Route path="/tasks"         element={L(Tasks)} />
             <Route path="/invoices"      element={L(Invoices)} />
+            <Route path="/invoices/:id"  element={L(InvoiceDetail)} />
             <Route path="/documents"     element={L(Documents)} />
             <Route path="/inbox"         element={L(Inbox)} />
             {/* legacy bookmark: /approvals → /inbox */}

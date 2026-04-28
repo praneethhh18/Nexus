@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity } from 'lucide-react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import {
@@ -192,7 +193,7 @@ function DealForm({ initial, contacts, companies, onSubmit, onCancel }) {
 }
 
 // ── Kanban-style deal column ────────────────────────────────────────────────
-function DealColumn({ stage, deals, onEdit, onDelete, onMove }) {
+function DealColumn({ stage, deals, onEdit, onDelete, onMove, onOpen }) {
   const [dragOver, setDragOver] = useState(false);
   return (
     <div
@@ -224,13 +225,15 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove }) {
           key={d.id}
           draggable
           onDragStart={(e) => { e.dataTransfer.setData('deal_id', d.id); e.dataTransfer.setData('stage', d.stage); }}
-          style={{ padding: 10, background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 8, cursor: 'grab' }}
+          onClick={() => onOpen?.(d)}
+          style={{ padding: 10, background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 8, cursor: 'pointer' }}
+          title="Open deal"
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.name}</span>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button onClick={() => onEdit(d)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><Edit3 size={11} /></button>
-              <button onClick={() => onDelete(d)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}><Trash2 size={11} /></button>
+            <div style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => onEdit(d)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }} title="Edit"><Edit3 size={11} /></button>
+              <button onClick={() => onDelete(d)} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }} title="Delete"><Trash2 size={11} /></button>
             </div>
           </div>
           <div style={{ fontSize: 11, fontWeight: 500, color: STAGE_COLORS[stage], marginTop: 4 }}>{money(d.value, d.currency)}</div>
@@ -245,6 +248,7 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove }) {
 
 // ── Main CRM page ───────────────────────────────────────────────────────────
 export default function CRM() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState('contacts');
   const [overview, setOverview] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -438,17 +442,30 @@ export default function CRM() {
                   </thead>
                   <tbody>
                     {visibleContacts.map((c) => (
-                      <tr key={c.id} style={{ background: selectionContacts.isSelected(c.id) ? 'color-mix(in srgb, var(--color-accent) 6%, transparent)' : undefined }}>
-                        <td>
+                      <tr
+                        key={c.id}
+                        onClick={() => navigate(`/crm/contacts/${c.id}`)}
+                        style={{
+                          background: selectionContacts.isSelected(c.id) ? 'color-mix(in srgb, var(--color-accent) 6%, transparent)' : undefined,
+                          cursor: 'pointer',
+                        }}
+                        title="Open contact"
+                      >
+                        <td onClick={(e) => e.stopPropagation()}>
                           <BulkCheckbox checked={selectionContacts.isSelected(c.id)} onChange={() => selectionContacts.toggle(c.id)} />
                         </td>
-                        <td style={{ fontWeight: 500 }}>{(c.first_name + ' ' + c.last_name).trim() || '—'}</td>
+                        <td style={{ fontWeight: 500, color: 'var(--color-text)' }}>
+                          {(c.first_name + ' ' + c.last_name).trim() || '—'}
+                        </td>
                         <td>{c.title || '—'}</td>
                         <td>{c.company_name || '—'}</td>
-                        <td>{c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}</td>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          {c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}
+                        </td>
                         <td>{c.phone || '—'}</td>
                         <td><TagChips tags={tagsByContact[c.id] || []} size="xs" /></td>
-                        <td style={{ display: 'flex', gap: 4 }}>
+                        <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                          <button className="btn-ghost" style={{ padding: 4 }} onClick={() => navigate(`/crm/contacts/${c.id}`)} title="Open"><ChevronRight size={11} /></button>
                           <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setActivityFor({ kind: 'contact', record: c })} title="Activity"><Activity size={11} /></button>
                           <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'contact', record: c })}><Edit3 size={11} /></button>
                           <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('contact', c)}><Trash2 size={11} /></button>
@@ -494,13 +511,21 @@ export default function CRM() {
                 <thead><tr><th>Name</th><th>Industry</th><th>Size</th><th>Website</th><th>Tags</th><th style={{ width: 110 }}></th></tr></thead>
                 <tbody>
                   {visibleCompanies.map((c) => (
-                    <tr key={c.id}>
-                      <td style={{ fontWeight: 500 }}>{c.name}</td>
+                    <tr
+                      key={c.id}
+                      onClick={() => navigate(`/crm/companies/${c.id}`)}
+                      style={{ cursor: 'pointer' }}
+                      title="Open company"
+                    >
+                      <td style={{ fontWeight: 500, color: 'var(--color-text)' }}>{c.name}</td>
                       <td>{c.industry || '—'}</td>
                       <td>{c.size || '—'}</td>
-                      <td>{c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-info)' }}>{c.website}</a> : '—'}</td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        {c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-info)' }}>{c.website}</a> : '—'}
+                      </td>
                       <td><TagChips tags={tagsByCompany[c.id] || []} size="xs" /></td>
-                      <td style={{ display: 'flex', gap: 4 }}>
+                      <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                        <button className="btn-ghost" style={{ padding: 4 }} onClick={() => navigate(`/crm/companies/${c.id}`)} title="Open"><ChevronRight size={11} /></button>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setActivityFor({ kind: 'company', record: c })} title="Activity"><Activity size={11} /></button>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'company', record: c })}><Edit3 size={11} /></button>
                         <button className="btn-ghost" style={{ padding: 4, color: 'var(--color-err)' }} onClick={() => handleDelete('company', c)}><Trash2 size={11} /></button>
@@ -532,6 +557,7 @@ export default function CRM() {
                   onEdit={(d) => setModal({ kind: 'deal', record: d })}
                   onDelete={(d) => handleDelete('deal', d)}
                   onMove={handleMoveDeal}
+                  onOpen={(d) => navigate(`/crm/deals/${d.id}`)}
                 />
               ))}
             </div>
