@@ -220,6 +220,16 @@ def receive_public_lead(payload: PublicLeadIn, request: Request):
     except Exception as e:
         logger.warning(f"[Intake] interaction log failed: {e}")
 
+    # Auto-score this fresh lead against the workspace ICP. Best-effort —
+    # if the model isn't reachable or no ICP is set, the lead still lands
+    # and the user can score later from the contact detail page.
+    if not deduped:
+        try:
+            from api.routers.lead_scoring import auto_score_silently
+            auto_score_silently(business_id, contact_id)
+        except Exception as e:
+            logger.debug(f"[Intake] auto-score skipped: {e}")
+
     # Notify the workspace that a lead arrived.
     try:
         from api import notifications as _notifs

@@ -77,6 +77,13 @@ def _get_conn() -> sqlite3.Connection:
     _contact_cols = {r[1] for r in conn.execute(f"PRAGMA table_info({CONTACTS_TABLE})").fetchall()}
     if "source" not in _contact_cols:
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN source TEXT DEFAULT 'manual'")
+    # Additive: AI-driven lead scoring against the workspace ICP (migration 0003).
+    if "lead_score" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN lead_score INTEGER")
+    if "lead_score_reason" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN lead_score_reason TEXT DEFAULT ''")
+    if "lead_scored_at" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN lead_scored_at TEXT")
 
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {DEALS_TABLE} (

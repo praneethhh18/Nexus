@@ -18,6 +18,7 @@ import {
 import {
   getContact, updateContact, deleteContact,
   listInteractions, createInteraction, listDeals, draftOutreach,
+  scoreContactFit,
 } from '../services/crm';
 import { listInvoices } from '../services/invoices';
 import { createTask } from '../services/tasks';
@@ -64,6 +65,7 @@ export default function ContactDetail() {
   const [newInter, setNewInter] = useState({ type: 'call', subject: '', summary: '' });
   const [msg, setMsg] = useState('');
   const [draftModal, setDraftModal] = useState(null);  // { variants: [...], busy, error }
+  const [scoring, setScoring] = useState(false);
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -173,6 +175,26 @@ export default function ContactDetail() {
     window.open(`mailto:${contact.email}`, '_blank');
   };
 
+  // ── AI lead scoring ─────────────────────────────────────────────────
+  const handleScoreFit = async () => {
+    setScoring(true);
+    try {
+      const r = await scoreContactFit(id);
+      // Reload the contact so the badge updates with the new score.
+      reload();
+      if (!r.icp_set) {
+        flash('No Ideal Customer Profile set yet — head to Settings to define one.');
+      } else if (r.score == null) {
+        flash(r.reason || 'Scoring did not return a usable result.');
+      } else {
+        flash(`Scored ${r.score}/100 · ${r.bucket}.`);
+      }
+    } catch (e) {
+      flash(`Scoring failed: ${e.message || e}`);
+    }
+    setScoring(false);
+  };
+
   // ── AI-drafted outreach ─────────────────────────────────────────────
   const openDraftModal = async () => {
     setDraftModal({ variants: null, busy: true, error: '' });
@@ -243,8 +265,9 @@ export default function ContactDetail() {
           </button>
           <Avatar name={fullName} />
           <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--color-text)', margin: 0 }}>
+            <h1 style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em', color: 'var(--color-text)', margin: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               {fullName}
+              <LeadScoreChip score={contact.lead_score} reason={contact.lead_score_reason} scoredAt={contact.lead_scored_at} />
             </h1>
             <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
               {contact.title || 'Contact'}
@@ -335,6 +358,34 @@ export default function ContactDetail() {
               </div>
             )}
           </div>
+
+          {/* AI fit reasoning — only when scored */}
+          {contact.lead_score != null && contact.lead_score_reason && (
+            <div className="panel" style={{
+              borderColor: 'color-mix(in srgb, var(--color-accent) 22%, var(--color-border))',
+              background: 'color-mix(in srgb, var(--color-accent) 4%, var(--color-surface-2))',
+            }}>
+              <div className="section-h" style={{ margin: '0 0 6px' }}>
+                <h2>AI fit assessment</h2>
+                <span className="meta">vs your ICP</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <LeadScoreChip
+                  score={contact.lead_score}
+                  reason={contact.lead_score_reason}
+                  scoredAt={contact.lead_scored_at}
+                />
+                {contact.lead_scored_at && (
+                  <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                    {new Date(contact.lead_scored_at).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.55 }}>
+                {contact.lead_score_reason}
+              </p>
+            </div>
+          )}
 
           {/* Open deals */}
           {openDeals.length > 0 && (
@@ -526,6 +577,17 @@ export default function ContactDetail() {
               <h2>Actions</h2>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <ActionButton
+                icon={scoring ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                label={contact.lead_score == null ? 'Score this lead' : 'Rescore lead'}
+                detail={
+                  contact.lead_score == null
+                    ? 'AI compares to your ICP'
+                    : `Currently ${contact.lead_score}/100`
+                }
+                disabled={scoring}
+                onClick={handleScoreFit}
+              />
               <ActionButton
                 icon={<Sparkles size={13} />}
                 label="AI draft outreach"
@@ -804,6 +866,47 @@ function DraftOutreachModal({ state, contact, onRegenerate, onClose, onCopied, o
         )}
       </div>
     </div>
+  );
+}
+
+
+// ── Lead-score chip + bucket helpers (mirror backend) ───────────────────────
+function _bucketOf(score) {
+  if (score == null) return null;
+  if (score >= 80) return 'high';
+  if (score >= 50) return 'medium';
+  if (score >= 20) return 'low';
+  return 'spam';
+}
+
+function LeadScoreChip({ score, reason, scoredAt }) {
+  const bucket = _bucketOf(score);
+  if (bucket === null) return null;
+  const TONE = {
+    high:   'var(--color-ok)',
+    medium: 'var(--color-info)',
+    low:    'var(--color-text-dim)',
+    spam:   'var(--color-err)',
+  };
+  const LABEL = { high: 'High fit', medium: 'Medium fit', low: 'Low fit', spam: 'Spam / not a lead' };
+  const tone = TONE[bucket];
+  const tip = [reason, scoredAt && `Scored ${new Date(scoredAt).toLocaleString()}`]
+    .filter(Boolean).join('\n');
+  return (
+    <span
+      title={tip}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '2px 10px', borderRadius: 'var(--r-pill)',
+        fontSize: 11, fontWeight: 600,
+        background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+        color: tone,
+        border: `1px solid color-mix(in srgb, ${tone} 28%, transparent)`,
+        fontFeatureSettings: '"tnum"',
+      }}
+    >
+      {LABEL[bucket]} · {score}/100
+    </span>
   );
 }
 

@@ -798,6 +798,49 @@ function SourceBars({ counts, total }) {
 }
 
 
+// ── Lead-score helpers (mirror the backend bucket logic) ────────────────────
+function scoreBucket(score) {
+  if (score == null) return null;
+  if (score >= 80) return 'high';
+  if (score >= 50) return 'medium';
+  if (score >= 20) return 'low';
+  return 'spam';
+}
+
+function ScoreBadge({ score }) {
+  const bucket = scoreBucket(score);
+  if (bucket === null) {
+    return (
+      <span className="pill-base pill-muted" title="Not scored yet — open the contact and click Rescore.">
+        ?
+      </span>
+    );
+  }
+  const TONE = {
+    high:   'var(--color-ok)',
+    medium: 'var(--color-info)',
+    low:    'var(--color-text-dim)',
+    spam:   'var(--color-err)',
+  };
+  const LABEL = { high: 'High', medium: 'Med', low: 'Low', spam: 'Spam' };
+  const tone = TONE[bucket];
+  return (
+    <span
+      className="pill-base"
+      style={{
+        background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+        color: tone,
+        border: `1px solid color-mix(in srgb, ${tone} 28%, transparent)`,
+        fontFeatureSettings: '"tnum"',
+      }}
+      title={`Lead score: ${score}/100`}
+    >
+      {LABEL[bucket]} · {score}
+    </span>
+  );
+}
+
+
 // ── Single inbound-lead row ──────────────────────────────────────────────────
 function LeadRow({ contact: c, onClick }) {
   const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim() || 'Unnamed';
@@ -845,6 +888,7 @@ function LeadRow({ contact: c, onClick }) {
           {c.email || c.phone || '—'}{c.company_name ? ` · ${c.company_name}` : ''}
         </div>
       </div>
+      <ScoreBadge score={c.lead_score} />
       <span className="pill-base" style={{
         background: `color-mix(in srgb, ${tone} 14%, transparent)`,
         color: tone,

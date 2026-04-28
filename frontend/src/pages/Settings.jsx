@@ -3,6 +3,7 @@ import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, Aler
 import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusiness, deleteBusiness } from '../services/api';
 import { getNotificationPrefs, setNotificationPrefs, reopenOnboarding } from '../services/onboarding';
 import { downloadFullExport, downloadFullBackup, getBackupInfo } from '../services/tags';
+import { readIcp, writeIcp } from '../services/crm';
 import { Download } from 'lucide-react';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
@@ -124,6 +125,7 @@ export default function Settings() {
 
         <NotificationPrefsPanel />
         <OnboardingReopenPanel />
+        {isAdmin && <IcpPanel flash={flash} />}
         <ExportPanel flash={flash} />
         {isAdmin && <BackupPanel flash={flash} />}
 
@@ -868,6 +870,99 @@ function OnboardingReopenPanel() {
       <button onClick={reopen} className="btn-ghost" style={{ fontSize: 12 }}>
         {done ? 'Opening…' : 'Reopen'}
       </button>
+    </div>
+  );
+}
+
+
+// ── Ideal Customer Profile (ICP) — for AI lead scoring ──────────────────────
+// One short paragraph describing who buys from you. The scorer uses this
+// against every inbound lead — high-fit ones get flagged in the CRM Leads
+// tab so the user spends time on the right people. Without an ICP set,
+// scoring stays inert and tells the user how to fix that.
+function IcpPanel({ flash }) {
+  const [text, setText] = useState('');
+  const [original, setOriginal] = useState('');
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    readIcp().then((r) => {
+      setText(r.icp_description || '');
+      setOriginal(r.icp_description || '');
+      setUpdatedAt(r.icp_updated_at);
+    }).catch(() => {});
+  }, []);
+
+  const dirty = text !== original;
+
+  const handleSave = async () => {
+    setBusy(true);
+    try {
+      await writeIcp(text);
+      setOriginal(text);
+      setUpdatedAt(new Date().toISOString());
+      flash?.('ICP saved. New leads will be scored against this.');
+    } catch (e) {
+      flash?.(`Save failed: ${e.message || e}`);
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="panel" style={{
+      marginBottom: 12, padding: 14,
+      borderColor: 'color-mix(in srgb, var(--color-accent) 22%, var(--color-border))',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 'var(--r-md)',
+          background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <Sparkles size={18} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
+            Ideal Customer Profile
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55, marginBottom: 10 }}>
+            Two or three sentences describing who buys from you. New inbound leads are scored
+            against this on the way in — high-fit ones get flagged in the CRM Leads tab so you
+            spend time on the right people.
+          </div>
+
+          <textarea
+            className="field-input"
+            rows={4}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            maxLength={4000}
+            placeholder="e.g. We sell to B2B SaaS companies in India with 50–500 employees that have raised at least Series A. Buyers are usually Heads of Sales, RevOps leads, or founders. Look for product-led companies with active hiring in revenue roles."
+            style={{ fontFamily: 'inherit' }}
+          />
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+            <button
+              className="btn-primary btn-sm"
+              onClick={handleSave}
+              disabled={busy || !dirty}
+            >
+              {busy ? 'Saving…' : dirty ? 'Save ICP' : 'Saved'}
+            </button>
+            {updatedAt && (
+              <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                last updated {new Date(updatedAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+            {!text.trim() && (
+              <span style={{ fontSize: 10.5, color: 'var(--color-warn)' }}>
+                Without an ICP, lead scoring is inert.
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

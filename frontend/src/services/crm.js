@@ -77,5 +77,35 @@ export const deleteInteraction = (id) => req(`/interactions/${id}`, { method: 'D
 export const draftOutreach = (contactId) =>
   req(`/contacts/${contactId}/draft-outreach`, { method: 'POST' });
 
+// AI lead scoring — returns { score, bucket, reason, scored_at, icp_set }.
+// score is 0-100, bucket is "high"/"medium"/"low"/"spam"/null, both null
+// when no ICP is set yet (the response carries icp_set=false in that case).
+export const scoreContactFit = (contactId) =>
+  req(`/contacts/${contactId}/score-fit`, { method: 'POST' });
+
+// Workspace ICP description — used by the scorer. The CRM `req` helper
+// already prefixes /api/crm; for the workspace path we call fetch directly
+// using the same auth headers.
+const WS_BASE = '/api/workspace';
+function _wsHeaders() {
+  const h = { 'Content-Type': 'application/json' };
+  const t = getToken(); if (t) h.Authorization = `Bearer ${t}`;
+  const b = getBusinessId(); if (b) h['X-Business-Id'] = b;
+  return h;
+}
+export const readIcp = async () => {
+  const r = await fetch(`${WS_BASE}/icp`, { headers: _wsHeaders() });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+};
+export const writeIcp = async (icp_description) => {
+  const r = await fetch(`${WS_BASE}/icp`, {
+    method: 'PUT', headers: _wsHeaders(),
+    body: JSON.stringify({ icp_description }),
+  });
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+};
+
 export const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 export const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note'];
