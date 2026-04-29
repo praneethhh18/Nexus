@@ -23,10 +23,12 @@ import { fileURLToPath } from 'url';
 import pino from 'pino';
 import qrcode from 'qrcode-terminal';
 import fetch from 'node-fetch';
+// FormData and Blob are globals in Node 18+ (Web Platform APIs).
 import makeWASocket, {
   useMultiFileAuthState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  downloadMediaMessage,
 } from '@whiskeysockets/baileys';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -52,19 +54,95 @@ async function downloadAttachment(absolutePath) {
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function extractText(message) {
+/**
+ * Inspect a Baileys message and classify it as text / audio / document / image.
+ * The classifier returns an object the main loop dispatches on.
+ *   { kind: 'text',     text: '...' }
+ *   { kind: 'audio',    mime, ext }
+ *   { kind: 'document', mime, ext, filename }
+ *   { kind: 'image',    mime, ext, caption }
+ *   { kind: 'unknown' }
+ */
+function classify(message) {
   const m = message.message;
-  if (!m) return '';
-  if (m.conversation) return m.conversation;
-  if (m.extendedTextMessage?.text) return m.extendedTextMessage.text;
-  if (m.imageMessage?.caption) return m.imageMessage.caption;
-  if (m.videoMessage?.caption) return m.videoMessage.caption;
-  // Voice notes / audio: we could transcribe via /api/voice/transcribe, but
-  // keep v1 text-only. Politely nudge the user if they send audio.
+  if (!m) return { kind: 'unknown' };
+  if (m.conversation)              return { kind: 'text', text: m.conversation };
+  if (m.extendedTextMessage?.text) return { kind: 'text', text: m.extendedTextMessage.text };
+
+  // Voice note (PTT) or general audio.
   if (m.audioMessage || m.pttMessage) {
-    return '__audio__';
+    const a = m.audioMessage || m.pttMessage;
+    return {
+      kind: 'audio',
+      mime: a.mimetype || 'audio/ogg; codecs=opus',
+      ext:  (a.mimetype || '').includes('mp4') ? '.m4a'
+            : (a.mimetype || '').includes('webm') ? '.webm'
+            : '.ogg',
+    };
   }
-  return '';
+
+  // Document upload (PDF, .docx, etc.)
+  if (m.documentMessage) {
+    const d = m.documentMessage;
+    return {
+      kind: 'document',
+      mime: d.mimetype || 'application/octet-stream',
+      ext:  path.extname(d.fileName || '') || '.bin',
+      filename: d.fileName || 'document',
+      caption: d.caption || '',
+    };
+  }
+
+  // Image — we don't OCR yet; backend returns a polite message. Pass it through
+  // so the user gets a clear answer instead of silence.
+  if (m.imageMessage) {
+    const i = m.imageMessage;
+    return {
+      kind: 'image',
+      mime: i.mimetype || 'image/jpeg',
+      ext:  (i.mimetype || '').includes('png') ? '.png'
+            : (i.mimetype || '').includes('webp') ? '.webp'
+            : '.jpg',
+      caption: i.caption || '',
+    };
+  }
+
+  if (m.videoMessage?.caption) return { kind: 'text', text: m.videoMessage.caption };
+  return { kind: 'unknown' };
+}
+
+/**
+ * Resolve a Baileys jid to the user-facing phone identifier.
+ *
+ * WhatsApp now ships some accounts as "@lid" (Local Identifier) instead of
+ * "@s.whatsapp.net". When that happens, `msg.key.senderPn` (Baileys 6.7+)
+ * carries the real phone number — we prefer it. Otherwise fall back to the
+ * jid's local part. Returns the digits-only phone string the backend expects.
+ */
+function resolvePhone(msg) {
+  // Newer Baileys: key.senderPn = "<countrycode><number>@s.whatsapp.net"
+  const senderPn = msg.key?.senderPn;
+  if (typeof senderPn === 'string' && senderPn.includes('@')) {
+    return senderPn.split('@')[0];
+  }
+  const jid = msg.key?.remoteJid || '';
+  // For LID jids, the local part is a stable identifier but not a real phone.
+  // Backend stores whatever it gets; this is fine for routing, only the
+  // Settings display will show the LID instead of the phone.
+  return jid.split('@')[0];
+}
+
+async function postMedia(endpointPath, mediaBuffer, fields, ext, mime) {
+  const form = new FormData();
+  const blob = new Blob([mediaBuffer], { type: mime || 'application/octet-stream' });
+  form.append('file', blob, `wa${ext || '.bin'}`);
+  for (const [k, v] of Object.entries(fields)) form.append(k, v);
+  return fetch(`${NEXUS_API_URL}${endpointPath}`, {
+    method: 'POST',
+    headers: { 'X-Nexus-Secret': NEXUS_WEBHOOK_SECRET },
+    body: form,
+    signal: AbortSignal.timeout(600_000),
+  });
 }
 
 async function startBridge() {
@@ -116,51 +194,74 @@ async function startBridge() {
         // Ignore groups & broadcasts — DM only for v1
         if (jid.endsWith('@g.us') || jid === 'status@broadcast') continue;
 
-        const text = await extractText(msg);
-        if (!text) continue;
+        const cls = classify(msg);
+        if (cls.kind === 'unknown') continue;
 
-        if (text === '__audio__') {
-          await sock.sendMessage(jid, {
-            text: "I can't process voice notes yet — please send text. 🙏",
-          });
-          continue;
-        }
-
-        const phone = jid.split('@')[0];
+        const phone = resolvePhone(msg);
         const messageId = msg.key.id || '';
+        const isLid = jid.endsWith('@lid');
 
-        console.log(`[nexus-whatsapp] ⇐ ${phone}: ${text.slice(0, 80)}${text.length > 80 ? '…' : ''}`);
+        const previewText = cls.kind === 'text'  ? cls.text
+                          : cls.kind === 'audio' ? '[voice note]'
+                          : cls.kind === 'document' ? `[document: ${cls.filename}]`
+                          : cls.kind === 'image' ? '[image]'
+                          : '[?]';
+        console.log(`[nexus-whatsapp] ⇐ ${phone}${isLid ? ' (lid)' : ''}: ${previewText.slice(0, 80)}${previewText.length > 80 ? '…' : ''}`);
 
-        // Indicate typing
-        try {
-          await sock.sendPresenceUpdate('composing', jid);
-        } catch (_) { /* ignore */ }
+        // Indicate typing — refresh every 25s so WA doesn't clear it during
+        // long agent runs (DB queries on local Ollama can take a few minutes).
+        try { await sock.sendPresenceUpdate('composing', jid); } catch (_) { /* ignore */ }
+        const typingPing = setInterval(() => {
+          sock.sendPresenceUpdate('composing', jid).catch(() => {});
+        }, 25_000);
 
         let reply;
         try {
-          const res = await fetch(`${NEXUS_API_URL}/api/whatsapp/inbound`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Nexus-Secret': NEXUS_WEBHOOK_SECRET,
-            },
-            body: JSON.stringify({
-              from: phone,
-              text,
-              message_id: messageId,
-            }),
-            // Agent can be slow — allow up to 3 minutes
-            signal: AbortSignal.timeout(180_000),
-          });
-          if (!res.ok) {
-            const err = await res.text();
-            reply = { text: `⚠️ Backend error (${res.status}): ${err.slice(0, 200)}`, attachments: [] };
+          let res;
+          if (cls.kind === 'text') {
+            res = await fetch(`${NEXUS_API_URL}/api/whatsapp/inbound`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Nexus-Secret': NEXUS_WEBHOOK_SECRET,
+              },
+              body: JSON.stringify({ from: phone, text: cls.text, message_id: messageId }),
+              signal: AbortSignal.timeout(600_000),
+            });
+          } else if (cls.kind === 'audio') {
+            const buf = await downloadMediaMessage(msg, 'buffer', {});
+            res = await postMedia('/api/whatsapp/inbound-audio', buf,
+              { from: phone, message_id: messageId },
+              cls.ext, cls.mime);
+          } else if (cls.kind === 'document') {
+            const buf = await downloadMediaMessage(msg, 'buffer', {});
+            res = await postMedia('/api/whatsapp/inbound-document', buf,
+              { from: phone, message_id: messageId, mime_type: cls.mime },
+              cls.ext, cls.mime);
+          } else if (cls.kind === 'image') {
+            // Forward to inbound-document so the backend gets to send the
+            // "no OCR yet, send the PDF" message — keeps copy in one place.
+            const buf = await downloadMediaMessage(msg, 'buffer', {});
+            res = await postMedia('/api/whatsapp/inbound-document', buf,
+              { from: phone, message_id: messageId, mime_type: cls.mime },
+              cls.ext, cls.mime);
+          }
+
+          if (!res || !res.ok) {
+            const status = res?.status ?? 'no-response';
+            const err = res ? await res.text() : 'no-response';
+            reply = { text: `⚠️ Backend error (${status}): ${err.slice(0, 200)}`, attachments: [] };
           } else {
             reply = await res.json();
           }
         } catch (e) {
           console.error('[nexus-whatsapp] backend call failed:', e);
-          reply = { text: `⚠️ Couldn't reach the NexusAgent backend. Is it running on ${NEXUS_API_URL}?`, attachments: [] };
+          const errMsg = e?.name === 'TimeoutError' || e?.type === 'aborted'
+            ? `⚠️ That one took longer than 10 minutes — it may still be running on the server. Check the web UI to see the result.`
+            : `⚠️ Couldn't reach the NexusAgent backend. Is it running on ${NEXUS_API_URL}?`;
+          reply = { text: errMsg, attachments: [] };
+        } finally {
+          clearInterval(typingPing);
         }
 
         if (reply?.silent) continue;

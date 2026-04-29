@@ -40,9 +40,16 @@ from utils.timez import now_iso, now_utc_naive
 
 ACCOUNTS_TABLE = "nexus_whatsapp_accounts"
 TOKENS_TABLE = "nexus_whatsapp_link_tokens"
+HISTORY_TABLE = "nexus_whatsapp_history"
 
 # How long a link code stays valid
 LINK_TOKEN_TTL_MIN = 15
+
+# Conversation memory: how many prior turns (user+assistant pairs) to replay
+# to the agent on each new WhatsApp message.
+HISTORY_TURNS = 8
+# Hard cap rows kept per phone — anything older is pruned on write.
+HISTORY_KEEP_ROWS = 40
 
 # Rate limit: max messages per phone per window
 MSGS_PER_WINDOW = 20
@@ -74,9 +81,65 @@ def _get_conn() -> sqlite3.Connection:
         expires_at TEXT NOT NULL,
         used_at TEXT
     )""")
+    conn.execute(f"""
+    CREATE TABLE IF NOT EXISTS {HISTORY_TABLE} (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        phone TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT NOT NULL,
+        ts TEXT NOT NULL
+    )""")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_wa_user ON {ACCOUNTS_TABLE}(user_id)")
+    conn.execute(f"CREATE INDEX IF NOT EXISTS idx_wa_hist_phone ON {HISTORY_TABLE}(phone, id)")
     conn.commit()
     return conn
+
+
+def _load_history(phone: str, max_turns: int = HISTORY_TURNS) -> List[Dict[str, str]]:
+    """
+    Return the last `max_turns` user+assistant pairs for this phone, oldest first.
+    Empty list if no history yet. Anything past 4 KB per row is truncated to keep
+    the prompt bounded.
+    """
+    if not phone:
+        return []
+    limit = max_turns * 2  # user + assistant pairs
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            f"SELECT role, content FROM {HISTORY_TABLE} "
+            f"WHERE phone = ? ORDER BY id DESC LIMIT ?",
+            (phone, limit),
+        ).fetchall()
+    finally:
+        conn.close()
+    return [
+        {"role": r["role"], "content": (r["content"] or "")[:4000]}
+        for r in reversed(rows)
+    ]
+
+
+def _append_history(phone: str, role: str, content: str) -> None:
+    """Append a turn and prune anything past HISTORY_KEEP_ROWS for this phone."""
+    if not phone or not content:
+        return
+    conn = _get_conn()
+    try:
+        conn.execute(
+            f"INSERT INTO {HISTORY_TABLE} (phone, role, content, ts) VALUES (?,?,?,?)",
+            (phone, role, content[:4000], _now_iso()),
+        )
+        # Prune: keep only the newest HISTORY_KEEP_ROWS rows per phone
+        conn.execute(
+            f"DELETE FROM {HISTORY_TABLE} WHERE phone = ? AND id NOT IN "
+            f"(SELECT id FROM {HISTORY_TABLE} WHERE phone = ? "
+            f"ORDER BY id DESC LIMIT ?)",
+            (phone, phone, HISTORY_KEEP_ROWS),
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
 def _now_iso() -> str:
@@ -466,10 +529,27 @@ def handle_inbound(phone: str, text: str, message_id: str = "") -> Dict[str, Any
             "• *generate proposal for Acme* — creates a document\n"
             "• *send a reminder email to john@example.com about ...* — drafts it for approval\n"
             "• `/business` — list/switch businesses\n"
+            "• `/clear` — reset our conversation memory\n"
             "• `/unlink` — disconnect this phone\n"
         ), "attachments": []}
 
+    if lowered in ("/clear", "/reset"):
+        conn = _get_conn()
+        try:
+            conn.execute(f"DELETE FROM {HISTORY_TABLE} WHERE phone = ?", (phone,))
+            conn.commit()
+        finally:
+            conn.close()
+        return {"text": "Conversation memory cleared. Fresh start.", "attachments": []}
+
     if lowered == "/unlink":
+        # Wipe history too so a re-pair from the same phone starts clean.
+        conn = _get_conn()
+        try:
+            conn.execute(f"DELETE FROM {HISTORY_TABLE} WHERE phone = ?", (phone,))
+            conn.commit()
+        finally:
+            conn.close()
         unlink_account(user_id)
         return {"text": "Unlinked. You won't get replies from me until you link again.", "attachments": []}
 
@@ -510,9 +590,14 @@ def handle_inbound(phone: str, text: str, message_id: str = "") -> Dict[str, Any
 
     role = get_member_role(active_biz, user_id) or "member"
 
+    # Replay the last few turns so the agent can follow a thread across
+    # WhatsApp messages ("him", "that one", "delete both", etc).
+    history = _load_history(phone)
+    messages = history + [{"role": "user", "content": text}]
+
     try:
         result = run_agent(
-            messages=[{"role": "user", "content": text}],
+            messages=messages,
             business_id=active_biz,
             business_name=biz.get("name", "this business"),
             user_id=user_id,
@@ -525,6 +610,13 @@ def handle_inbound(phone: str, text: str, message_id: str = "") -> Dict[str, Any
 
     reply_text = _format_reply(result)
     attachments = _detect_attachments(result)
+
+    # Persist this turn so the next message has context. Save the cleaned
+    # reply (no attachment metadata) to keep the replayed prompt small.
+    answer_for_history = (result.get("answer") or "").strip()
+    _append_history(phone, "user", text)
+    if answer_for_history:
+        _append_history(phone, "assistant", answer_for_history)
 
     # Persist the exchange to the audit trail
     try:
