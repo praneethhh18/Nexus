@@ -453,8 +453,9 @@ export default function Dashboard() {
                 Your workspace is empty
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                Load sample data to see NexusAgent in action — 4 companies, 5 deals across the pipeline,
-                6 tasks, and 4 invoices. You can delete it anytime. Nothing leaves your machine.
+                Load sample data to see NexusAgent in action — companies, deals across the pipeline, tasks,
+                invoices, plus AI lead scores, a BANT-qualified contact, a Forge candidate awaiting verification,
+                interaction history, an ICP, and an intake key. Nothing leaves your machine.
               </div>
               {seedError && (
                 <div style={{ fontSize: 11, color: 'var(--color-err)', marginTop: 6 }}>{seedError}</div>

@@ -861,9 +861,10 @@ export default function ContactDetail() {
         <ReplyDraftModal
           state={replyModal}
           contact={contact}
+          smtpConfigured={smtpConfigured}
           onClose={() => setReplyModal(null)}
           onCopied={() => flash('Copied to clipboard.')}
-          onSent={() => flash('Opened in your mail client.')}
+          onSent={(via) => flash(via === 'smtp' ? 'Reply sent.' : 'Opened in your mail client.')}
           onRegenerate={() => openReplyDraftFor(replyModal.incoming)}
           onChangeDraft={(d) => setReplyModal((m) => ({ ...m, draft: d }))}
         />
@@ -1437,9 +1438,11 @@ function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClo
 // Shown after BANT extraction (or anywhere we want to draft a contextual
 // response). Editable subject + body, copy or open in mail client. Same
 // privacy posture as the rest — backend forces sensitive=True.
-function ReplyDraftModal({ state, contact, onClose, onCopied, onSent, onRegenerate, onChangeDraft }) {
+function ReplyDraftModal({ state, contact, smtpConfigured, onClose, onCopied, onSent, onRegenerate, onChangeDraft }) {
   const draft = state.draft;
   const fullName = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'this contact';
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   const copy = async () => {
     if (!draft) return;
@@ -1452,7 +1455,20 @@ function ReplyDraftModal({ state, contact, onClose, onCopied, onSent, onRegenera
     if (!draft || !contact?.email) return;
     const url = `mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
     window.open(url, '_blank');
-    onSent?.();
+    onSent?.('mailto');
+  };
+  const sendViaSmtp = async () => {
+    if (!draft || !contact?.email) return;
+    setSending(true);
+    setSendError('');
+    try {
+      await smtpSend(contact.email, draft.subject, draft.body);
+      onSent?.('smtp');
+      onClose?.();
+    } catch (e) {
+      setSendError(e.message || 'Send failed.');
+    }
+    setSending(false);
   };
 
   return (
@@ -1574,15 +1590,40 @@ function ReplyDraftModal({ state, contact, onClose, onCopied, onSent, onRegenera
               <Copy size={11} /> Copy
             </button>
             <button
-              className="btn-primary btn-sm"
+              className="btn-ghost btn-sm"
               onClick={openMail}
               disabled={!draft || !contact?.email}
-              title={contact?.email ? 'Open in mail client' : 'No email on file'}
+              title={contact?.email ? 'Open in mail client (mailto)' : 'No email on file'}
             >
-              <Send size={11} /> Open in mail
+              Open in mail
             </button>
+            {smtpConfigured && (
+              <button
+                className="btn-primary btn-sm"
+                onClick={sendViaSmtp}
+                disabled={!draft || !contact?.email || sending}
+                title={contact?.email ? 'Send via your workspace SMTP' : 'No email on file'}
+              >
+                {sending
+                  ? <><Loader2 size={11} className="animate-spin" /> Sending…</>
+                  : <><Send size={11} /> Send</>}
+              </button>
+            )}
           </span>
         </div>
+        {sendError && (
+          <div style={{
+            margin: '0 18px 12px', padding: '8px 10px',
+            background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+            borderRadius: 'var(--r-sm)',
+            fontSize: 12, color: 'var(--color-err)',
+            display: 'flex', gap: 6, alignItems: 'flex-start',
+          }}>
+            <AlertCircle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+            <span>{sendError}</span>
+          </div>
+        )}
       </div>
     </div>
   );
