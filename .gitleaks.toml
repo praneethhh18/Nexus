@@ -1,0 +1,36 @@
+# Gitleaks config — extends the default ruleset with project-specific
+# allowlists. Anything that matches `paths` or `regexes` here is treated
+# as a known-safe pattern (template values, example secrets in tests, etc).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "NexusAgent allowlisted paths"
+paths = [
+  # Template / example env file — placeholders only, never real secrets.
+  '''(^|/)\.env\.example$''',
+
+  # Lockfiles for npm — rare but possible to flag false positives on URLs.
+  '''package-lock\.json$''',
+
+  # Frontend build output, never reviewed for content.
+  '''^frontend/dist/''',
+  '''^landing/dist/''',
+
+  # Test fixtures — synthetic credentials by design.
+  '''^tests/fixtures/''',
+
+  # Vendor docs (e.g. NEXUSAGENT_BUILD.md) sometimes paste demo tokens.
+  '''^docs/NEXUSAGENT_BUILD\.md$''',
+  '''^docs/NEXUSAGENT_COMPLETE_ROADMAP\.md$''',
+]
+
+# Allow synthetic / dummy keys used in tests without flagging them.
+regexes = [
+  # AWS demo IDs commonly used in docs ("AKIAIOSFODNN7EXAMPLE")
+  '''AKIA[0-9A-Z]{16}EXAMPLE''',
+  # Stripe test keys
+  '''sk_test_[0-9a-zA-Z]{24,}''',
+  '''pk_test_[0-9a-zA-Z]{24,}''',
+]

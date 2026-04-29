@@ -1,0 +1,99 @@
+# Dependabot — automated security + minor-version PRs.
+#
+# Cadence: weekly. Bigger ecosystems (pip, frontend npm) get higher PR
+# caps; the small ones a single open PR at a time. PRs are batched per
+# ecosystem so the review burden stays bounded.
+
+version: 2
+updates:
+  # Python backend
+  - package-ecosystem: pip
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: "Asia/Kolkata"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "python"]
+    commit-message:
+      prefix: "deps(py)"
+    # Don't auto-bump these — they'd need code changes:
+    # - langchain (frequent breaking changes)
+    # - chromadb (storage format compatibility)
+    ignore:
+      - dependency-name: "langchain"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "langchain-*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "chromadb"
+        update-types: ["version-update:semver-major"]
+
+  # React frontend
+  - package-ecosystem: npm
+    directory: "/frontend"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "frontend"]
+    commit-message:
+      prefix: "deps(frontend)"
+    ignore:
+      # React 19 → 20 will need a manual review pass
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+
+  # Marketing site
+  - package-ecosystem: npm
+    directory: "/landing"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "landing"]
+    commit-message:
+      prefix: "deps(landing)"
+
+  # WhatsApp bridge — Baileys is a moving target, only patch updates auto.
+  - package-ecosystem: npm
+    directory: "/whatsapp_bridge"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "whatsapp"]
+    commit-message:
+      prefix: "deps(bridge)"
+    ignore:
+      - dependency-name: "@whiskeysockets/baileys"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+
+  # Electron desktop wrapper
+  - package-ecosystem: npm
+    directory: "/desktop"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels: ["dependencies", "desktop"]
+    commit-message:
+      prefix: "deps(desktop)"
+    ignore:
+      # Electron major bumps require security + IPC re-review.
+      - dependency-name: "electron"
+        update-types: ["version-update:semver-major"]
+
+  # CI workflows themselves — actions/* getting bumped is the most
+  # important security feed for the pipeline.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "ci"]
+    commit-message:
+      prefix: "deps(actions)"

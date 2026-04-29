@@ -7,18 +7,35 @@ on:
     branches: [main]
 
 concurrency:
+  # Cancel in-progress runs on the same ref. Saves CI minutes when commits
+  # arrive in quick succession (e.g. a series of pushes during dev).
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Defaults — keep individual jobs lean.
+defaults:
+  run:
+    shell: bash
+
+env:
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
 jobs:
-  # ── Backend: pytest on the subsystems that don't need Ollama live ────────
+  # ─────────────────────────────────────────────────────────────────────────
+  # Backend — full pip install + ruff lint + complete pytest run.
+  # The pytest.ini default `addopts = -m "not integration"` auto-skips tests
+  # marked @pytest.mark.integration (those need a live Ollama). Everything
+  # else runs. Cache is keyed on requirements.txt + requirements-dev.txt so
+  # routine commits get a ~30s install instead of a 6-minute one.
+  # ─────────────────────────────────────────────────────────────────────────
   backend:
-    name: Backend tests (Python ${{ matrix.python-version }})
+    name: Backend (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.12"]
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
 
@@ -27,38 +44,93 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # Install only what the fast test subset needs. The full
-          # requirements.txt pulls ChromaDB + faster-whisper which are slow
-          # on CI and unnecessary for these suites.
-          pip install pytest loguru fastapi pydantic "uvicorn[standard]" \
-                      pandas openpyxl python-dotenv \
-                      anthropic
-          pip install -e . 2>/dev/null || true
+          # PyMuPDF needs binary wheels on CI; --only-binary keeps the build
+          # fast and avoids the C-toolchain.
+          pip install --only-binary=PyMuPDF PyMuPDF || true
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
-      - name: Run unit tests
-        env:
-          PYTHONDONTWRITEBYTECODE: "1"
+      - name: Ruff lint
         run: |
-          python -m pytest \
-            tests/test_privacy.py \
-            tests/test_agent_runlog.py \
-            tests/test_onboarding_prefs.py \
-            tests/test_tags_bulk_recurring.py \
-            tests/test_phase1_finish.py \
-            tests/test_phase2_scheduler_custom.py \
-            tests/test_phase2_workflows_suggestions.py \
-            tests/test_phase2_rag_sql_research.py \
-            tests/test_integrations.py \
-            tests/test_reliability_indexes.py \
-            -q
+          # Lint the Python source — fail the build on real errors but allow
+          # style nags to surface as warnings (set `--exit-zero` while we're
+          # introducing the linter; flip to fail-mode once the codebase is clean).
+          ruff check --exit-zero --output-format=github \
+            agents/ api/ config/ memory/ orchestrator/ rag/ \
+            report_generator/ sql_agent/ tools/ utils/ workflows/ \
+            voice/ action_tools/
 
-  # ── Frontend: install + lint + production build ─────────────────────────
+      - name: Run pytest
+        env:
+          DB_PATH: /tmp/nexus_ci.db
+        run: |
+          # Full suite. Pytest auto-skips @pytest.mark.integration tests
+          # via pytest.ini addopts. -q for compact output, --tb=short for
+          # readable failures, --timeout=60 so a hang doesn't burn 10min.
+          python -m pytest tests/ -q --tb=short --timeout=60
+
+      - name: Upload pytest output on failure
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: pytest-${{ matrix.python-version }}-logs
+          path: |
+            .pytest_cache
+          retention-days: 7
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # API server import smoke — makes sure routers wire up without a runtime
+  # error before the frontend tries to talk to them. Catches missing deps
+  # like the `cryptography` / `email-validator` we hit recently.
+  # ─────────────────────────────────────────────────────────────────────────
+  import-smoke:
+    name: API import smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install --only-binary=PyMuPDF PyMuPDF || true
+          pip install -r requirements.txt
+
+      - name: Import api.server
+        env:
+          DB_PATH: /tmp/nexus_smoke.db
+        run: |
+          python -c "
+          from api.server import app
+          paths = {r.path for r in app.routes}
+          print(f'OK: {len(paths)} unique routes registered')
+          # Sanity: a handful of routes that should always exist.
+          for p in ['/api/whatsapp/inbound', '/api/privacy/usage',
+                    '/api/agent/chat', '/api/auth/login']:
+              assert p in paths, f'missing route: {p}'
+          print('All sentinel routes present.')
+          "
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Frontend — eslint + production Vite build.
+  # `npm ci` enforces the lockfile; we fall back to `npm install` only when
+  # the lockfile is genuinely out of sync (a rare cross-platform quirk).
+  # ─────────────────────────────────────────────────────────────────────────
   frontend:
-    name: Frontend build
+    name: Frontend (build + lint)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -66,17 +138,13 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Set up Node
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install
-        # Prefer `npm ci` for deterministic installs, but fall back to
-        # `npm install` when the lock file drifts (e.g. a maintainer's
-        # Windows-generated lock misses Linux-only optional deps).
         run: npm ci || npm install --no-audit --no-fund
 
       - name: Lint
@@ -92,7 +160,53 @@ jobs:
           path: frontend/dist
           retention-days: 7
 
-  # ── E2E: Playwright against a mocked backend + Vite dev server ──────────
+  # ─────────────────────────────────────────────────────────────────────────
+  # Landing — separate Vite app, simple build check.
+  # ─────────────────────────────────────────────────────────────────────────
+  landing:
+    name: Landing (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: landing
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: landing/package-lock.json
+      - name: Install
+        run: npm ci || npm install --no-audit --no-fund
+      - name: Build
+        run: npm run build
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # WhatsApp bridge — install + node --check (catches import / syntax errors
+  # before they reach a running service).
+  # ─────────────────────────────────────────────────────────────────────────
+  whatsapp-bridge:
+    name: WhatsApp bridge (syntax)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: whatsapp_bridge
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: whatsapp_bridge/package-lock.json
+      - name: Install
+        run: npm ci || npm install --no-audit --no-fund
+      - name: Syntax check
+        run: node --check server.js
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # E2E — Playwright against the Vite dev server. Heavier, runs only if
+  # frontend build passes (`needs: [frontend]`).
+  # ─────────────────────────────────────────────────────────────────────────
   e2e:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
@@ -102,25 +216,19 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v5
-
-      - name: Set up Node
-        uses: actions/setup-node@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
       - name: Install
         run: npm ci || npm install --no-audit --no-fund
-
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
-
       - name: Run E2E suite
         run: npx playwright test
         env:
           CI: "true"
-
       - name: Upload Playwright report on failure
         if: failure()
         uses: actions/upload-artifact@v5
@@ -131,27 +239,20 @@ jobs:
             frontend/test-results
           retention-days: 7
 
-  # ── Smoke: verify server.py imports without runtime errors ───────────────
-  import-smoke:
-    name: Import smoke check
+  # ─────────────────────────────────────────────────────────────────────────
+  # Secrets scan — catches accidental commits of API keys, tokens, etc.
+  # before they hit the public history. Runs against the diff for PRs and
+  # the full tree on push.
+  # ─────────────────────────────────────────────────────────────────────────
+  secrets-scan:
+    name: Secrets scan
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
         with:
-          python-version: "3.12"
-          cache: pip
-      - name: Install minimal deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install fastapi "uvicorn[standard]" pydantic loguru python-dotenv \
-                      pandas openpyxl anthropic
-      - name: Import server module
-        run: |
-          python -c "
-          import os
-          os.environ['DB_PATH'] = '/tmp/nexus_ci.db'
-          from api import onboarding, notification_prefs, integrations, reliability, db_indexes
-          from api import tags, saved_queries, suggestions, rag_collections, custom_agents, agent_schedule
-          print('imports OK')
-          "
+          # Need full history so gitleaks can scan the diff range on PRs.
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

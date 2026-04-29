@@ -1,0 +1,9 @@
+# Dev / CI tooling. Not needed in production.
+# Pin loosely so dependabot can bump minor versions without churn.
+
+# Linter — fast, catches imports + obvious bugs
+ruff>=0.6.0
+
+# Test plugins
+pytest-cov>=5.0.0
+pytest-timeout>=2.4.0  # already pulled by kaleido but pinned here for clarity
