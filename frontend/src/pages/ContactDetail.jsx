@@ -22,6 +22,7 @@ import {
 } from '../services/crm';
 import { listInvoices } from '../services/invoices';
 import { createTask } from '../services/tasks';
+import { readSmtp, sendEmail as smtpSend } from '../services/smtp';
 import { TagPicker, TagChips } from '../components/TagChips';
 import { tagsFor } from '../services/tags';
 
@@ -69,6 +70,15 @@ export default function ContactDetail() {
   const [bantModal, setBantModal] = useState(null);  // { busy, error, result, replyText }
   const [replyModal, setReplyModal] = useState(null);  // { busy, error, draft, incoming }
   const [verifyEdit, setVerifyEdit] = useState(null);  // { first_name, last_name, email, busy, error }
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
+
+  // Pull SMTP-configured flag once on mount so drafter modals know whether
+  // to show "Send" vs "Open in mail" as the primary action.
+  useEffect(() => {
+    readSmtp()
+      .then((r) => setSmtpConfigured(!!r.configured))
+      .catch(() => setSmtpConfigured(false));
+  }, []);
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -824,10 +834,11 @@ export default function ContactDetail() {
         <DraftOutreachModal
           state={draftModal}
           contact={contact}
+          smtpConfigured={smtpConfigured}
           onRegenerate={regenerateDraft}
           onClose={() => setDraftModal(null)}
           onCopied={() => flash('Copied to clipboard.')}
-          onSent={() => flash('Opened in your mail client.')}
+          onSent={(via) => flash(via === 'smtp' ? 'Email sent.' : 'Opened in your mail client.')}
         />
       )}
 
@@ -867,9 +878,11 @@ export default function ContactDetail() {
 // in a tabbed view. Each variant is editable in place; the user can copy
 // to clipboard or open in their mail client (mailto:) without sending
 // through the agent — keeps the privacy story simple (no SMTP needed).
-function DraftOutreachModal({ state, contact, onRegenerate, onClose, onCopied, onSent }) {
+function DraftOutreachModal({ state, contact, smtpConfigured, onRegenerate, onClose, onCopied, onSent }) {
   const [active, setActive] = useState(0);
   const [edits, setEdits] = useState({});  // tone -> {subject, body}
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState('');
 
   const variants = state.variants || [];
   const current = variants[active];
@@ -895,7 +908,21 @@ function DraftOutreachModal({ state, contact, onRegenerate, onClose, onCopied, o
     if (!currentEdits || !contact?.email) return;
     const url = `mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(currentEdits.subject)}&body=${encodeURIComponent(currentEdits.body)}`;
     window.open(url, '_blank');
-    onSent?.();
+    onSent?.('mailto');
+  };
+
+  const sendViaSmtp = async () => {
+    if (!currentEdits || !contact?.email) return;
+    setSending(true);
+    setSendError('');
+    try {
+      await smtpSend(contact.email, currentEdits.subject, currentEdits.body);
+      onSent?.('smtp');
+      onClose?.();
+    } catch (e) {
+      setSendError(e.message || 'Send failed.');
+    }
+    setSending(false);
   };
 
   return (
@@ -1054,15 +1081,40 @@ function DraftOutreachModal({ state, contact, onRegenerate, onClose, onCopied, o
                   <Copy size={11} /> Copy
                 </button>
                 <button
-                  className="btn-primary btn-sm"
+                  className="btn-ghost btn-sm"
                   onClick={openInMail}
                   disabled={!contact?.email}
-                  title={contact?.email ? 'Open in your mail client' : 'No email on file for this contact'}
+                  title={contact?.email ? 'Open in your mail client (mailto)' : 'No email on file for this contact'}
                 >
-                  <Send size={11} /> Open in mail
+                  Open in mail
                 </button>
+                {smtpConfigured && (
+                  <button
+                    className="btn-primary btn-sm"
+                    onClick={sendViaSmtp}
+                    disabled={!contact?.email || sending}
+                    title={contact?.email ? 'Send via your workspace SMTP' : 'No email on file for this contact'}
+                  >
+                    {sending
+                      ? <><Loader2 size={11} className="animate-spin" /> Sending…</>
+                      : <><Send size={11} /> Send</>}
+                  </button>
+                )}
               </span>
             </div>
+            {sendError && (
+              <div style={{
+                margin: '0 18px 12px', padding: '8px 10px',
+                background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+                borderRadius: 'var(--r-sm)',
+                fontSize: 12, color: 'var(--color-err)',
+                display: 'flex', gap: 6, alignItems: 'flex-start',
+              }}>
+                <AlertCircle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>{sendError}</span>
+              </div>
+            )}
           </>
         )}
       </div>

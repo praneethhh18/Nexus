@@ -4,6 +4,7 @@ import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusi
 import { getNotificationPrefs, setNotificationPrefs, reopenOnboarding } from '../services/onboarding';
 import { downloadFullExport, downloadFullBackup, getBackupInfo, restoreBackup } from '../services/tags';
 import { readIcp, writeIcp } from '../services/crm';
+import { readSmtp, saveSmtp, deleteSmtp, testSmtp } from '../services/smtp';
 import { Download } from 'lucide-react';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
@@ -126,6 +127,7 @@ export default function Settings() {
         <NotificationPrefsPanel />
         <OnboardingReopenPanel />
         {isAdmin && <IcpPanel flash={flash} />}
+        {isAdmin && <SmtpPanel flash={flash} />}
         <ExportPanel flash={flash} />
         {isAdmin && <BackupPanel flash={flash} />}
         {isAdmin && <RestorePanel flash={flash} />}
@@ -1083,6 +1085,219 @@ function Stat({ label, value }) {
         {label}
       </div>
       <div style={{ color: 'var(--color-text)', fontFeatureSettings: '"tnum"' }}>{value}</div>
+    </div>
+  );
+}
+
+
+// ── SMTP — workspace outbound email ─────────────────────────────────────────
+// Plug in the workspace's own SMTP credentials so AI-drafted outreach can
+// actually send (rather than dumping the user into their mail client via
+// mailto:). Per-workspace by design: each tenant sends from their own
+// domain, not a shared "from" address. Password is encrypted at rest.
+function SmtpPanel({ flash }) {
+  const [loading, setLoading] = useState(true);
+  const [configured, setConfigured] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({
+    host: '', port: 587, username: '', password: '',
+    from_email: '', from_name: '', use_tls: true,
+  });
+  const [updatedAt, setUpdatedAt] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [testResult, setTestResult] = useState(null);  // { ok, error }
+
+  const refresh = async () => {
+    setLoading(true);
+    setTestResult(null);
+    try {
+      const r = await readSmtp();
+      setConfigured(!!r.configured);
+      if (r.configured) {
+        setForm((f) => ({
+          ...f,
+          host: r.host || '', port: r.port || 587,
+          username: r.username || '', password: '',
+          from_email: r.from_email || '', from_name: r.from_name || '',
+          use_tls: r.use_tls !== false,
+        }));
+        setUpdatedAt(r.updated_at || null);
+      }
+    } catch {
+      // Don't error-out the page if endpoint is unreachable — just show "not configured".
+      setConfigured(false);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSave = async () => {
+    if (!form.host || !form.username || !form.from_email) {
+      flash('Host, username, and From email are required.');
+      return;
+    }
+    setBusy(true);
+    setTestResult(null);
+    try {
+      await saveSmtp(form);
+      flash('SMTP saved.');
+      setEditing(false);
+      setForm((f) => ({ ...f, password: '' }));  // never keep plaintext in memory
+      refresh();
+    } catch (e) {
+      flash(`Save failed: ${e.message}`);
+    }
+    setBusy(false);
+  };
+
+  const handleTest = async () => {
+    if (!editing && !configured) return;
+    setBusy(true);
+    setTestResult(null);
+    try {
+      // If editing, test with the typed-in values; otherwise test stored.
+      const r = await testSmtp(editing ? form : null);
+      setTestResult(r);
+    } catch (e) {
+      setTestResult({ ok: false, error: e.message });
+    }
+    setBusy(false);
+  };
+
+  const handleDelete = async () => {
+    if (!confirm('Disconnect SMTP? AI-drafted emails will fall back to your mail client (mailto).')) return;
+    setBusy(true);
+    try {
+      await deleteSmtp();
+      flash('SMTP disconnected.');
+      setForm({ host: '', port: 587, username: '', password: '',
+                from_email: '', from_name: '', use_tls: true });
+      setConfigured(false);
+      setEditing(false);
+    } catch (e) {
+      flash(`Disconnect failed: ${e.message}`);
+    }
+    setBusy(false);
+  };
+
+  if (loading) return null;
+
+  return (
+    <div className="panel" style={{ marginBottom: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <Server size={15} color={configured ? 'var(--color-ok)' : 'var(--color-text-dim)'} />
+        <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Email (SMTP)</h3>
+        {configured && (
+          <span style={{
+            fontSize: 10, padding: '2px 7px', borderRadius: 'var(--r-pill)',
+            background: 'color-mix(in srgb, var(--color-ok) 14%, transparent)',
+            color: 'var(--color-ok)', fontWeight: 600, letterSpacing: 0.4, textTransform: 'uppercase',
+          }}>
+            Connected
+          </span>
+        )}
+      </div>
+      <p style={{ fontSize: 11.5, color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.55 }}>
+        Connect your workspace's SMTP server so AI-drafted emails can actually send. Without this, drafts open in your mail client (mailto:). Password is encrypted at rest.
+      </p>
+
+      {!editing && !configured && (
+        <button className="btn-primary btn-sm" onClick={() => setEditing(true)}>
+          <Server size={11} /> Connect SMTP
+        </button>
+      )}
+
+      {!editing && configured && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+            <strong style={{ color: 'var(--color-text)' }}>{form.from_name ? `${form.from_name} <${form.from_email}>` : form.from_email}</strong>
+            <br />
+            {form.host}:{form.port} · {form.username} {form.use_tls ? '· TLS' : ''}
+          </div>
+          {updatedAt && (
+            <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+              Updated {new Date(updatedAt).toLocaleString()}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+            <button className="btn-ghost btn-sm" onClick={() => setEditing(true)}>Edit</button>
+            <button className="btn-ghost btn-sm" onClick={handleTest} disabled={busy}>
+              {busy ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Test connection
+            </button>
+            <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }} onClick={handleDelete} disabled={busy}>
+              <Trash2 size={11} /> Disconnect
+            </button>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+            <div>
+              <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>SMTP host</label>
+              <input className="field-input" value={form.host} onChange={(e) => set('host', e.target.value)} placeholder="smtp.gmail.com" />
+            </div>
+            <div>
+              <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>Port</label>
+              <input className="field-input" type="number" value={form.port} onChange={(e) => set('port', parseInt(e.target.value) || 587)} />
+            </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>Username</label>
+            <input className="field-input" value={form.username} onChange={(e) => set('username', e.target.value)} placeholder="outbound@yourdomain.com" />
+          </div>
+          <div>
+            <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>
+              Password {configured && <em style={{ fontWeight: 400, color: 'var(--color-text-dim)' }}>(leave blank to keep existing)</em>}
+            </label>
+            <input className="field-input" type="password" value={form.password} onChange={(e) => set('password', e.target.value)} placeholder="App password or service token" autoComplete="new-password" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
+              <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>From email</label>
+              <input className="field-input" type="email" value={form.from_email} onChange={(e) => set('from_email', e.target.value)} placeholder="hello@yourdomain.com" />
+            </div>
+            <div>
+              <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)', fontWeight: 600, letterSpacing: 0.3 }}>From name (optional)</label>
+              <input className="field-input" value={form.from_name} onChange={(e) => set('from_name', e.target.value)} placeholder="Acme Sales" />
+            </div>
+          </div>
+          <label style={{ fontSize: 11.5, color: 'var(--color-text)', display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+            <input type="checkbox" checked={form.use_tls} onChange={(e) => set('use_tls', e.target.checked)} />
+            Use STARTTLS (recommended for ports 587/25)
+          </label>
+
+          <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
+            <button className="btn-primary btn-sm" onClick={handleSave} disabled={busy}>
+              {busy ? <Loader2 size={11} className="animate-spin" /> : <Check size={11} />} Save
+            </button>
+            <button className="btn-ghost btn-sm" onClick={handleTest} disabled={busy}>
+              {busy ? <Loader2 size={11} className="animate-spin" /> : null} Test connection
+            </button>
+            <button className="btn-ghost btn-sm" onClick={() => { setEditing(false); refresh(); }}>Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {testResult && (
+        <div style={{
+          marginTop: 8, padding: '8px 10px',
+          background: testResult.ok
+            ? 'color-mix(in srgb, var(--color-ok) 8%, transparent)'
+            : 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+          border: `1px solid color-mix(in srgb, ${testResult.ok ? 'var(--color-ok)' : 'var(--color-err)'} 28%, transparent)`,
+          borderRadius: 'var(--r-sm)',
+          fontSize: 12, color: testResult.ok ? 'var(--color-ok)' : 'var(--color-err)',
+          display: 'flex', alignItems: 'flex-start', gap: 6,
+        }}>
+          {testResult.ok ? <Check size={13} /> : <AlertTriangle size={13} style={{ marginTop: 1, flexShrink: 0 }} />}
+          <span>{testResult.ok ? 'Connection successful — credentials are valid.' : testResult.error}</span>
+        </div>
+      )}
     </div>
   );
 }
