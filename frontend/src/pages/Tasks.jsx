@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat, Check } from 'lucide-react';
-import { listTasks, createTask, updateTask, deleteTask, taskSummary, STATUSES, PRIORITIES } from '../services/tasks';
+import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat, Check, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { listTasks, createTask, updateTask, deleteTask, taskSummary, extractFromNotes, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
@@ -186,6 +186,10 @@ export default function Tasks() {
   const [tagsByTask, setTagsByTask] = useState({});
   const [undoToast, setUndoToast] = useState(null);
   const undoTimerRef = useRef(null);
+  // "From notes" modal: { notes, busy, error, extracted, summary, picked, creating }
+  // — extracted is the items array from the LLM, picked is a Set of indices
+  // the user has chosen to commit. Stays null until the user opens the modal.
+  const [notesModal, setNotesModal] = useState(null);
 
   const selection = useBulkSelection(tasks);
 
@@ -289,6 +293,70 @@ export default function Tasks() {
     undoTimerRef.current = setTimeout(() => setUndoToast(null), 5000);
   };
 
+  // ── Meeting notes → action items ──────────────────────────────────────
+  const runNotesExtract = async () => {
+    if (!notesModal || notesModal.notes.trim().length < 20) {
+      setNotesModal((m) => ({ ...(m || {}), error: 'Paste at least a couple sentences of notes.' }));
+      return;
+    }
+    setNotesModal((m) => ({ ...m, busy: true, error: '', extracted: null }));
+    try {
+      const r = await extractFromNotes(notesModal.notes);
+      // Pre-pick everything — user unchecks items they don't want.
+      const picked = new Set((r.items || []).map((_, i) => i));
+      setNotesModal((m) => ({
+        ...m, busy: false, error: '',
+        extracted: r.items || [], summary: r.summary || '', picked,
+      }));
+    } catch (e) {
+      setNotesModal((m) => ({ ...m, busy: false, error: e.message || 'Extraction failed.', extracted: null }));
+    }
+  };
+
+  const togglePickedItem = (i) => {
+    setNotesModal((m) => {
+      if (!m) return m;
+      const next = new Set(m.picked);
+      if (next.has(i)) next.delete(i); else next.add(i);
+      return { ...m, picked: next };
+    });
+  };
+
+  const editExtractedItem = (i, patch) => {
+    setNotesModal((m) => {
+      if (!m || !m.extracted) return m;
+      const next = m.extracted.map((it, idx) => idx === i ? { ...it, ...patch } : it);
+      return { ...m, extracted: next };
+    });
+  };
+
+  const commitPickedTasks = async () => {
+    if (!notesModal?.extracted) return;
+    const chosen = notesModal.extracted.filter((_, i) => notesModal.picked.has(i));
+    if (chosen.length === 0) {
+      setNotesModal((m) => ({ ...m, error: 'Pick at least one item to add.' }));
+      return;
+    }
+    setNotesModal((m) => ({ ...m, creating: true, error: '' }));
+    let created = 0;
+    let failed = 0;
+    for (const it of chosen) {
+      try {
+        await createTask({
+          title: it.title,
+          description: [it.description, it.owner_hint && `Owner mentioned: ${it.owner_hint}`, it.due_hint && `Timing mentioned: ${it.due_hint}`].filter(Boolean).join('\n\n'),
+          priority: it.priority || 'normal',
+        });
+        created += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    setNotesModal(null);
+    flash(`Added ${created} task${created === 1 ? '' : 's'}${failed ? ` (${failed} failed)` : ''}.`);
+    reload();
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -296,7 +364,16 @@ export default function Tasks() {
           <h1>Tasks</h1>
           <p>Your to-dos and priorities for this business</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> Add task</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn-ghost"
+            onClick={() => setNotesModal({ notes: '', busy: false, error: '', extracted: null, summary: '', picked: new Set(), creating: false })}
+            title="Paste meeting notes — AI extracts action items"
+          >
+            <Sparkles size={13} /> From notes
+          </button>
+          <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> Add task</button>
+        </div>
       </div>
 
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
@@ -430,6 +507,233 @@ export default function Tasks() {
           <TaskForm initial={modal.record} onSubmit={handleSubmit} onCancel={() => setModal(null)} />
         </Modal>
       )}
+
+      {notesModal && (
+        <FromNotesModal
+          state={notesModal}
+          onChangeNotes={(t) => setNotesModal((m) => ({ ...m, notes: t, error: '' }))}
+          onRun={runNotesExtract}
+          onTogglePicked={togglePickedItem}
+          onEditItem={editExtractedItem}
+          onCommit={commitPickedTasks}
+          onClose={() => setNotesModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+
+// ── From-notes modal ────────────────────────────────────────────────────────
+// Two-step UX in a single modal:
+//   1. Paste transcript / notes → click Extract.
+//   2. Review/edit the AI's action items, uncheck any junk, click "Add picked".
+// We pre-check everything on first extract so the default (one click → all
+// items added) is fast for the common case.
+function FromNotesModal({ state, onChangeNotes, onRun, onTogglePicked, onEditItem, onCommit, onClose }) {
+  const items = state.extracted || [];
+  const hasItems = items.length > 0;
+  const pickedCount = state.picked ? state.picked.size : 0;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 760,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              Extract action items from notes
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              Paste a meeting transcript or rough notes — runs locally on Ollama
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: 18, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {state.error && (
+            <div style={{
+              padding: '8px 10px',
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12, color: 'var(--color-err)',
+              display: 'flex', alignItems: 'flex-start', gap: 6,
+            }}>
+              <AlertTriangle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{state.error}</span>
+            </div>
+          )}
+
+          <textarea
+            className="field-input"
+            rows={hasItems ? 4 : 12}
+            value={state.notes}
+            onChange={(e) => onChangeNotes(e.target.value)}
+            placeholder="Paste meeting notes or transcript here. Works for sales calls, standups, client check-ins, vendor meetings — anything with concrete next steps."
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55 }}
+            disabled={state.busy || state.creating}
+          />
+
+          {state.summary && (
+            <div style={{
+              padding: '8px 10px',
+              background: 'var(--color-surface-1)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55,
+            }}>
+              <span style={{ fontWeight: 600, color: 'var(--color-text)' }}>Recap:</span> {state.summary}
+            </div>
+          )}
+
+          {hasItems && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+                {items.length} action item{items.length === 1 ? '' : 's'} · uncheck what doesn't fit
+              </div>
+              {items.map((it, i) => {
+                const isPicked = state.picked.has(i);
+                const PRI_TONE = { high: 'var(--color-err)', normal: 'var(--color-info)', low: 'var(--color-text-dim)' };
+                const tone = PRI_TONE[it.priority] || PRI_TONE.normal;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      padding: 10,
+                      background: 'var(--color-surface-1)',
+                      border: `1px solid ${isPicked ? 'color-mix(in srgb, var(--color-accent) 30%, var(--color-border))' : 'var(--color-border)'}`,
+                      borderRadius: 'var(--r-sm)',
+                      display: 'flex', gap: 10, alignItems: 'flex-start',
+                      opacity: isPicked ? 1 : 0.55,
+                    }}
+                  >
+                    <button
+                      onClick={() => onTogglePicked(i)}
+                      style={{
+                        marginTop: 2,
+                        background: 'transparent', border: 'none', cursor: 'pointer',
+                        color: isPicked ? 'var(--color-accent)' : 'var(--color-text-dim)',
+                        flexShrink: 0,
+                      }}
+                      aria-label={isPicked ? 'Uncheck' : 'Check'}
+                    >
+                      {isPicked ? <CheckSquare size={16} /> : <Square size={16} />}
+                    </button>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <input
+                        className="field-input"
+                        value={it.title}
+                        onChange={(e) => onEditItem(i, { title: e.target.value })}
+                        style={{ fontWeight: 500 }}
+                        maxLength={200}
+                      />
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <select
+                          value={it.priority}
+                          onChange={(e) => onEditItem(i, { priority: e.target.value })}
+                          className="field-select"
+                          style={{ fontSize: 11, padding: '2px 6px', color: tone, fontWeight: 600, textTransform: 'capitalize' }}
+                        >
+                          <option value="low">low</option>
+                          <option value="normal">normal</option>
+                          <option value="high">high</option>
+                        </select>
+                        {it.owner_hint && (
+                          <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                            owner: <strong style={{ color: 'var(--color-text-muted)' }}>{it.owner_hint}</strong>
+                          </span>
+                        )}
+                        {it.due_hint && (
+                          <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                            due: <strong style={{ color: 'var(--color-text-muted)' }}>{it.due_hint}</strong>
+                          </span>
+                        )}
+                      </div>
+                      {it.description && (
+                        <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                          {it.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {state.extracted !== null && items.length === 0 && (
+            <div style={{
+              padding: 14, textAlign: 'center',
+              background: 'var(--color-surface-1)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12.5, color: 'var(--color-text-muted)',
+            }}>
+              No clear action items in those notes. Try fuller text — or maybe this meeting really was just a status update.
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          padding: '12px 18px', borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap',
+        }}>
+          <button className="btn-ghost" onClick={onClose} disabled={state.creating}>Close</button>
+          {hasItems && (
+            <button className="btn-ghost" onClick={onRun} disabled={state.busy || state.creating} title="Run extraction again on the same notes">
+              <RefreshCw size={11} /> Re-extract
+            </button>
+          )}
+          {!hasItems ? (
+            <button className="btn-primary" onClick={onRun} disabled={state.busy}>
+              {state.busy
+                ? <><Loader2 size={12} className="animate-spin" /> Extracting…</>
+                : <><Sparkles size={12} /> Extract action items</>}
+            </button>
+          ) : (
+            <button className="btn-primary" onClick={onCommit} disabled={state.creating || pickedCount === 0}>
+              {state.creating
+                ? <><Loader2 size={12} className="animate-spin" /> Adding…</>
+                : <><Plus size={12} /> Add {pickedCount} task{pickedCount === 1 ? '' : 's'}</>}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
