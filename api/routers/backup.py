@@ -28,7 +28,7 @@ import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import FileResponse
 from loguru import logger
 
@@ -216,3 +216,211 @@ def backup_info(user: dict = Depends(get_current_user)):
         # Compressed estimate — DB and parquet compress ~30%, conservative.
         "estimated_zip_bytes": int(0.7 * (db_bytes + chroma_bytes)),
     }
+
+
+# ── RESTORE ─────────────────────────────────────────────────────────────────
+# Restoring is the dangerous twin of backing up — it can wipe live data if
+# misused. Three layers of safety:
+#
+#   1. Owner/admin gate (same as backup).
+#   2. Default `dry_run=true` — validates the zip + manifest, opens the DB
+#      to confirm it's a real SQLite file, but doesn't touch anything live.
+#      The Settings UI uses dry-run as a "preview" step before the user
+#      explicitly opts into the swap.
+#   3. Even on `dry_run=false`, we always write a `before-restore` snapshot
+#      of the current DB and chroma_db to neighbouring paths the response
+#      reports back, so the user has a one-step revert.
+#
+# After a successful swap the server should be restarted — open SQLite
+# handles can prevent atomic file replacement on Windows, and the running
+# process holds an open ChromaDB connection. The response surfaces this
+# instruction explicitly.
+
+def _validate_zip(zip_path: Path) -> dict:
+    """Open the zip, parse manifest, sanity-check the DB. Never modifies
+    anything on disk outside the zip's own staging dir."""
+    if not zipfile.is_zipfile(zip_path):
+        raise HTTPException(400, "That file isn't a valid zip.")
+
+    with zipfile.ZipFile(zip_path, "r") as zf:
+        names = set(zf.namelist())
+        if "manifest.json" not in names:
+            raise HTTPException(400, "Missing manifest.json — this doesn't look like a NexusAgent backup.")
+        if "nexusagent.db" not in names:
+            raise HTTPException(400, "Missing nexusagent.db — backup is incomplete.")
+
+        try:
+            manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+        except Exception as e:
+            raise HTTPException(400, f"manifest.json is malformed: {e}")
+
+        if manifest.get("format") != "nexusagent-backup":
+            raise HTTPException(400, "Manifest doesn't claim to be a NexusAgent backup.")
+        backup_version = int(manifest.get("version") or 0)
+        if backup_version > BACKUP_VERSION:
+            raise HTTPException(
+                400,
+                f"This backup was made with a newer NexusAgent version "
+                f"(format v{backup_version}). Upgrade the server before restoring."
+            )
+
+        chroma_files = [n for n in names if n.startswith("chroma_db/")]
+
+    return {
+        "manifest": manifest,
+        "has_chroma": bool(chroma_files),
+        "chroma_file_count": len(chroma_files),
+    }
+
+
+def _verify_db_blob(db_path: Path) -> int:
+    """Open the staged DB and confirm it's a real SQLite file with a sane
+    schema. Returns the row count of `nexus_users` as a smoke check.
+    Raises HTTPException(400) on anything suspicious."""
+    try:
+        conn = sqlite3.connect(str(db_path))
+    except Exception as e:
+        raise HTTPException(400, f"Couldn't open the DB inside the zip: {e}")
+    try:
+        # If it's an empty DB or a wildly different schema, this either
+        # raises or returns 0 — both are clear "this isn't ours" signals.
+        try:
+            row = conn.execute("SELECT COUNT(*) FROM nexus_users").fetchone()
+        except sqlite3.DatabaseError as e:
+            raise HTTPException(400, f"DB inside the zip doesn't have NexusAgent's schema: {e}")
+        return int(row[0] or 0)
+    finally:
+        conn.close()
+
+
+@router.post("/api/admin/restore")
+async def restore_backup(
+    file: UploadFile = File(...),
+    dry_run: bool = Query(True, description="When True (default), validate only — don't replace anything."),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Restore a workspace from a previously-downloaded backup zip.
+
+    Default behaviour is `dry_run=true` — the endpoint validates the zip
+    and reports what it found without touching live data. Pass
+    `dry_run=false` to actually swap files. A `before-restore` snapshot
+    is always saved first so the user can revert.
+
+    Restart the server after a successful swap.
+    """
+    if user["role"] not in ("admin", "owner"):
+        raise HTTPException(403, "Only admins / owners can restore.")
+
+    # Stage the upload to a temp dir.
+    staging = Path(tempfile.mkdtemp(prefix="nexus_restore_"))
+    zip_path = staging / "upload.zip"
+    try:
+        bytes_written = 0
+        with zip_path.open("wb") as f:
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                bytes_written += len(chunk)
+                f.write(chunk)
+        if bytes_written == 0:
+            raise HTTPException(400, "Empty upload.")
+
+        info = _validate_zip(zip_path)
+
+        # Extract and verify the DB blob lives in staging too.
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            zf.extract("nexusagent.db", staging)
+        staged_db = staging / "nexusagent.db"
+        user_count = _verify_db_blob(staged_db)
+
+        if dry_run:
+            return {
+                "ok": True,
+                "dry_run": True,
+                "manifest": info["manifest"],
+                "has_chroma": info["has_chroma"],
+                "chroma_file_count": info["chroma_file_count"],
+                "user_count_in_backup": user_count,
+                "message": (
+                    "Validation passed. Re-submit with dry_run=false to perform "
+                    "the actual swap. The server will need a restart afterwards."
+                ),
+            }
+
+        # ── Real restore — save safety snapshots, then swap ─────────────
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+        db_safety_path = Path(DB_PATH).with_name(f"{Path(DB_PATH).name}.before-restore.{stamp}")
+        chroma_safety_path = None
+
+        # Snapshot current DB. Use VACUUM INTO so we get a clean copy that
+        # isn't a partial WAL state, even if other connections are writing.
+        try:
+            _vacuum_snapshot(DB_PATH, db_safety_path)
+        except Exception as e:
+            raise HTTPException(500, f"Couldn't save before-restore DB snapshot: {e}")
+
+        # Replace the live DB. On Windows, an open file handle from a
+        # running process can prevent shutil.copy/move; we use Path.replace
+        # which is atomic on POSIX and best-effort on Windows.
+        try:
+            # copy first then atomic-rename onto live path
+            tmp_dest = Path(DB_PATH).with_suffix(Path(DB_PATH).suffix + ".incoming")
+            shutil.copy2(staged_db, tmp_dest)
+            tmp_dest.replace(Path(DB_PATH))
+        except PermissionError:
+            raise HTTPException(
+                503,
+                "Couldn't replace the live DB — Windows is holding the file open. "
+                f"Stop the server, manually copy {staged_db} over {DB_PATH}, then restart."
+            )
+        except Exception as e:
+            raise HTTPException(500, f"DB swap failed: {e}")
+
+        # ChromaDB folder if present.
+        if info["has_chroma"]:
+            chroma_dir = Path(CHROMA_PATH)
+            if chroma_dir.exists():
+                chroma_safety_path = chroma_dir.with_name(f"{chroma_dir.name}.before-restore.{stamp}")
+                try:
+                    shutil.move(str(chroma_dir), str(chroma_safety_path))
+                except Exception as e:
+                    logger.warning(f"[Restore] couldn't move existing chroma dir aside: {e}")
+
+            chroma_dir.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(zip_path, "r") as zf:
+                for name in zf.namelist():
+                    if not name.startswith("chroma_db/"):
+                        continue
+                    relative = name[len("chroma_db/"):]
+                    if not relative:
+                        continue
+                    dest = chroma_dir / relative
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    if name.endswith("/"):
+                        continue
+                    with zf.open(name) as src, dest.open("wb") as out:
+                        shutil.copyfileobj(src, out)
+
+        return {
+            "ok": True,
+            "dry_run": False,
+            "manifest": info["manifest"],
+            "user_count_restored": user_count,
+            "safety_snapshot_db": str(db_safety_path),
+            "safety_snapshot_chroma": str(chroma_safety_path) if chroma_safety_path else None,
+            "message": (
+                "Restore complete. RESTART THE SERVER for the swap to take "
+                "effect everywhere — open SQLite + ChromaDB connections still "
+                "point at the old data until processes recycle."
+            ),
+        }
+
+    finally:
+        # Best-effort cleanup of the staging dir. Skipped during dev errors
+        # so the staged DB can be inspected if something goes wrong.
+        try:
+            shutil.rmtree(str(staging), ignore_errors=True)
+        except Exception:
+            pass

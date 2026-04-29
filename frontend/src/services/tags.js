@@ -110,6 +110,29 @@ export async function getBackupInfo() {
 }
 
 
+// Restore from a backup zip. Always run dry_run=true first to validate.
+// Returns: {ok, dry_run, manifest, has_chroma, chroma_file_count,
+//           user_count_in_backup, message} on dry-run; on real restore
+// also: {safety_snapshot_db, safety_snapshot_chroma, user_count_restored}.
+export async function restoreBackup(file, { dryRun = true } = {}) {
+  const form = new FormData();
+  form.append('file', file);
+  // Don't set Content-Type — the browser computes the multipart boundary.
+  const headers = {};
+  const t = getToken(); if (t) headers.Authorization = `Bearer ${t}`;
+  const b = getBusinessId(); if (b) headers['X-Business-Id'] = b;
+  const r = await fetch(`/api/admin/restore?dry_run=${dryRun ? 'true' : 'false'}`, {
+    method: 'POST', body: form, headers,
+  });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { msg = (await r.json()).detail || msg; } catch {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+
 // ── Public lead-form intake keys ──────────────────────────────────────────
 export const listIntakeKeys = () => req('/api/intake/keys');
 export const createIntakeKey = (label = '') =>

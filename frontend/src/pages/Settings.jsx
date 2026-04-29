@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { RefreshCw, Trash2, Server, Cpu, HardDrive, Code, Briefcase, Users, AlertTriangle, Calendar as CalendarIcon, Check, X, MessageCircle, Copy, Bell, Sparkles, Database, Loader2, ShieldCheck } from 'lucide-react';
 import { getSettings, resetLLM, clearCache, listMembers, getBusiness, updateBusiness, deleteBusiness } from '../services/api';
 import { getNotificationPrefs, setNotificationPrefs, reopenOnboarding } from '../services/onboarding';
-import { downloadFullExport, downloadFullBackup, getBackupInfo } from '../services/tags';
+import { downloadFullExport, downloadFullBackup, getBackupInfo, restoreBackup } from '../services/tags';
 import { readIcp, writeIcp } from '../services/crm';
 import { Download } from 'lucide-react';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
@@ -128,6 +128,7 @@ export default function Settings() {
         {isAdmin && <IcpPanel flash={flash} />}
         <ExportPanel flash={flash} />
         {isAdmin && <BackupPanel flash={flash} />}
+        {isAdmin && <RestorePanel flash={flash} />}
 
         {/* Developer Mode — moved to top as the master toggle */}
         <div className="panel" style={{ borderColor: devMode ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--color-border)' }}>
@@ -870,6 +871,218 @@ function OnboardingReopenPanel() {
       <button onClick={reopen} className="btn-ghost" style={{ fontSize: 12 }}>
         {done ? 'Opening…' : 'Reopen'}
       </button>
+    </div>
+  );
+}
+
+
+// ── Restore from a previously-downloaded backup ─────────────────────────────
+// Two-step flow with strong guardrails:
+//   1. User picks a zip → frontend hits restore with dry_run=true → shows
+//      manifest preview + DB user-count from the backup. Nothing changes.
+//   2. User clicks "Replace live data" (with explicit confirm dialog) →
+//      backend writes a before-restore safety snapshot, then swaps.
+//   3. Server restart instruction surfaces clearly post-swap.
+//
+// Bad zips, manifest mismatches, schema mismatches, future-format
+// backups — all rejected at step 1 before anything is at risk.
+function RestorePanel({ flash }) {
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState(null);  // dry-run result
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(null);        // post-swap result
+
+  const reset = () => {
+    setFile(null);
+    setPreview(null);
+    setError('');
+    setDone(null);
+  };
+
+  const handleValidate = async () => {
+    if (!file) return;
+    setBusy(true); setError(''); setPreview(null); setDone(null);
+    try {
+      const r = await restoreBackup(file, { dryRun: true });
+      setPreview(r);
+    } catch (e) {
+      setError(e.message || 'Validation failed.');
+    }
+    setBusy(false);
+  };
+
+  const handleSwap = async () => {
+    if (!file || !preview) return;
+    if (!confirm(
+      'Replace live data with this backup?\n\n' +
+      'A safety snapshot of the current DB will be saved first. The server ' +
+      'will need a restart afterwards. Continue?'
+    )) return;
+    setBusy(true); setError('');
+    try {
+      const r = await restoreBackup(file, { dryRun: false });
+      setDone(r);
+      flash?.('Restore complete — restart the server to finish.');
+    } catch (e) {
+      setError(e.message || 'Restore failed.');
+    }
+    setBusy(false);
+  };
+
+  const fmtBytes = (n) => {
+    if (!n) return '—';
+    const u = ['B', 'KB', 'MB', 'GB'];
+    let i = 0; let v = n;
+    while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+    return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${u[i]}`;
+  };
+
+  return (
+    <div className="panel" style={{
+      marginBottom: 12, padding: 14,
+      borderColor: 'color-mix(in srgb, var(--color-warn) 22%, var(--color-border))',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 'var(--r-md)',
+          background: 'color-mix(in srgb, var(--color-warn) 14%, transparent)',
+          color: 'var(--color-warn)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <AlertTriangle size={18} />
+        </div>
+
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+              Restore from backup
+            </span>
+            <span className="pill-base pill-warn" style={{ fontSize: 9 }}>destructive</span>
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55, marginBottom: 10 }}>
+            Replace live data with a previously-downloaded NexusAgent backup. We always validate the zip first
+            (no changes), then save a <code>before-restore</code> snapshot of your current DB before swapping
+            so you can revert with a manual file copy.
+          </div>
+
+          {!done && (
+            <>
+              <input
+                type="file"
+                accept=".zip,application/zip"
+                onChange={(e) => { setFile(e.target.files?.[0] || null); setPreview(null); setError(''); }}
+                style={{
+                  fontSize: 12, marginBottom: 10,
+                  padding: 6, border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--r-sm)', background: 'var(--color-surface-1)',
+                  color: 'var(--color-text)', width: '100%',
+                }}
+              />
+
+              {error && (
+                <div style={{
+                  padding: '8px 10px', marginBottom: 10,
+                  background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 12, color: 'var(--color-err)',
+                }}>
+                  {error}
+                </div>
+              )}
+
+              {preview && (
+                <div style={{
+                  padding: 10, marginBottom: 10,
+                  background: 'var(--color-surface-1)',
+                  border: '1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border))',
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 11.5,
+                }}>
+                  <div style={{ fontWeight: 600, color: 'var(--color-accent)', marginBottom: 6 }}>
+                    <Check size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                    Validation passed — preview before you swap
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+                    <Stat label="Format version" value={`v${preview.manifest?.version ?? '?'}`} />
+                    <Stat label="DB" value={fmtBytes(preview.manifest?.db?.bytes)} />
+                    <Stat label="Vector store" value={preview.has_chroma ? `${preview.chroma_file_count} files · ${fmtBytes(preview.manifest?.chroma?.bytes)}` : 'not included'} />
+                    <Stat label="Users in backup" value={preview.user_count_in_backup} />
+                    <Stat label="Created" value={preview.manifest?.created_at ? new Date(preview.manifest.created_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : '?'} />
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  className="btn-ghost"
+                  onClick={handleValidate}
+                  disabled={!file || busy}
+                  style={{ fontSize: 12 }}
+                >
+                  {busy && !preview ? 'Validating…' : preview ? 'Re-validate' : 'Validate backup'}
+                </button>
+                {preview && (
+                  <button
+                    className="btn-primary"
+                    onClick={handleSwap}
+                    disabled={busy}
+                    style={{
+                      fontSize: 12,
+                      background: 'var(--color-warn)',
+                      borderColor: 'var(--color-warn)',
+                    }}
+                  >
+                    {busy ? 'Restoring…' : (
+                      <><AlertTriangle size={12} /> Replace live data</>
+                    )}
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+
+          {done && (
+            <div style={{
+              padding: 12,
+              background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-ok) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-ok)', marginBottom: 6 }}>
+                <Check size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                Restore complete · {done.user_count_restored} users
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55, marginBottom: 8 }}>
+                {done.message}
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', wordBreak: 'break-all' }}>
+                <div><strong>Safety snapshot (DB):</strong> {done.safety_snapshot_db}</div>
+                {done.safety_snapshot_chroma && (
+                  <div><strong>Safety snapshot (chroma):</strong> {done.safety_snapshot_chroma}</div>
+                )}
+              </div>
+              <button className="btn-ghost btn-sm" style={{ marginTop: 10 }} onClick={reset}>
+                Done
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// Tiny stat row used inside the restore preview panel.
+function Stat({ label, value }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+        {label}
+      </div>
+      <div style={{ color: 'var(--color-text)', fontFeatureSettings: '"tnum"' }}>{value}</div>
     </div>
   );
 }
