@@ -30,14 +30,12 @@ from __future__ import annotations
 
 import contextvars
 import os
-import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict, Optional
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn  # backend-agnostic connection (SQLite or Postgres)
 
 USAGE_TABLE = "nexus_cloud_usage"
 
@@ -86,15 +84,20 @@ def get_active_business() -> Optional[str]:
 
 
 # ── Schema ─────────────────────────────────────────────────────────────────
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    """
+    Open a connection to the active backend (SQLite by default, Postgres
+    when DATABASE_URL is set). Schema DDL below is intentionally written
+    in SQLite-flavored SQL — `config.db` translates AUTOINCREMENT and
+    placeholder style for Postgres on the fly.
+    """
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {USAGE_TABLE} (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         business_id TEXT NOT NULL,
-        date TEXT NOT NULL,            -- UTC YYYY-MM-DD
-        ts   TEXT NOT NULL,            -- ISO timestamp of the call
+        date TEXT NOT NULL,
+        ts   TEXT NOT NULL,
         provider TEXT NOT NULL,
         model TEXT NOT NULL,
         tokens_in  INTEGER DEFAULT 0,

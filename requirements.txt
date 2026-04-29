@@ -53,8 +53,8 @@ boto3>=1.35.0  # for Amazon Bedrock
 openpyxl>=3.1.0  # Excel export for data reports
 pyotp>=2.9.0  # TOTP 2FA
 qrcode>=7.4.0  # QR codes for 2FA enrollment
-# Optional — only needed if migrating to Postgres via DATABASE_URL
-# psycopg[binary]>=3.1  # uncomment when moving to Postgres
+# Postgres driver (config/db.py uses it when DATABASE_URL is set)
+psycopg[binary]>=3.1
 
 # Scheduling + Utils
 apscheduler>=3.10.0

@@ -58,25 +58,77 @@ def _sqlite_conn() -> sqlite3.Connection:
 
 
 # ── Postgres path (opt-in via DATABASE_URL) ──────────────────────────────────
-class _PgCursor:
-    """Wraps a psycopg cursor to accept ?-style placeholders."""
-    __slots__ = ("_c",)
+class _PgRow:
+    """
+    Drop-in replacement for `sqlite3.Row`. Behaves like a tuple AND lets
+    callers index by column name: `row['email']` or `row[2]`. NexusAgent's
+    SQLite code reads results both ways, so the Postgres path needs the same
+    duality to be a true drop-in.
+    """
+    __slots__ = ("_values", "_columns")
 
-    def __init__(self, c):
+    def __init__(self, values, columns):
+        self._values = tuple(values)
+        self._columns = tuple(columns)
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            try:
+                idx = self._columns.index(key)
+            except ValueError:
+                raise IndexError(f"No such column: {key!r}")
+            return self._values[idx]
+        return self._values[key]
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+    def __repr__(self):
+        return f"_PgRow({dict(zip(self._columns, self._values))!r})"
+
+    def keys(self):
+        return list(self._columns)
+
+
+class _PgCursor:
+    """Wraps a psycopg cursor to accept ?-style placeholders and emit
+    sqlite3.Row-style rows when the parent connection has row_factory set."""
+    __slots__ = ("_c", "_row_factory")
+
+    def __init__(self, c, row_factory=None):
         self._c = c
+        self._row_factory = row_factory
 
     def execute(self, sql: str, params: Any = ()):
         sql = _translate_sql(sql)
-        return self._c.execute(sql, params)
+        self._c.execute(sql, params)
+        return self
+
+    def _wrap(self, row):
+        if row is None:
+            return None
+        if self._row_factory is None:
+            return row
+        # row_factory is set — emit dict-indexable rows. Column names from
+        # the cursor description survive across both psycopg and sqlite.
+        cols = [d[0] for d in (self._c.description or [])]
+        return _PgRow(row, cols)
 
     def fetchone(self):
-        return self._c.fetchone()
+        return self._wrap(self._c.fetchone())
 
     def fetchall(self):
-        return self._c.fetchall()
+        if self._row_factory is None:
+            return list(self._c.fetchall())
+        cols = [d[0] for d in (self._c.description or [])]
+        return [_PgRow(r, cols) for r in self._c.fetchall()]
 
     def __iter__(self):
-        return iter(self._c)
+        for r in self._c:
+            yield self._wrap(r)
 
     @property
     def rowcount(self):
@@ -97,15 +149,18 @@ class _PgConn:
 
     def __init__(self, c):
         self._c = c
-        self.row_factory = None  # set to sqlite3.Row-equivalent if caller wants dict rows
+        # Set to truthy (e.g. sqlite3.Row) to get dict-indexable rows.
+        # We don't compare against the literal sqlite3.Row class so callers
+        # don't need to import sqlite3 in a Postgres-only deployment.
+        self.row_factory = None
 
     def execute(self, sql: str, params: Any = ()):
         cur = self._c.cursor()
         cur.execute(_translate_sql(sql), params)
-        return _PgCursor(cur)
+        return _PgCursor(cur, row_factory=self.row_factory)
 
     def cursor(self):
-        return _PgCursor(self._c.cursor())
+        return _PgCursor(self._c.cursor(), row_factory=self.row_factory)
 
     def commit(self):
         self._c.commit()
