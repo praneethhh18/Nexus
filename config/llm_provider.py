@@ -20,6 +20,7 @@ from loguru import logger
 
 from config.settings import OLLAMA_BASE_URL, EMBED_MODEL
 from config import privacy
+from config import cloud_budget
 
 # ── Provider detection ──────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
@@ -70,6 +71,17 @@ def _invoke_claude(prompt: str, system: str, max_tokens: int, temperature: float
         if red_system:
             kwargs["system"] = red_system
         response = client.messages.create(**kwargs)
+        # Record token usage for the budget brake. Best-effort.
+        try:
+            u = getattr(response, "usage", None)
+            if u:
+                cloud_budget.record_usage(
+                    None, "claude", CLAUDE_MODEL,
+                    int(getattr(u, "input_tokens", 0) or 0),
+                    int(getattr(u, "output_tokens", 0) or 0),
+                )
+        except Exception:
+            pass
         return privacy.restore(response.content[0].text, mapping)
     except Exception as e:
         logger.error(f"[Claude] Invoke failed: {e}")
@@ -121,7 +133,10 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     a cloud provider is configured. Use this for any prompt that includes raw DB
     rows, customer records, credentials, or internal business data.
     """
-    use_cloud = privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+    use_cloud = (
+        privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+        and cloud_budget.should_allow_cloud()
+    )
     if use_cloud and USE_CLAUDE:
         return _invoke_claude(prompt, system, max_tokens, temperature)
     if use_cloud and USE_BEDROCK:
@@ -134,7 +149,10 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
 def stream(prompt: str, system: str = "", max_tokens: int = 1024,
            fast: bool = False, sensitive: bool = False) -> Generator[str, None, None]:
     """Stream text tokens one by one. See `invoke` for the sensitive flag."""
-    use_cloud = privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+    use_cloud = (
+        privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+        and cloud_budget.should_allow_cloud()
+    )
     if use_cloud and USE_CLAUDE:
         yield from _stream_claude(prompt, system, max_tokens)
         return

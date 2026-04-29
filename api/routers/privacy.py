@@ -105,3 +105,17 @@ def privacy_audit_clear(ctx: dict = Depends(get_current_context)):
     if privacy._AUDIT_PATH.exists():
         privacy._AUDIT_PATH.unlink()
     return {"ok": True}
+
+
+@router.get("/api/privacy/usage")
+def privacy_usage_today(ctx: dict = Depends(get_current_context)):
+    """
+    Today's cloud-LLM token usage and estimated spend for the current business.
+
+    Numbers come from the per-call `nexus_cloud_usage` table written after
+    every cloud invocation. The cap is the daily token ceiling — when hit,
+    cloud-eligible calls automatically fall back to local Ollama (same effect
+    as the kill switch, but only for the day, only for this business).
+    """
+    from config import cloud_budget
+    return cloud_budget.get_today_usage(ctx["business_id"])

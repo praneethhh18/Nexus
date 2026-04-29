@@ -25,6 +25,7 @@ from loguru import logger
 
 from config.llm_provider import USE_CLAUDE, USE_BEDROCK, _get_claude, CLAUDE_MODEL, invoke as plain_invoke
 from config import privacy
+from config import cloud_budget
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -51,7 +52,10 @@ def invoke_with_tools(
     provider is configured. Use for agents that handle raw DB rows, customer
     records, or internal business data.
     """
-    use_cloud = privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+    use_cloud = (
+        privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
+        and cloud_budget.should_allow_cloud()
+    )
     if use_cloud and USE_CLAUDE:
         return _invoke_claude_tools(messages, tools, system, max_tokens, temperature)
     if use_cloud and USE_BEDROCK:
@@ -129,6 +133,18 @@ def _invoke_claude_tools(
         if red_system:
             kwargs["system"] = red_system
         response = client.messages.create(**kwargs)
+
+        # Token usage for the budget brake.
+        try:
+            u = getattr(response, "usage", None)
+            if u:
+                cloud_budget.record_usage(
+                    None, "claude", CLAUDE_MODEL,
+                    int(getattr(u, "input_tokens", 0) or 0),
+                    int(getattr(u, "output_tokens", 0) or 0),
+                )
+        except Exception:
+            pass
 
         text_parts = []
         tool_calls = []

@@ -131,6 +131,12 @@ def run_agent(
         allowed = set(tool_whitelist)
         tools = [t for t in tools if t["name"] in allowed]
 
+    # Tag every cloud LLM call inside this turn with the active business so
+    # the cloud_budget tracker can enforce per-business daily caps and record
+    # spend against the right tenant.
+    from config import cloud_budget as _cb
+    _budget_token = _cb.set_active_business(business_id)
+
     # Compress long conversations before handing them to the LLM — keeps
     # context windows reasonable and costs down.
     compressed = prepare_messages_for_agent(messages)
@@ -287,6 +293,12 @@ def run_agent(
         # max_steps exhausted
         final_text = final_text or "I reached my step limit without finishing. Could you break this into smaller requests?"
         stop_reason = "max_steps"
+
+    # Always release the budget context, even on early break.
+    try:
+        _cb.reset_active_business(_budget_token)
+    except Exception:
+        pass
 
     return {
         "answer": final_text,

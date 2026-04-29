@@ -34,6 +34,7 @@ from typing import Any, Dict, Generator, List, Optional
 from loguru import logger
 
 from config import privacy
+from config import cloud_budget
 
 
 # Nova models emit chain-of-thought inside <thinking>...</thinking> by default.
@@ -241,6 +242,16 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     except Exception as e:
         logger.error(f"[Bedrock] invoke failed: {e}")
         raise
+    # Token usage for the budget brake.
+    try:
+        usage = resp.get("usage") or {}
+        cloud_budget.record_usage(
+            None, "bedrock", model,
+            int(usage.get("inputTokens", 0) or 0),
+            int(usage.get("outputTokens", 0) or 0),
+        )
+    except Exception:
+        pass
     msg = resp.get("output", {}).get("message", {})
     parts = [b.get("text", "") for b in msg.get("content", []) if "text" in b]
     return privacy.restore(_clean_model_text("\n".join(parts)), mapping)
@@ -354,6 +365,16 @@ def invoke_with_tools(
             "assistant_content": [{"type": "text", "text": f"LLM error: {e}"}],
         }
 
+    # Token usage for the budget brake.
+    try:
+        usage = resp.get("usage") or {}
+        cloud_budget.record_usage(
+            None, "bedrock", model,
+            int(usage.get("inputTokens", 0) or 0),
+            int(usage.get("outputTokens", 0) or 0),
+        )
+    except Exception:
+        pass
     return _from_bedrock_response(resp)
 
 
