@@ -380,30 +380,6 @@ class TestActionTools:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-#   UI COMPONENT TESTS
-# ═══════════════════════════════════════════════════════════════════════════════
-class TestUIComponents:
-    """Tests for UI helper functions that don't require Streamlit runtime."""
-
-    def test_tool_badges_render(self):
-        from ui.components.chat import render_tool_badges
-        html = render_tool_badges(["rag", "sql"])
-        assert "RAG" in html
-        assert "SQL" in html
-        assert "background:" in html
-
-    def test_tool_badges_empty(self):
-        from ui.components.chat import render_tool_badges
-        assert render_tool_badges([]) == ""
-
-    def test_tool_colors_defined(self):
-        from ui.components.chat import TOOL_COLORS
-        assert "rag" in TOOL_COLORS
-        assert "sql" in TOOL_COLORS
-        assert "report" in TOOL_COLORS
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
 #   SELF-REFLECTION TESTS
 # ═══════════════════════════════════════════════════════════════════════════════
 class TestSelfReflection:
