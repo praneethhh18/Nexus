@@ -18,7 +18,7 @@ import {
 import {
   getContact, updateContact, deleteContact,
   listInteractions, createInteraction, listDeals, draftOutreach,
-  scoreContactFit,
+  scoreContactFit, extractBant, updateDeal,
 } from '../services/crm';
 import { listInvoices } from '../services/invoices';
 import { createTask } from '../services/tasks';
@@ -66,6 +66,7 @@ export default function ContactDetail() {
   const [msg, setMsg] = useState('');
   const [draftModal, setDraftModal] = useState(null);  // { variants: [...], busy, error }
   const [scoring, setScoring] = useState(false);
+  const [bantModal, setBantModal] = useState(null);  // { busy, error, result, replyText }
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -173,6 +174,47 @@ export default function ContactDetail() {
     // alternative is to route through the agent's send_email tool, but
     // that requires SMTP config which not every workspace has.
     window.open(`mailto:${contact.email}`, '_blank');
+  };
+
+  // ── BANT extraction ─────────────────────────────────────────────────
+  const openBantModal = () =>
+    setBantModal({ replyText: '', busy: false, error: '', result: null });
+
+  const runBantExtract = async () => {
+    if (!bantModal?.replyText || bantModal.replyText.trim().length < 10) {
+      setBantModal((m) => ({ ...(m || {}), error: 'Paste the prospect\'s reply first.' }));
+      return;
+    }
+    setBantModal((m) => ({ ...m, busy: true, error: '', result: null }));
+    try {
+      const r = await extractBant(id, bantModal.replyText);
+      setBantModal((m) => ({ ...m, busy: false, error: '', result: r }));
+      // Reload contact so the BANT card surfaces in the related panel.
+      reload();
+    } catch (e) {
+      setBantModal((m) => ({ ...m, busy: false, error: e.message || 'Extraction failed.', result: null }));
+    }
+  };
+
+  const advanceDealStage = async (stage) => {
+    // The first open deal on this contact gets advanced. If they have
+    // multiple, we surface a friendly note pointing them to the deal page.
+    const target = openDeals[0];
+    if (!target) {
+      flash('No open deal on this contact yet — create one from the Actions panel.');
+      return;
+    }
+    if (openDeals.length > 1) {
+      flash(`Advanced "${target.name}" to ${stage}. (You have ${openDeals.length} open deals — use the Deal pages for the others.)`);
+    }
+    try {
+      await updateDeal(target.id, { stage });
+      flash(`Deal "${target.name}" → ${stage}.`);
+      setBantModal(null);
+      reload();
+    } catch (e) {
+      flash(`Stage advance failed: ${e.message || e}`);
+    }
   };
 
   // ── AI lead scoring ─────────────────────────────────────────────────
@@ -358,6 +400,34 @@ export default function ContactDetail() {
               </div>
             )}
           </div>
+
+          {/* Unified timeline — the conversation-stitch view. Combines
+              interactions + stage transitions (best-effort) + invoices into
+              one chronological feed. Below it, the structured per-type
+              panels still render so users can drill into a specific deal
+              or invoice without scrolling the whole timeline. */}
+          <TimelineFeed
+            interactions={interactions}
+            deals={deals}
+            invoices={invoices}
+          />
+
+          {/* BANT card — only when extracted */}
+          {contact.bant_signals && (() => {
+            try {
+              const b = typeof contact.bant_signals === 'string'
+                ? JSON.parse(contact.bant_signals) : contact.bant_signals;
+              if (!b || !b.budget) return null;
+              return (
+                <BantCard
+                  bant={b}
+                  extractedAt={contact.bant_extracted_at}
+                  hasOpenDeal={openDeals.length > 0}
+                  onAdvance={(stage) => advanceDealStage(stage)}
+                />
+              );
+            } catch { return null; }
+          })()}
 
           {/* AI fit reasoning — only when scored */}
           {contact.lead_score != null && contact.lead_score_reason && (
@@ -596,6 +666,12 @@ export default function ContactDetail() {
                 onClick={openDraftModal}
               />
               <ActionButton
+                icon={<Sparkles size={13} />}
+                label="Qualify their reply"
+                detail="Paste a reply → BANT signals"
+                onClick={openBantModal}
+              />
+              <ActionButton
                 icon={<Send size={13} />}
                 label="Send email"
                 detail={contact.email || 'No email on file'}
@@ -654,6 +730,19 @@ export default function ContactDetail() {
           onClose={() => setDraftModal(null)}
           onCopied={() => flash('Copied to clipboard.')}
           onSent={() => flash('Opened in your mail client.')}
+        />
+      )}
+
+      {/* BANT extraction modal */}
+      {bantModal && (
+        <BantModal
+          state={bantModal}
+          contact={contact}
+          openDealsCount={openDeals.length}
+          onChangeReply={(t) => setBantModal((m) => ({ ...m, replyText: t }))}
+          onRun={runBantExtract}
+          onClose={() => setBantModal(null)}
+          onAdvance={advanceDealStage}
         />
       )}
     </div>
@@ -864,6 +953,307 @@ function DraftOutreachModal({ state, contact, onRegenerate, onClose, onCopied, o
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+
+// ── Conversation-stitch timeline ────────────────────────────────────────────
+// Merge interactions + invoices + (currently just open) deals into a single
+// chronological feed. Each entry is icon + tinted left rail + title + summary
+// + when. Keeps the structured per-type panels below for drill-in.
+function TimelineFeed({ interactions = [], deals = [], invoices = [] }) {
+  const items = useMemo(() => {
+    const out = [];
+    for (const it of interactions || []) {
+      const when = it.occurred_at || it.created_at || '';
+      out.push({
+        kind: 'interaction', subkind: it.type || 'note',
+        when, title: it.subject || `(no subject)`,
+        body: it.summary || '',
+      });
+    }
+    for (const d of deals || []) {
+      out.push({
+        kind: 'deal', subkind: d.stage,
+        when: d.updated_at || d.created_at || '',
+        title: `Deal "${d.name}"`,
+        body: `Stage: ${d.stage}` + (d.value ? ` · $${Number(d.value).toLocaleString()}` : ''),
+      });
+    }
+    for (const inv of invoices || []) {
+      out.push({
+        kind: 'invoice', subkind: inv.status,
+        when: inv.issue_date || inv.created_at || '',
+        title: `Invoice ${inv.number}`,
+        body: `${inv.status} · ${inv.currency || 'USD'} ${Number(inv.total || 0).toLocaleString()}`,
+      });
+    }
+    out.sort((a, b) => (b.when || '').localeCompare(a.when || ''));
+    return out;
+  }, [interactions, deals, invoices]);
+
+  if (items.length === 0) {
+    return null;  // Don't show an empty timeline; the per-type panels handle "no data" copy.
+  }
+
+  const TYPE_TONE = {
+    interaction: 'var(--color-info)',
+    deal:        'var(--color-warn)',
+    invoice:     '#a78bfa',
+  };
+  const TYPE_LABEL = {
+    interaction: 'Interaction',
+    deal:        'Deal',
+    invoice:     'Invoice',
+  };
+
+  const formatWhenShort = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const now = new Date();
+      const sameDay = d.toDateString() === now.toDateString();
+      if (sameDay) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleDateString([], { month: 'short', day: 'numeric', year: d.getFullYear() === now.getFullYear() ? undefined : '2-digit' });
+    } catch { return iso.substring(0, 10); }
+  };
+
+  return (
+    <div className="panel">
+      <div className="section-h" style={{ margin: '0 0 10px' }}>
+        <h2>Timeline · {items.length}</h2>
+        <span className="meta">all touches with this contact, newest first</span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {items.slice(0, 25).map((it, i) => {
+          const tone = TYPE_TONE[it.kind] || 'var(--color-text-dim)';
+          return (
+            <div key={i} style={{
+              display: 'flex', gap: 12,
+              padding: '10px 4px',
+              borderBottom: i < Math.min(items.length, 25) - 1 ? '1px solid var(--color-border)' : 'none',
+            }}>
+              <div style={{
+                width: 6, alignSelf: 'stretch', borderRadius: 'var(--r-pill)',
+                background: `color-mix(in srgb, ${tone} 60%, transparent)`,
+                flexShrink: 0,
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+                    padding: '2px 7px', borderRadius: 'var(--r-pill)',
+                    background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+                    color: tone,
+                  }}>
+                    {TYPE_LABEL[it.kind]} · {it.subkind}
+                  </span>
+                  <span style={{ fontSize: 12.5, color: 'var(--color-text)', fontWeight: 500 }}>
+                    {it.title}
+                  </span>
+                  <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginLeft: 'auto', fontFeatureSettings: '"tnum"' }}>
+                    {formatWhenShort(it.when)}
+                  </span>
+                </div>
+                {it.body && (
+                  <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginTop: 3, lineHeight: 1.55 }}>
+                    {it.body.length > 200 ? `${it.body.substring(0, 200)}…` : it.body}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+        {items.length > 25 && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-dim)', padding: '8px 0 0', textAlign: 'center' }}>
+            + {items.length - 25} earlier touches
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+// ── BANT panel + modal ──────────────────────────────────────────────────────
+function BantCard({ bant, extractedAt, hasOpenDeal, onAdvance }) {
+  const dims = [
+    { key: 'budget',    label: 'Budget',    icon: '💰' },
+    { key: 'authority', label: 'Authority', icon: '👑' },
+    { key: 'need',      label: 'Need',      icon: '🎯' },
+    { key: 'timing',    label: 'Timing',    icon: '⏱' },
+  ];
+  const TONE = {
+    yes:     'var(--color-ok)',
+    no:      'var(--color-err)',
+    unknown: 'var(--color-text-dim)',
+  };
+  return (
+    <div className="panel" style={{
+      borderColor: 'color-mix(in srgb, var(--color-info) 22%, var(--color-border))',
+      background: 'color-mix(in srgb, var(--color-info) 4%, var(--color-surface-2))',
+    }}>
+      <div className="section-h" style={{ margin: '0 0 8px' }}>
+        <h2>BANT signals</h2>
+        <span className="meta">
+          confidence {bant.confidence ?? 0}%
+          {extractedAt && ` · ${new Date(extractedAt).toLocaleDateString()}`}
+        </span>
+      </div>
+      {bant.summary && (
+        <p style={{ fontSize: 12.5, color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.55 }}>
+          {bant.summary}
+        </p>
+      )}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+        {dims.map(({ key, label, icon }) => {
+          const v = bant[key] || { signal: 'unknown', evidence: '' };
+          const tone = TONE[v.signal] || TONE.unknown;
+          return (
+            <div key={key} style={{
+              padding: '8px 10px',
+              background: 'var(--color-surface-1)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+              display: 'flex', flexDirection: 'column', gap: 3,
+            }}>
+              <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 600 }}>
+                {icon} {label}
+              </div>
+              <div style={{
+                fontSize: 12, fontWeight: 600, color: tone, textTransform: 'capitalize',
+              }}>
+                {v.signal}
+              </div>
+              {v.evidence && v.evidence !== 'none' && (
+                <div style={{ fontSize: 10.5, color: 'var(--color-text-muted)', lineHeight: 1.5, fontStyle: 'italic' }}>
+                  "{v.evidence}"
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {bant.suggested_stage && hasOpenDeal && (
+        <div style={{
+          marginTop: 10, padding: '8px 10px',
+          background: 'var(--color-accent-soft)',
+          border: '1px solid color-mix(in srgb, var(--color-accent) 30%, transparent)',
+          borderRadius: 'var(--r-sm)',
+          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 12, color: 'var(--color-text)' }}>
+            Suggested next stage: <strong style={{ color: 'var(--color-accent)' }}>{bant.suggested_stage}</strong>
+          </span>
+          <button
+            className="btn-primary btn-sm"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => onAdvance(bant.suggested_stage)}
+          >
+            <Check size={11} /> Advance
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClose, onAdvance }) {
+  const r = state.result;
+  const fullName = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'this contact';
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 720,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={16} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              Qualify {fullName}'s reply
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              Paste their reply — AI extracts Budget · Authority · Need · Timing
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }} aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: 18, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {state.error && (
+            <div style={{
+              padding: '8px 10px',
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12, color: 'var(--color-err)',
+              display: 'flex', alignItems: 'flex-start', gap: 6,
+            }}>
+              <AlertCircle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{state.error}</span>
+            </div>
+          )}
+
+          <textarea
+            className="field-input"
+            rows={r ? 4 : 12}
+            value={state.replyText}
+            onChange={(e) => onChangeReply(e.target.value)}
+            placeholder="Paste their reply here. The fuller the better — full email or just the body, both work."
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55 }}
+          />
+
+          {r && (
+            <BantCard
+              bant={r}
+              extractedAt={null}
+              hasOpenDeal={openDealsCount > 0}
+              onAdvance={onAdvance}
+            />
+          )}
+        </div>
+
+        <div style={{
+          padding: '12px 18px', borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, justifyContent: 'flex-end',
+        }}>
+          <button className="btn-ghost" onClick={onClose}>Close</button>
+          <button className="btn-primary" onClick={onRun} disabled={state.busy}>
+            {state.busy
+              ? <><Loader2 size={12} className="animate-spin" /> Extracting…</>
+              : r ? 'Re-run' : <><Sparkles size={12} /> Extract BANT</>}
+          </button>
+        </div>
       </div>
     </div>
   );

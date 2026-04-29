@@ -286,6 +286,17 @@ export default function Dashboard() {
           <OnboardingChecklist />
         </div>
 
+        {/* Today's focus — first-look value strip */}
+        {!isEmptyBusiness && (
+          <TodaysFocus
+            pendingApprovals={notifs.filter(n => n.type === 'approval').length}
+            todayTasksCount={todayTasks.length}
+            overdueInvoiceCount={invoices?.outstanding?.count || 0}
+            overdueInvoiceTotal={invoices?.outstanding?.total || 0}
+            navigate={navigate}
+          />
+        )}
+
         {/* Morning briefing card — the daily-use moment */}
         {!isEmptyBusiness && (
           <div className="panel" style={{
@@ -678,6 +689,103 @@ export default function Dashboard() {
         </div>
       </div>
       )}
+    </div>
+  );
+}
+
+
+// ── Today's focus — first-look value strip ─────────────────────────────────
+// Renders only when there's actual focus to surface. Each tile self-hides
+// when its count is zero, so the strip never shows a sea of "0"s.
+function TodaysFocus({ pendingApprovals, todayTasksCount, overdueInvoiceCount, overdueInvoiceTotal, navigate }) {
+  const tiles = [];
+  if (pendingApprovals > 0) {
+    tiles.push({
+      key: 'approvals',
+      tone: 'var(--color-warn)',
+      label: 'Approvals waiting',
+      value: pendingApprovals,
+      sub: 'Review and decide before they expire.',
+      href: '/inbox',
+    });
+  }
+  if (todayTasksCount > 0) {
+    tiles.push({
+      key: 'tasks',
+      tone: 'var(--color-info)',
+      label: 'Tasks due today',
+      value: todayTasksCount,
+      sub: 'Knock these out before EOD.',
+      href: '/tasks',
+    });
+  }
+  if (overdueInvoiceCount > 0) {
+    tiles.push({
+      key: 'overdue',
+      tone: 'var(--color-err)',
+      label: 'Overdue invoices',
+      value: overdueInvoiceCount,
+      sub: overdueInvoiceTotal
+        ? `$${Number(overdueInvoiceTotal).toLocaleString()} outstanding`
+        : 'Kira can draft chasers.',
+      href: '/invoices',
+    });
+  }
+
+  if (tiles.length === 0) {
+    // The clean-desk state — show a brief reassurance instead of a blank.
+    return (
+      <div className="panel" style={{
+        marginBottom: 14, padding: 14,
+        background: 'color-mix(in srgb, var(--color-ok) 6%, var(--color-surface-2))',
+        borderColor: 'color-mix(in srgb, var(--color-ok) 22%, var(--color-border))',
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}>
+        <CheckSquare size={16} color="var(--color-ok)" />
+        <span style={{ fontSize: 13, color: 'var(--color-text)' }}>
+          Inbox clean, no overdue invoices, no tasks due today. Your team is doing the work.
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: `repeat(${tiles.length}, minmax(0, 1fr))`,
+      gap: 10, marginBottom: 14,
+    }}>
+      {tiles.map((t) => (
+        <button
+          key={t.key}
+          onClick={() => navigate(t.href)}
+          className="panel"
+          style={{
+            padding: 14, textAlign: 'left',
+            border: `1px solid color-mix(in srgb, ${t.tone} 26%, var(--color-border))`,
+            background: `linear-gradient(135deg, color-mix(in srgb, ${t.tone} 6%, var(--color-surface-2)), var(--color-surface-2))`,
+            color: 'var(--color-text)',
+            cursor: 'pointer',
+            display: 'flex', flexDirection: 'column', gap: 4,
+            transition: 'transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}
+        >
+          <div style={{
+            fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+            textTransform: 'uppercase', color: t.tone,
+          }}>
+            {t.label}
+          </div>
+          <div style={{ fontSize: 26, fontWeight: 700, lineHeight: 1.1, fontFeatureSettings: '"tnum"' }}>
+            {t.value}
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.45 }}>
+            {t.sub}
+          </div>
+        </button>
+      ))}
     </div>
   );
 }

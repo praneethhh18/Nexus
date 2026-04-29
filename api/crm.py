@@ -84,6 +84,11 @@ def _get_conn() -> sqlite3.Connection:
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN lead_score_reason TEXT DEFAULT ''")
     if "lead_scored_at" not in _contact_cols:
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN lead_scored_at TEXT")
+    # Additive: BANT extraction (budget/authority/need/timing) blob.
+    if "bant_signals" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN bant_signals TEXT DEFAULT ''")
+    if "bant_extracted_at" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN bant_extracted_at TEXT")
 
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {DEALS_TABLE} (

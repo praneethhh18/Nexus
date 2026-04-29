@@ -119,5 +119,14 @@ export const saveLeadFromEmail = (payload) =>
     body: JSON.stringify(payload),
   });
 
+// BANT extraction from a pasted prospect reply. Returns the structured
+// signals + an optional `suggested_stage` the user can advance the deal
+// to with one click. Privacy: prompt sees reply content → sensitive=True.
+export const extractBant = (contactId, reply_text) =>
+  req(`/contacts/${contactId}/extract-bant`, {
+    method: 'POST',
+    body: JSON.stringify({ reply_text }),
+  });
+
 export const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 export const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note'];
