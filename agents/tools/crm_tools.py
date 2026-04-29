@@ -1,10 +1,116 @@
 """CRM tools — contacts, companies, deals, interactions."""
 from __future__ import annotations
 
-from typing import Any, Dict
+import re
+from typing import Any, Dict, Optional
 
 from agents.tool_registry import register_tool
 from api import crm as _crm
+
+
+# ── Dedup helpers ───────────────────────────────────────────────────────────
+# Background: with conversation memory, an agent following multi-turn intent
+# ("add Rajesh" → "add his email") still sometimes calls create_contact a
+# second time with overlapping details, producing a duplicate. These helpers
+# search the CRM before creating so a near-match is updated instead.
+
+def _norm_email(s: Any) -> str:
+    return str(s or "").strip().lower()
+
+
+def _norm_phone(s: Any) -> str:
+    """Reduce a phone to digits-only for fuzzy matching across formats."""
+    return re.sub(r"\D", "", str(s or ""))
+
+
+def _norm_name(s: Any) -> str:
+    return re.sub(r"\s+", " ", str(s or "").strip()).lower()
+
+
+def _find_existing_contact(business_id: str, args: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Return an existing contact that matches `args`, or None.
+
+    Match precedence (strongest first):
+      1. Exact email (case-insensitive)
+      2. Exact phone (digits-only)
+      3. Exact (first_name + last_name) — case + whitespace-insensitive
+      4. First name only when last_name is missing on both sides
+
+    Reads via list_contacts with a `search` filter, so it's bounded by the
+    same 100-row cap and tenant scope as any other CRM read.
+    """
+    email = _norm_email(args.get("email"))
+    phone = _norm_phone(args.get("phone"))
+    first = _norm_name(args.get("first_name"))
+    last  = _norm_name(args.get("last_name"))
+
+    if email:
+        # Search by email substring; verify exact match locally.
+        for c in _crm.list_contacts(business_id, search=email, limit=20):
+            if _norm_email(c.get("email")) == email:
+                return c
+    if phone:
+        # `list_contacts` doesn't index phone; pull a wider set and filter.
+        # The search field doesn't search phone either, so do a no-search query.
+        for c in _crm.list_contacts(business_id, limit=200):
+            if _norm_phone(c.get("phone")) == phone:
+                return c
+    if first or last:
+        # `list_contacts` LIKE-searches first_name OR last_name OR email OR tags
+        # individually, so combining "first last" as one search string would
+        # never match any single column. Search by whichever name part we have,
+        # then verify the full match locally.
+        search_term = first or last
+        for c in _crm.list_contacts(business_id, search=search_term, limit=200):
+            cf = _norm_name(c.get("first_name"))
+            cl = _norm_name(c.get("last_name"))
+            if first and last:
+                if cf == first and cl == last:
+                    return c
+            elif first and not last:
+                # Only match a single-name candidate to avoid swallowing
+                # "Rajesh Kumar" when user typed "Rajesh".
+                if cf == first and not cl:
+                    return c
+            elif last and not first:
+                if cl == last and not cf:
+                    return c
+    return None
+
+
+def _find_existing_company(business_id: str, name: str) -> Optional[Dict[str, Any]]:
+    if not name:
+        return None
+    target = _norm_name(name)
+    if not target:
+        return None
+    # Strip whitespace before passing to LIKE — "%  Acme  %" won't match "Acme".
+    for c in _crm.list_companies(business_id, search=target, limit=200):
+        if _norm_name(c.get("name")) == target:
+            return c
+    return None
+
+
+def _merge_updates(existing: Dict[str, Any], incoming: Dict[str, Any], allowed: set) -> Dict[str, Any]:
+    """Return only fields where the incoming value would actually change the
+    record AND the existing field is empty or being explicitly updated.
+
+    Rule: if the existing record already has a non-empty value, we DON'T
+    overwrite from a create call — the caller has to use update_contact for
+    that. This protects against the "create with new details" pattern silently
+    rewriting authoritative data.
+    """
+    out: Dict[str, Any] = {}
+    for k, v in incoming.items():
+        if k not in allowed:
+            continue
+        if v is None or (isinstance(v, str) and not v.strip()):
+            continue
+        cur = existing.get(k)
+        cur_str = "" if cur is None else str(cur).strip()
+        if not cur_str:
+            out[k] = v
+    return out
 
 
 # ── Contacts ─────────────────────────────────────────────────────────────────
@@ -37,14 +143,34 @@ register_tool(
 
 
 def _create_contact(ctx, args):
-    return _crm.create_contact(ctx["business_id"], ctx["user_id"], args)
+    """Search-first create: avoid duplicates by detecting near-matches and
+    folding new fields into the existing record. Returns the contact dict
+    plus a `_dedup` marker so the LLM can phrase its reply correctly.
+    """
+    business_id = ctx["business_id"]
+    existing = _find_existing_contact(business_id, args)
+    if existing:
+        allowed = {"first_name", "last_name", "email", "phone", "title",
+                   "company_id", "notes", "tags"}
+        new_fields = _merge_updates(existing, args, allowed)
+        if new_fields:
+            updated = _crm.update_contact(business_id, existing["id"], new_fields)
+            return {**updated, "_dedup": "merged",
+                    "_dedup_msg": f"Found existing contact, updated {sorted(new_fields)}"}
+        return {**existing, "_dedup": "duplicate",
+                "_dedup_msg": "Contact already exists with these details — no new info to add."}
+    return _crm.create_contact(business_id, ctx["user_id"], args)
 
 
 register_tool(
     name="create_contact",
     description=(
         "Create a new contact in the CRM. Requires at least first_name or last_name. "
-        "Pass company_id if they're at a known company."
+        "Pass company_id if they're at a known company. "
+        "AUTOMATICALLY DEDUPLICATES: if a contact with matching email, phone, "
+        "or full name already exists, this updates the existing record with "
+        "any new fields instead of creating a duplicate. The reply will say "
+        "whether the contact was 'merged', 'duplicate', or freshly created."
     ),
     input_schema={
         "type": "object",
@@ -136,12 +262,29 @@ register_tool(
 
 
 def _create_company(ctx, args):
-    return _crm.create_company(ctx["business_id"], ctx["user_id"], args)
+    """Search-first create — same pattern as create_contact."""
+    business_id = ctx["business_id"]
+    existing = _find_existing_company(business_id, args.get("name", ""))
+    if existing:
+        allowed = {"name", "industry", "website", "size", "tags", "notes"}
+        new_fields = _merge_updates(existing, args, allowed)
+        if new_fields:
+            updated = _crm.update_company(business_id, existing["id"], new_fields)
+            return {**updated, "_dedup": "merged",
+                    "_dedup_msg": f"Found existing company, updated {sorted(new_fields)}"}
+        return {**existing, "_dedup": "duplicate",
+                "_dedup_msg": "Company already exists with these details."}
+    return _crm.create_company(business_id, ctx["user_id"], args)
 
 
 register_tool(
     name="create_company",
-    description="Create a company record. Name is required.",
+    description=(
+        "Create a company record. Name is required. "
+        "AUTOMATICALLY DEDUPLICATES: if a company with the same name "
+        "already exists, this updates the existing record instead. "
+        "The reply will say 'merged', 'duplicate', or freshly created."
+    ),
     input_schema={
         "type": "object",
         "properties": {
