@@ -214,7 +214,7 @@ numba==0.63.1
 numpy==2.3.5
 oauthlib==3.3.1
 ollama==0.6.1
-onnxruntime==1.24.4
+onnxruntime==1.25.1
 openai==2.15.0
 openai-whisper==20250625
 openpyxl==3.1.5
