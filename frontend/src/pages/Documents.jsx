@@ -1,6 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { FileText, Download, Trash2, Plus, X, FileType2, Sparkles } from 'lucide-react';
-import { listDocTemplates, listDocuments, generateDocument, deleteDocument, downloadDocument } from '../services/documents';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { FileText, Download, Trash2, Plus, X, FileType2, Sparkles, Upload, Loader2, Copy, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  listDocTemplates, listDocuments, generateDocument, deleteDocument, downloadDocument,
+  extractDocFromText, extractDocFromUpload,
+} from '../services/documents';
 import EmptyState from '../components/EmptyState';
 
 function Modal({ title, onClose, children }) {
@@ -232,6 +235,9 @@ export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [modal, setModal] = useState(null);
   const [msg, setMsg] = useState('');
+  // Extract modal state — null when closed.
+  // { mode: 'choose' | 'pasting', text, fileName, busy, error, result }
+  const [extractModal, setExtractModal] = useState(null);
 
   const reload = useCallback(async () => {
     try {
@@ -267,11 +273,50 @@ export default function Documents() {
     catch (e) { flash(`Failed: ${e.message}`); }
   };
 
+  // ── AI document intake handlers ────────────────────────────────────────
+  const openExtractModal = () => {
+    setExtractModal({ mode: 'choose', text: '', fileName: '', busy: false, error: '', result: null });
+  };
+
+  const runExtractFromUpload = async (file) => {
+    if (!file) return;
+    setExtractModal((m) => ({ ...m, mode: 'choose', fileName: file.name, busy: true, error: '', result: null }));
+    try {
+      const r = await extractDocFromUpload(file);
+      setExtractModal((m) => ({ ...m, busy: false, result: r }));
+    } catch (e) {
+      setExtractModal((m) => ({ ...m, busy: false, error: e.message || 'Extraction failed.' }));
+    }
+  };
+
+  const runExtractFromText = async () => {
+    if (!extractModal || extractModal.text.trim().length < 30) {
+      setExtractModal((m) => ({ ...(m || {}), error: 'Paste at least 30 characters of document text.' }));
+      return;
+    }
+    setExtractModal((m) => ({ ...m, busy: true, error: '', result: null }));
+    try {
+      const r = await extractDocFromText(extractModal.text);
+      setExtractModal((m) => ({ ...m, busy: false, result: r }));
+    } catch (e) {
+      setExtractModal((m) => ({ ...m, busy: false, error: e.message || 'Extraction failed.' }));
+    }
+  };
+
+  const resetExtract = () => {
+    setExtractModal({ mode: 'choose', text: '', fileName: '', busy: false, error: '', result: null });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div className="page-header">
-        <h1>Documents</h1>
-        <p>Generate proposals, SOWs, contracts, and offer letters from templates</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <h1>Documents</h1>
+          <p>Generate from templates — or extract structured fields from a PDF / pasted text</p>
+        </div>
+        <button className="btn-primary" onClick={openExtractModal} title="Drop a PDF or paste text — AI extracts fields">
+          <Sparkles size={13} /> Extract from PDF
+        </button>
       </div>
 
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
@@ -343,6 +388,362 @@ export default function Documents() {
           <GenerateForm template={modal.template} onSubmit={handleGenerate} onCancel={() => setModal(null)} />
         </Modal>
       )}
+
+      {extractModal && (
+        <ExtractModal
+          state={extractModal}
+          onChangeText={(t) => setExtractModal((m) => ({ ...m, text: t, error: '' }))}
+          onUpload={runExtractFromUpload}
+          onRunText={runExtractFromText}
+          onReset={resetExtract}
+          onClose={() => setExtractModal(null)}
+          onCopied={() => flash('Copied to clipboard.')}
+        />
+      )}
+    </div>
+  );
+}
+
+
+// ── AI document intake modal ───────────────────────────────────────────────
+// Two paths in one modal: drag-and-drop / pick a PDF, or paste text. Both
+// route to the same backend, which returns a structured extraction. Result
+// view groups fields by kind (parties, dates, amounts, line items, key terms)
+// and offers per-row Copy buttons since v1's main use is "save me from
+// re-typing this into another tool."
+function ExtractModal({ state, onChangeText, onUpload, onRunText, onReset, onClose, onCopied }) {
+  const fileInputRef = useRef(null);
+  const dropRef = useRef(null);
+  const [dragOver, setDragOver] = useState(false);
+  const result = state.result;
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file) onUpload(file);
+  };
+
+  const copy = async (text) => {
+    try { await navigator.clipboard.writeText(text); onCopied?.(); } catch { /* clipboard unavailable */ }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 780,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              Extract fields from document
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              Invoices, contracts, POs, receipts — runs locally on Ollama
+            </div>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }} aria-label="Close">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: 18, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {state.error && (
+            <div style={{
+              padding: 10,
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12, color: 'var(--color-err)',
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+            }}>
+              <AlertCircle size={14} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{state.error}</span>
+            </div>
+          )}
+
+          {!result && (
+            <>
+              {/* Drop zone */}
+              <div
+                ref={dropRef}
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+                onClick={() => !state.busy && fileInputRef.current?.click()}
+                style={{
+                  padding: 24, textAlign: 'center', cursor: state.busy ? 'wait' : 'pointer',
+                  background: dragOver ? 'var(--color-accent-soft)' : 'var(--color-surface-1)',
+                  border: `2px dashed ${dragOver ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                  borderRadius: 'var(--r-md)',
+                  transition: 'background 0.12s, border-color 0.12s',
+                }}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf,text/plain"
+                  style={{ display: 'none' }}
+                  onChange={(e) => e.target.files?.[0] && onUpload(e.target.files[0])}
+                />
+                <Upload size={22} color="var(--color-text-dim)" style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 500 }}>
+                  {state.busy
+                    ? <><Loader2 size={13} className="animate-spin" /> {state.fileName ? `Extracting from ${state.fileName}…` : 'Extracting…'}</>
+                    : 'Drop a PDF here or click to choose a file'}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 4 }}>
+                  PDF or .txt · max 25 MB · scanned PDFs need OCR — paste the text instead
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--color-text-dim)', fontSize: 11 }}>
+                <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+                <span>OR PASTE TEXT</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--color-border)' }} />
+              </div>
+
+              <textarea
+                className="field-input"
+                rows={8}
+                value={state.text}
+                onChange={(e) => onChangeText(e.target.value)}
+                placeholder="Paste the document text here. Useful when the source isn't a PDF (email body, screenshot OCR'd elsewhere, copy-pasted statement)."
+                style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55 }}
+                disabled={state.busy}
+              />
+            </>
+          )}
+
+          {result && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                padding: '8px 12px',
+                background: 'var(--color-surface-1)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--r-sm)',
+              }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase',
+                  padding: '2px 8px', borderRadius: 'var(--r-pill)',
+                  background: 'var(--color-accent-soft)',
+                  color: 'var(--color-accent)',
+                }}>
+                  {result.doc_type.replace('_', ' ')}
+                </span>
+                <span style={{ fontSize: 12.5, color: 'var(--color-text)', flex: 1, minWidth: 0 }}>
+                  {result.summary || <em style={{ color: 'var(--color-text-dim)' }}>(no summary)</em>}
+                </span>
+                {result.truncated && (
+                  <span title={`Source was ${result.source_chars.toLocaleString()} chars — clipped to fit the model context`} style={{ fontSize: 10.5, color: 'var(--color-warn)' }}>
+                    Truncated input
+                  </span>
+                )}
+              </div>
+
+              <FieldGroup title="Parties" empty="No parties identified">
+                {result.parties.map((p, i) => (
+                  <ChipRow key={i} label={p} onCopy={() => copy(p)} />
+                ))}
+              </FieldGroup>
+
+              <FieldGroup title="Dates" empty="No dates identified">
+                {result.dates.map((d, i) => (
+                  <KVRow key={i} k={d.label} v={d.value} onCopy={() => copy(d.value)} />
+                ))}
+              </FieldGroup>
+
+              <FieldGroup title="Amounts" empty="No amounts identified">
+                {result.amounts.map((a, i) => (
+                  <KVRow
+                    key={i}
+                    k={a.label}
+                    v={[a.value, a.currency].filter(Boolean).join(' ')}
+                    onCopy={() => copy(a.value)}
+                  />
+                ))}
+              </FieldGroup>
+
+              {result.line_items.length > 0 && (
+                <FieldGroup title={`Line items · ${result.line_items.length}`}>
+                  <div style={{
+                    border: '1px solid var(--color-border)',
+                    borderRadius: 'var(--r-sm)',
+                    overflow: 'hidden',
+                  }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--color-surface-1)', textAlign: 'left' }}>
+                          <th style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--color-text-muted)' }}>Description</th>
+                          <th style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--color-text-muted)', width: 70 }}>Qty</th>
+                          <th style={{ padding: '6px 10px', fontWeight: 600, color: 'var(--color-text-muted)', width: 100 }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {result.line_items.map((li, i) => (
+                          <tr key={i} style={{ borderTop: '1px solid var(--color-border)' }}>
+                            <td style={{ padding: '6px 10px' }}>{li.description}</td>
+                            <td style={{ padding: '6px 10px', color: 'var(--color-text-muted)' }}>{li.quantity || '—'}</td>
+                            <td style={{ padding: '6px 10px', color: 'var(--color-text)', fontFeatureSettings: '"tnum"' }}>{li.amount || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </FieldGroup>
+              )}
+
+              {result.key_terms.length > 0 && (
+                <FieldGroup title="Key terms">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {result.key_terms.map((t, i) => (
+                      <span key={i} style={{
+                        fontSize: 11, padding: '3px 9px', borderRadius: 'var(--r-pill)',
+                        background: 'var(--color-surface-1)', border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-muted)',
+                      }}>{t}</span>
+                    ))}
+                  </div>
+                </FieldGroup>
+              )}
+
+              {result.parties.length === 0 && result.dates.length === 0 &&
+               result.amounts.length === 0 && result.line_items.length === 0 &&
+               result.key_terms.length === 0 && (
+                <div style={{
+                  padding: 14, textAlign: 'center',
+                  background: 'var(--color-surface-1)',
+                  border: '1px solid var(--color-border)',
+                  borderRadius: 'var(--r-sm)',
+                  fontSize: 12.5, color: 'var(--color-text-muted)',
+                }}>
+                  Couldn't pull any structured fields out of that. The document might be too short, image-only, or in a format the model didn't recognise.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          padding: '12px 18px', borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap',
+        }}>
+          <button className="btn-ghost" onClick={onClose}>Close</button>
+          {result ? (
+            <button className="btn-ghost" onClick={onReset}>
+              <RefreshCw size={11} /> Extract another
+            </button>
+          ) : (
+            <button className="btn-primary" onClick={onRunText} disabled={state.busy || !state.text.trim()}>
+              {state.busy
+                ? <><Loader2 size={12} className="animate-spin" /> Extracting…</>
+                : <><Sparkles size={12} /> Extract from text</>}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function FieldGroup({ title, empty, children }) {
+  const arr = Array.isArray(children) ? children : (children ? [children] : []);
+  const isEmpty = arr.length === 0;
+  if (isEmpty && !empty) return null;
+  return (
+    <div>
+      <div style={{
+        fontSize: 11, color: 'var(--color-text-dim)', fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6,
+      }}>
+        {title}
+      </div>
+      {isEmpty ? (
+        <div style={{ fontSize: 12, color: 'var(--color-text-dim)', fontStyle: 'italic' }}>{empty}</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{children}</div>
+      )}
+    </div>
+  );
+}
+
+
+function KVRow({ k, v, onCopy }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '5px 10px',
+      background: 'var(--color-surface-1)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--r-sm)',
+    }}>
+      <span style={{ fontSize: 11, color: 'var(--color-text-dim)', minWidth: 110, textTransform: 'capitalize' }}>
+        {(k || '').replace(/_/g, ' ')}
+      </span>
+      <span style={{ fontSize: 12.5, color: 'var(--color-text)', flex: 1, minWidth: 0, fontFeatureSettings: '"tnum"' }}>
+        {v}
+      </span>
+      <button
+        onClick={onCopy}
+        className="btn-ghost btn-sm"
+        style={{ padding: '2px 6px' }}
+        title="Copy value"
+      >
+        <Copy size={11} />
+      </button>
+    </div>
+  );
+}
+
+
+function ChipRow({ label, onCopy }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 10,
+      padding: '5px 10px',
+      background: 'var(--color-surface-1)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--r-sm)',
+    }}>
+      <span style={{ fontSize: 12.5, color: 'var(--color-text)', flex: 1, minWidth: 0 }}>
+        {label}
+      </span>
+      <button
+        onClick={onCopy}
+        className="btn-ghost btn-sm"
+        style={{ padding: '2px 6px' }}
+        title="Copy"
+      >
+        <Copy size={11} />
+      </button>
     </div>
   );
 }
