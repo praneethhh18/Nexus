@@ -1,99 +1,47 @@
-# Dependabot — automated security + minor-version PRs.
+# Dependabot — security-only mode.
 #
-# Cadence: weekly. Bigger ecosystems (pip, frontend npm) get higher PR
-# caps; the small ones a single open PR at a time. PRs are batched per
-# ecosystem so the review burden stays bounded.
+# Routine version bumps (lucide-react 1.11→1.14, etc.) are intentionally
+# disabled by setting `open-pull-requests-limit: 0` on every ecosystem.
+# That stops the weekly noise while we're solo + pre-launch.
+#
+# What still happens automatically:
+#   - **Security updates**: when GitHub's vulnerability DB flags one of our
+#     deps with a known CVE, Dependabot opens a PR. These are handled by the
+#     repo's "Dependabot security updates" toggle (Settings → Code security),
+#     NOT by this file. They ignore the limit-0 setting.
+#
+# When the project starts having paying customers OR a teammate joins, flip
+# `open-pull-requests-limit` back to 5 (or whatever) per ecosystem to resume
+# routine hygiene.
 
 version: 2
 updates:
-  # Python backend
   - package-ecosystem: pip
     directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-      time: "07:00"
-      timezone: "Asia/Kolkata"
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "python"]
-    commit-message:
-      prefix: "deps(py)"
-    # Don't auto-bump these — they'd need code changes:
-    # - langchain (frequent breaking changes)
-    # - chromadb (storage format compatibility)
-    ignore:
-      - dependency-name: "langchain"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "langchain-*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "chromadb"
-        update-types: ["version-update:semver-major"]
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0   # security-only; routine bumps disabled
 
-  # React frontend
   - package-ecosystem: npm
     directory: "/frontend"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "frontend"]
-    commit-message:
-      prefix: "deps(frontend)"
-    ignore:
-      # React 19 → 20 will need a manual review pass
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major"]
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
 
-  # Marketing site
   - package-ecosystem: npm
     directory: "/landing"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-    labels: ["dependencies", "landing"]
-    commit-message:
-      prefix: "deps(landing)"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
 
-  # WhatsApp bridge — Baileys is a moving target, only patch updates auto.
   - package-ecosystem: npm
     directory: "/whatsapp_bridge"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-    labels: ["dependencies", "whatsapp"]
-    commit-message:
-      prefix: "deps(bridge)"
-    ignore:
-      - dependency-name: "@whiskeysockets/baileys"
-        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
 
-  # Electron desktop wrapper
   - package-ecosystem: npm
     directory: "/desktop"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 3
-    labels: ["dependencies", "desktop"]
-    commit-message:
-      prefix: "deps(desktop)"
-    ignore:
-      # Electron major bumps require security + IPC re-review.
-      - dependency-name: "electron"
-        update-types: ["version-update:semver-major"]
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
 
-  # CI workflows themselves — actions/* getting bumped is the most
-  # important security feed for the pipeline.
   - package-ecosystem: github-actions
     directory: "/"
-    schedule:
-      interval: weekly
-      day: monday
-    open-pull-requests-limit: 5
-    labels: ["dependencies", "ci"]
-    commit-message:
-      prefix: "deps(actions)"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
