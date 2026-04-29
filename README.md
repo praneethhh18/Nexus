@@ -439,4 +439,18 @@ MIT License — free to use, modify, and distribute.
 
 ---
 
+## Documentation
+
+Long-form docs live in [`docs/`](./docs/):
+
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — engineer-facing architecture & contributor guide
+- **[docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)** — install, configure, deploy
+- **[docs/DEMO_PLAYBOOK.md](./docs/DEMO_PLAYBOOK.md)** — guided demo scripts
+- **[docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md)** — how to verify features
+- **[docs/CHANGELOG.md](./docs/CHANGELOG.md)** — version history
+- **[docs/CONTRIBUTING.md](./docs/CONTRIBUTING.md)** — contribution rules
+- **[docs/README.md](./docs/README.md)** — full docs index
+
+---
+
 *NexusAgent v2.0 — 100% local, zero API cost, production-grade AI business automation.*

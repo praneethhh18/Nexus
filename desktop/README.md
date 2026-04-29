@@ -105,4 +105,4 @@ through `window.nexus.notify({ title, body })`.
   feed URL before enabling.
 - **Code signing** — documented above; needs paid certificates.
 
-These are tracked in the Phase 5 block of `NEXUSAGENT_COMPLETE_ROADMAP.md`.
+These are tracked in the Phase 5 block of `docs/NEXUSAGENT_COMPLETE_ROADMAP.md`.

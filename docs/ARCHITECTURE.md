@@ -2,8 +2,8 @@
 
 This document is for engineers who will read, extend, or audit the codebase.
 For end-user docs, see [`README.md`](../README.md). For change history, see
-[`CHANGELOG.md`](../CHANGELOG.md). For contribution rules, see
-[`CONTRIBUTING.md`](../CONTRIBUTING.md).
+[`CHANGELOG.md`](./CHANGELOG.md). For contribution rules, see
+[`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
 ---
 

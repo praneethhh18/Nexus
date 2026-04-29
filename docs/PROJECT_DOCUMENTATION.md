@@ -1,9 +1,9 @@
 # Project Documentation has moved
 
 The architecture & contributor guide now lives at
-[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md).
+[`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
-For end-user docs, see [`README.md`](./README.md).
+For end-user docs, see [`README.md`](../README.md).
 For change history, see [`CHANGELOG.md`](./CHANGELOG.md).
 For contribution rules, see [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
