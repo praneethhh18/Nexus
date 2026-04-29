@@ -136,5 +136,19 @@ export const draftReply = (contactId, incoming_text) =>
     body: JSON.stringify({ incoming_text }),
   });
 
+// Forge — AI prospecting brainstorm. Takes a brief, returns 8-12 candidate
+// companies tagged with confidence + a verify-hint per candidate. The user
+// reviews and accepts the ones worth adding to the CRM.
+export const forgeBrainstorm = (brief) =>
+  req('/leads/forge-brainstorm', {
+    method: 'POST',
+    body: JSON.stringify({ brief }),
+  });
+export const forgeAccept = (candidates, brief = null) =>
+  req('/leads/forge-accept', {
+    method: 'POST',
+    body: JSON.stringify({ candidates, brief }),
+  });
+
 export const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 export const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note'];

@@ -345,6 +345,7 @@ from api.routers import (
     email_paste        as _r_email_paste,
     bant               as _r_bant,
     crm_reply          as _r_crm_reply,
+    forge              as _r_forge,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -355,7 +356,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_email_triage, _r_research, _r_activity, _r_seed,
            _r_calendar, _r_database, _r_analytics, _r_team, _r_whatsapp,
            _r_workflows, _r_voice, _r_settings, _r_search, _r_backup, _r_intake,
-           _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply):
+           _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply, _r_forge):
     app.include_router(_r.router)
 
 

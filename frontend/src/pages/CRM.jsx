@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listIntakeKeys, createIntakeKey, revokeIntakeKey } from '../services/tags';
-import { extractEmail, saveLeadFromEmail } from '../services/crm';
+import { extractEmail, saveLeadFromEmail, forgeBrainstorm, forgeAccept } from '../services/crm';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import {
@@ -642,6 +642,7 @@ export default function CRM() {
 //      website form, 50% from email forwards, 20% from referrals."
 function LeadsTab({ contacts, navigate, flash }) {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [forgeOpen, setForgeOpen] = useState(false);
   // ── Filter + sort state ─────────────────────────────────────────────
   const [search, setSearch] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');         // '' = all
@@ -744,13 +745,22 @@ function LeadsTab({ contacts, navigate, flash }) {
       <div className="panel">
         <div className="section-h" style={{ margin: '0 0 10px', flexWrap: 'wrap', gap: 8 }}>
           <h2>Recent inbound · {recent.length}{inboundAll.length !== recent.length ? ` of ${inboundAll.length}` : ''}</h2>
-          <button
-            className="btn-primary btn-sm"
-            onClick={() => setEmailModalOpen(true)}
-            title="Paste a forwarded email — AI extracts the sender and creates a scored lead"
-          >
-            <Mail size={11} /> Capture from email
-          </button>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            <button
+              className="btn-primary btn-sm"
+              onClick={() => setEmailModalOpen(true)}
+              title="Paste a forwarded email — AI extracts the sender and creates a scored lead"
+            >
+              <Mail size={11} /> Capture from email
+            </button>
+            <button
+              className="btn-ghost btn-sm"
+              onClick={() => setForgeOpen(true)}
+              title="AI brainstorms candidate companies for a prospecting brief"
+            >
+              <Sparkles size={11} /> AI prospect
+            </button>
+          </div>
         </div>
 
         {/* Filter + sort bar — only when there's enough data to make filtering useful */}
@@ -901,6 +911,17 @@ function LeadsTab({ contacts, navigate, flash }) {
           onSaved={(contactId) => {
             setEmailModalOpen(false);
             navigate(`/crm/contacts/${contactId}`);
+          }}
+          flash={flash}
+        />
+      )}
+
+      {forgeOpen && (
+        <ForgeModal
+          onClose={() => setForgeOpen(false)}
+          onSaved={(count) => {
+            setForgeOpen(false);
+            flash?.(`${count} candidate${count === 1 ? '' : 's'} added — verify each in the Leads tab.`);
           }}
           flash={flash}
         />
@@ -1133,6 +1154,299 @@ function CaptureFromEmailModal({ onClose, onSaved, flash }) {
         </div>
       </div>
     </div>
+  );
+}
+
+
+// ── Forge AI prospecting modal ──────────────────────────────────────────────
+// Three-step flow:
+//   1. Brief → user describes the target profile in plain English.
+//   2. Brainstorm → AI proposes 8-12 candidate companies, each with a
+//      verify-hint and a confidence number. Honestly labelled as
+//      suggestions to verify, NOT as confirmed leads.
+//   3. Select → user toggles which candidates to keep, hits Save → those
+//      become real contacts in CRM tagged source='ai_outbound'.
+function ForgeModal({ onClose, onSaved, flash }) {
+  const [step, setStep] = useState('brief');         // 'brief' | 'pick'
+  const [brief, setBrief] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [candidates, setCandidates] = useState([]);
+  const [icpUsed, setIcpUsed] = useState(false);
+  const [selected, setSelected] = useState({});      // index → bool
+
+  const handleBrainstorm = async () => {
+    if (brief.trim().length < 10) {
+      setError('Describe the target profile in at least one sentence.');
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const r = await forgeBrainstorm(brief);
+      setCandidates(r.candidates || []);
+      setIcpUsed(!!r.icp_used);
+      // Pre-select high-confidence ones (≥ 70) so the default action is sensible.
+      const initial = {};
+      (r.candidates || []).forEach((c, i) => { if ((c.confidence ?? 0) >= 70) initial[i] = true; });
+      setSelected(initial);
+      setStep('pick');
+      if ((r.candidates || []).length === 0) {
+        setError('The model came back empty. Try a more specific brief.');
+      }
+    } catch (e) {
+      setError(e.message || 'Brainstorm failed.');
+    }
+    setBusy(false);
+  };
+
+  const handleSave = async () => {
+    const toSave = candidates.filter((_, i) => selected[i]);
+    if (toSave.length === 0) {
+      setError('Pick at least one candidate to save.');
+      return;
+    }
+    setBusy(true); setError('');
+    try {
+      const r = await forgeAccept(toSave, brief);
+      const created = r.created?.length || 0;
+      if ((r.skipped?.length || 0) > 0) {
+        flash?.(`${created} added · ${r.skipped.length} skipped (already in CRM).`);
+      }
+      onSaved?.(created);
+    } catch (e) {
+      setError(e.message || 'Save failed.');
+    }
+    setBusy(false);
+  };
+
+  const totalSelected = Object.values(selected).filter(Boolean).length;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 760,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Sparkles size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              AI prospecting · Forge
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              {step === 'brief'
+                ? 'Describe who you want to reach — AI brainstorms candidate companies'
+                : 'Review the suggestions, verify them, save the keepers'}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        <div style={{ padding: 18, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {error && (
+            <div style={{
+              padding: '8px 10px',
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-sm)',
+              fontSize: 12, color: 'var(--color-err)',
+              display: 'flex', alignItems: 'flex-start', gap: 6,
+            }}>
+              <AlertCircle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {step === 'brief' && (
+            <>
+              <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
+                Forge suggests candidate companies that <em>might</em> match your brief. These
+                are <strong>AI suggestions, not verified leads</strong> — each comes with a Google
+                query you can run to confirm. Save the ones that check out, ignore the rest.
+              </div>
+              <textarea
+                className="field-input"
+                rows={6}
+                value={brief}
+                onChange={(e) => setBrief(e.target.value)}
+                placeholder={"e.g. D2C brands in Bangalore with 20-100 staff that raised funding in the last 18 months — focus on health & wellness niches."}
+                style={{ fontSize: 12.5, lineHeight: 1.55 }}
+              />
+              {!icpUsed && (
+                <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+                  Tip: set an Ideal Customer Profile in Settings — Forge will use it
+                  alongside this brief to sharpen the suggestions.
+                </div>
+              )}
+            </>
+          )}
+
+          {step === 'pick' && (
+            <>
+              <div style={{
+                padding: '8px 10px',
+                background: 'color-mix(in srgb, var(--color-warn) 10%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-warn) 28%, transparent)',
+                borderRadius: 'var(--r-sm)',
+                fontSize: 11.5, color: 'var(--color-warn)',
+                display: 'flex', alignItems: 'flex-start', gap: 6,
+              }}>
+                <AlertCircle size={13} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>
+                  These are AI suggestions. Run the verify-hint Google search per row to
+                  confirm before reaching out. Saved candidates appear in your CRM tagged
+                  <code style={{ marginLeft: 4 }}>source: ai_outbound</code>.
+                </span>
+              </div>
+
+              {candidates.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: 30, color: 'var(--color-text-dim)', fontSize: 12.5 }}>
+                  The model didn't return any candidates. Try a more specific brief.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {candidates.map((c, i) => (
+                    <CandidateCard
+                      key={i}
+                      candidate={c}
+                      checked={!!selected[i]}
+                      onToggle={() => setSelected((s) => ({ ...s, [i]: !s[i] }))}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        <div style={{
+          padding: '12px 18px', borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap',
+        }}>
+          {step === 'pick' && (
+            <button className="btn-ghost btn-sm" onClick={() => { setStep('brief'); setError(''); }}>
+              ← Edit brief
+            </button>
+          )}
+          <button className="btn-ghost" onClick={onClose}>Cancel</button>
+          {step === 'brief' ? (
+            <button className="btn-primary" onClick={handleBrainstorm} disabled={busy}>
+              {busy
+                ? <><Loader2 size={12} className="animate-spin" /> Brainstorming…</>
+                : <><Sparkles size={12} /> Brainstorm</>}
+            </button>
+          ) : (
+            <button className="btn-primary" onClick={handleSave} disabled={busy || totalSelected === 0}>
+              {busy
+                ? <><Loader2 size={12} className="animate-spin" /> Saving…</>
+                : `Save ${totalSelected || ''} to CRM`}
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function CandidateCard({ candidate: c, checked, onToggle }) {
+  const conf = c.confidence ?? 0;
+  const tone = conf >= 70 ? 'var(--color-ok)' : conf >= 40 ? 'var(--color-info)' : 'var(--color-text-dim)';
+  return (
+    <label style={{
+      display: 'flex', gap: 10, alignItems: 'flex-start',
+      padding: 10,
+      background: checked ? 'color-mix(in srgb, var(--color-accent) 8%, var(--color-surface-1))' : 'var(--color-surface-1)',
+      border: `1px solid ${checked ? 'color-mix(in srgb, var(--color-accent) 32%, transparent)' : 'var(--color-border)'}`,
+      borderRadius: 'var(--r-md)',
+      cursor: 'pointer',
+      transition: 'border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out)',
+    }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onToggle}
+        style={{ marginTop: 3, accentColor: 'var(--color-accent)', cursor: 'pointer' }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+            {c.company_name}
+          </span>
+          {c.industry && (
+            <span className="pill-base pill-muted">{c.industry}</span>
+          )}
+          {c.size_band && c.size_band !== 'unknown' && (
+            <span className="pill-base pill-muted">{c.size_band}</span>
+          )}
+          <span
+            className="pill-base"
+            style={{
+              marginLeft: 'auto',
+              background: `color-mix(in srgb, ${tone} 14%, transparent)`,
+              color: tone,
+              border: `1px solid color-mix(in srgb, ${tone} 28%, transparent)`,
+              fontFeatureSettings: '"tnum"',
+            }}
+            title="AI confidence (lower = verify harder)"
+          >
+            {conf}%
+          </span>
+        </div>
+        {c.why_it_fits && (
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.55 }}>
+            {c.why_it_fits}
+          </div>
+        )}
+        {c.suggested_contact_role && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 4 }}>
+            Likely contact: <strong style={{ color: 'var(--color-text)' }}>{c.suggested_contact_role}</strong>
+          </div>
+        )}
+        {c.verify_hint && (
+          <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: 4, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+            Verify with: <a
+              href={`https://www.google.com/search?q=${encodeURIComponent(c.verify_hint)}`}
+              target="_blank" rel="noreferrer"
+              style={{ color: 'var(--color-accent)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {c.verify_hint}
+            </a>
+          </div>
+        )}
+      </div>
+    </label>
   );
 }
 
