@@ -13,7 +13,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Mail, Phone, Building2, Briefcase, Calendar, MessageSquare,
   Edit3, Trash2, Plus, Receipt, CheckSquare, Send, AlertCircle, Loader2,
-  Sparkles, Copy, RefreshCw, X,
+  Sparkles, Copy, RefreshCw, X, Check, Clock, ShieldAlert,
 } from 'lucide-react';
 import {
   getContact, updateContact, deleteContact,
@@ -68,6 +68,7 @@ export default function ContactDetail() {
   const [scoring, setScoring] = useState(false);
   const [bantModal, setBantModal] = useState(null);  // { busy, error, result, replyText }
   const [replyModal, setReplyModal] = useState(null);  // { busy, error, draft, incoming }
+  const [verifyEdit, setVerifyEdit] = useState(null);  // { first_name, last_name, email, busy, error }
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -114,6 +115,63 @@ export default function ContactDetail() {
       .reduce((s, d) => s + (Number(d.value) || 0), 0),
     [deals],
   );
+
+  // ── Follow-up nudge: contact has interaction history, last touch is
+  // 7+ days old, and the relationship is still "live" (no deals yet OR at
+  // least one open deal — skip when everything's already won/lost).
+  const followUp = useMemo(() => {
+    if (!interactions || interactions.length === 0) return null;
+    const last = interactions[0];  // listInteractions returns newest-first
+    const ts = last?.occurred_at || last?.created_at;
+    if (!ts) return null;
+    const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000);
+    if (Number.isNaN(days) || days < 7) return null;
+    const allClosed = deals.length > 0 && deals.every(d => d.stage === 'won' || d.stage === 'lost');
+    if (allClosed) return null;
+    return { days, lastSubject: last.subject || '', lastType: last.type || 'note' };
+  }, [interactions, deals]);
+
+  // ── Forge verification: AI-prospected contacts land with first_name set
+  // to "(unknown)". Surface a banner so the user can fill in the actual
+  // person before reaching out — Forge only suggests *roles*, not real
+  // names, so this is the explicit verification step.
+  const needsVerify = useMemo(() => {
+    if (!contact) return false;
+    if (contact.source !== 'ai_outbound') return false;
+    const fn = (contact.first_name || '').trim();
+    return !fn || fn === '(unknown)';
+  }, [contact]);
+
+  const startVerify = () => {
+    setVerifyEdit({
+      first_name: contact?.first_name === '(unknown)' ? '' : (contact?.first_name || ''),
+      last_name: contact?.last_name || '',
+      email: contact?.email || '',
+      busy: false, error: '',
+    });
+  };
+
+  const saveVerify = async () => {
+    if (!verifyEdit) return;
+    const fn = (verifyEdit.first_name || '').trim();
+    if (!fn || fn === '(unknown)') {
+      setVerifyEdit((v) => ({ ...v, error: 'First name is required.' }));
+      return;
+    }
+    setVerifyEdit((v) => ({ ...v, busy: true, error: '' }));
+    try {
+      await updateContact(id, {
+        first_name: fn,
+        last_name: (verifyEdit.last_name || '').trim(),
+        email: (verifyEdit.email || '').trim(),
+      });
+      setVerifyEdit(null);
+      flash('Contact verified.');
+      reload();
+    } catch (e) {
+      setVerifyEdit((v) => ({ ...v, busy: false, error: e.message || 'Save failed.' }));
+    }
+  };
 
   // ── Actions ────────────────────────────────────────────────────────────
   const handleSave = async () => {
@@ -353,6 +411,34 @@ export default function ContactDetail() {
       }}>
         {/* ── Left column ──────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Forge verification banner — shown when this is an AI-prospected
+              contact whose first_name is still the "(unknown)" placeholder.
+              Filling in the real person flips them from "candidate" to
+              "actual lead" before any outreach goes out. */}
+          {needsVerify && (
+            <ForgeVerifyBanner
+              contact={contact}
+              edit={verifyEdit}
+              onStart={startVerify}
+              onChange={(patch) => setVerifyEdit((v) => ({ ...v, ...patch }))}
+              onCancel={() => setVerifyEdit(null)}
+              onSave={saveVerify}
+            />
+          )}
+
+          {/* Smart follow-up nudge — last interaction is 7+ days old and
+              the relationship is still active (no deals yet OR an open deal).
+              One-click drafts an outreach so leads don't go cold silently. */}
+          {followUp && (
+            <FollowUpNudge
+              days={followUp.days}
+              lastSubject={followUp.lastSubject}
+              lastType={followUp.lastType}
+              hasEmail={!!contact.email}
+              onDraft={openDraftModal}
+            />
+          )}
 
           {/* Identity / edit */}
           <div className="panel">
@@ -1445,6 +1531,138 @@ function ReplyDraftModal({ state, contact, onClose, onCopied, onSent, onRegenera
             </button>
           </span>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Smart follow-up nudge ───────────────────────────────────────────────────
+// "Last touch was N days ago — draft a follow-up?". Yellow tone since this
+// is a soft prompt, not an error. Hides itself once the user logs a fresh
+// interaction (recomputed from the interactions list).
+function FollowUpNudge({ days, lastSubject, lastType, hasEmail, onDraft }) {
+  return (
+    <div style={{
+      padding: '12px 14px',
+      background: 'color-mix(in srgb, var(--color-warn) 6%, transparent)',
+      border: '1px solid color-mix(in srgb, var(--color-warn) 28%, transparent)',
+      borderRadius: 'var(--r-md)',
+      display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 'var(--r-md)',
+        background: 'color-mix(in srgb, var(--color-warn) 18%, transparent)',
+        color: 'var(--color-warn)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <Clock size={16} />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+          Last touch was {days} day{days === 1 ? '' : 's'} ago
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', marginTop: 2 }}>
+          {lastSubject
+            ? <>Last {lastType}: "{lastSubject.length > 80 ? `${lastSubject.substring(0, 80)}…` : lastSubject}"</>
+            : <>Worth a follow-up before this lead goes cold.</>}
+        </div>
+      </div>
+      <button
+        className="btn-primary btn-sm"
+        onClick={onDraft}
+        disabled={!hasEmail}
+        title={hasEmail ? 'AI-draft a follow-up email' : 'No email on file for this contact'}
+      >
+        <Sparkles size={11} /> Draft follow-up
+      </button>
+    </div>
+  );
+}
+
+
+// ── Forge verification banner ───────────────────────────────────────────────
+// Shown when contact.source === 'ai_outbound' and first_name is empty/unknown.
+// Inline form right where the placeholder lives — fill in name + email and
+// the banner disappears. Saves directly to the contact, no modal.
+function ForgeVerifyBanner({ contact, edit, onStart, onChange, onCancel, onSave }) {
+  const targetRole = contact?.title || 'this role';
+  if (!edit) {
+    return (
+      <div style={{
+        padding: '12px 14px',
+        background: 'color-mix(in srgb, var(--color-accent) 5%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-accent) 32%, transparent)',
+        borderRadius: 'var(--r-md)',
+        display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 'var(--r-md)',
+          background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+        }}>
+          <ShieldAlert size={16} />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+            Verify before reaching out
+          </div>
+          <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', marginTop: 2 }}>
+            Forge suggested {targetRole} at {contact?.company_name || 'this company'} — fill in the actual person before any outreach goes out.
+          </div>
+        </div>
+        <button className="btn-primary btn-sm" onClick={onStart}>
+          <Check size={11} /> Verify contact
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div style={{
+      padding: 14,
+      background: 'color-mix(in srgb, var(--color-accent) 5%, transparent)',
+      border: '1px solid color-mix(in srgb, var(--color-accent) 32%, transparent)',
+      borderRadius: 'var(--r-md)',
+      display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <ShieldAlert size={15} color="var(--color-accent)" />
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+          Verify {targetRole} at {contact?.company_name || 'this company'}
+        </div>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <input
+          className="field-input"
+          placeholder="First name *"
+          value={edit.first_name}
+          onChange={(e) => onChange({ first_name: e.target.value })}
+          autoFocus
+        />
+        <input
+          className="field-input"
+          placeholder="Last name"
+          value={edit.last_name}
+          onChange={(e) => onChange({ last_name: e.target.value })}
+        />
+      </div>
+      <input
+        className="field-input"
+        type="email"
+        placeholder="Email (verify before outreach)"
+        value={edit.email}
+        onChange={(e) => onChange({ email: e.target.value })}
+      />
+      {edit.error && (
+        <div style={{ fontSize: 11.5, color: 'var(--color-err)' }}>{edit.error}</div>
+      )}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <button className="btn-ghost btn-sm" onClick={onCancel} disabled={edit.busy}>Cancel</button>
+        <button className="btn-primary btn-sm" onClick={onSave} disabled={edit.busy}>
+          {edit.busy
+            ? <><Loader2 size={11} className="animate-spin" /> Saving…</>
+            : <><Check size={11} /> Save & verify</>}
+        </button>
       </div>
     </div>
   );
