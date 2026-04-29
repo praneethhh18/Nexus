@@ -12,10 +12,9 @@ from __future__ import annotations
 import json
 import sqlite3
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from collections import Counter, defaultdict
+from typing import List, Dict, Any
 
 from loguru import logger
 
@@ -219,7 +218,7 @@ def recall_memories(user_id: str, memory_type: str = None,
         if query:
             keywords = query.lower().split()
             conditions = " AND ".join(
-                f"(LOWER(key) LIKE ? OR LOWER(value) LIKE ?)" for _ in keywords
+                "(LOWER(key) LIKE ? OR LOWER(value) LIKE ?)" for _ in keywords
             )
             sql += f" AND ({conditions})"
             for kw in keywords:
@@ -562,7 +561,7 @@ def build_personalized_context(user_id: str, query: str) -> str:
 
     # User profile summary
     if profile.get("total_interactions", 0) > 0:
-        profile_info = f"[User Profile] You are assisting a returning user."
+        profile_info = "[User Profile] You are assisting a returning user."
         if profile.get("favorite_topics"):
             topics = profile["favorite_topics"]
             if isinstance(topics, list) and topics:

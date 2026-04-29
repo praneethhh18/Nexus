@@ -27,7 +27,7 @@ import hashlib
 import sqlite3
 from datetime import datetime, timedelta, date
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 from loguru import logger
 
@@ -218,7 +218,7 @@ def _invoice_suggestions(conn, business_id: str, invoice_id: str) -> List[Dict]:
                     "agent":       "Kira",
                     "severity":    "high",
                     "title":       "Invoice is overdue",
-                    "detail":      f"Past the due date with status still 'sent'.",
+                    "detail":      "Past the due date with status still 'sent'.",
                     "cta":         "Draft reminder",
                 })
         except Exception:

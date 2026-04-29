@@ -5,7 +5,6 @@ Falls back to text input if microphone or whisper is unavailable.
 from __future__ import annotations
 
 import os
-import sys
 import tempfile
 import time
 from typing import Optional
@@ -18,7 +17,6 @@ def _record_audio(duration: int = 5, sample_rate: int = 16000) -> Optional[str]:
     try:
         import sounddevice as sd
         import soundfile as sf
-        import numpy as np
 
         print(f"\nRecording for {duration} seconds...", end="", flush=True)
         for remaining in range(duration, 0, -1):

@@ -1,10 +1,9 @@
 """Data Import — import CSV/Excel files as new database tables."""
 from __future__ import annotations
-import re, sqlite3
+import re
+import sqlite3
 from pathlib import Path
-from typing import Dict, Any, List
 import pandas as pd
-from loguru import logger
 from config.settings import DB_PATH
 
 def _sanitize_table_name(name):

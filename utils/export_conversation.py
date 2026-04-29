@@ -2,8 +2,6 @@
 from __future__ import annotations
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any
-from loguru import logger
 from config.settings import OUTPUTS_DIR
 
 def to_markdown(messages, title=None):

@@ -1,10 +1,10 @@
 """Query History — stores every query with its result for search and re-run."""
 from __future__ import annotations
-import json, sqlite3
+import json
+import sqlite3
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-from loguru import logger
+from typing import Optional
 from config.settings import DB_PATH
 
 TABLE = "nexus_query_history"

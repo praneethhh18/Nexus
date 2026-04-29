@@ -93,7 +93,7 @@ def main():
         print(f"  Top result confidence: {top['confidence']:.0%}")
         print(f"  Source: {top['source']} (page {top['page']})")
         print(f"  Text snippet: {top['text'][:200]}…")
-        print(f"  PASS" if top["confidence"] > 0.2 else "  WARN — low confidence")
+        print("  PASS" if top["confidence"] > 0.2 else "  WARN — low confidence")
 
     print("\n" + "="*60)
     print(f"RAG TEST {'PASSED' if all_passed else 'COMPLETED WITH WARNINGS'}")

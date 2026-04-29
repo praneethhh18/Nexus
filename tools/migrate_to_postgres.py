@@ -121,7 +121,7 @@ def main():
             print(f"→ {name}")
             cols = _columns(lite, name)
             if not cols:
-                print(f"  (skipped — no columns)")
+                print("  (skipped — no columns)")
                 continue
 
             # Create target table
@@ -135,7 +135,7 @@ def main():
                 except psycopg.Error as e:
                     pg.rollback()
                     if "already exists" in str(e).lower():
-                        print(f"  (table exists — skipping create; use --drop to replace)")
+                        print("  (table exists — skipping create; use --drop to replace)")
                     else:
                         print(f"  ❌ CREATE failed: {e}")
                         print(f"     SQL: {create_sql[:200]}...")
@@ -144,7 +144,7 @@ def main():
             # Copy rows in batches
             total = lite.execute(f"SELECT COUNT(*) FROM [{name}]").fetchone()[0]
             if total == 0:
-                print(f"  (0 rows)")
+                print("  (0 rows)")
                 continue
 
             placeholders = ",".join(["%s"] * len(cols))

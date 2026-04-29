@@ -17,15 +17,13 @@ Activity feed:
 """
 from __future__ import annotations
 
-import json
 import os
 import re
 import secrets
 import sqlite3
-import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any, List
+from typing import Dict, Any, List
 
 from fastapi import HTTPException
 from loguru import logger
@@ -320,7 +318,7 @@ def process_mentions(business_id: str, author_id: str, text: str,
             try:
                 from api import notifications as _notifs
                 _notifs.push(
-                    title=f"You were mentioned" + (f" in {context_label}" if context_label else ""),
+                    title="You were mentioned" + (f" in {context_label}" if context_label else ""),
                     message=(text[:400] + ("…" if len(text) > 400 else "")),
                     severity="info",
                     type="mention",

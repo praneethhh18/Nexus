@@ -4,7 +4,6 @@ Voice Speaker — text-to-speech using pyttsx3 (fully offline).
 from __future__ import annotations
 
 import threading
-from typing import Optional
 
 from loguru import logger
 
@@ -30,7 +29,7 @@ def _get_engine():
                         _engine.setProperty("voice", v.id)
                         break
 
-            logger.info(f"[Speaker] pyttsx3 initialized, rate=150 wpm")
+            logger.info("[Speaker] pyttsx3 initialized, rate=150 wpm")
         except Exception as e:
             logger.warning(f"[Speaker] pyttsx3 init failed: {e}")
             _engine = None

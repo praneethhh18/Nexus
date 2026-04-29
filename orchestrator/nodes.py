@@ -44,7 +44,7 @@ def rag_node(state: State) -> State:
         citations = result.get("citations", [])
         for rank, c in enumerate(citations[:5], start=1):
             flat_results.append({
-                "text": f"See source summaries in per_source_summaries",
+                "text": "See source summaries in per_source_summaries",
                 "source": c.get("source", "Unknown"),
                 "page": c.get("page", "?"),
                 "confidence": c.get("confidence", 0),
@@ -204,7 +204,7 @@ def whatif_node(state: State) -> State:
         if "whatif" not in tools_used:
             tools_used.append("whatif")
         state["tools_used"] = tools_used
-        logger.info(f"[WhatIf Node] Simulation complete")
+        logger.info("[WhatIf Node] Simulation complete")
     except Exception as e:
         logger.error(f"[WhatIf Node] Error: {e}")
         state["whatif_result"] = {"error": str(e)}

@@ -168,7 +168,7 @@ async def whatsapp_inbound_audio(
             Path(wav_path).unlink(missing_ok=True)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         logger.exception("[WhatsApp] voice transcription failed")
         Path(tmp.name).unlink(missing_ok=True)
         return {

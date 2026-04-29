@@ -6,11 +6,11 @@ from __future__ import annotations
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from loguru import logger
 
-from config.settings import OUTPUTS_DIR, REPORTS_DIR
+from config.settings import OUTPUTS_DIR
 
 
 def save_file(source_path: str, subfolder: str = "") -> str:

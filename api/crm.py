@@ -15,7 +15,6 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from fastapi import HTTPException
-from loguru import logger
 
 from config.settings import DB_PATH
 

@@ -26,7 +26,6 @@ import imaplib
 import json
 import re
 import sqlite3
-from datetime import datetime, timezone
 from email.header import decode_header
 from pathlib import Path
 from typing import List, Dict, Any, Optional

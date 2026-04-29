@@ -11,8 +11,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
-from datetime import datetime, date, timedelta
-from pathlib import Path
+from datetime import date, timedelta
 
 from loguru import logger
 

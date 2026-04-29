@@ -29,7 +29,7 @@ import json
 import os
 import re
 import uuid
-from typing import Any, Dict, Generator, List, Optional
+from typing import Any, Dict, Generator, List
 
 from loguru import logger
 

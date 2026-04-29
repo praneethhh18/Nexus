@@ -24,10 +24,8 @@ import os
 import re
 import sqlite3
 from pathlib import Path
-from typing import Any, Optional
-from urllib.parse import urlparse
+from typing import Any
 
-from loguru import logger
 
 from config.settings import DB_PATH
 

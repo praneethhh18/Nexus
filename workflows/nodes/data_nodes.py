@@ -12,7 +12,6 @@ def run_sql_query(config: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any]
 
     try:
         from sql_agent.executor import execute_query
-        from sql_agent.query_generator import generate_sql
 
         if mode == "raw_sql":
             sql = config.get("sql", "SELECT 1")
@@ -75,7 +74,9 @@ def run_web_search(config: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str, Any
 
     results_text = ""
     try:
-        import urllib.request, urllib.parse, json as _json
+        import urllib.request
+        import urllib.parse
+        import json as _json
         encoded = urllib.parse.quote(query)
         url = f"https://api.duckduckgo.com/?q={encoded}&format=json&no_html=1&skip_disambig=1"
         req = urllib.request.Request(url, headers={"User-Agent": "NexusAgent/1.0"})
@@ -110,7 +111,6 @@ def run_data_transform(config: Dict[str, Any], ctx: Dict[str, Any]) -> Dict[str,
     df = ctx.get("_last_df")
 
     try:
-        import pandas as pd
 
         if df is None or (hasattr(df, "empty") and df.empty):
             ctx["output"] = "No data to transform"

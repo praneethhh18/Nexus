@@ -14,9 +14,8 @@ from __future__ import annotations
 
 import sqlite3
 import uuid
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from fastapi import HTTPException
 
@@ -142,7 +141,7 @@ def update_query(business_id: str, query_id: str, updates: Dict) -> Dict:
     if "chart_type" in updates:
         ct = (updates["chart_type"] or "auto").lower()
         if ct not in VALID_CHART_TYPES:
-            raise ValueError(f"Invalid chart_type")
+            raise ValueError("Invalid chart_type")
         fields["chart_type"] = ct
     if "generated_sql" in updates:
         fields["generated_sql"] = updates["generated_sql"]

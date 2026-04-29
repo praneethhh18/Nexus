@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from loguru import logger
 
 QUESTIONS = [
     "Which region had the highest total revenue?",
@@ -41,11 +40,11 @@ def main():
             print(f"  Rows returned: {len(df)}")
             print(f"  Retries needed: {result['retries_needed']}")
             print(f"  Explanation: {result['explanation'][:200]}")
-            print(f"  PASS")
+            print("  PASS")
             passed += 1
         else:
             print(f"  Error: {result['error']}")
-            print(f"  FAIL")
+            print("  FAIL")
 
     print("\n" + "="*60)
     print(f"SQL TESTS: {passed}/{len(QUESTIONS)} passed")

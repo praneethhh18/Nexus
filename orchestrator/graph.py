@@ -4,7 +4,7 @@ Routes queries through RAG, SQL, Action, Report, WhatIf, and Chitchat nodes.
 """
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any
 
 from loguru import logger
 
@@ -117,7 +117,7 @@ def _run_fallback_pipeline(state: Dict[str, Any]) -> Dict[str, Any]:
     from orchestrator.nodes import (
         intent_node, rag_node, sql_node, action_node,
         report_node, whatif_node, chitchat_node,
-        synthesizer_node, reflection_node,
+        synthesizer_node,
     )
 
     state = intent_node(state)
@@ -300,7 +300,6 @@ def run(query: str, tone: Dict[str, Any] = None, user_id: str = "default") -> Di
         return _fast_chat(query, user_id)
 
     # ── Full pipeline: needs data/docs/actions ────────────────────────
-    from voice.tone_analyzer import analyze_tone
     from memory.short_term import get_default_memory
     from memory.long_term import auto_extract_facts
     from memory.user_memory import (

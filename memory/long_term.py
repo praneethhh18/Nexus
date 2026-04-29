@@ -5,10 +5,9 @@ Auto-extracts key facts from conversations after every 5 turns.
 from __future__ import annotations
 
 import sqlite3
-import time
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
 from loguru import logger
 
@@ -66,7 +65,7 @@ def recall(query: str, limit: int = 5) -> List[Dict[str, Any]]:
         keywords = query.lower().split()
         # Build a LIKE clause for each keyword
         conditions = " OR ".join(
-            f"(LOWER(key) LIKE ? OR LOWER(value) LIKE ?)" for _ in keywords
+            "(LOWER(key) LIKE ? OR LOWER(value) LIKE ?)" for _ in keywords
         )
         params = []
         for kw in keywords:

@@ -137,7 +137,7 @@ def extract_email(payload: EmailPasteIn, ctx: dict = Depends(get_current_context
 
     parsed = _parse_extraction(raw)
     if not parsed:
-        logger.warning(f"[EmailPaste] LLM output didn't parse, using fallback")
+        logger.warning("[EmailPaste] LLM output didn't parse, using fallback")
         return {**_trivial_extract(payload.raw_email), "fallback": True}
 
     # If the user supplied an override email, honor it.

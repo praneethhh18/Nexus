@@ -23,10 +23,9 @@ Callers: `/api/activity/{entity_type}/{entity_id}` — server.py.
 """
 from __future__ import annotations
 
-import json
 import sqlite3
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from loguru import logger
 

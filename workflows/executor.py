@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 import time
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Tuple
 from loguru import logger
 
 from workflows.node_registry import get_node_def

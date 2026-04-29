@@ -20,10 +20,9 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional
 
 import pandas as pd
-from loguru import logger
 
 
 # Field catalog per entity type — drives auto-mapping and the UI form.

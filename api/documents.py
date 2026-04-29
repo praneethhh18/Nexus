@@ -14,7 +14,7 @@ import sqlite3
 import uuid
 from datetime import datetime, date
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 from fastapi import HTTPException
 from loguru import logger
@@ -225,7 +225,7 @@ def get_template(template_key: str) -> Dict[str, Any]:
 def _render_docx(template_key: str, vars_map: Dict[str, Any], out_path: Path) -> None:
     """Render the template as a Word document using python-docx."""
     from docx import Document
-    from docx.shared import Pt, RGBColor, Inches
+    from docx.shared import Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     tmpl = TEMPLATES[template_key]

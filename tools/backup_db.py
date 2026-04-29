@@ -148,7 +148,7 @@ def restore_backup(path: str) -> None:
 
     print(f"[restore] About to restore from: {src}")
     print(f"[restore] Current DB will be moved to: {DB_PATH}.bak")
-    print(f"[restore] ⚠  Stop the NexusAgent server before continuing.")
+    print("[restore] ⚠  Stop the NexusAgent server before continuing.")
     confirm = input("[restore] Type 'yes' to proceed: ").strip().lower()
     if confirm != "yes":
         print("[restore] Aborted.")

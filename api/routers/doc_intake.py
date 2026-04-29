@@ -38,9 +38,9 @@ from __future__ import annotations
 import io
 import json
 import re
-from typing import List, Optional
+from typing import List
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from loguru import logger
 from pydantic import BaseModel, Field
 

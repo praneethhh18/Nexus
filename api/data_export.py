@@ -18,7 +18,6 @@ import csv
 import io
 import sqlite3
 import zipfile
-from datetime import datetime
 from typing import List, Tuple
 
 from loguru import logger

@@ -19,7 +19,7 @@ silent. It'll appear here once it emits a summary record.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Dict, List
 
 from loguru import logger

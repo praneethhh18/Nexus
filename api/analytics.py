@@ -15,15 +15,14 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, date, timedelta
-from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
 from loguru import logger
 
 from config.settings import DB_PATH
 from utils.timez import now_utc_naive
 from api.crm import (
-    DEALS_TABLE, CONTACTS_TABLE, COMPANIES_TABLE, INTERACTIONS_TABLE,
+    DEALS_TABLE, INTERACTIONS_TABLE,
     DEAL_STAGE_EVENTS_TABLE, DEAL_STAGES,
 )
 
@@ -405,7 +404,8 @@ def churn_risk(business_id: str, max_deals: int = 15) -> Dict[str, Any]:
             )
             raw = llm_invoke(prompt, system="You are a pragmatic sales coach.",
                              max_tokens=400, temperature=0.2)
-            import json, re
+            import json
+            import re
             stripped = raw.strip()
             if stripped.startswith("```"):
                 stripped = re.sub(r"^```(?:json)?|```$", "", stripped, flags=re.MULTILINE).strip()

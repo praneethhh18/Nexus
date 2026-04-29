@@ -3,7 +3,6 @@ Chart Builder — builds Plotly charts from DataFrames and saves as PNG.
 """
 from __future__ import annotations
 
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple

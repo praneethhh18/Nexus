@@ -1,6 +1,8 @@
 """RAG + SQL tools — let the agent query the knowledge base and data warehouse."""
 from __future__ import annotations
 
+from loguru import logger
+
 from agents.tool_registry import register_tool
 
 

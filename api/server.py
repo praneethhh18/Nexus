@@ -15,7 +15,7 @@ import time
 import asyncio
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 
 # Add project root to path
 ROOT = Path(__file__).parent.parent
@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field
 from loguru import logger
 
 # ── Bootstrap NexusAgent ──────────────────────────────────────────────────────
-from config.settings import ensure_directories, validate_config, VERSION, enable_sqlite_production_mode
+from config.settings import ensure_directories, VERSION, enable_sqlite_production_mode
 ensure_directories()
 
 # Auto-create DB if missing
@@ -120,7 +120,7 @@ class ReportRequest(BaseModel):
 # ── Auth Setup ────────────────────────────────────────────────────────────────
 from api.auth import (
     ensure_default_admin, decode_token,
-    get_current_user, get_current_context, get_user_by_id,
+    get_current_context, get_user_by_id,
 )
 from api.businesses import (
     list_user_businesses, assert_member,
@@ -368,7 +368,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
 def health():
     """Public health check. Does not leak tenant data."""
     from config.llm_provider import health_check as provider_health, get_provider, CLAUDE_MODEL
-    from config.settings import OLLAMA_MODEL, EMBED_MODEL, EMAIL_ENABLED, DISCORD_ENABLED
+    from config.settings import OLLAMA_MODEL, EMAIL_ENABLED, DISCORD_ENABLED
     ph = provider_health()
     provider = get_provider()
     if provider == "claude":
@@ -706,7 +706,8 @@ async def entity_import_preview(
     ctx: dict = Depends(get_current_context),
 ):
     """Upload CSV/Excel + entity_type → get sample rows + auto-suggested mapping."""
-    import tempfile, uuid as _uuid
+    import tempfile
+    import uuid as _uuid
     from api import entity_import
 
     suffix = Path(file.filename).suffix

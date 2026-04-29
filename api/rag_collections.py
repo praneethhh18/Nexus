@@ -21,7 +21,6 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from fastapi import HTTPException
-from loguru import logger
 
 from config.settings import DB_PATH
 from utils.timez import now_iso

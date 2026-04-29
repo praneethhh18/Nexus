@@ -301,7 +301,7 @@ def rebuild_custom_jobs():
             def _runner():
                 try:
                     custom_agents.run_agent_now(agent_id, trigger="scheduler")
-                except Exception as e:
+                except Exception:
                     logger.exception(f"[AgentScheduler] custom agent {agent_id} failed")
             return _runner
         try:

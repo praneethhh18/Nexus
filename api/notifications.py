@@ -8,10 +8,8 @@ import json
 import sqlite3
 import uuid
 from datetime import datetime
-from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional
 
-from loguru import logger
 from config.settings import DB_PATH
 
 TABLE = "nexus_notifications"

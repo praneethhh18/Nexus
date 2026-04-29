@@ -10,7 +10,7 @@ from datetime import datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 from loguru import logger
 

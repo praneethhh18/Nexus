@@ -15,7 +15,7 @@ back tomorrow if still relevant.
 from __future__ import annotations
 
 import sqlite3
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
 

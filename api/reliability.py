@@ -14,12 +14,11 @@ so a stuck LLM call doesn't wedge an endpoint forever.
 from __future__ import annotations
 
 import asyncio
-import os
 import sqlite3
 import time
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Any, Callable, Deque, Dict, Tuple
+from typing import Any, Deque, Dict, Tuple
 
 from fastapi import HTTPException, Request
 from loguru import logger

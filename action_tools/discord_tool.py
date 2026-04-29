@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Optional
 
 from loguru import logger
 
@@ -31,7 +30,7 @@ def _validate_webhook_url(url: str) -> bool:
 def _send_discord(title: str, message: str, severity: str = "info") -> bool:
     """Send a Discord embed via webhook."""
     if not _validate_webhook_url(DISCORD_WEBHOOK_URL):
-        logger.warning(f"[Discord] Invalid webhook URL format")
+        logger.warning("[Discord] Invalid webhook URL format")
         return False
     try:
         import requests

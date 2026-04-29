@@ -11,7 +11,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from loguru import logger
 from config.settings import DB_PATH
 
 TABLE = "nexus_conversations"

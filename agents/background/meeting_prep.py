@@ -16,10 +16,8 @@ Privacy:
 """
 from __future__ import annotations
 
-import re
 import sqlite3
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from loguru import logger
 
@@ -94,7 +92,7 @@ def _build_brief(business_id: str, event: dict) -> str:
             open_deals = [d for d in _crm.list_deals(business_id, limit=100)
                           if d.get("contact_id") == c["id"] and d.get("stage") not in ("won", "lost")]
             if open_deals:
-                lines.append(f"Open deals: " + ", ".join(f"{d['name']} ({d['stage']})" for d in open_deals[:3]))
+                lines.append("Open deals: " + ", ".join(f"{d['name']} ({d['stage']})" for d in open_deals[:3]))
         except Exception as e:
             logger.warning(f"[MeetingPrep] deals lookup failed for contact {c.get('id')}: {e}")
     elif organizer:
@@ -155,7 +153,6 @@ def run_for_user(user_id: str, business_id: str) -> dict:
             continue
 
         brief = _build_brief(business_id, ev)
-        import json
         try:
             _notifs.push(
                 title=f"Meeting in {int((start - now).total_seconds() / 60)} min: {ev.get('summary', '')[:80]}",

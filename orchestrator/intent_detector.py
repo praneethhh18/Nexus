@@ -3,8 +3,7 @@ Intent Detector — classifies user query intent and selects tools needed.
 """
 from __future__ import annotations
 
-import re
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from loguru import logger
 

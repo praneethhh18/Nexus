@@ -16,14 +16,11 @@ from __future__ import annotations
 
 import base64
 import hashlib
-import hmac
 import secrets
 import sqlite3
-import time
-import uuid
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
-from typing import Optional, List, Dict, Any
+from typing import List, Dict, Any
 
 import pyotp
 from fastapi import HTTPException

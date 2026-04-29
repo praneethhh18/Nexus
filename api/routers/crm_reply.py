@@ -161,7 +161,7 @@ def draft_reply_api(
 
     parsed = _parse_reply(raw)
     if not parsed:
-        logger.warning(f"[ReplyDraft] LLM output didn't parse; using fallback")
+        logger.warning("[ReplyDraft] LLM output didn't parse; using fallback")
         parsed = _fallback_reply(full_name)
 
     return parsed

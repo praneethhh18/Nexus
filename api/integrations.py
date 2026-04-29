@@ -27,11 +27,9 @@ import hmac
 import json
 import sqlite3
 import uuid
-from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from loguru import logger
 
 from config.settings import DB_PATH
 from utils.timez import now_iso
