@@ -77,26 +77,145 @@ RULES:
         return ""
 
 
+def _anonymize_labels(aggregates: Dict[str, Any]) -> tuple[Dict[str, Any], Dict[str, str]]:
+    """
+    Replace each unique categorical label with `Customer A`, `Customer B`, …
+    so the cloud LLM never sees real customer / vendor names.
+
+    Returns:
+        (anonymized_aggregates_copy, mapping_token_to_original)
+
+    Only the values *inside* `aggregates["categorical"]` are anonymized. Numeric
+    block keys (column names like "revenue", "amount") are left as-is — they're
+    schema, not customer data.
+    """
+    import copy
+    if not aggregates or not aggregates.get("categorical"):
+        return aggregates, {}
+
+    anon = copy.deepcopy(aggregates)
+    mapping: Dict[str, str] = {}
+    reverse: Dict[str, str] = {}  # original → token, dedup
+    next_idx = 0
+
+    def _alpha_token(i: int) -> str:
+        # 'A'..'Z', then 'AA', 'AB', … so we never collide on long lists.
+        s = ""
+        n = i
+        while True:
+            s = chr(ord('A') + (n % 26)) + s
+            n = n // 26 - 1
+            if n < 0:
+                break
+        return s
+
+    def _tokenize(label: str) -> str:
+        nonlocal next_idx
+        s = str(label)
+        if s in reverse:
+            return reverse[s]
+        token = f"Entity {_alpha_token(next_idx)}"
+        next_idx += 1
+        reverse[s] = token
+        mapping[token] = s
+        return token
+
+    cat = anon.get("categorical", {})
+    for col, items in list(cat.items()):
+        if not isinstance(items, list):
+            continue
+        for it in items:
+            if isinstance(it, dict) and "label" in it:
+                it["label"] = _tokenize(it["label"])
+    return anon, mapping
+
+
+def _restore_labels(text: str, mapping: Dict[str, str]) -> str:
+    """Reverse the anonymizer: 'Entity A' → 'John Smith'. Longest tokens first
+    so 'Entity AA' isn't partial-matched by 'Entity A'."""
+    if not text or not mapping:
+        return text
+    out = text
+    for token in sorted(mapping.keys(), key=len, reverse=True):
+        out = out.replace(token, mapping[token])
+    return out
+
+
 def _explain_result(question: str, df: pd.DataFrame, intent_type: str) -> str:
-    """Ask LLM to explain the query result in plain English."""
-    if df.empty:
+    """
+    Explain the query result in plain English.
+
+    Routing — aggregate-then-cloud, mirroring `report_generator.narrative`:
+
+      1. Compute totals/means/top-N locally via `compute_aggregates(df)`.
+         No raw rows leave this function.
+      2. Send the small aggregate dict (NOT the rows) to the cloud LLM via
+         `sensitive=False`. The privacy layer redacts PII in the payload
+         and audits the call.
+      3. If cloud is unavailable, the kill switch is on, or anything fails,
+         fall back to the original local `sensitive=True` path that sees
+         the raw rows but stays on Ollama.
+
+    Privacy invariant: customer rows never reach the cloud. Even if the
+    cloud call is silently swapped to local by the privacy router, behavior
+    is correct — same prompt, just on Ollama.
+    """
+    if df is None or df.empty:
         return "The query returned no results matching your criteria."
 
+    # ── Cloud path: aggregate-only ──────────────────────────────────────────
+    try:
+        from report_generator.narrative import compute_aggregates
+        aggregates = compute_aggregates(df, max_groups=5)
+    except Exception as e:
+        logger.warning(f"[Executor] aggregate failed, using local fallback: {e}")
+        aggregates = None
+
+    if aggregates and aggregates.get("row_count", 0) > 0:
+        import json
+        # Anonymize categorical labels before sending to cloud — see _anonymize_labels.
+        # Cloud sees only "Customer A", "Customer B"… so even bare names never
+        # leave the box. The mapping is reversed locally on the response.
+        anon_aggregates, label_map = _anonymize_labels(aggregates)
+        agg_prompt = (
+            f"Answer this business question using ONLY the aggregated figures below. "
+            f"Use specific numbers. Format money with $ and commas. 2-3 sentences. "
+            f"Do not invent values not present in the aggregates.\n\n"
+            f"Question: {question}\n\n"
+            f"Aggregates ({anon_aggregates['row_count']} rows summarized):\n"
+            f"{json.dumps(anon_aggregates, default=str, indent=2)}"
+        )
+        try:
+            # sensitive=False → cloud-eligible. Privacy router still forces local
+            # if ALLOW_CLOUD_LLM is off or no cloud provider is configured.
+            response = llm_invoke(agg_prompt, max_tokens=256, sensitive=False)
+            text = (response or "").strip()
+            if text:
+                # Restore real labels from the anonymization map so the user sees
+                # "John Smith leads with $5,000" not "Customer A leads with $5,000".
+                text = _restore_labels(text, label_map)
+                logger.info(f"[Executor] explanation via aggregate-cloud path "
+                            f"({anon_aggregates['row_count']} rows summarized, "
+                            f"{len(label_map)} labels anonymized)")
+                return text
+        except Exception as e:
+            logger.warning(f"[Executor] cloud aggregate explain failed: {e}")
+        # Fall through to local row-level path below.
+
+    # ── Local fallback: row-level, sensitive=True (the original path) ──────
     sample = df.head(10).to_string(index=False)
     shape = f"{len(df)} rows x {len(df.columns)} columns"
-
     prompt = f"""Answer this business question using the data below. Use specific numbers. Format money with $ and commas. 2-3 sentences.
 
 Question: {question}
 Data ({shape}):
 {sample}"""
-
     try:
-        # Result rows contain real business data — keep this on the local model.
         response = llm_invoke(prompt, max_tokens=256, sensitive=True)
+        logger.info("[Executor] explanation via local sensitive path")
         return response.strip()
     except Exception as e:
-        logger.warning(f"[Executor] Explanation LLM call failed: {e}")
+        logger.warning(f"[Executor] local explanation failed: {e}")
         if not df.empty:
             top = df.iloc[0].to_dict()
             return f"Query returned {len(df)} rows. First result: {top}"
