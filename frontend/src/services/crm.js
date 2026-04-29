@@ -128,5 +128,13 @@ export const extractBant = (contactId, reply_text) =>
     body: JSON.stringify({ reply_text }),
   });
 
+// AI reply drafter — given the prospect's incoming message, drafts a
+// contextual response. Returns { subject, body }. Privacy: sensitive=True.
+export const draftReply = (contactId, incoming_text) =>
+  req(`/contacts/${contactId}/draft-reply`, {
+    method: 'POST',
+    body: JSON.stringify({ incoming_text }),
+  });
+
 export const DEAL_STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 export const INTERACTION_TYPES = ['call', 'email', 'meeting', 'note'];

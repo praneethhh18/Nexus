@@ -18,7 +18,7 @@ import {
 import {
   getContact, updateContact, deleteContact,
   listInteractions, createInteraction, listDeals, draftOutreach,
-  scoreContactFit, extractBant, updateDeal,
+  scoreContactFit, extractBant, updateDeal, draftReply,
 } from '../services/crm';
 import { listInvoices } from '../services/invoices';
 import { createTask } from '../services/tasks';
@@ -67,6 +67,7 @@ export default function ContactDetail() {
   const [draftModal, setDraftModal] = useState(null);  // { variants: [...], busy, error }
   const [scoring, setScoring] = useState(false);
   const [bantModal, setBantModal] = useState(null);  // { busy, error, result, replyText }
+  const [replyModal, setReplyModal] = useState(null);  // { busy, error, draft, incoming }
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -193,6 +194,17 @@ export default function ContactDetail() {
       reload();
     } catch (e) {
       setBantModal((m) => ({ ...m, busy: false, error: e.message || 'Extraction failed.', result: null }));
+    }
+  };
+
+  const openReplyDraftFor = async (incomingText) => {
+    if (!incomingText || incomingText.trim().length < 10) return;
+    setReplyModal({ busy: true, error: '', draft: null, incoming: incomingText });
+    try {
+      const r = await draftReply(id, incomingText);
+      setReplyModal({ busy: false, error: '', draft: r, incoming: incomingText });
+    } catch (e) {
+      setReplyModal({ busy: false, error: e.message || 'Draft failed.', draft: null, incoming: incomingText });
     }
   };
 
@@ -743,6 +755,20 @@ export default function ContactDetail() {
           onRun={runBantExtract}
           onClose={() => setBantModal(null)}
           onAdvance={advanceDealStage}
+          onDraftReply={() => openReplyDraftFor(bantModal.replyText)}
+        />
+      )}
+
+      {/* AI reply drafter modal */}
+      {replyModal && (
+        <ReplyDraftModal
+          state={replyModal}
+          contact={contact}
+          onClose={() => setReplyModal(null)}
+          onCopied={() => flash('Copied to clipboard.')}
+          onSent={() => flash('Opened in your mail client.')}
+          onRegenerate={() => openReplyDraftFor(replyModal.incoming)}
+          onChangeDraft={(d) => setReplyModal((m) => ({ ...m, draft: d }))}
         />
       )}
     </div>
@@ -1161,7 +1187,7 @@ function BantCard({ bant, extractedAt, hasOpenDeal, onAdvance }) {
 }
 
 
-function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClose, onAdvance }) {
+function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClose, onAdvance, onDraftReply }) {
   const r = state.result;
   const fullName = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'this contact';
   return (
@@ -1245,14 +1271,179 @@ function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClo
 
         <div style={{
           padding: '12px 18px', borderTop: '1px solid var(--color-border)',
-          display: 'flex', gap: 8, justifyContent: 'flex-end',
+          display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap',
         }}>
           <button className="btn-ghost" onClick={onClose}>Close</button>
+          {r && onDraftReply && (
+            <button
+              className="btn-ghost"
+              onClick={onDraftReply}
+              title="Draft an AI response to this exact reply"
+            >
+              <Send size={12} /> Draft response
+            </button>
+          )}
           <button className="btn-primary" onClick={onRun} disabled={state.busy}>
             {state.busy
               ? <><Loader2 size={12} className="animate-spin" /> Extracting…</>
               : r ? 'Re-run' : <><Sparkles size={12} /> Extract BANT</>}
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── AI reply drafter modal ──────────────────────────────────────────────────
+// Shown after BANT extraction (or anywhere we want to draft a contextual
+// response). Editable subject + body, copy or open in mail client. Same
+// privacy posture as the rest — backend forces sensitive=True.
+function ReplyDraftModal({ state, contact, onClose, onCopied, onSent, onRegenerate, onChangeDraft }) {
+  const draft = state.draft;
+  const fullName = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'this contact';
+
+  const copy = async () => {
+    if (!draft) return;
+    try {
+      await navigator.clipboard.writeText(`Subject: ${draft.subject}\n\n${draft.body}`);
+      onCopied?.();
+    } catch { /* clipboard unavailable */ }
+  };
+  const openMail = () => {
+    if (!draft || !contact?.email) return;
+    const url = `mailto:${encodeURIComponent(contact.email)}?subject=${encodeURIComponent(draft.subject)}&body=${encodeURIComponent(draft.body)}`;
+    window.open(url, '_blank');
+    onSent?.();
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 310,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth: 720,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        <div style={{
+          padding: '14px 18px', borderBottom: '1px solid var(--color-border)',
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: 'var(--r-md)',
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Send size={16} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
+              AI-drafted reply
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              Contextual response to {fullName} · runs locally on Ollama
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}
+            aria-label="Close"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {state.busy ? (
+          <div style={{ padding: 36, textAlign: 'center', color: 'var(--color-text-dim)' }}>
+            <Loader2 size={18} className="animate-spin" style={{ marginBottom: 6 }} />
+            <div style={{ fontSize: 12.5 }}>Reading their reply, drafting a response…</div>
+          </div>
+        ) : state.error ? (
+          <div style={{ padding: 24 }}>
+            <div style={{
+              padding: 12,
+              background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-err) 28%, transparent)',
+              borderRadius: 'var(--r-md)',
+              display: 'flex', gap: 10, alignItems: 'flex-start',
+            }}>
+              <AlertCircle size={16} color="var(--color-err)" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--color-err)', marginBottom: 4 }}>
+                  Couldn't draft a reply
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
+                  {state.error}
+                </div>
+                <button className="btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={onRegenerate}>
+                  <RefreshCw size={11} /> Try again
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : draft ? (
+          <div style={{ padding: 18, overflow: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                Subject
+              </label>
+              <input
+                className="field-input"
+                value={draft.subject}
+                onChange={(e) => onChangeDraft({ ...draft, subject: e.target.value })}
+                style={{ marginTop: 4 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, letterSpacing: 0.4, textTransform: 'uppercase' }}>
+                Body
+              </label>
+              <textarea
+                className="field-input"
+                rows={12}
+                value={draft.body}
+                onChange={(e) => onChangeDraft({ ...draft, body: e.target.value })}
+                style={{ marginTop: 4, fontFamily: 'inherit', lineHeight: 1.55 }}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        <div style={{
+          padding: '12px 18px', borderTop: '1px solid var(--color-border)',
+          display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+        }}>
+          {draft && (
+            <button className="btn-ghost btn-sm" onClick={onRegenerate}>
+              <RefreshCw size={11} /> Regenerate
+            </button>
+          )}
+          <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button className="btn-ghost btn-sm" onClick={copy} disabled={!draft}>
+              <Copy size={11} /> Copy
+            </button>
+            <button
+              className="btn-primary btn-sm"
+              onClick={openMail}
+              disabled={!draft || !contact?.email}
+              title={contact?.email ? 'Open in mail client' : 'No email on file'}
+            >
+              <Send size={11} /> Open in mail
+            </button>
+          </span>
         </div>
       </div>
     </div>

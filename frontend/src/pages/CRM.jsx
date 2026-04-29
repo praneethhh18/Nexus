@@ -642,14 +642,61 @@ export default function CRM() {
 //      website form, 50% from email forwards, 20% from referrals."
 function LeadsTab({ contacts, navigate, flash }) {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  // ── Filter + sort state ─────────────────────────────────────────────
+  const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');         // '' = all
+  const [bucketFilter, setBucketFilter] = useState('all');      // all | high | medium | low | spam | unscored
+  const [sortMode, setSortMode] = useState('score_then_recent');// score_then_recent | recent | score_desc | score_asc
 
-  // Recent inbound = contacts with a non-manual source. Sorted newest first.
+  // Inbound = contacts with a non-manual source. The Leads tab is for
+  // inbound/qualification work; deliberately filters manual-add contacts out
+  // since they belong on the Contacts tab.
+  const inboundAll = useMemo(
+    () => (contacts || []).filter(c => c.source && c.source !== 'manual'),
+    [contacts],
+  );
+
+  // Apply filters → sort → take recent.
   const recent = useMemo(() => {
-    return (contacts || [])
-      .filter(c => c.source && c.source !== 'manual')
-      .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
-      .slice(0, 50);
-  }, [contacts]);
+    const s = search.trim().toLowerCase();
+    let pool = inboundAll;
+    if (sourceFilter) pool = pool.filter(c => c.source === sourceFilter);
+    if (bucketFilter !== 'all') {
+      pool = pool.filter(c => {
+        const b = scoreBucket(c.lead_score);
+        if (bucketFilter === 'unscored') return b === null;
+        return b === bucketFilter;
+      });
+    }
+    if (s) {
+      pool = pool.filter(c => {
+        const hay = [
+          c.first_name, c.last_name, c.email, c.phone,
+          c.company_name, c.title, c.lead_score_reason,
+        ].filter(Boolean).join(' ').toLowerCase();
+        return hay.includes(s);
+      });
+    }
+
+    const cmpRecent = (a, b) => (b.created_at || '').localeCompare(a.created_at || '');
+    const cmpScoreDesc = (a, b) => {
+      const av = a.lead_score == null ? -1 : a.lead_score;
+      const bv = b.lead_score == null ? -1 : b.lead_score;
+      return bv - av;
+    };
+    const cmpScoreAsc = (a, b) => {
+      const av = a.lead_score == null ?  101 : a.lead_score;  // unscored sinks
+      const bv = b.lead_score == null ?  101 : b.lead_score;
+      return av - bv;
+    };
+
+    if (sortMode === 'recent')      pool = [...pool].sort(cmpRecent);
+    else if (sortMode === 'score_desc') pool = [...pool].sort((a, b) => cmpScoreDesc(a, b) || cmpRecent(a, b));
+    else if (sortMode === 'score_asc')  pool = [...pool].sort(cmpScoreAsc);
+    else /* score_then_recent (default) */ pool = [...pool].sort((a, b) => cmpScoreDesc(a, b) || cmpRecent(a, b));
+
+    return pool.slice(0, 100);
+  }, [inboundAll, search, sourceFilter, bucketFilter, sortMode]);
 
   // Source breakdown across all leads (manual + others).
   const sourceCounts = useMemo(() => {
@@ -695,8 +742,8 @@ function LeadsTab({ contacts, navigate, flash }) {
 
       {/* Recent inbound leads list */}
       <div className="panel">
-        <div className="section-h" style={{ margin: '0 0 10px' }}>
-          <h2>Recent inbound · {recent.length}</h2>
+        <div className="section-h" style={{ margin: '0 0 10px', flexWrap: 'wrap', gap: 8 }}>
+          <h2>Recent inbound · {recent.length}{inboundAll.length !== recent.length ? ` of ${inboundAll.length}` : ''}</h2>
           <button
             className="btn-primary btn-sm"
             onClick={() => setEmailModalOpen(true)}
@@ -705,6 +752,99 @@ function LeadsTab({ contacts, navigate, flash }) {
             <Mail size={11} /> Capture from email
           </button>
         </div>
+
+        {/* Filter + sort bar — only when there's enough data to make filtering useful */}
+        {inboundAll.length > 3 && (
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+            marginBottom: 10,
+            padding: '8px 10px',
+            background: 'var(--color-surface-1)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 'var(--r-md)',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              flex: 1, minWidth: 200,
+              padding: '4px 10px',
+              background: 'var(--color-bg)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-sm)',
+            }}>
+              <Search size={11} color="var(--color-text-dim)" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, email, company…"
+                style={{
+                  flex: 1, background: 'transparent', border: 'none', outline: 'none',
+                  color: 'var(--color-text)', fontSize: 12,
+                }}
+              />
+            </div>
+
+            <select
+              className="field-select"
+              value={sourceFilter}
+              onChange={(e) => setSourceFilter(e.target.value)}
+              style={{ fontSize: 11.5 }}
+            >
+              <option value="">All sources</option>
+              <option value="public_form">Public form</option>
+              <option value="email_paste">Email paste</option>
+              <option value="ai_outbound">AI prospecting</option>
+              <option value="csv_import">CSV import</option>
+              <option value="referral">Referral</option>
+              <option value="whatsapp">WhatsApp</option>
+            </select>
+
+            <select
+              className="field-select"
+              value={sortMode}
+              onChange={(e) => setSortMode(e.target.value)}
+              style={{ fontSize: 11.5 }}
+              title="Sort"
+            >
+              <option value="score_then_recent">Best fit, then newest</option>
+              <option value="recent">Newest first</option>
+              <option value="score_desc">Score: high → low</option>
+              <option value="score_asc">Score: low → high</option>
+            </select>
+
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[
+                { k: 'all',      label: 'All' },
+                { k: 'high',     label: 'High' },
+                { k: 'medium',   label: 'Med' },
+                { k: 'low',      label: 'Low' },
+                { k: 'spam',     label: 'Spam' },
+                { k: 'unscored', label: '?' },
+              ].map(({ k, label }) => (
+                <button
+                  key={k}
+                  className={bucketFilter === k ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                  onClick={() => setBucketFilter(k)}
+                  style={{ fontSize: 10.5 }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {(search || sourceFilter || bucketFilter !== 'all' || sortMode !== 'score_then_recent') && (
+              <button
+                className="btn-ghost btn-sm"
+                onClick={() => {
+                  setSearch(''); setSourceFilter(''); setBucketFilter('all'); setSortMode('score_then_recent');
+                }}
+                title="Clear all filters"
+                style={{ color: 'var(--color-text-dim)' }}
+              >
+                <X size={10} /> Clear
+              </button>
+            )}
+          </div>
+        )}
         {recent.length === 0 ? (
           <EmptyState
             icon={Inbox}
