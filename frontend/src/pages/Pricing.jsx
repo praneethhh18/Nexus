@@ -13,7 +13,7 @@
 import { useState } from 'react';
 import {
   CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Mail,
-  ExternalLink, Server, Users as UsersIcon, Zap,
+  ExternalLink, Server, Users as UsersIcon, Zap, Cloud,
 } from 'lucide-react';
 import { getCurrentBusiness, getUser } from '../services/auth';
 
@@ -88,6 +88,10 @@ const TIERS = [
 
 const FAQS = [
   {
+    q: 'Do I need my own AWS / Anthropic API key?',
+    a: 'No. NexusAgent is an independent product and the cloud-LLM compute is provided from our end — included in your subscription. The only exception is the Self-hosted plan, where you run the whole stack and can bring your own keys if you want cloud polish on top of the local model.',
+  },
+  {
     q: 'Can I change plans later?',
     a: 'Yes. Upgrade or downgrade anytime — proration is handled automatically. Self-hosted is a one-time purchase, not a subscription.',
   },
@@ -132,6 +136,7 @@ export default function Pricing() {
     <div className="page-body" style={{ maxWidth: 1180, margin: '0 auto' }}>
       <Header currentTier={currentTier} />
       <Tiers currentTier={currentTier} ctaFor={ctaFor} />
+      <ServiceModel />
       <PrivacyAssurance />
       <FAQ />
       <ContactStrip />
@@ -308,6 +313,44 @@ function TierCard({ tier, isCurrent, href }) {
             {tier.cta}
           </button>
         )}
+      </div>
+    </div>
+  );
+}
+
+
+function ServiceModel() {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'flex-start', gap: 14,
+      padding: 18,
+      background: 'var(--color-surface-2)',
+      border: '1px solid var(--color-border)',
+      borderRadius: 'var(--r-lg)',
+      marginBottom: 18,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 'var(--r-md)',
+        background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Cloud size={18} />
+      </div>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
+          How the service works — what you pay for, what we cover
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
+          NexusAgent is an independent product, built and operated by us. Your
+          subscription is for the product itself — features, support, and
+          updates. The cloud-LLM compute that powers polish-layer writing
+          (Bedrock&nbsp;/ Anthropic) is provided <strong>from our end</strong>;
+          you don't bring or pay for your own API keys. Local AI on your
+          machine (Ollama) is and always will be free. The Self-hosted plan
+          is the one exception — there you run the whole stack on your
+          infrastructure and bring your own keys if you want cloud polish.
+        </div>
       </div>
     </div>
   );
