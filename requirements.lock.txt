@@ -268,7 +268,7 @@ PyJWT==2.12.1
 PyMuPDF==1.27.2.2
 pyotp==2.9.0
 pyparsing==3.3.2
-pypdf==6.6.0
+pypdf==6.10.2
 PyPika==0.51.1
 pypiwin32==223
 pyproject_hooks==1.2.0
