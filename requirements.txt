@@ -45,7 +45,7 @@ email-validator>=2.0.0  # required by pydantic EmailStr (smtp router)
 # Auth
 pyjwt>=2.8.0
 bcrypt>=4.0.0
-cryptography>=43.0.0  # Fernet encryption for per-tenant SMTP credentials
+cryptography>=46.0.7  # Fernet encryption for per-tenant SMTP credentials
 
 # AI Provider (Claude API — optional, falls back to local Ollama)
 anthropic>=0.40.0
