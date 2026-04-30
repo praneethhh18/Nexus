@@ -22,7 +22,7 @@ from typing import List, Tuple
 
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_columns, table_exists
 from utils.timez import now_iso
 
 # (table_name, filter_column) — None filter means "whole table" (tags table has
@@ -52,15 +52,12 @@ EXPORTED_TABLES: List[Tuple[str, str]] = [
 
 
 def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
-    row = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1",
-        (name,),
-    ).fetchone()
+    row = (1,) if table_exists(conn, name) else None
     return row is not None
 
 
 def _filter_column_exists(conn: sqlite3.Connection, table: str, col: str) -> bool:
-    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    cols = list_columns(conn, table)
     return col in cols
 
 

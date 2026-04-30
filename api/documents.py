@@ -19,7 +19,7 @@ from typing import List, Dict, Any
 from fastapi import HTTPException
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_columns
 from config.settings import OUTPUTS_DIR
 
 DOCS_TABLE = "nexus_documents"
@@ -187,7 +187,7 @@ def _get_conn():
         ("collection_id", "TEXT"),
         ("expires_at",    "TEXT"),
     ]:
-        existing = [r[1] for r in conn.execute(f"PRAGMA table_info({DOCS_TABLE})").fetchall()]
+        existing = list_columns(conn, DOCS_TABLE)
         if col not in existing:
             conn.execute(f"ALTER TABLE {DOCS_TABLE} ADD COLUMN {col} {decl}")
     conn.commit()

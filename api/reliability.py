@@ -23,7 +23,7 @@ from typing import Any, Deque, Dict, Tuple
 from fastapi import HTTPException, Request
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_tables
 
 
 # ── Rate limiter ────────────────────────────────────────────────────────────
@@ -134,11 +134,9 @@ def deep_health() -> Dict[str, Any]:
     try:
         conn = get_conn()
         conn.execute("SELECT 1").fetchone()
-        row = conn.execute(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"
-        ).fetchone()
+        n_tables = len(list_tables(conn))
         conn.close()
-        checks["database"] = {"ok": True, "tables": int(row[0] or 0)}
+        checks["database"] = {"ok": True, "tables": n_tables}
     except Exception as e:
         checks["database"] = {"ok": False, "error": str(e)}
         overall_ok = False

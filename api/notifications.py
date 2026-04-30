@@ -10,13 +10,13 @@ import uuid
 from datetime import datetime
 from typing import List, Dict, Optional
 
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 TABLE = "nexus_notifications"
 
 
 def _ensure_column(conn, table, column, decl):
-    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    cols = list_columns(conn, table)
     if column not in cols:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
 

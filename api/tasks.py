@@ -16,7 +16,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 TASKS_TABLE = "nexus_tasks"
 
@@ -53,7 +53,7 @@ def _get_conn():
         ("recurrence", "TEXT DEFAULT 'none'"),
         ("recurrence_parent_id", "TEXT"),
     ]:
-        existing = [r[1] for r in conn.execute(f"PRAGMA table_info({TASKS_TABLE})").fetchall()]
+        existing = list_columns(conn, TASKS_TABLE)
         if col not in existing:
             conn.execute(f"ALTER TABLE {TASKS_TABLE} ADD COLUMN {col} {decl}")
     conn.commit()

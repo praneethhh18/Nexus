@@ -30,7 +30,7 @@ from typing import Dict, Any, Optional
 import pandas as pd
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, table_exists
 from config.llm_config import get_llm
 
 
@@ -98,9 +98,7 @@ DESCRIPTION: <one sentence describing the scenario>"""
 
 # ── Data sources ─────────────────────────────────────────────────────────────
 def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
-    row = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,),
-    ).fetchone()
+    row = (1,) if table_exists(conn, name) else None
     return row is not None
 
 

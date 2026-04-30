@@ -247,6 +247,62 @@ def get_conn():
     return _sqlite_conn()
 
 
+def table_exists(conn, table: str) -> bool:
+    """
+    True if `table` exists in the active database. Backend-aware. Replaces
+    the SQLite-only `SELECT 1 FROM sqlite_master WHERE type='table' AND name=?`
+    pattern, which fails on Postgres (no sqlite_master table).
+    """
+    if is_postgres():
+        cur = conn.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name = ?",
+            (table,),
+        )
+    else:
+        cur = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?",
+            (table,),
+        )
+    return cur.fetchone() is not None
+
+
+def list_tables(conn) -> list[str]:
+    """Return all table names (public schema on Postgres). Backend-aware."""
+    if is_postgres():
+        cur = conn.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_type = 'BASE TABLE' "
+            "ORDER BY table_name"
+        )
+    else:
+        cur = conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' "
+            "AND name NOT LIKE 'sqlite_%' ORDER BY name"
+        )
+    return [r[0] for r in cur.fetchall()]
+
+
+def list_columns(conn, table: str) -> list[str]:
+    """
+    Return column names of a table, backend-aware. Replaces the SQLite-only
+    pattern `[r[1] for r in conn.execute("PRAGMA table_info(t)").fetchall()]`
+    which silently breaks on Postgres (the wrapper translates PRAGMA to
+    SELECT 1, then `r[1]` IndexErrors).
+
+    Use whenever code needs to introspect "does this column exist".
+    """
+    if is_postgres():
+        cur = conn.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = ? ORDER BY ordinal_position",
+            (table,),
+        )
+        return [r[0] for r in cur.fetchall()]
+    cur = conn.execute(f"PRAGMA table_info({table})")
+    return [r[1] for r in cur.fetchall()]
+
+
 def get_raw_conn():
     """
     Return the UNDERLYING DB-API connection (raw sqlite3.Connection or

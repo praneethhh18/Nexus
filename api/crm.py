@@ -15,7 +15,7 @@ from typing import Optional, List, Dict, Any
 
 from fastapi import HTTPException
 
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 CONTACTS_TABLE = "nexus_contacts"
 COMPANIES_TABLE = "nexus_companies"
@@ -71,7 +71,7 @@ def _get_conn():
 
     # Additive: `source` records where this lead came from. Added later for
     # lead-gen attribution. See db/migrations/0002 + docs/AI_LEAD_GENERATION.md.
-    _contact_cols = {r[1] for r in conn.execute(f"PRAGMA table_info({CONTACTS_TABLE})").fetchall()}
+    _contact_cols = set(list_columns(conn, CONTACTS_TABLE))
     if "source" not in _contact_cols:
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN source TEXT DEFAULT 'manual'")
     # Additive: AI-driven lead scoring against the workspace ICP (migration 0003).

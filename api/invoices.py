@@ -18,7 +18,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH, OUTPUTS_DIR
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 INVOICES_TABLE = "nexus_invoices"
 COUNTER_TABLE = "nexus_invoice_counters"
@@ -64,7 +64,7 @@ def _get_conn():
         ("recurrence", "TEXT DEFAULT 'none'"),
         ("recurrence_parent_id", "TEXT"),
     ]:
-        existing = [r[1] for r in conn.execute(f"PRAGMA table_info({INVOICES_TABLE})").fetchall()]
+        existing = list_columns(conn, INVOICES_TABLE)
         if col not in existing:
             conn.execute(f"ALTER TABLE {INVOICES_TABLE} ADD COLUMN {col} {decl}")
 

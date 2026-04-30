@@ -19,7 +19,7 @@ from typing import List, Tuple
 
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_columns, table_exists
 
 
 # Each entry: (index_name, table, column_list)
@@ -79,15 +79,12 @@ _INDEXES: List[Tuple[str, str, List[str]]] = [
 ]
 
 
-def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
-    r = conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?", (name,),
-    ).fetchone()
-    return r is not None
+def _table_exists(conn, name: str) -> bool:
+    return table_exists(conn, name)
 
 
 def _columns(conn: sqlite3.Connection, table: str) -> List[str]:
-    return [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
+    return list_columns(conn, table)
 
 
 def apply_indexes() -> dict:

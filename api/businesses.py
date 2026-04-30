@@ -21,7 +21,7 @@ from typing import Optional, List, Dict
 from fastapi import HTTPException
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 BUSINESSES_TABLE = "nexus_businesses"
 MEMBERS_TABLE = "nexus_business_members"
@@ -338,7 +338,7 @@ def migrate_legacy_data() -> None:
         ]
         for tbl in legacy_tables:
             try:
-                cols = [r[1] for r in conn.execute(f"PRAGMA table_info({tbl})").fetchall()]
+                cols = list_columns(conn, tbl)
                 if "business_id" in cols:
                     conn.execute(
                         f"UPDATE {tbl} SET business_id = ? WHERE business_id IS NULL OR business_id = 'default' OR business_id = ''",

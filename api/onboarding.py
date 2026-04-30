@@ -28,7 +28,7 @@ from typing import Dict, List
 
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_tables
 from utils.timez import now_iso
 
 TABLE = "nexus_onboarding_state"
@@ -165,9 +165,7 @@ def _autodetect(business_id: str) -> Dict[str, bool]:
 
             # data_source: any imported rows beyond seed tables
             try:
-                n = conn.execute(
-                    "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name LIKE 'imported_%'"
-                ).fetchone()[0]
+                n = sum(1 for t in list_tables(conn) if t.startswith("imported_"))
                 if n > 0:
                     auto["data_source"] = True
             except Exception:

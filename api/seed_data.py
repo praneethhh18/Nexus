@@ -32,7 +32,7 @@ from typing import Dict, List
 from api import crm as _crm
 from api import tasks as _tasks
 from api import invoices as _inv
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 
 def _has_existing_data(business_id: str) -> bool:
@@ -211,7 +211,7 @@ def _set_contact_columns(business_id: str, contact_id: str, **cols) -> None:
         return
     conn = get_conn()
     try:
-        present = {r[1] for r in conn.execute("PRAGMA table_info(nexus_contacts)").fetchall()}
+        present = set(list_columns(conn, "nexus_contacts"))
         usable = {k: v for k, v in cols.items() if k in present}
         if not usable:
             return

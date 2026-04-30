@@ -4,7 +4,7 @@ import re
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 import pandas as pd
-from config.db import get_conn
+from config.db import get_conn, list_tables
 
 def _sanitize_table_name(name):
     name = Path(name).stem
@@ -43,7 +43,7 @@ def preview_file(file_path, max_rows=10):
 
 def get_existing_tables():
     conn = get_conn()
-    tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()]
+    tables = list_tables(conn)
     conn.close(); return tables
 
 def import_to_database(df, table_name, if_exists="fail"):

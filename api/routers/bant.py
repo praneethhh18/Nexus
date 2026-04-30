@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field
 from api import crm as _crm
 from api.auth import get_current_context
 from config.llm_provider import invoke as llm_invoke
-from config.db import get_conn
+from config.db import get_conn, list_columns
 
 router = APIRouter(tags=["bant"])
 
@@ -140,7 +140,7 @@ def _persist(business_id: str, contact_id: str, bant: Dict) -> None:
     conn = get_conn()
     try:
         # Defensive — ensure the columns exist (api.crm._get_conn normally does this).
-        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({CONTACTS_TABLE})").fetchall()}
+        cols = set(list_columns(conn, CONTACTS_TABLE))
         if "bant_signals" not in cols:
             conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN bant_signals TEXT DEFAULT ''")
         if "bant_extracted_at" not in cols:

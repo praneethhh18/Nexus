@@ -1,0 +1,27 @@
+-- 0004_postgres_primary.sql — marker for the SQLite→Postgres migration.
+--
+-- As of 2026-04-30, NexusAgent uses Postgres 18 as the primary backend.
+-- SQLite remains a supported fallback (config/db.py wraps both).
+-- DATABASE_URL in .env routes the abstraction; unset it to fall back to SQLite.
+--
+-- Schema is created lazily by each module's CREATE TABLE IF NOT EXISTS on
+-- first connection — no DDL needed in this file. Data was copied from the
+-- existing SQLite database via `tools/migrate_to_postgres.py`.
+--
+-- What this version represents:
+--   * `config/db.py` extended with row-factory parity, list_columns(),
+--     list_tables(), table_exists(), get_raw_conn() — backend-aware helpers
+--     that replace direct SQLite-only patterns (PRAGMA, sqlite_master).
+--   * 60+ modules migrated from `sqlite3.connect(DB_PATH)` to
+--     `config.db.get_conn()`.
+--   * SQL rewrites from SQLite-only to portable forms:
+--       INSERT OR REPLACE → INSERT … ON CONFLICT … DO UPDATE
+--       INSERT OR IGNORE  → INSERT … ON CONFLICT … DO NOTHING
+--       cursor.lastrowid  → INSERT … RETURNING id
+--       PRAGMA table_info → list_columns()
+--       sqlite_master     → list_tables() / table_exists()
+--   * Foreign keys are stripped during the migrate_to_postgres data load
+--     to avoid parent→child ordering issues; data integrity continues to
+--     be enforced at the API layer (where it always was).
+--
+-- DO NOT add SQL here. Add a new file — `0005_<description>.sql` — instead.

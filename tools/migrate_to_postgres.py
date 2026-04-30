@@ -49,14 +49,19 @@ def _translate_create(sql: str) -> str:
     """Convert a SQLite CREATE TABLE statement to Postgres-compatible SQL."""
     s = sql
     s = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "BIGSERIAL PRIMARY KEY", s, flags=re.IGNORECASE)
-    # Postgres doesn't support "DEFAULT '{}'" for TEXT columns with braces ambiguously;
-    # already fine for TEXT.
-    # Strip SQLite's CHECK constraints that use type affinities differently
     s = re.sub(r"\s+COLLATE\s+\w+", "", s, flags=re.IGNORECASE)
-    # SQLite `REAL` → Postgres `DOUBLE PRECISION`
     s = re.sub(r"\bREAL\b", "DOUBLE PRECISION", s, flags=re.IGNORECASE)
-    # SQLite `BLOB` → Postgres `BYTEA`
     s = re.sub(r"\bBLOB\b", "BYTEA", s, flags=re.IGNORECASE)
+
+    # Strip FOREIGN KEY constraints — they enforce parent→child ordering during
+    # data load, which conflicts with our alphabetical migration sequence.
+    # Pattern matches `, FOREIGN KEY(col) REFERENCES table(col) [ON DELETE ...]`.
+    s = re.sub(
+        r",\s*FOREIGN\s+KEY\s*\([^)]+\)\s*REFERENCES\s+\w+\s*\([^)]+\)(?:\s+ON\s+(?:DELETE|UPDATE)\s+\w+)*",
+        "",
+        s,
+        flags=re.IGNORECASE,
+    )
     return s
 
 
