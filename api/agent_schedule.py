@@ -15,11 +15,11 @@ the server calls `rebuild_custom_jobs()` in `agents.background.scheduler`.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import Dict, List
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TABLE = "nexus_agent_schedule_prefs"
@@ -43,9 +43,8 @@ MIN_INTERVAL = 5        # 5 minutes
 MAX_INTERVAL = 10080    # 1 week
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             business_id      TEXT NOT NULL,

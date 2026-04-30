@@ -15,14 +15,14 @@ from __future__ import annotations
 import os
 import platform
 import shutil
-import sqlite3
-from pathlib import Path
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from typing import Any, Dict, List, Optional
 
 import requests
 from loguru import logger
 
-from config.settings import DB_PATH, OLLAMA_BASE_URL
+from config.db import get_conn
+from config.settings import OLLAMA_BASE_URL
 from utils.timez import now_iso
 
 
@@ -56,9 +56,8 @@ RECOMMENDED_MODELS: List[Dict[str, Any]] = [
 
 
 # ── Storage ────────────────────────────────────────────────────────────────
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             id               INTEGER PRIMARY KEY CHECK (id = 1),
@@ -68,8 +67,9 @@ def _conn() -> sqlite3.Connection:
             install_notes    TEXT
         )
     """)
+    # Portable upsert: ON CONFLICT works on SQLite 3.24+ and Postgres.
     conn.execute(
-        f"INSERT OR IGNORE INTO {TABLE} (id, completed) VALUES (1, 0)"
+        f"INSERT INTO {TABLE} (id, completed) VALUES (1, 0) ON CONFLICT (id) DO NOTHING"
     )
     conn.commit()
     return conn

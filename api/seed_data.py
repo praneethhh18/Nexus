@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List
@@ -32,7 +32,7 @@ from typing import Dict, List
 from api import crm as _crm
 from api import tasks as _tasks
 from api import invoices as _inv
-from config.settings import DB_PATH
+from config.db import get_conn
 
 
 def _has_existing_data(business_id: str) -> bool:
@@ -209,7 +209,7 @@ def _set_contact_columns(business_id: str, contact_id: str, **cols) -> None:
     present yet — graceful for schemas predating the migration."""
     if not cols:
         return
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         present = {r[1] for r in conn.execute("PRAGMA table_info(nexus_contacts)").fetchall()}
         usable = {k: v for k, v in cols.items() if k in present}
@@ -228,7 +228,7 @@ def _set_contact_columns(business_id: str, contact_id: str, **cols) -> None:
 
 def _seed_icp(business_id: str, user_id: str) -> bool:
     """Write the workspace ICP. Defensive — creates the table if needed."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS nexus_workspace_settings (
@@ -261,7 +261,7 @@ def _seed_intake_key(business_id: str, user_id: str) -> bool:
     key_id = uuid.uuid4().hex
     prefix = raw[:12] + "…"
     sha = hashlib.sha256(raw.encode("utf-8")).hexdigest()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS nexus_intake_keys (

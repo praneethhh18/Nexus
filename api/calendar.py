@@ -23,7 +23,7 @@ import hashlib
 import hmac
 import os
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -32,7 +32,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 CAL_TABLE = "nexus_calendar_connections"
 
@@ -104,9 +104,8 @@ def _unpack_token(stored: str) -> str:
 
 
 # ── Database ─────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {CAL_TABLE} (
         user_id TEXT PRIMARY KEY,

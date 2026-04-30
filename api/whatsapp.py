@@ -23,7 +23,7 @@ from __future__ import annotations
 import os
 import re
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
@@ -33,7 +33,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso, now_utc_naive
 
 ACCOUNTS_TABLE = "nexus_whatsapp_accounts"
@@ -58,9 +58,8 @@ _DEDUP: Dict[str, float] = {}  # message_id -> timestamp
 _RATE_LIMIT: Dict[str, deque] = defaultdict(deque)
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {ACCOUNTS_TABLE} (
         phone TEXT PRIMARY KEY,

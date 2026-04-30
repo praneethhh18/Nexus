@@ -1,24 +1,28 @@
 """Query History — stores every query with its result for search and re-run."""
 from __future__ import annotations
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
-from config.settings import DB_PATH
+from config.db import get_conn
 
 TABLE = "nexus_query_history"
 
 
 def _ensure_column(conn, table, column, decl):
-    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
-    if column not in cols:
+    """Add a column if missing. Try-and-ignore works on both SQLite and Postgres."""
+    try:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 def _get_conn():
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.execute(f"""CREATE TABLE IF NOT EXISTS {TABLE} (
         id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp TEXT, query TEXT, intent TEXT,
         tools_used TEXT DEFAULT '[]', answer_preview TEXT, success INTEGER DEFAULT 1,
@@ -33,13 +37,15 @@ def _get_conn():
 def log_query(query, intent="unknown", tools_used=None, answer_preview="",
               success=True, duration_ms=0, user_id="default", business_id="default"):
     conn = _get_conn()
+    # RETURNING id is portable across SQLite (3.35+) and Postgres — replaces
+    # cursor.lastrowid which doesn't work on the Postgres wrapper.
     cursor = conn.execute(
         f"INSERT INTO {TABLE} (timestamp,query,intent,tools_used,answer_preview,success,duration_ms,user_id,business_id) "
-        f"VALUES (?,?,?,?,?,?,?,?,?)",
+        f"VALUES (?,?,?,?,?,?,?,?,?) RETURNING id",
         (datetime.now().isoformat(), query, intent, json.dumps(tools_used or []),
          answer_preview[:500], int(success), duration_ms, user_id, business_id),
     )
-    row_id = cursor.lastrowid
+    row_id = cursor.fetchone()[0]
     conn.commit()
     conn.close()
     return row_id

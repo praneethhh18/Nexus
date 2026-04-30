@@ -12,22 +12,21 @@ asks for a rewrite.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from pathlib import Path
 from typing import Dict, List
 
 from fastapi import HTTPException
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TABLE = "nexus_saved_queries"
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             id              TEXT PRIMARY KEY,

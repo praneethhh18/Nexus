@@ -27,14 +27,24 @@ from pathlib import Path
 from typing import Any
 
 
-from config.settings import DB_PATH
+# DB_PATH and DATABASE_URL are resolved on EACH call rather than at import
+# time. Reason: tests use monkeypatch.setenv("DB_PATH", ...) + importlib.reload
+# on `config.settings`. If we cached values here at import, those reloads
+# wouldn't propagate and tests would silently hit the wrong database.
 
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+def _database_url() -> str:
+    return os.getenv("DATABASE_URL", "").strip()
+
+
+def _db_path() -> str:
+    # Read fresh from config.settings so settings reloads in tests are seen.
+    from config import settings as _settings
+    return _settings.DB_PATH
 
 
 def backend() -> str:
     """Return 'postgres' if DATABASE_URL points at Postgres, else 'sqlite'."""
-    if DATABASE_URL.startswith(("postgresql://", "postgres://")):
+    if _database_url().startswith(("postgresql://", "postgres://")):
         return "postgres"
     return "sqlite"
 
@@ -45,8 +55,9 @@ def is_postgres() -> bool:
 
 # ── SQLite path (default) ────────────────────────────────────────────────────
 def _sqlite_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    db_path = _db_path()
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(db_path)
     # Apply WAL + production pragmas per-connection for safety
     try:
         conn.execute("PRAGMA journal_mode = WAL")
@@ -224,9 +235,8 @@ def _pg_conn() -> _PgConn:
             "DATABASE_URL points at Postgres but 'psycopg' is not installed. "
             "Run: pip install 'psycopg[binary]>=3.1'"
         )
-    raw = psycopg.connect(DATABASE_URL, autocommit=False)
-    wrapped = _PgConn(raw)
-    return wrapped
+    raw = psycopg.connect(_database_url(), autocommit=False)
+    return _PgConn(raw)
 
 
 # ── Public entry point ───────────────────────────────────────────────────────

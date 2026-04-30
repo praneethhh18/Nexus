@@ -8,11 +8,11 @@ shipped defaults" — safe for existing accounts.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import Dict
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TABLE = "nexus_notification_prefs"
@@ -31,9 +31,8 @@ DEFAULTS: Dict[str, bool] = {
 }
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             user_id     TEXT NOT NULL,

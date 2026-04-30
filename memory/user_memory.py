@@ -10,15 +10,14 @@ Persistent long-term memory per user with:
 from __future__ import annotations
 
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Any
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 # ── Tables ────────────────────────────────────────────────────────────────────
 USER_PROFILE_TABLE = "nexus_user_profiles"
@@ -27,11 +26,10 @@ USER_SESSION_TABLE = "nexus_user_sessions"
 USER_PATTERN_TABLE = "nexus_user_patterns"
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA journal_mode=WAL")  # silently no-op on Postgres
 
     # Create tables
     conn.execute(f"""
@@ -87,11 +85,13 @@ def _get_conn() -> sqlite3.Connection:
         FOREIGN KEY (user_id) REFERENCES {USER_PROFILE_TABLE}(user_id)
     )""")
 
-    # Ensure default user exists
+    # Ensure default user exists. ON CONFLICT DO NOTHING is the portable
+    # spelling — works on SQLite 3.24+ and Postgres, replaces "INSERT OR IGNORE".
     conn.execute(f"""
-    INSERT OR IGNORE INTO {USER_PROFILE_TABLE}
+    INSERT INTO {USER_PROFILE_TABLE}
     (user_id, created_at, last_active)
     VALUES ('default', ?, ?)
+    ON CONFLICT (user_id) DO NOTHING
     """, (datetime.now().isoformat(), datetime.now().isoformat()))
 
     conn.commit()

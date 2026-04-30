@@ -4,22 +4,20 @@ Auto-extracts key facts from conversations after every 5 turns.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Any
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 LT_TABLE = "nexus_long_term_memory"
 CATEGORIES = {"preference", "insight", "entity", "decision"}
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {LT_TABLE} (

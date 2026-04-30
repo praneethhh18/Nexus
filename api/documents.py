@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime, date
 from pathlib import Path
@@ -19,7 +19,8 @@ from typing import List, Dict, Any
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH, OUTPUTS_DIR
+from config.db import get_conn
+from config.settings import OUTPUTS_DIR
 
 DOCS_TABLE = "nexus_documents"
 DOCS_DIR = Path(OUTPUTS_DIR) / "documents"
@@ -166,9 +167,8 @@ def _lines_to_bullets(value: Any) -> List[str]:
 
 
 # ── Database ─────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {DOCS_TABLE} (
         id TEXT PRIMARY KEY,

@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import re
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 import uuid
 from collections import defaultdict
@@ -27,7 +27,8 @@ from fastapi import HTTPException, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
+from config.settings import DB_PATH  # used for the co-located .jwt_secret file
 from utils.timez import now_iso, now_utc_naive
 
 # ── JWT secret — persisted so tokens survive restarts ─────────────────────────
@@ -73,7 +74,7 @@ security = HTTPBearer(auto_error=False)
 
 # ── Database ──────────────────────────────────────────────────────────────────
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.execute("""CREATE TABLE IF NOT EXISTS nexus_users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,

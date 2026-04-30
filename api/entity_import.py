@@ -141,13 +141,13 @@ def _row_to_payload(row: pd.Series, mapping: Dict[str, str]) -> Dict[str, Any]:
 def _resolve_company(business_id: str, name: str) -> Optional[str]:
     if not name:
         return None
-    import sqlite3
-    from config.settings import DB_PATH
-    conn = sqlite3.connect(DB_PATH)
+    from config.db import get_conn
+    conn = get_conn()
     try:
+        # COLLATE NOCASE is SQLite-only; LOWER() comparison is portable.
         row = conn.execute(
             "SELECT id FROM nexus_companies "
-            "WHERE business_id = ? AND name = ? COLLATE NOCASE LIMIT 1",
+            "WHERE business_id = ? AND LOWER(name) = LOWER(?) LIMIT 1",
             (business_id, name),
         ).fetchone()
     finally:

@@ -17,16 +17,15 @@ from __future__ import annotations
 import base64
 import hashlib
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime
-from pathlib import Path
 from typing import List, Dict, Any
 
 import pyotp
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso, now_utc_naive
 
 TWOFA_TABLE = "nexus_user_2fa"
@@ -68,9 +67,8 @@ def _hash_code(code: str) -> str:
 
 
 # ── Tables ───────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {TWOFA_TABLE} (
         user_id TEXT PRIMARY KEY,
@@ -329,10 +327,17 @@ def record_session(
 ) -> None:
     conn = _get_conn()
     try:
+        # Portable upsert: ON CONFLICT works on SQLite 3.24+ and Postgres.
+        # jti is the primary key — collisions are vanishingly rare but possible
+        # if a token is re-issued; refreshing the row is the right behavior.
         conn.execute(
-            f"INSERT OR REPLACE INTO {SESSIONS_TABLE} "
+            f"INSERT INTO {SESSIONS_TABLE} "
             f"(jti, user_id, user_agent, ip, created_at, last_seen_at, expires_at) "
-            f"VALUES (?,?,?,?,?,?,?)",
+            f"VALUES (?,?,?,?,?,?,?) "
+            f"ON CONFLICT (jti) DO UPDATE SET "
+            f"  user_id = EXCLUDED.user_id, user_agent = EXCLUDED.user_agent, "
+            f"  ip = EXCLUDED.ip, last_seen_at = EXCLUDED.last_seen_at, "
+            f"  expires_at = EXCLUDED.expires_at",
             (jti, user_id, (user_agent or "")[:300], (ip or "")[:60],
              _now(), _now(), expires_at.isoformat()),
         )

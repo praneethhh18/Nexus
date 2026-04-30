@@ -24,14 +24,13 @@ re-raise a nudge the user already waved off.
 from __future__ import annotations
 
 import hashlib
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timedelta, date
-from pathlib import Path
 from typing import Dict, List
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso, now_utc_naive
 
 DISMISS_TABLE = "nexus_suggestion_dismissals"
@@ -39,9 +38,8 @@ DISMISS_TABLE = "nexus_suggestion_dismissals"
 VALID_ENTITY_TYPES = {"contact", "deal", "invoice", "task"}
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {DISMISS_TABLE} (
             business_id  TEXT NOT NULL,
@@ -74,9 +72,11 @@ def _is_dismissed(business_id: str, sid: str) -> bool:
 def dismiss(business_id: str, suggestion_id: str) -> None:
     conn = _conn()
     try:
+        # Portable: ON CONFLICT works on SQLite 3.24+ and Postgres.
         conn.execute(
-            f"INSERT OR IGNORE INTO {DISMISS_TABLE} "
-            f"(business_id, suggestion_id, dismissed_at) VALUES (?, ?, ?)",
+            f"INSERT INTO {DISMISS_TABLE} "
+            f"(business_id, suggestion_id, dismissed_at) VALUES (?, ?, ?) "
+            f"ON CONFLICT (business_id, suggestion_id) DO NOTHING",
             (business_id, suggestion_id, now_iso()),
         )
         conn.commit()

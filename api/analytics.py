@@ -13,13 +13,13 @@ Calls are cheap because SQLite + indexed columns.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, date, timedelta
 from typing import Dict, Any, List
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_utc_naive
 from api.crm import (
     DEALS_TABLE, INTERACTIONS_TABLE,
@@ -27,8 +27,8 @@ from api.crm import (
 )
 
 
-def _conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     return conn
 

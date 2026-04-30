@@ -14,7 +14,7 @@ time rather than modeling many-to-many here.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -22,7 +22,7 @@ from typing import Dict, List, Optional
 
 from fastapi import HTTPException
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TABLE = "nexus_document_collections"
@@ -34,9 +34,8 @@ _PALETTE = [
 ]
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             id          TEXT PRIMARY KEY,
@@ -52,7 +51,7 @@ def _conn() -> sqlite3.Connection:
     return conn
 
 
-def _docs_conn() -> sqlite3.Connection:
+def _docs_conn():
     """Shared accessor so callers don't need to touch the documents module
     just to read document rows. Ensures the nexus_documents columns exist."""
     from api import documents as _docs

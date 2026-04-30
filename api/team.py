@@ -20,15 +20,14 @@ from __future__ import annotations
 import os
 import re
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import Dict, Any, List
 
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso, now_utc_naive
 
 INVITES_TABLE = "nexus_business_invites"
@@ -38,9 +37,8 @@ VALID_ROLES = {"viewer", "member", "admin"}
 INVITE_TTL_DAYS = 7
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {INVITES_TABLE} (
         token TEXT PRIMARY KEY,
@@ -218,9 +216,12 @@ def accept_invite(token: str, user_id: str, user_email: str) -> Dict[str, Any]:
     from api.businesses import _get_conn as _biz_conn, MEMBERS_TABLE
     conn = _biz_conn()
     try:
+        # Portable upsert — re-accepting an invite refreshes role + joined_at.
         conn.execute(
-            f"INSERT OR REPLACE INTO {MEMBERS_TABLE} (business_id, user_id, role, joined_at) "
-            f"VALUES (?,?,?,?)",
+            f"INSERT INTO {MEMBERS_TABLE} (business_id, user_id, role, joined_at) "
+            f"VALUES (?,?,?,?) "
+            f"ON CONFLICT (business_id, user_id) DO UPDATE SET "
+            f"  role = EXCLUDED.role, joined_at = EXCLUDED.joined_at",
             (inv["business_id"], user_id, inv["role"], _now()),
         )
         conn.commit()
@@ -341,7 +342,7 @@ def activity_feed(business_id: str, limit: int = 60) -> List[Dict[str, Any]]:
     and CRM interactions for this business. Most recent first.
     """
     items: List[Dict[str, Any]] = []
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         # Audit log (tool calls)
@@ -436,7 +437,7 @@ def activity_feed(business_id: str, limit: int = 60) -> List[Dict[str, Any]]:
     user_ids = {i["actor_id"] for i in items if i.get("actor_id")}
     user_cache = {}
     if user_ids:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         conn.row_factory = sqlite3.Row
         try:
             placeholders = ",".join("?" for _ in user_ids)

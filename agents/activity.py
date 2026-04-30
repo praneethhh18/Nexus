@@ -18,19 +18,19 @@ silent. It'll appear here once it emits a summary record.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # for sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import timedelta
 from typing import Dict, List
 
 from loguru import logger
 
 from agents.personas import get_persona
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_utc_naive
 
 
-def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+def _connect():
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     return conn
 

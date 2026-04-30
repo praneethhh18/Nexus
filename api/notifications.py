@@ -5,12 +5,12 @@ Scoped per business so each tenant only sees its own alerts.
 from __future__ import annotations
 
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime
 from typing import List, Dict, Optional
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 TABLE = "nexus_notifications"
 
@@ -22,7 +22,7 @@ def _ensure_column(conn, table, column, decl):
 
 
 def _get_conn():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.execute(f"""CREATE TABLE IF NOT EXISTS {TABLE} (
         id TEXT PRIMARY KEY,
         user_id TEXT DEFAULT 'default',

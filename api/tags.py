@@ -15,12 +15,11 @@ visually coherent without making users choose hex codes.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
-from pathlib import Path
 from typing import Dict, List, Optional
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TAGS_TABLE = "nexus_tags"
@@ -42,9 +41,8 @@ _PALETTE = [
 VALID_ENTITY_TYPES = {"contact", "company", "deal", "task", "invoice", "document"}
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TAGS_TABLE} (
             id            TEXT PRIMARY KEY,
@@ -195,8 +193,9 @@ def assign(business_id: str, tag_id: str, entity_type: str, entity_id: str) -> N
         if not row:
             raise ValueError("Tag not found for this business")
         conn.execute(
-            f"INSERT OR IGNORE INTO {ASSIGN_TABLE} "
-            f"(tag_id, entity_type, entity_id, created_at) VALUES (?, ?, ?, ?)",
+            f"INSERT INTO {ASSIGN_TABLE} "
+            f"(tag_id, entity_type, entity_id, created_at) VALUES (?, ?, ?, ?) "
+            f"ON CONFLICT (tag_id, entity_type, entity_id) DO NOTHING",
             (tag_id, entity_type, entity_id, now_iso()),
         )
         conn.commit()

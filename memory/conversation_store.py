@@ -5,28 +5,37 @@ Supports create, load, list, delete, and export of conversations.
 from __future__ import annotations
 
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Optional
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 TABLE = "nexus_conversations"
 MSG_TABLE = "nexus_conversation_messages"
 
 
-def _ensure_column(conn: sqlite3.Connection, table: str, column: str, decl: str) -> None:
-    """Add a column to a table if it's missing. Safe to call on every boot."""
-    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
-    if column not in cols:
+def _ensure_column(conn, table: str, column: str, decl: str) -> None:
+    """Add a column to a table if it's missing. Safe to call on every boot.
+
+    Backend-agnostic: tries the ALTER and swallows the duplicate-column error.
+    Both SQLite and Postgres raise here when the column already exists; on
+    Postgres we also need to rollback so the failed transaction doesn't poison
+    later statements.
+    """
+    try:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
 def _get_conn():
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.execute(f"""CREATE TABLE IF NOT EXISTS {TABLE} (
         conversation_id TEXT PRIMARY KEY, title TEXT, created_at TEXT,
         updated_at TEXT, message_count INTEGER DEFAULT 0,

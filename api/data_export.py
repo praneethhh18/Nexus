@@ -16,13 +16,13 @@ from __future__ import annotations
 
 import csv
 import io
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import zipfile
 from typing import List, Tuple
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 # (table_name, filter_column) — None filter means "whole table" (tags table has
@@ -125,7 +125,7 @@ def build_export_zip(business_id: str) -> bytes:
         )
         zf.writestr("README.txt", readme)
 
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         try:
             for table, filter_col in EXPORTED_TABLES:
                 try:

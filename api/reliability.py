@@ -14,7 +14,7 @@ so a stuck LLM call doesn't wedge an endpoint forever.
 from __future__ import annotations
 
 import asyncio
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 from collections import defaultdict, deque
 from pathlib import Path
@@ -23,7 +23,7 @@ from typing import Any, Deque, Dict, Tuple
 from fastapi import HTTPException, Request
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 
 # ── Rate limiter ────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ def deep_health() -> Dict[str, Any]:
 
     # Database
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         conn.execute("SELECT 1").fetchone()
         row = conn.execute(
             "SELECT COUNT(*) FROM sqlite_master WHERE type='table'"

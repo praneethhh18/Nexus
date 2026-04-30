@@ -23,13 +23,13 @@ Callers: `/api/activity/{entity_type}/{entity_id}` — server.py.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import Dict, List
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 # Which tables we inspect for each entity type. Each entry is
 # (table, columns_that_reference_the_entity).
@@ -56,9 +56,8 @@ _REF_COLUMNS: Dict[str, Dict[str, List[str]]] = {
 VALID_ENTITY_TYPES = {"contact", "company", "deal", "invoice"}
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     return conn
 

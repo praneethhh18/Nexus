@@ -11,14 +11,13 @@ Readers: /api/agents/runs and the Agents page.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # only for sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TABLE = "nexus_agent_runs"
@@ -27,9 +26,8 @@ TABLE = "nexus_agent_runs"
 _MAX_ERROR_CHARS = 800
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             id              TEXT PRIMARY KEY,
