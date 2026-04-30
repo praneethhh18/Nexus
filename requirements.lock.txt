@@ -234,7 +234,7 @@ parso==0.8.5
 passlib==1.7.4
 pefile==2024.8.26
 phonenumbers==9.0.22
-pillow==12.1.0
+pillow==12.2.0
 platformdirs==4.9.6
 playwright==1.58.0
 plotly==6.7.0
