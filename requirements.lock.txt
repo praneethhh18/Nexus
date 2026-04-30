@@ -272,7 +272,7 @@ pypdf==6.10.2
 PyPika==0.51.1
 pypiwin32==223
 pyproject_hooks==1.2.0
-pytest==9.0.2
+pytest==9.0.3
 pytest-asyncio==1.3.0
 pytest-cov==7.1.0
 pytest-timeout==2.4.0
