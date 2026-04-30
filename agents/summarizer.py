@@ -18,12 +18,12 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from typing import List, Dict, Any, Optional
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from config.llm_provider import invoke as llm_invoke
 
 
@@ -135,7 +135,7 @@ MEMORY:
 
 
 def _fetch_memory_rows(business_id: str) -> List[Dict[str, Any]]:
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
@@ -252,7 +252,7 @@ def consolidate_business_memory(
 
     # We need a user_id for the audit. Use the owner of the first entry's
     # business for attribution. (Callers can override by doing apply manually.)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         owner_row = conn.execute(

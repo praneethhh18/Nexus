@@ -1,10 +1,10 @@
 """Data Import — import CSV/Excel files as new database tables."""
 from __future__ import annotations
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 import pandas as pd
-from config.settings import DB_PATH
+from config.db import get_conn
 
 def _sanitize_table_name(name):
     name = Path(name).stem
@@ -42,7 +42,7 @@ def preview_file(file_path, max_rows=10):
             "columns": columns, "suggested_table_name": _sanitize_table_name(path.name), "file_type": file_type, "_full_df": df}
 
 def get_existing_tables():
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     tables = [r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name").fetchall()]
     conn.close(); return tables
 
@@ -54,7 +54,7 @@ def import_to_database(df, table_name, if_exists="fail"):
     if table_name in protected and if_exists == "replace":
         return {"success": False, "error": f"Cannot replace protected table '{table_name}'.", "table_name": table_name, "rows_imported": 0, "columns": []}
     try:
-        conn = sqlite3.connect(DB_PATH); df.to_sql(table_name, conn, if_exists=if_exists, index=False); conn.close()
+        conn = get_conn(); df.to_sql(table_name, conn, if_exists=if_exists, index=False); conn.close()
         return {"success": True, "table_name": table_name, "rows_imported": len(df), "columns": list(df.columns), "error": None}
     except ValueError as e:
         return {"success": False, "error": str(e), "table_name": table_name, "rows_imported": 0, "columns": []}

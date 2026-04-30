@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -33,7 +33,7 @@ from pydantic import BaseModel, Field
 from api import crm as _crm
 from api.auth import get_current_context
 from config.llm_provider import invoke as llm_invoke
-from config.settings import DB_PATH
+from config.db import get_conn
 
 router = APIRouter(tags=["email-capture"])
 
@@ -194,7 +194,7 @@ def save_from_email(payload: EmailPasteSaveIn, ctx: dict = Depends(get_current_c
         contact_id = contact["id"]
         # Stamp the source — `create_contact` doesn't accept it directly.
         try:
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_conn()
             conn.execute(
                 "UPDATE nexus_contacts SET source = ? WHERE id = ?",
                 ("email_paste", contact_id),

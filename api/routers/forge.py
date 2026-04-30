@@ -243,9 +243,9 @@ def accept(payload: AcceptIn, ctx: dict = Depends(get_current_context)):
         })
         # Stamp the source — create_contact doesn't accept it directly.
         try:
-            from config.settings import DB_PATH
+            from config.db import get_conn
             import sqlite3
-            conn = sqlite3.connect(DB_PATH)
+            conn = get_conn()
             conn.execute(
                 "UPDATE nexus_contacts SET source = ? WHERE id = ?",
                 ("ai_outbound", contact["id"]),

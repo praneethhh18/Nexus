@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Optional
@@ -40,7 +40,7 @@ from pydantic import BaseModel, Field
 from api import crm as _crm
 from api.auth import get_current_context
 from config.llm_provider import invoke as llm_invoke
-from config.settings import DB_PATH
+from config.db import get_conn
 
 router = APIRouter(tags=["lead-scoring"])
 
@@ -49,9 +49,8 @@ CONTACTS_TABLE = "nexus_contacts"
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+def _conn():
+    return get_conn()
 
 
 def _now() -> str:

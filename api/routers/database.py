@@ -13,7 +13,7 @@ prefix to keep the auth tables safe.
 from __future__ import annotations
 
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import tempfile
 import time
 from pathlib import Path
@@ -22,7 +22,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from api.auth import get_current_context
-from config.settings import DB_PATH
+from config.db import get_conn
 
 router = APIRouter(tags=["database"])
 
@@ -33,7 +33,7 @@ _SYSTEM_TABLE_PREFIXES = ("nexus_", "sqlite_")
 def list_tables(ctx: dict = Depends(get_current_context)):
     import pandas as pd
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         tables = pd.read_sql_query(
             "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name", conn
@@ -65,7 +65,7 @@ def get_table_detail(table_name: str, limit: int = 50,
     if not table_name.replace("_", "").isalnum():
         raise HTTPException(400, "Invalid table name")
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         cols = pd.read_sql_query(f"PRAGMA table_info([{table_name}])", conn)
         if cols.empty:
@@ -232,7 +232,7 @@ def execute_sql(req: SQLExecuteRequest, ctx: dict = Depends(get_current_context)
     limit = max(1, min(int(req.limit or 500), 5000))
 
     started = time.time()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         # 15-second wall-clock cap via SQLite progress handler.
         deadline = started + 15

@@ -11,12 +11,12 @@ Safe by design:
 from __future__ import annotations
 
 import os
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timedelta
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_utc_naive
 
 STALE_THRESHOLD_DAYS = int(os.getenv("STALE_DEAL_DAYS", "14"))
@@ -41,7 +41,7 @@ def _already_handled_today(business_id: str, deal_id: str) -> bool:
     """Check whether we've already created a follow-up task for this deal today."""
     from api.tasks import TASKS_TABLE
     today = now_utc_naive().date().isoformat()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         row = conn.execute(
             f"SELECT 1 FROM {TASKS_TABLE} WHERE business_id = ? AND deal_id = ? "
@@ -120,7 +120,7 @@ def run_for_all_businesses() -> list:
     """Iterate over all active businesses and run the watcher."""
     from api.businesses import BUSINESSES_TABLE
     results = []
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(

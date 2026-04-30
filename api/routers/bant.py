@@ -28,7 +28,7 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timezone
 from typing import Dict, Optional
 
@@ -39,7 +39,7 @@ from pydantic import BaseModel, Field
 from api import crm as _crm
 from api.auth import get_current_context
 from config.llm_provider import invoke as llm_invoke
-from config.settings import DB_PATH
+from config.db import get_conn
 
 router = APIRouter(tags=["bant"])
 
@@ -137,7 +137,7 @@ def _parse_bant(raw: str) -> Optional[Dict]:
 
 def _persist(business_id: str, contact_id: str, bant: Dict) -> None:
     """Write the BANT blob to nexus_contacts.bant_signals + bant_extracted_at."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         # Defensive — ensure the columns exist (api.crm._get_conn normally does this).
         cols = {r[1] for r in conn.execute(f"PRAGMA table_info({CONTACTS_TABLE})").fetchall()}

@@ -11,7 +11,7 @@ server.py to keep behaviour identical during the refactor.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 
 from fastapi import APIRouter, Depends
 
@@ -74,8 +74,8 @@ def read_all_notifications(ctx: dict = Depends(get_current_context)):
 def notifications_delete_one(notif_id: str, ctx: dict = Depends(get_current_context)):
     """Remove a single notification."""
     from api.notifications import TABLE
-    from config.settings import DB_PATH
-    conn = sqlite3.connect(DB_PATH)
+    from config.db import get_conn
+    conn = get_conn()
     try:
         conn.execute(
             f"DELETE FROM {TABLE} WHERE id = ? AND business_id = ?",

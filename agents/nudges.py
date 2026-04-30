@@ -14,7 +14,7 @@ back tomorrow if still relevant.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -22,16 +22,15 @@ from typing import Dict, List, Optional
 from loguru import logger
 
 from agents.personas import get_persona
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_utc_naive
 
 DISMISS_TABLE = "nexus_nudge_dismissals"
 
 
 # ── Storage ─────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {DISMISS_TABLE} (
             business_id TEXT NOT NULL,
@@ -64,9 +63,11 @@ def dismiss(business_id: str, nudge_id: str) -> None:
     today = date.today().isoformat()
     conn = _get_conn()
     try:
+        # Portable: ON CONFLICT works on SQLite 3.24+ and Postgres.
         conn.execute(
-            f"INSERT OR IGNORE INTO {DISMISS_TABLE} (business_id, nudge_id, dismissed_on) "
-            f"VALUES (?, ?, ?)",
+            f"INSERT INTO {DISMISS_TABLE} (business_id, nudge_id, dismissed_on) "
+            f"VALUES (?, ?, ?) "
+            f"ON CONFLICT (business_id, nudge_id, dismissed_on) DO NOTHING",
             (business_id, nudge_id, today),
         )
         conn.commit()
@@ -82,7 +83,7 @@ def _nudge_invoice_reminder(business_id: str) -> Optional[Dict]:
     """Kira: overdue invoices without a draft reminder in the queue already."""
     try:
         today = date.today().isoformat()
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             # Overdue, not paid, no pending reminder in the last 7 days
             rows = conn.execute(
@@ -104,7 +105,7 @@ def _nudge_invoice_reminder(business_id: str) -> Optional[Dict]:
     # Filter to invoices without a recent reminder approval
     pending = []
     cutoff = (now_utc_naive() - timedelta(days=7)).isoformat()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         for r in rows:
             dup = conn.execute(
@@ -144,7 +145,7 @@ def _nudge_stale_deals(business_id: str) -> Optional[Dict]:
     """Arjun: deals that haven't moved in 14+ days."""
     try:
         cutoff = (now_utc_naive() - timedelta(days=14)).isoformat()
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
                 "SELECT id, name, stage, updated_at FROM nexus_deals "
@@ -178,7 +179,7 @@ def _nudge_email_triage(business_id: str) -> Optional[Dict]:
     """Iris: drafts waiting in the approval queue from her last triage run."""
     try:
         cutoff = (now_utc_naive() - timedelta(hours=24)).isoformat()
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
                 "SELECT COUNT(*) AS n FROM nexus_agent_approvals "
@@ -210,7 +211,7 @@ def _nudge_morning_briefing(business_id: str) -> Optional[Dict]:
     """Atlas: no briefing yet today."""
     try:
         today = date.today().isoformat()
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
                 "SELECT COUNT(*) AS n FROM nexus_briefings "
@@ -226,7 +227,7 @@ def _nudge_morning_briefing(business_id: str) -> Optional[Dict]:
 
     # Only suggest a briefing if there's any business data to brief on
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         try:
             cnt = conn.execute(
                 "SELECT "
@@ -258,7 +259,7 @@ def _nudge_meeting_prep(business_id: str) -> Optional[Dict]:
     try:
         now = now_utc_naive()
         cutoff = (now + timedelta(hours=2)).isoformat()
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
                 "SELECT COUNT(*) AS n FROM nexus_calendar_events "

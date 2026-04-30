@@ -10,13 +10,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import random
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timedelta
 
 from faker import Faker
 from loguru import logger
 
 from config.settings import DB_PATH, ensure_directories
+from config.db import get_conn
 
 fake = Faker()
 random.seed(42)
@@ -32,8 +33,7 @@ COST_CENTERS = ["CC-001", "CC-002", "CC-003", "CC-004", "CC-005"]
 
 def _get_conn():
     ensure_directories()
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+    return get_conn()
 
 
 def _seasonal_factor(dt: datetime) -> float:
@@ -79,7 +79,7 @@ def setup_database(force: bool = False) -> str:
                 str(created), ltv, round(random.uniform(0, 1), 2)
             ))
         c.executemany(
-            "INSERT OR IGNORE INTO customers VALUES (?,?,?,?,?,?,?,?)", customers
+            "INSERT INTO customers VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", customers
         )
         logger.info(f"Inserted {len(customers)} customers")
 
@@ -115,7 +115,7 @@ def setup_database(force: bool = False) -> str:
                 random.randint(0, 500), f"SKU-{i:04d}"
             ))
         c.executemany(
-            "INSERT OR IGNORE INTO products VALUES (?,?,?,?,?,?,?)", products
+            "INSERT INTO products VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", products
         )
         logger.info(f"Inserted {len(products)} products")
 
@@ -145,7 +145,7 @@ def setup_database(force: bool = False) -> str:
                 random.choice(REGIONS)
             ))
         c.executemany(
-            "INSERT OR IGNORE INTO orders VALUES (?,?,?,?,?,?)", orders
+            "INSERT INTO orders VALUES (?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", orders
         )
         logger.info(f"Inserted {len(orders)} orders")
 
@@ -174,7 +174,7 @@ def setup_database(force: bool = False) -> str:
                 items.append((item_id, order_id, prod_id, qty, price))
                 item_id += 1
         c.executemany(
-            "INSERT OR IGNORE INTO order_items VALUES (?,?,?,?,?)", items
+            "INSERT INTO order_items VALUES (?,?,?,?,?) ON CONFLICT (id) DO NOTHING", items
         )
         logger.info(f"Inserted {len(items)} order items")
 
@@ -217,7 +217,7 @@ def setup_database(force: bool = False) -> str:
                 ))
                 metric_id += 1
         c.executemany(
-            "INSERT OR IGNORE INTO sales_metrics VALUES (?,?,?,?,?,?,?)", metrics
+            "INSERT INTO sales_metrics VALUES (?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", metrics
         )
         logger.info(f"Inserted {len(metrics)} sales metric rows with anomalies planted")
 
@@ -247,7 +247,7 @@ def setup_database(force: bool = False) -> str:
                 round(random.uniform(2.0, 5.0), 1)
             ))
         c.executemany(
-            "INSERT OR IGNORE INTO employees VALUES (?,?,?,?,?,?,?,?)", employees
+            "INSERT INTO employees VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", employees
         )
         logger.info(f"Inserted {len(employees)} employees")
 
@@ -280,7 +280,7 @@ def setup_database(force: bool = False) -> str:
                     ))
                     bid += 1
         c.executemany(
-            "INSERT OR IGNORE INTO budgets VALUES (?,?,?,?,?,?,?,?)", budgets
+            "INSERT INTO budgets VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", budgets
         )
         logger.info(f"Inserted {len(budgets)} budget records")
 
@@ -312,7 +312,7 @@ def setup_database(force: bool = False) -> str:
                 fake.name()
             ))
         c.executemany(
-            "INSERT OR IGNORE INTO transactions VALUES (?,?,?,?,?,?,?,?)", transactions
+            "INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?) ON CONFLICT (id) DO NOTHING", transactions
         )
         logger.info(f"Inserted {len(transactions)} transactions")
 
@@ -320,7 +320,7 @@ def setup_database(force: bool = False) -> str:
     conn.close()
 
     # Summary
-    conn2 = sqlite3.connect(DB_PATH)
+    conn2 = get_conn()
     c2 = conn2.cursor()
     print("\n" + "="*50)
     print("DATABASE SETUP COMPLETE")

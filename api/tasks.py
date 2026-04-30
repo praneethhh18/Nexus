@@ -7,7 +7,7 @@ get_current_context before calling into this module.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime, date, timedelta
 from pathlib import Path
@@ -16,7 +16,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 TASKS_TABLE = "nexus_tasks"
 
@@ -25,9 +25,8 @@ PRIORITIES = ("low", "normal", "high", "urgent")
 RECURRENCES = ("none", "daily", "weekly", "monthly")
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {TASKS_TABLE} (
         id TEXT PRIMARY KEY,

@@ -10,7 +10,7 @@ layer just like every other endpoint.
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -18,7 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from loguru import logger
 
 from api.auth import get_current_context
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 router = APIRouter(prefix="/api/errors", tags=["errors"])
@@ -27,9 +27,8 @@ TABLE = "nexus_client_errors"
 _MAX_FIELD_CHARS = 4000
 
 
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,

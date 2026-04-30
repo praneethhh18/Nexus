@@ -8,7 +8,7 @@ recomputed on every update.
 from __future__ import annotations
 
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime, date
 from pathlib import Path
@@ -18,6 +18,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.settings import DB_PATH, OUTPUTS_DIR
+from config.db import get_conn
 
 INVOICES_TABLE = "nexus_invoices"
 COUNTER_TABLE = "nexus_invoice_counters"
@@ -27,9 +28,8 @@ STATUSES = ("draft", "sent", "paid", "overdue", "cancelled")
 INVOICE_DIR = Path(OUTPUTS_DIR) / "invoices"
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {INVOICES_TABLE} (
         id TEXT PRIMARY KEY,

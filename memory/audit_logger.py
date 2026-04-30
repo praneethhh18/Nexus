@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import csv
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime
 from pathlib import Path
@@ -15,19 +15,25 @@ from typing import Dict, Any, List, Optional
 from loguru import logger
 
 from config.settings import AUDIT_LOG_PATH, DB_PATH, OUTPUTS_DIR
+from config.db import get_conn
 
 AUDIT_TABLE = "nexus_audit_log"
 
 
 def _ensure_column(conn, table, column, decl):
-    cols = [r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()]
-    if column not in cols:
+    """Add a column if missing — portable across SQLite + Postgres."""
+    try:
         conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {AUDIT_TABLE} (
         event_id TEXT PRIMARY KEY,

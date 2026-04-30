@@ -8,15 +8,14 @@ functions here trust the business_id they receive.
 from __future__ import annotations
 
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from fastapi import HTTPException
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 CONTACTS_TABLE = "nexus_contacts"
 COMPANIES_TABLE = "nexus_companies"
@@ -31,9 +30,8 @@ DEAL_STAGE_EVENTS_TABLE = "nexus_deal_stage_events"
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute("PRAGMA foreign_keys = ON")
 
     conn.execute(f"""

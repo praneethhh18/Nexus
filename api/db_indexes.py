@@ -13,13 +13,13 @@ Indexes are keyed by the common query patterns:
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import List, Tuple
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 
 # Each entry: (index_name, table, column_list)
@@ -95,8 +95,7 @@ def apply_indexes() -> dict:
     Apply every index whose table + columns are present. Returns a summary
     dict {applied: N, skipped: M, errors: [(idx_name, err)]}.
     """
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     applied, skipped, errors = 0, 0, []
     try:
         for idx_name, table, cols in _INDEXES:

@@ -16,12 +16,12 @@ Privacy:
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_utc_naive
 
 LOOKAHEAD_MINUTES = 45
@@ -32,7 +32,7 @@ def _already_notified(business_id: str, event_id: str) -> bool:
     """Check whether we already pushed a prep for this event today."""
     from api.notifications import TABLE as NOTIF_TABLE
     today = now_utc_naive().date().isoformat()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         row = conn.execute(
             f"SELECT 1 FROM {NOTIF_TABLE} WHERE business_id = ? "
@@ -175,7 +175,7 @@ def run_for_all() -> list:
     from api.calendar import CAL_TABLE
     from api.businesses import MEMBERS_TABLE
     results = []
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
@@ -188,7 +188,7 @@ def run_for_all() -> list:
         user_id = r["user_id"]
         # For each business this user is a member of, run once. In practice
         # most users have one business, but we handle the multi-business case.
-        conn2 = sqlite3.connect(DB_PATH)
+        conn2 = get_conn()
         try:
             biz_rows = conn2.execute(
                 f"SELECT business_id FROM {MEMBERS_TABLE} WHERE user_id = ?",

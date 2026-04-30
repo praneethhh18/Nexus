@@ -6,7 +6,7 @@ Includes smarter retry logic with distinct error tracking.
 from __future__ import annotations
 
 import time
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import Dict, Any
 
@@ -14,6 +14,7 @@ import pandas as pd
 from loguru import logger
 
 from config.settings import DB_PATH, MAX_SQL_RETRIES, SQL_QUERY_TIMEOUT_SECONDS, SQL_MAX_ROWS
+from config.db import get_raw_conn, is_postgres
 from config.llm_provider import invoke as llm_invoke
 from sql_agent.schema_reader import get_schema_string
 from sql_agent.query_generator import generate_sql, _validate_sql
@@ -268,9 +269,13 @@ def execute_query(
     while retries <= MAX_SQL_RETRIES:
         conn = None
         try:
-            conn = sqlite3.connect(DB_PATH)
+            # pandas.read_sql_query needs a real DB-API connection, not our
+            # wrapper. Use get_raw_conn(); on Postgres set_progress_handler
+            # doesn't exist so the timeout helper becomes a no-op.
+            conn = get_raw_conn()
             deadline = time.time() + SQL_QUERY_TIMEOUT_SECONDS
-            _install_timeout(conn, deadline)
+            if not is_postgres():
+                _install_timeout(conn, deadline)
             # Enforce a hard row cap so a pathological query doesn't exhaust memory.
             # We wrap the user's query in a subquery; only applied to SELECTs.
             capped_sql = query_used

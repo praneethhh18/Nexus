@@ -25,7 +25,7 @@ import hashlib
 import imaplib
 import json
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from email.header import decode_header
 from pathlib import Path
 from typing import List, Dict, Any, Optional
@@ -33,7 +33,7 @@ from typing import List, Dict, Any, Optional
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 ACCOUNTS_TABLE = "nexus_email_accounts"
@@ -69,9 +69,8 @@ def _unpack(stored: str) -> str:
 
 
 # ── Database ─────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {ACCOUNTS_TABLE} (
         business_id TEXT PRIMARY KEY,

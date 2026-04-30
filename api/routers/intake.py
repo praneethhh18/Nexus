@@ -33,7 +33,7 @@ from __future__ import annotations
 import hashlib
 import re
 import secrets
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 import uuid
 from datetime import datetime, timezone
@@ -45,7 +45,7 @@ from loguru import logger
 from pydantic import BaseModel, Field
 
 from api.auth import get_current_context
-from config.settings import DB_PATH
+from config.db import get_conn
 
 router = APIRouter(tags=["intake"])
 
@@ -54,9 +54,8 @@ KEY_PREFIX = "nx_pub_"
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+def _conn():
+    return get_conn()
 
 
 def _hash_key(raw: str) -> str:

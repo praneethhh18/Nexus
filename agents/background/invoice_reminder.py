@@ -10,12 +10,12 @@ Safe by design:
 from __future__ import annotations
 
 import os
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import date, timedelta
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso, now_utc_naive
 
 # Only re-nag once every N days per invoice
@@ -26,7 +26,7 @@ TAG = "invoice-reminder"
 def _already_reminded_recently(business_id: str, invoice_id: str) -> bool:
     from agents.approval_queue import APPROVALS_TABLE
     cutoff = (now_utc_naive() - timedelta(days=REMINDER_INTERVAL_DAYS)).isoformat()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         row = conn.execute(
             f"SELECT 1 FROM {APPROVALS_TABLE} "
@@ -133,7 +133,7 @@ def run_for_business(business_id: str) -> dict:
 def run_for_all_businesses() -> list:
     from api.businesses import BUSINESSES_TABLE
     results = []
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(

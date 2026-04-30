@@ -23,14 +23,14 @@ distinguish "your numbers" from "demo numbers" and message accordingly.
 from __future__ import annotations
 
 import re
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime
 from typing import Dict, Any, Optional
 
 import pandas as pd
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from config.llm_config import get_llm
 
 
@@ -125,7 +125,7 @@ def _simulate_from_invoices(
     metric = scenario.get("metric", "revenue")
     change_pct = scenario.get("change_pct", 0.0) / 100.0
 
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         if not _table_exists(conn, "nexus_invoices"):
             return None
@@ -180,7 +180,7 @@ def _simulate_from_invoices(
     # user via the critique. (A proper multi-currency simulator is a
     # bigger project — this stays useful for the common single-currency
     # case.)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_conn()
     try:
         cur = conn.execute(
             "SELECT currency, COUNT(*) AS n FROM nexus_invoices "
@@ -217,7 +217,7 @@ def _simulate_from_sample(scenario: Dict[str, Any]) -> Dict[str, Any]:
     secondary_change_pct = scenario.get("secondary_change_pct", 0.0) / 100.0
 
     try:
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         if not _table_exists(conn, "orders") or not _table_exists(conn, "sales_metrics"):
             conn.close()
             return {"error": (

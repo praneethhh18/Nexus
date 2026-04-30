@@ -20,7 +20,7 @@ Callers:
 from __future__ import annotations
 
 import json
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import date, timedelta
 from pathlib import Path
@@ -28,7 +28,7 @@ from typing import Any, Dict, List
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 
@@ -36,9 +36,8 @@ BRIEFINGS_TABLE = "nexus_briefings"
 
 
 # ── Storage ─────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {BRIEFINGS_TABLE} (
             id TEXT PRIMARY KEY,
@@ -161,7 +160,7 @@ def _collect(business_id: str) -> Dict[str, Any]:
         ovis = _inv.list_invoices(business_id, status="overdue", limit=5) if hasattr(_inv, "list_invoices") else []
         # fallback: query directly for overdue
         if not ovis:
-            conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+            conn = get_conn(); conn.row_factory = sqlite3.Row
             try:
                 rows = conn.execute(
                     "SELECT number, customer_name, total, currency, due_date "
@@ -195,7 +194,7 @@ def _collect(business_id: str) -> Dict[str, Any]:
     # Deals that moved yesterday
     moved_deals: List[Dict[str, Any]] = []
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
                 "SELECT name, stage, value, currency FROM nexus_deals "
@@ -256,7 +255,7 @@ def _collect_evening(business_id: str) -> Dict[str, Any]:
     won_today = 0
 
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             # Tasks completed today: prefer completed_at, fall back to updated_at
             for r in conn.execute(
@@ -502,7 +501,7 @@ def _deliver_discord(narrative: str) -> bool:
 
 def _deliver_whatsapp(business_id: str, narrative: str) -> bool:
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
                 "SELECT phone FROM nexus_whatsapp_accounts WHERE business_id = ? LIMIT 1",
@@ -546,7 +545,7 @@ def run_for_business(business_id: str, deliver: bool = True) -> Dict:
     # Pull business name for the narrative context
     biz_name = "your business"
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
                 "SELECT name FROM nexus_businesses WHERE id = ? LIMIT 1",
@@ -574,7 +573,7 @@ def run_evening_for_business(business_id: str, deliver: bool = True) -> Dict:
     """Generate and persist today's evening digest for one business."""
     biz_name = "your business"
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             row = conn.execute(
                 "SELECT name FROM nexus_businesses WHERE id = ? LIMIT 1",
@@ -608,7 +607,7 @@ def run_for_all_businesses() -> List[Dict]:
     """Invoked by the daily scheduler."""
     results: List[Dict] = []
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(
                 "SELECT id FROM nexus_businesses WHERE is_active = 1"

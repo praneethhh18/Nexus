@@ -247,6 +247,32 @@ def get_conn():
     return _sqlite_conn()
 
 
+def get_raw_conn():
+    """
+    Return the UNDERLYING DB-API connection (raw sqlite3.Connection or
+    psycopg.Connection), bypassing the `?`/AUTOINCREMENT translation layer.
+
+    Use only when the caller needs strict DB-API 2.0 conformance — e.g.:
+      * `pandas.read_sql_query(sql, conn)` — pandas inspects the connection
+        type and breaks with our wrapper.
+      * `conn.set_progress_handler(...)` — SQLite-only API not on the wrapper.
+      * Database-specific introspection (PRAGMAs, system catalogs).
+
+    Caller is responsible for using backend-appropriate SQL on the result.
+    """
+    if is_postgres():
+        try:
+            import psycopg
+        except ImportError:
+            raise RuntimeError(
+                "DATABASE_URL points at Postgres but 'psycopg' is not installed."
+            )
+        return psycopg.connect(_database_url(), autocommit=False)
+    db_path = _db_path()
+    Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(db_path)
+
+
 def health_check() -> dict:
     """Quick ping to verify the database is reachable."""
     try:

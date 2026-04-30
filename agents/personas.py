@@ -18,13 +18,13 @@ behavior. Actual agent work lives in `agents/briefing.py`,
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from typing import Dict, List
 
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 from utils.timez import now_iso
 
 TABLE = "nexus_agent_personas"
@@ -89,9 +89,8 @@ SCHEDULER_JOB_IDS: Dict[str, str] = {
 
 
 # ── Storage ─────────────────────────────────────────────────────────────────
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TABLE} (
             business_id TEXT NOT NULL,
@@ -231,7 +230,7 @@ def _last_activity(business_id: str, agent_key: str) -> Dict:
     """
     info: Dict = {"last_ran": None, "last_24h_count": 0, "surface": None}
     try:
-        conn = sqlite3.connect(DB_PATH); conn.row_factory = sqlite3.Row
+        conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
             if agent_key == "morning_briefing":
                 row = conn.execute(

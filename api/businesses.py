@@ -13,16 +13,15 @@ Security model:
 """
 from __future__ import annotations
 
-import sqlite3
+import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, List, Dict
 
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
 
 BUSINESSES_TABLE = "nexus_businesses"
 MEMBERS_TABLE = "nexus_business_members"
@@ -32,9 +31,8 @@ MEMBERS_TABLE = "nexus_business_members"
 LEGACY_DEFAULT = "default"
 
 
-def _get_conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+def _get_conn():
+    conn = get_conn()
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {BUSINESSES_TABLE} (
         id TEXT PRIMARY KEY,
@@ -226,8 +224,12 @@ def add_member(
 
     conn = _get_conn()
     try:
+        # Portable upsert: re-adding an existing member updates their role.
         conn.execute(
-            f"INSERT OR REPLACE INTO {MEMBERS_TABLE} (business_id, user_id, role, joined_at) VALUES (?,?,?,?)",
+            f"INSERT INTO {MEMBERS_TABLE} (business_id, user_id, role, joined_at) "
+            f"VALUES (?,?,?,?) "
+            f"ON CONFLICT (business_id, user_id) DO UPDATE SET "
+            f"  role = EXCLUDED.role, joined_at = EXCLUDED.joined_at",
             (business_id, target_user_id, role, datetime.now().isoformat()),
         )
         conn.commit()

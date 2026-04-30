@@ -90,8 +90,8 @@ def _iter_active_businesses():
     try:
         import sqlite3
         from api.businesses import BUSINESSES_TABLE
-        from config.settings import DB_PATH
-        conn = sqlite3.connect(DB_PATH)
+        from config.db import get_conn
+        conn = get_conn()
         conn.row_factory = sqlite3.Row
         try:
             rows = conn.execute(

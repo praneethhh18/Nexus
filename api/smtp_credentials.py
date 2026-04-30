@@ -26,7 +26,7 @@ import base64
 import hashlib
 import os
 import smtplib
-import sqlite3
+import sqlite3  # sqlite3.Connection type hint — wrapper is API-compatible
 import ssl
 from datetime import datetime, timezone
 from email.mime.multipart import MIMEMultipart
@@ -37,7 +37,8 @@ from typing import Dict, Optional
 from cryptography.fernet import Fernet, InvalidToken
 from loguru import logger
 
-from config.settings import DB_PATH
+from config.db import get_conn
+from config.settings import DB_PATH  # used for the co-located .nexus_smtp_secret file
 
 SMTP_TABLE = "nexus_workspace_smtp"
 
@@ -117,9 +118,8 @@ def _decrypt(token: str) -> str:
 
 
 # ── Storage ─────────────────────────────────────────────────────────────────
-def _conn() -> sqlite3.Connection:
-    Path(DB_PATH).parent.mkdir(parents=True, exist_ok=True)
-    return sqlite3.connect(DB_PATH)
+def _conn():
+    return get_conn()
 
 
 def _ensure_table(conn: sqlite3.Connection) -> None:

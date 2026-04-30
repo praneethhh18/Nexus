@@ -24,7 +24,7 @@ def check_anomalies() -> Dict[str, Any]:
     Generates alerts and PDF report for each anomaly found.
     """
     from pathlib import Path
-    from config.settings import DB_PATH
+    from config.db import get_conn
 
     result = {
         "checked_at": datetime.now().isoformat(),
@@ -39,7 +39,7 @@ def check_anomalies() -> Dict[str, Any]:
 
     try:
         import sqlite3
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         df = pd.read_sql_query(
             "SELECT date, region, revenue FROM sales_metrics WHERE metric_type='daily' ORDER BY date",
             conn
@@ -151,12 +151,12 @@ def _generate_anomaly_report(anomaly: Dict[str, Any]) -> Optional[str]:
     try:
         import sqlite3
         import pandas as pd
-        from config.settings import DB_PATH
+        from config.db import get_conn
         from report_generator.chart_builder import build_chart
         from report_generator.pdf_builder import build_pdf
 
         region = anomaly["region"]
-        conn = sqlite3.connect(DB_PATH)
+        conn = get_conn()
         df = pd.read_sql_query(
             "SELECT date, revenue FROM sales_metrics WHERE region=? AND metric_type='daily' ORDER BY date DESC LIMIT 30",
             conn, params=(region,)
