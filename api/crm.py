@@ -86,6 +86,22 @@ def _get_conn():
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN bant_signals TEXT DEFAULT ''")
     if "bant_extracted_at" not in _contact_cols:
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN bant_extracted_at TEXT")
+    # Additive: per-contact call-history fields written by the Vox outbound agent.
+    if "last_called_at" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN last_called_at TEXT")
+    if "last_call_outcome" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN last_call_outcome TEXT")
+    if "last_call_summary" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN last_call_summary TEXT")
+    # Additive: voice-call consent gate (denormalized from nexus_contact_consents
+    # so the dial hot-path doesn't need a join). Source of truth lives in
+    # api/consents.py; this column mirrors the latest voice_call grant/revocation.
+    # Default 0 means "not callable" — every contact must have an explicit
+    # opt-in record before Vox will dial.
+    if "is_callable" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN is_callable INTEGER DEFAULT 0")
+    if "consent_revoked_at" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN consent_revoked_at TEXT")
 
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {DEALS_TABLE} (

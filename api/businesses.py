@@ -21,7 +21,7 @@ from typing import Optional, List, Dict
 from fastapi import HTTPException
 from loguru import logger
 
-from config.db import get_conn, list_columns
+from config.db import get_conn, list_columns  # list_columns drives the additive-column migration below
 
 BUSINESSES_TABLE = "nexus_businesses"
 MEMBERS_TABLE = "nexus_business_members"
@@ -57,6 +57,14 @@ def _get_conn():
     conn.execute(
         f"CREATE INDEX IF NOT EXISTS idx_members_user ON {MEMBERS_TABLE}(user_id)"
     )
+    # Additive: per-business override for the voice-call recording disclosure.
+    # Some businesses' legal teams want their own wording; NULL falls back to
+    # the in-code default in voice/outbound/pipeline.py.
+    _biz_cols = list_columns(conn, BUSINESSES_TABLE)
+    if "recording_disclosure_text" not in _biz_cols:
+        conn.execute(
+            f"ALTER TABLE {BUSINESSES_TABLE} ADD COLUMN recording_disclosure_text TEXT"
+        )
     conn.commit()
     return conn
 

@@ -136,14 +136,18 @@ def last_run(business_id: str, agent_key: str) -> Optional[Dict]:
 
 def summary(business_id: str, hours: int = 24) -> Dict[str, Dict]:
     """Per-agent counts in the last `hours` hours: {agent_key: {success, error, skipped}}."""
+    # Compute cutoff in Python instead of using SQLite's datetime() — that
+    # function doesn't exist on Postgres, where the rest of the app may run.
+    from datetime import datetime, timedelta, timezone
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=int(hours))).isoformat()
     conn = _conn()
     conn.row_factory = sqlite3.Row
     try:
         rows = conn.execute(
             f"SELECT agent_key, status, COUNT(*) AS n FROM {TABLE} "
-            f"WHERE business_id = ? AND started_at > datetime('now', ?) "
+            f"WHERE business_id = ? AND started_at > ? "
             f"GROUP BY agent_key, status",
-            (business_id, f"-{int(hours)} hour"),
+            (business_id, cutoff),
         ).fetchall()
     finally:
         conn.close()

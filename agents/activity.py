@@ -132,6 +132,50 @@ def _from_email_triage(business_id: str, since: str) -> List[Dict]:
     return out
 
 
+def _from_vox_calls(business_id: str, since: str) -> List[Dict]:
+    """Vox outbound calls — surfaced from each contact's last_call_* columns."""
+    out: List[Dict] = []
+    try:
+        with _connect() as conn:
+            rows = conn.execute(
+                "SELECT id, first_name, last_name, phone, "
+                "       last_called_at, last_call_outcome, last_call_summary "
+                "FROM nexus_contacts "
+                "WHERE business_id = ? AND last_called_at IS NOT NULL "
+                "AND last_called_at > ? "
+                "ORDER BY last_called_at DESC LIMIT 30",
+                (business_id, since),
+            ).fetchall()
+    except sqlite3.OperationalError:
+        return out  # contacts table may not exist yet, or no calls have happened
+
+    for r in rows:
+        full_name = " ".join(filter(None, [r["first_name"], r["last_name"]])).strip() or r["phone"] or "contact"
+        outcome = r["last_call_outcome"] or "unclear"
+        summary = (r["last_call_summary"] or "").strip()
+        # Title summarises the verb + who; summary holds the headline.
+        verb_by_outcome = {
+            "reached":           "Called",
+            "qualified":         "Qualified",
+            "not_interested":    "Called (not interested)",
+            "follow_up_needed":  "Called — follow-up needed",
+            "voicemail":         "Hit voicemail",
+            "no_answer":         "No answer",
+            "unclear":           "Called",
+        }
+        verb = verb_by_outcome.get(outcome, "Called")
+        out.append({
+            "id":        f"vox-{r['id']}-{r['last_called_at']}",
+            "ts":        r["last_called_at"],
+            "agent_key": "outbound_caller",
+            "title":     f"{verb} {full_name}",
+            "summary":   summary,
+            "surface":   "/crm",
+            "status":    "done",
+        })
+    return out
+
+
 def _from_notifications(business_id: str, since: str) -> List[Dict]:
     """Stale-deal-watcher and meeting-prep both land in notifications."""
     out: List[Dict] = []
@@ -185,7 +229,8 @@ def recent(business_id: str, hours: int = 48, limit: int = 50) -> List[Dict]:
     """
     since = (now_utc_naive() - timedelta(hours=hours)).isoformat()
     events: List[Dict] = []
-    for fn in (_from_briefings, _from_invoice_approvals, _from_email_triage, _from_notifications):
+    for fn in (_from_briefings, _from_invoice_approvals, _from_email_triage,
+               _from_vox_calls, _from_notifications):
         try:
             events.extend(fn(business_id, since))
         except Exception as e:

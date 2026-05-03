@@ -245,6 +245,16 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
         >
           <History size={11} /> History
         </button>
+        {persona.agent_key === 'outbound_caller' && (
+          <button
+            onClick={() => onOpenSurface('/agents/vox')}
+            className="btn-ghost"
+            style={{ fontSize: 11, padding: '6px 10px' }}
+            title="Open Vox console — pending dials, usage, recent calls"
+          >
+            <ExternalLink size={11} /> View
+          </button>
+        )}
         <LastRunChip lastRun={persona.last_run} stats24h={persona.run_stats_24h} />
         {schedule && (
           <IntervalPicker
@@ -293,10 +303,24 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
   );
 }
 
+// Parse a backend ISO timestamp robustly. Backend sends a mix of:
+//   "2026-05-03T19:23:45.123456"        (naive — assume UTC, append Z)
+//   "2026-05-03T19:23:45.123456+00:00"  (explicit offset — leave alone)
+//   "2026-05-03T19:23:45Z"              (Zulu — leave alone)
+// Old code blindly appended Z to the second form which produced the
+// notorious "Invalid Date" rendering on the activity feed.
+function parseTs(ts) {
+  if (!ts) return '';
+  // Already has explicit timezone info? Use as-is.
+  if (/Z$|[+-]\d{2}:?\d{2}$/.test(ts)) return ts;
+  // Naive ISO — treat as UTC.
+  return ts + 'Z';
+}
+
 function groupByDay(events) {
   const groups = new Map();
   for (const e of events) {
-    const d = e.ts ? new Date(e.ts.endsWith('Z') ? e.ts : e.ts + 'Z') : null;
+    const d = e.ts ? new Date(parseTs(e.ts)) : null;
     const key = d ? d.toDateString() : 'Unknown';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(e);
@@ -393,7 +417,7 @@ function RunsDrawer({ persona, onClose }) {
     return () => { cancelled = true; };
   }, [persona.agent_key]);
 
-  const fmt = (iso) => iso ? new Date(iso.endsWith('Z') ? iso : iso + 'Z').toLocaleString() : '—';
+  const fmt = (iso) => iso ? new Date(parseTs(iso)).toLocaleString() : '—';
   const dur = (r) => {
     if (!r.started_at || !r.finished_at) return '';
     const ms = new Date(r.finished_at + (r.finished_at.endsWith('Z') ? '' : 'Z')) -

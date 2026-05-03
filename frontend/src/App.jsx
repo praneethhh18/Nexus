@@ -27,6 +27,7 @@ const Invoices      = lazy(() => import('./pages/Invoices'));
 const Documents     = lazy(() => import('./pages/Documents'));
 const Inbox         = lazy(() => import('./pages/Inbox'));
 const Agents        = lazy(() => import('./pages/Agents'));
+const VoxAgent      = lazy(() => import('./pages/VoxAgent'));
 const Memory        = lazy(() => import('./pages/Memory'));
 const Team          = lazy(() => import('./pages/Team'));
 const Analytics     = lazy(() => import('./pages/Analytics'));
@@ -105,6 +106,7 @@ export default function App() {
             {/* legacy bookmark: /approvals → /inbox */}
             <Route path="/approvals"     element={<Navigate to="/inbox" replace />} />
             <Route path="/agents"        element={L(Agents)} />
+            <Route path="/agents/vox"    element={L(VoxAgent)} />
             <Route path="/memory"        element={L(Memory)} />
             <Route path="/team"          element={L(Team)} />
             <Route path="/analytics"     element={L(Analytics)} />

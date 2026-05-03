@@ -224,6 +224,13 @@ function Hero() {
           and brief you every morning. Everything runs on your machine. The cloud only sees
           redacted aggregates — and only when you explicitly allow it.
         </p>
+        <p style={{
+          maxWidth: 680, marginTop: 12, fontSize: 13, color: 'var(--text-dim)', lineHeight: 1.5,
+        }}>
+          One carve-out: outbound <strong>voice calls</strong> use cloud providers (Twilio, Groq,
+          ElevenLabs) for audio routing, transcription, and synthesis. Transcripts and summaries
+          stay local. The Security page shows exactly what each call sends where.
+        </p>
         <div style={{ marginTop: 28, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <a href={`${APP_URL}/setup`} className="btn btn-primary">
             Start free <ArrowRight size={14} />

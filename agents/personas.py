@@ -74,6 +74,12 @@ DEFAULTS: Dict[str, Dict[str, str]] = {
         "description":  "Wraps up the day with a recap of tasks closed, invoices sent, and deals advanced.",
         "emoji":        "🌙",
     },
+    "outbound_caller": {
+        "default_name": "Vox",
+        "role_tag":     "Outbound caller",
+        "description":  "Calls contacts on demand, has a short conversation, and files a structured summary on each contact.",
+        "emoji":        "📞",
+    },
 }
 
 # Scheduler job-id ↔ agent-key mapping (for activity summary lookup)
@@ -85,6 +91,7 @@ SCHEDULER_JOB_IDS: Dict[str, str] = {
     "email_triage":        "agent-email-triage",
     "memory_consolidate":  "agent-memory-consolidate",
     "evening_digest":      "agent-evening-digest",
+    "outbound_caller":     "agent-outbound-caller",
 }
 
 
@@ -155,6 +162,7 @@ def list_personas(business_id: str) -> List[Dict]:
         "invoice_reminder",     # financial follow-through
         "stale_deal_watcher",   # pipeline health
         "meeting_prep",         # just-in-time
+        "outbound_caller",      # call queue (Vox)
         "evening_digest",       # end of day
         "memory_consolidate",   # weekly reflection
     ]
@@ -227,8 +235,14 @@ def _last_activity(business_id: str, agent_key: str) -> Dict:
     """
     Return {last_ran, last_24h_count, surface} — where the agent's output
     lives so the UI can link to it.
+
+    Uses a Python-computed cutoff for the 24h window to stay portable
+    between SQLite and Postgres (the SQLite-only datetime() function
+    raised on the Postgres backend and 500'd the personas page).
     """
+    from datetime import datetime, timedelta, timezone
     info: Dict = {"last_ran": None, "last_24h_count": 0, "surface": None}
+    cutoff_24h = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
     try:
         conn = get_conn(); conn.row_factory = sqlite3.Row
         try:
@@ -241,41 +255,58 @@ def _last_activity(business_id: str, agent_key: str) -> Dict:
                 if row: info["last_ran"] = row["created_at"]
                 cnt = conn.execute(
                     "SELECT COUNT(*) AS n FROM nexus_briefings "
-                    "WHERE business_id = ? AND created_at > datetime('now','-1 day')",
-                    (business_id,),
+                    "WHERE business_id = ? AND created_at > ?",
+                    (business_id, cutoff_24h),
                 ).fetchone()
                 info["last_24h_count"] = int(cnt["n"] or 0) if cnt else 0
                 info["surface"] = "/"  # Dashboard
             elif agent_key == "invoice_reminder":
+                # Table is nexus_agent_approvals (not nexus_approvals).
                 row = conn.execute(
-                    "SELECT created_at FROM nexus_approvals "
+                    "SELECT created_at FROM nexus_agent_approvals "
                     "WHERE business_id = ? AND tool_name = 'send_invoice_email' "
                     "ORDER BY created_at DESC LIMIT 1",
                     (business_id,),
                 ).fetchone()
                 if row: info["last_ran"] = row["created_at"]
                 cnt = conn.execute(
-                    "SELECT COUNT(*) AS n FROM nexus_approvals "
+                    "SELECT COUNT(*) AS n FROM nexus_agent_approvals "
                     "WHERE business_id = ? AND tool_name = 'send_invoice_email' "
-                    "AND created_at > datetime('now','-1 day')",
-                    (business_id,),
+                    "AND created_at > ?",
+                    (business_id, cutoff_24h),
                 ).fetchone()
                 info["last_24h_count"] = int(cnt["n"] or 0) if cnt else 0
                 info["surface"] = "/approvals"
             elif agent_key == "email_triage":
+                # Table is nexus_email_triage_log; nexus_email_messages doesn't exist.
                 row = conn.execute(
-                    "SELECT processed_at FROM nexus_email_messages "
+                    "SELECT processed_at FROM nexus_email_triage_log "
                     "WHERE business_id = ? ORDER BY processed_at DESC LIMIT 1",
                     (business_id,),
                 ).fetchone()
                 if row: info["last_ran"] = row["processed_at"]
                 cnt = conn.execute(
-                    "SELECT COUNT(*) AS n FROM nexus_email_messages "
-                    "WHERE business_id = ? AND processed_at > datetime('now','-1 day')",
-                    (business_id,),
+                    "SELECT COUNT(*) AS n FROM nexus_email_triage_log "
+                    "WHERE business_id = ? AND processed_at > ?",
+                    (business_id, cutoff_24h),
                 ).fetchone()
                 info["last_24h_count"] = int(cnt["n"] or 0) if cnt else 0
                 info["surface"] = "/approvals"
+            elif agent_key == "outbound_caller":
+                # Vox calls land in nexus_voice_calls.
+                row = conn.execute(
+                    "SELECT started_at FROM nexus_voice_calls "
+                    "WHERE business_id = ? ORDER BY started_at DESC LIMIT 1",
+                    (business_id,),
+                ).fetchone()
+                if row: info["last_ran"] = row["started_at"]
+                cnt = conn.execute(
+                    "SELECT COUNT(*) AS n FROM nexus_voice_calls "
+                    "WHERE business_id = ? AND started_at > ?",
+                    (business_id, cutoff_24h),
+                ).fetchone()
+                info["last_24h_count"] = int(cnt["n"] or 0) if cnt else 0
+                info["surface"] = "/crm"
             # Other agents (stale_deal_watcher / meeting_prep / memory_consolidate)
             # land in notifications — leave info.last_ran null for now rather than
             # inventing a wrong number.

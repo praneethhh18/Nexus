@@ -43,16 +43,23 @@ VALID_ENTITY_TYPES = {"contact", "company", "deal", "task", "invoice", "document
 
 def _conn():
     conn = get_conn()
+    # Tag table — case-insensitive uniqueness on (business_id, name) is
+    # expressed as a separate functional UNIQUE INDEX on LOWER(name) since
+    # Postgres doesn't support `COLLATE NOCASE` as an inline UNIQUE clause.
+    # The index works identically on SQLite (3.9+) and Postgres.
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {TAGS_TABLE} (
             id            TEXT PRIMARY KEY,
             business_id   TEXT NOT NULL,
             name          TEXT NOT NULL,
             color         TEXT NOT NULL,
-            created_at    TEXT NOT NULL,
-            UNIQUE (business_id, name COLLATE NOCASE)
+            created_at    TEXT NOT NULL
         )
     """)
+    conn.execute(
+        f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{TAGS_TABLE}_biz_name_lower "
+        f"ON {TAGS_TABLE}(business_id, LOWER(name))"
+    )
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {ASSIGN_TABLE} (
             tag_id        TEXT NOT NULL,

@@ -25,6 +25,9 @@ import { createTask } from '../services/tasks';
 import { readSmtp, sendEmail as smtpSend } from '../services/smtp';
 import { TagPicker, TagChips } from '../components/TagChips';
 import { tagsFor } from '../services/tags';
+import {
+  dialContact, prepareDialForContact, listContactCalls, getCall as getVoiceCall,
+} from '../services/voice_calls';
 
 const INTERACTION_ICONS = {
   call:    Phone, email: Mail, meeting: Calendar, note: MessageSquare,
@@ -72,6 +75,11 @@ export default function ContactDetail() {
   const [verifyEdit, setVerifyEdit] = useState(null);  // { first_name, last_name, email, busy, error }
   const [smtpConfigured, setSmtpConfigured] = useState(false);
 
+  // Vox outbound calls
+  const [voxCalls, setVoxCalls] = useState([]);          // history rows
+  const [callModal, setCallModal] = useState(null);      // { purpose, busy, error }
+  const [callDetail, setCallDetail] = useState(null);    // { busy, record, error }
+
   // Pull SMTP-configured flag once on mount so drafter modals know whether
   // to show "Send" vs "Open in mail" as the primary action.
   useEffect(() => {
@@ -89,11 +97,12 @@ export default function ContactDetail() {
       const c = await getContact(id);
       setContact(c);
       setEdit(c);
-      const [ints, dealList, invList, tagList] = await Promise.all([
+      const [ints, dealList, invList, tagList, calls] = await Promise.all([
         listInteractions({ contact_id: id, limit: 30 }).catch(() => []),
         listDeals({ contact_id: id, limit: 50 }).catch(() => []),
         listInvoices({ limit: 200 }).catch(() => []),
         tagsFor('contact', id).catch(() => []),
+        listContactCalls(id, 25).catch(() => []),
       ]);
       setInteractions(ints);
       setDeals(dealList);
@@ -101,6 +110,7 @@ export default function ContactDetail() {
         v => v.customer_contact_id === id || v.customer_email === c.email,
       ));
       setTagChips(tagList);
+      setVoxCalls(calls);
     } catch (e) {
       setError(e.message || 'Could not load contact.');
     }
@@ -243,6 +253,47 @@ export default function ContactDetail() {
     // alternative is to route through the agent's send_email tool, but
     // that requires SMTP config which not every workspace has.
     window.open(`mailto:${contact.email}`, '_blank');
+  };
+
+  // ── Vox outbound call ──────────────────────────────────────────────────
+  const openCallModal = () => {
+    if (!contact?.phone) {
+      flash('No phone on file for this contact.');
+      return;
+    }
+    setCallModal({ purpose: 'a quick check-in', busy: false, error: '' });
+  };
+
+  const doVoxDial = async () => {
+    if (!callModal) return;
+    setCallModal((m) => ({ ...m, busy: true, error: '' }));
+    try {
+      // New flow: hit /api/voice/prepare-dial → get a lab precall URL →
+      // open it. The operator picks the STT/LLM/TTS combo on the lab page,
+      // THEN dials. Audio + cockpit run in the lab from there.
+      const r = await prepareDialForContact({
+        contact_id: id,
+        purpose: (callModal.purpose || '').trim() || 'a quick check-in',
+      });
+      if (!r?.ok || !r.precall_url) throw new Error(r?.error || 'Could not prepare call.');
+      window.open(r.precall_url, '_blank', 'noopener');
+      setCallModal(null);
+      flash(`Opened call config in new tab — pick a combo and place the call.`);
+      // Refresh history once the lab eventually posts the callback.
+      setTimeout(() => reload(), 30000);
+    } catch (e) {
+      setCallModal((m) => ({ ...m, busy: false, error: e.message || 'Dial failed.' }));
+    }
+  };
+
+  const openCallDetail = async (vcId) => {
+    setCallDetail({ busy: true, record: null, error: '' });
+    try {
+      const rec = await getVoiceCall(vcId);
+      setCallDetail({ busy: false, record: rec, error: '' });
+    } catch (e) {
+      setCallDetail({ busy: false, record: null, error: e.message || 'Could not load call.' });
+    }
   };
 
   // ── BANT extraction ─────────────────────────────────────────────────
@@ -642,6 +693,15 @@ export default function ContactDetail() {
             </div>
           )}
 
+          {/* Vox call history — distinct from logged interactions because
+              these have transcripts, lead scores, and lab cockpit replay. */}
+          <VoxCallsPanel
+            calls={voxCalls}
+            onOpen={openCallDetail}
+            onCallNow={openCallModal}
+            canCall={!!contact?.phone}
+          />
+
           {/* Interaction history + new */}
           <div className="panel">
             <div className="section-h" style={{ margin: '0 0 10px' }}>
@@ -788,10 +848,10 @@ export default function ContactDetail() {
               />
               <ActionButton
                 icon={<Phone size={13} />}
-                label="Call"
-                detail={contact.phone || 'No phone on file'}
+                label="Call with Vox"
+                detail={contact.phone ? `AI calls ${contact.phone}` : 'No phone on file'}
                 disabled={!contact.phone}
-                onClick={() => contact.phone && window.open(`tel:${contact.phone}`)}
+                onClick={openCallModal}
               />
               <ActionButton
                 icon={<CheckSquare size={13} />}
@@ -867,6 +927,25 @@ export default function ContactDetail() {
           onSent={(via) => flash(via === 'smtp' ? 'Reply sent.' : 'Opened in your mail client.')}
           onRegenerate={() => openReplyDraftFor(replyModal.incoming)}
           onChangeDraft={(d) => setReplyModal((m) => ({ ...m, draft: d }))}
+        />
+      )}
+
+      {/* Vox dial modal — captures purpose then triggers the lab. */}
+      {callModal && (
+        <VoxDialModal
+          contact={contact}
+          state={callModal}
+          onChange={(p) => setCallModal((m) => ({ ...m, ...p }))}
+          onCancel={() => setCallModal(null)}
+          onSubmit={doVoxDial}
+        />
+      )}
+
+      {/* Vox call detail modal — shows transcript + summary fields. */}
+      {callDetail && (
+        <VoxCallDetailModal
+          state={callDetail}
+          onClose={() => setCallDetail(null)}
         />
       )}
     </div>
@@ -1901,5 +1980,364 @@ function Snap({ label, value }) {
       <span style={{ color: 'var(--color-text-dim)' }}>{label}</span>
       <span style={{ fontWeight: 600, color: 'var(--color-text)', fontFeatureSettings: '"tnum"' }}>{value}</span>
     </div>
+  );
+}
+
+
+// ── Vox call history panel + modals ──────────────────────────────────────
+const OUTCOME_TONE = {
+  qualified:        { bg: 'rgba(74,222,128,.15)', fg: '#4ade80' },
+  follow_up_needed: { bg: 'rgba(251,191,36,.18)', fg: '#fbbf24' },
+  not_interested:   { bg: 'rgba(248,113,113,.15)', fg: '#f87171' },
+  voicemail:        { bg: 'rgba(148,163,184,.15)', fg: '#94a3b8' },
+  no_answer:        { bg: 'rgba(148,163,184,.15)', fg: '#94a3b8' },
+  wrong_number:     { bg: 'rgba(248,113,113,.15)', fg: '#f87171' },
+  call_failed:      { bg: 'rgba(248,113,113,.15)', fg: '#f87171' },
+  unclear:          { bg: 'rgba(148,163,184,.15)', fg: '#94a3b8' },
+};
+const INTEREST_TONE = {
+  hot:  { bg: 'rgba(248,113,113,.18)', fg: '#fca5a5' },
+  warm: { bg: 'rgba(251,191,36,.18)', fg: '#fbbf24' },
+  cold: { bg: 'rgba(96,165,250,.18)', fg: '#60a5fa' },
+  none: { bg: 'rgba(148,163,184,.15)', fg: '#94a3b8' },
+};
+
+function Pill({ tone, children }) {
+  return (
+    <span style={{
+      padding: '2px 9px', borderRadius: 12, fontSize: 10.5, fontWeight: 600,
+      textTransform: 'uppercase', letterSpacing: '0.5px',
+      background: tone?.bg || 'var(--color-surface-1)',
+      color: tone?.fg || 'var(--color-text-muted)',
+    }}>{children}</span>
+  );
+}
+
+function fmtDur(sec) {
+  if (sec == null) return '—';
+  const s = Number(sec) | 0;
+  return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+}
+
+function VoxCallsPanel({ calls, onOpen, onCallNow, canCall }) {
+  return (
+    <div className="panel">
+      <div className="section-h" style={{ margin: '0 0 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h2>📞 Vox calls · {calls.length}</h2>
+        <button
+          className="btn-primary btn-sm"
+          disabled={!canCall}
+          title={canCall ? 'Place an AI-driven call to this contact' : 'No phone on file'}
+          onClick={onCallNow}
+        >
+          <Phone size={11} /> Call now
+        </button>
+      </div>
+      {calls.length === 0 ? (
+        <div style={{ padding: 14, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>
+          No Vox calls yet. Click <b>Call now</b> to place the first one.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {calls.map((c) => (
+            <button
+              key={c.id || c.call_sid}
+              onClick={() => onOpen(c.id || c.call_sid)}
+              style={{
+                appearance: 'none', textAlign: 'left', cursor: 'pointer',
+                padding: 12, borderRadius: 'var(--r-md)',
+                background: 'var(--color-surface-1)',
+                border: '1px solid var(--color-border)',
+                display: 'flex', flexDirection: 'column', gap: 6,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <Pill tone={OUTCOME_TONE[c.outcome]}>{(c.outcome || 'unclear').replace(/_/g, ' ')}</Pill>
+                {c.interest_level && c.interest_level !== 'none' && (
+                  <Pill tone={INTEREST_TONE[c.interest_level]}>{c.interest_level}</Pill>
+                )}
+                {c.lead_score != null && (
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--color-text)', marginLeft: 'auto' }}>
+                    {c.lead_score}<span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>/100</span>
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--color-text)' }}>
+                {c.headline || '(no headline)'}
+              </div>
+              <div style={{ display: 'flex', gap: 12, fontSize: 11, color: 'var(--color-text-muted)' }}>
+                <span>{formatWhen(c.started_at)}</span>
+                <span>·</span>
+                <span>{fmtDur(c.duration_sec)}</span>
+                {c.next_step && (
+                  <>
+                    <span>·</span>
+                    <span style={{ color: 'var(--color-accent)' }}>Next: {c.next_step.length > 40 ? c.next_step.slice(0, 40) + '…' : c.next_step}</span>
+                  </>
+                )}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// Reusable scaffolding that matches the inline-style pattern used by the
+// existing modals in this file (DraftOutreachModal etc.). Avoids inventing
+// new CSS classes that don't exist in NexusAgent's stylesheet.
+function ModalShell({ onClose, maxWidth = 520, children }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed', inset: 0, zIndex: 300,
+        background: 'rgba(0,0,0,0.65)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: '100%', maxWidth,
+          background: 'var(--color-surface-2)',
+          border: '1px solid var(--color-border-strong)',
+          borderRadius: 'var(--r-lg)',
+          maxHeight: '92vh', display: 'flex', flexDirection: 'column',
+          boxShadow: 'var(--shadow-3)',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ModalHeader({ icon, title, subtitle, onClose }) {
+  return (
+    <div style={{
+      padding: '14px 18px',
+      borderBottom: '1px solid var(--color-border)',
+      display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0,
+    }}>
+      <div style={{
+        width: 32, height: 32, borderRadius: 'var(--r-md)',
+        background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>{icon}</div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{title}</div>
+        {subtitle && (
+          <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{subtitle}</div>
+        )}
+      </div>
+      <button
+        onClick={onClose}
+        style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }}
+        aria-label="Close"
+      ><X size={16} /></button>
+    </div>
+  );
+}
+
+function ModalFooter({ children }) {
+  return (
+    <div style={{
+      padding: '12px 18px',
+      borderTop: '1px solid var(--color-border)',
+      display: 'flex', justifyContent: 'flex-end', gap: 8, flexShrink: 0,
+    }}>{children}</div>
+  );
+}
+
+
+function VoxDialModal({ contact, state, onChange, onCancel, onSubmit }) {
+  return (
+    <ModalShell onClose={onCancel} maxWidth={480}>
+      <ModalHeader
+        icon={<Phone size={16} />}
+        title={`Call ${contact?.first_name || 'contact'} with Vox`}
+        subtitle={contact?.phone || ''}
+        onClose={onCancel}
+      />
+      <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+        <div style={{ fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+          Clicking <b>Place call</b> opens Vox's call-config page in a new tab.
+          You'll pick the STT / LLM / TTS combo (Groq+ElevenLabs is the default,
+          Deepgram+Cartesia is best for Indian English) and then place the call.
+          The transcript and a structured summary will land back here automatically.
+        </div>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: 12 }}>
+          <span style={{ color: 'var(--color-text-muted)' }}>What's the call about?</span>
+          <input
+            className="field-input"
+            autoFocus
+            value={state.purpose}
+            onChange={(e) => onChange({ purpose: e.target.value })}
+            placeholder='e.g. "checking interest after demo"'
+            maxLength={200}
+          />
+        </label>
+
+        {state.error && (
+          <div style={{
+            padding: 10, fontSize: 12,
+            background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-err) 30%, transparent)',
+            borderRadius: 'var(--r-md)', color: 'var(--color-err)',
+          }}>{state.error}</div>
+        )}
+      </div>
+      <ModalFooter>
+        <button className="btn-ghost btn-sm" onClick={onCancel} disabled={state.busy}>Cancel</button>
+        <button className="btn-primary btn-sm" onClick={onSubmit} disabled={state.busy}>
+          {state.busy ? <Loader2 size={11} className="animate-spin" /> : <Phone size={11} />}
+          Place call
+        </button>
+      </ModalFooter>
+    </ModalShell>
+  );
+}
+
+
+function VoxCallDetailModal({ state, onClose }) {
+  const r = state.record;
+  return (
+    <ModalShell onClose={onClose} maxWidth={720}>
+      <ModalHeader
+        icon={<Phone size={16} />}
+        title="Call detail"
+        subtitle={r ? `${(r.summary?.outcome || 'unclear').replace(/_/g, ' ')} · ${fmtDur(r.duration_sec)}` : ''}
+        onClose={onClose}
+      />
+      <div style={{ padding: 18, overflowY: 'auto' }}>
+          {state.busy && (
+            <div style={{ padding: 30, textAlign: 'center' }}>
+              <Loader2 size={18} className="animate-spin" color="var(--color-text-dim)" />
+            </div>
+          )}
+          {state.error && (
+            <div style={{ padding: 10, color: 'var(--color-err)', fontSize: 12 }}>{state.error}</div>
+          )}
+          {r && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <div style={{ fontSize: 17, fontWeight: 600, marginBottom: 6 }}>
+                  {r.summary?.headline || '(no headline)'}
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <Pill tone={OUTCOME_TONE[r.summary?.outcome]}>
+                    {(r.summary?.outcome || 'unclear').replace(/_/g, ' ')}
+                  </Pill>
+                  {r.summary?.interest_level && (
+                    <Pill tone={INTEREST_TONE[r.summary.interest_level]}>
+                      {r.summary.interest_level}
+                    </Pill>
+                  )}
+                  {r.summary?.lead_score != null && (
+                    <Pill>{r.summary.lead_score}/100</Pill>
+                  )}
+                  <Pill>{fmtDur(r.duration_sec)}</Pill>
+                </div>
+              </div>
+
+              {r.summary?.next_step && (
+                <div style={{
+                  padding: '10px 12px',
+                  background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+                  borderLeft: '3px solid var(--color-accent)',
+                  borderRadius: 4, fontSize: 13,
+                }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.5px',
+                    textTransform: 'uppercase', color: 'var(--color-accent)', marginBottom: 4 }}>
+                    Next step
+                  </div>
+                  {r.summary.next_step}
+                </div>
+              )}
+
+              {(r.summary?.key_points || []).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.5px',
+                    textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 6 }}>
+                    Key points
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+                    {r.summary.key_points.map((p, i) => <li key={i} style={{ marginBottom: 4 }}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {(r.summary?.objections || []).length > 0 && (
+                <div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.5px',
+                    textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 6 }}>
+                    Objections raised
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {r.summary.objections.map((o, i) => (
+                      <span key={i} style={{
+                        padding: '3px 9px', fontSize: 11, borderRadius: 12,
+                        background: 'var(--color-surface-1)',
+                        border: '1px solid var(--color-border)',
+                        color: 'var(--color-text-muted)',
+                      }}>{o}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.5px',
+                  textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 8,
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span>Transcript · {(r.turns || []).length} turns</span>
+                  {r.watch_url && (
+                    <a href={r.watch_url} target="_blank" rel="noopener noreferrer"
+                       style={{ fontSize: 11, color: 'var(--color-accent)', fontWeight: 500, textTransform: 'none', letterSpacing: 0 }}>
+                      Open cockpit ↗
+                    </a>
+                  )}
+                </div>
+                <div style={{
+                  maxHeight: 280, overflowY: 'auto',
+                  padding: 12, background: 'var(--color-surface-1)',
+                  border: '1px solid var(--color-border)', borderRadius: 'var(--r-md)',
+                  display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12.5,
+                }}>
+                  {(r.turns || []).length === 0 ? (
+                    <div style={{ color: 'var(--color-text-dim)', textAlign: 'center', padding: 16 }}>
+                      Transcript not available.
+                    </div>
+                  ) : r.turns.map((t, i) => (
+                    <div key={i} style={{
+                      padding: '6px 10px', borderRadius: 6,
+                      alignSelf: t.role === 'user' ? 'flex-end' : 'flex-start',
+                      background: t.role === 'user'
+                        ? 'color-mix(in srgb, var(--color-accent) 16%, transparent)'
+                        : 'var(--color-bg)',
+                      border: '1px solid var(--color-border)',
+                      maxWidth: '82%',
+                    }}>
+                      <div style={{ fontSize: 9, color: 'var(--color-text-dim)',
+                        textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 2 }}>
+                        {t.role === 'user' ? 'caller' : 'vox'}
+                      </div>
+                      {t.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+      </div>
+      <ModalFooter>
+        <button className="btn-ghost btn-sm" onClick={onClose}>Close</button>
+      </ModalFooter>
+    </ModalShell>
   );
 }

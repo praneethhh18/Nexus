@@ -50,10 +50,14 @@ def _get_conn():
         )
     """)
     # Additive migration — older deployments lack `kind`; rows default to morning.
+    # Need to catch BOTH SQLite's OperationalError AND Postgres's DuplicateColumn
+    # since `config.db.get_conn()` returns either depending on DATABASE_URL.
     try:
-        conn.execute(f"ALTER TABLE {BRIEFINGS_TABLE} ADD COLUMN kind TEXT DEFAULT 'morning'")
-    except sqlite3.OperationalError:
-        pass  # column already exists
+        from config.db import list_columns
+        if "kind" not in set(list_columns(conn, BRIEFINGS_TABLE)):
+            conn.execute(f"ALTER TABLE {BRIEFINGS_TABLE} ADD COLUMN kind TEXT DEFAULT 'morning'")
+    except Exception as e:
+        logger.debug(f"[briefing] kind-column migration skipped: {e}")
     conn.execute(
         f"CREATE INDEX IF NOT EXISTS idx_briefings_biz "
         f"ON {BRIEFINGS_TABLE}(business_id, created_at DESC)"

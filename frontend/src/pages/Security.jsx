@@ -332,6 +332,64 @@ export default function Security() {
           )}
         </div>
 
+        {/* ── Voice providers ──────────────────────────────────────────────────
+            Voice calls placed by Vox cross the network boundary — Twilio carries
+            the PSTN audio, Groq does STT + LLM, ElevenLabs does TTS. Listed
+            explicitly here because the rest of NexusAgent's privacy story is
+            "nothing leaves the box" and voice is the carve-out.
+        */}
+        <div className="panel">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}>
+            <Cloud size={16} color="var(--color-accent)" />
+            Cloud providers · Voice agent
+          </h3>
+
+          <div style={{
+            padding: 12, borderRadius: 'var(--r-md)',
+            background: 'var(--color-warn-soft, color-mix(in srgb, var(--color-warn) 10%, transparent))',
+            border: '1px solid color-mix(in srgb, var(--color-warn) 30%, transparent)',
+            fontSize: 12, color: 'var(--color-text)', margin: '12px 0 14px', lineHeight: 1.55,
+          }}>
+            <strong style={{ color: 'var(--color-warn)' }}>Voice calls leave your machine.</strong>{' '}
+            Unlike the rest of NexusAgent, outbound voice uses cloud providers for
+            audio routing, transcription, and synthesis. Transcripts and summaries
+            are stored locally and never sent to third parties beyond the listed providers.
+            Consent gating, per-business daily-minute caps, and the call audit log all
+            apply on top of these provider calls.
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[
+              { name: 'Twilio',     role: 'PSTN audio routing (outbound voice calls + media stream)' },
+              { name: 'Groq',       role: 'Speech-to-text (Whisper large-v3-turbo) + LLM (Llama 3.1 8B Instant)' },
+              { name: 'ElevenLabs', role: 'Text-to-speech (Turbo v2.5)' },
+            ].map(p => (
+              <div key={p.name} style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10,
+                padding: 10, borderRadius: 'var(--r-md)',
+                background: 'var(--color-surface-2)',
+                border: '1px solid var(--color-border)',
+                fontSize: 12.5, color: 'var(--color-text)',
+              }}>
+                <Cloud size={13} style={{ color: 'var(--color-text-dim)', flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <div style={{ fontWeight: 600, marginBottom: 2 }}>{p.name}</div>
+                  <div style={{ color: 'var(--color-text-muted)', lineHeight: 1.45 }}>{p.role}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <p style={{
+            fontSize: 11, color: 'var(--color-text-dim)',
+            marginTop: 10, lineHeight: 1.5,
+          }}>
+            Self-hosted plans can swap providers via env vars: <code>OUTBOUND_STT</code>,{' '}
+            <code>OUTBOUND_LLM</code>, <code>OUTBOUND_TTS</code>. Disable voice entirely
+            by leaving <code>TWILIO_ACCOUNT_SID</code> unset.
+          </p>
+        </div>
+
         {/* ── 2FA ──────────────────────────────────────────────────────────────── */}
         <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

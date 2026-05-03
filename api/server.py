@@ -349,6 +349,7 @@ from api.routers import (
     meeting_notes      as _r_meeting_notes,
     doc_intake         as _r_doc_intake,
     smtp               as _r_smtp,
+    voice_calls        as _r_voice_calls,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -360,7 +361,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_calendar, _r_database, _r_analytics, _r_team, _r_whatsapp,
            _r_workflows, _r_voice, _r_settings, _r_search, _r_backup, _r_intake,
            _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply, _r_forge,
-           _r_meeting_notes, _r_doc_intake, _r_smtp):
+           _r_meeting_notes, _r_doc_intake, _r_smtp, _r_voice_calls):
     app.include_router(_r.router)
 
 
@@ -443,9 +444,29 @@ async def chat(req: ChatRequest, ctx: dict = Depends(get_current_context)):
     from memory.conversation_store import is_sensitive as _is_sensitive
     _privacy.set_sensitive_context(_is_sensitive(conv_id))
 
+    # Hard timeout so the UI doesn't hang on "Thinking…" forever when the
+    # orchestrator gets stuck (slow Ollama, SQL-agent retry storm, etc.).
+    # 90 s is enough for a real multi-tool query but short enough that the
+    # user gets actionable feedback if something's wedged.
+    chat_timeout_s = float(os.getenv("CHAT_TIMEOUT_SEC", "90"))
     try:
         loop = asyncio.get_event_loop()
-        result_state = await loop.run_in_executor(None, lambda: run(req.query, user_id=user["id"]))
+        result_state = await asyncio.wait_for(
+            loop.run_in_executor(None, lambda: run(req.query, user_id=user["id"])),
+            timeout=chat_timeout_s,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(f"[chat] timed out after {chat_timeout_s}s · query={req.query!r}")
+        result_state = {
+            "final_answer": (
+                f"Sorry — that took longer than {int(chat_timeout_s)} seconds and timed out. "
+                f"This usually means Ollama is loading a large model on first run, the local "
+                f"LLM is overloaded, or the SQL agent is in a retry loop. "
+                f"Try a simpler query first to confirm Ollama is responsive."
+            ),
+            "tools_used": [],
+            "citations": [],
+        }
     except Exception as e:
         logger.error(f"Chat error: {e}")
         result_state = {

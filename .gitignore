@@ -7,8 +7,12 @@ outputs/*.pdf
 outputs/*.png
 outputs/*.json
 outputs/*.jsonl
+outputs/*.txt
 outputs/reports/
 outputs/email_drafts/
+outputs/documents/
+outputs/vox_calls/
+outputs/workflow_outputs/
 data/nexusagent.db
 data/.jwt_secret
 data/.whatsapp_secret

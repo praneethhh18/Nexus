@@ -23,8 +23,13 @@ only for polished writing on aggregates you explicitly allow.**
 
 NexusAgent is a private AI business OS for small teams. One app replaces the
 patchwork of Notion AI + Zapier + an analytics dashboard + a CRM + an invoice
-tool, with one crucial difference: **customer data never leaves your machine**,
+tool, with one crucial difference: **customer data never leaves your machine**[^voice],
 while reports still get cloud-quality writing via a strict aggregate-only path.
+
+[^voice]: Outbound voice calls are the one exception — Vox uses cloud
+providers (Twilio, Groq, ElevenLabs) for audio routing, transcription, and
+synthesis. Transcripts and summaries stay local. See the **Cloud providers ·
+Voice agent** card on the Security page in-app for the full disclosure.
 
 Under the hood it combines a local LLM (Ollama), a vector database (ChromaDB),
 a SQL agent, a multi-agent orchestrator (LangGraph), a drag-and-drop workflow

@@ -79,11 +79,15 @@ def record(business_id: str, event: str, *, user_id: str = "system",
         d = day or _today()
         conn = _conn()
         try:
+            # `count` is an unqualified column reference that Postgres parses
+            # as ambiguous (it's also the COUNT() aggregate name in some
+            # contexts). Qualify with the table name on the left and EXCLUDED
+            # on the right — works on both SQLite and Postgres.
             conn.execute(
                 f"INSERT INTO {TABLE} (business_id, user_id, event, day, count) "
                 f"VALUES (?, ?, ?, ?, ?) "
                 f"ON CONFLICT(business_id, user_id, event, day) DO UPDATE SET "
-                f"count = count + excluded.count",
+                f"count = {TABLE}.count + EXCLUDED.count",
                 (business_id, user_id, event, d, int(count)),
             )
             conn.commit()
