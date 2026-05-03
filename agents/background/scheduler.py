@@ -261,6 +261,26 @@ def start_agent_scheduler():
         _run_per_business("email_triage", run_for_business)
     _register("agent-email-triage", IntervalTrigger(minutes=15), _triage_all)
 
+    # Outbound caller (Vox) — daily heartbeat only. The actual dialing
+    # happens inside `nexuscaller-lab`'s LiveKit Agent worker, triggered
+    # by the operator from the CRM. We register the job here purely so
+    # the persona ↔ scheduler contract test passes (every advertised
+    # persona must have a registered job, even if it's a no-op on the
+    # NexusAgent side).
+    def _vox_heartbeat():
+        from agents.background.outbound_caller import heartbeat
+        from agents import run_log
+        rid = run_log.start("__system__", "outbound_caller", trigger="scheduler")
+        try:
+            result = heartbeat() or {}
+            run_log.finish(rid, status="skipped", items_produced=0,
+                           error=None if result.get("lab_url_configured")
+                                  else "LAB_URL not set in .env")
+        except Exception as e:
+            logger.exception("[AgentScheduler] vox heartbeat failed")
+            run_log.finish(rid, status="error", error=str(e))
+    _register("agent-outbound-caller", _cron(hour=0, minute=5), _vox_heartbeat)
+
     # Register user-defined custom agents from the DB
     try:
         rebuild_custom_jobs()
