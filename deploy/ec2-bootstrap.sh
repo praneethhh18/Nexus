@@ -47,21 +47,37 @@ else
 fi
 echo ""
 
-# ── 3. Auto-detect public IP → build free nip.io domains ────────────────────
+# ── 3. Detect IP + set up domains ───────────────────────────────────────────
 echo "→ Detecting public IP..."
 PUBLIC_IP="$(curl -fsSL ifconfig.me)"
 echo "✓ Public IP: $PUBLIC_IP"
-
-APP_DOMAIN="app.${PUBLIC_IP}.nip.io"
-VOX_DOMAIN="vox.${PUBLIC_IP}.nip.io"
-
 echo ""
-echo "  Free domains (via nip.io — no purchase needed):"
-echo "   App → https://$APP_DOMAIN"
-echo "   Vox → https://$VOX_DOMAIN"
+echo "  Domain options:"
+echo "   1) I have a domain (e.g. nexusagent.in from BigRock)"
+echo "   2) Use free nip.io  →  app.$PUBLIC_IP.nip.io  (IP-based, no purchase)"
+echo ""
+read -rp "→ Enter your base domain, or press Enter to use nip.io: " BASE_DOMAIN
+
+if [[ -z "$BASE_DOMAIN" ]]; then
+  APP_DOMAIN="app.${PUBLIC_IP}.nip.io"
+  VOX_DOMAIN="vox.${PUBLIC_IP}.nip.io"
+  echo ""
+  echo "  Using nip.io:"
+  echo "   App → https://$APP_DOMAIN"
+  echo "   Vox → https://$VOX_DOMAIN"
+else
+  APP_DOMAIN="app.${BASE_DOMAIN}"
+  VOX_DOMAIN="vox.${BASE_DOMAIN}"
+  echo ""
+  echo "  Make sure these DNS A-records point to $PUBLIC_IP before continuing:"
+  echo "   $APP_DOMAIN  →  $PUBLIC_IP"
+  echo "   $VOX_DOMAIN  →  $PUBLIC_IP"
+  echo ""
+  read -rp "→ DNS records set? Press Enter to continue..."
+fi
 echo ""
 
-read -rp "→ Email for Let's Encrypt SSL certificate notices: " EMAIL
+read -rp "→ Email for Let's Encrypt SSL notices: " EMAIL
 
 # ── 4. .env files ─────────────────────────────────────────────────────────────
 NEXUS_ENV="$HOME_DIR/NexusAgent/.env"
