@@ -21,7 +21,7 @@
 
 services:
   api:
-    image: ghcr.io/praneethhh18/nexusagent:latest
+    image: ghcr.io/praneethhh18/nexus:latest
     container_name: nexus_api
     expose:
       - "8000"
@@ -85,7 +85,7 @@ services:
     profiles: ["bridge"]
 
   backup:
-    image: ghcr.io/praneethhh18/nexusagent:latest
+    image: ghcr.io/praneethhh18/nexus:latest
     container_name: nexus_backup
     entrypoint: ["/bin/sh", "-c"]
     command:
