@@ -436,51 +436,44 @@ function Hero() {
   return (
     <section id="top" className="hero-section">
       <HeroBg />
-      <div className="container">
-        <div className="hero-split">
-          <div className="hero-text">
-            <div className="hero-badge">
-              <ShieldCheck size={11} />
-              Local-first · Privacy by design · Made for Indian SMBs
-            </div>
-            <BlurText
-              text="Your private AI team"
-              tag="h1"
-              className="hero-headline"
-              animateBy="words"
-              delay={100}
-            />
-            <BlurText
-              text="that works while you sleep"
-              tag="h1"
-              className="hero-headline grad-text"
-              animateBy="words"
-              delay={100}
-              style={{ marginTop: 0 }}
-            />
-            <p className="hero-sub">
-              8 named AI agents handle your inbox, chase invoices, prep meetings,
-              watch your pipeline, and make outbound calls — all on your laptop.
-              The cloud only sees redacted data, and only when you allow it.
-            </p>
-            <div className="hero-actions">
-              <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-                Start free <ArrowRight size={15} />
-              </a>
-              <a href="#agents" className="btn btn-ghost btn-lg">
-                Meet the agents
-              </a>
-            </div>
-            <div className="hero-trust">
-              <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
-              <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
-              <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
-              <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
-            </div>
-          </div>
-          <div className="hero-visual">
-            <HeroDashboard />
-          </div>
+      <div className="container hero-center">
+        <div className="hero-badge">
+          <ShieldCheck size={11} />
+          Local-first · Privacy by design · Made for Indian SMBs
+        </div>
+        <BlurText
+          text="Your private AI team"
+          tag="h1"
+          className="hero-headline"
+          animateBy="words"
+          delay={100}
+        />
+        <BlurText
+          text="that works while you sleep"
+          tag="h1"
+          className="hero-headline grad-text"
+          animateBy="words"
+          delay={100}
+          style={{ marginTop: 0 }}
+        />
+        <p className="hero-sub">
+          8 named AI agents handle your inbox, chase invoices, prep meetings,
+          watch your pipeline, and make outbound calls — all on your laptop.
+          The cloud only sees redacted data, and only when you allow it.
+        </p>
+        <div className="hero-actions">
+          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
+            Start free <ArrowRight size={15} />
+          </a>
+          <a href="#agents" className="btn btn-ghost btn-lg">
+            Meet the agents
+          </a>
+        </div>
+        <div className="hero-trust">
+          <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
         </div>
       </div>
     </section>
