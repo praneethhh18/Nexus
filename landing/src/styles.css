@@ -13,9 +13,9 @@
 
 /* ── Design tokens — Light theme ────────────────────────────────────────────*/
 :root {
-  --bg:          #ffffff;
-  --bg-1:        #F8FAFC;
-  --bg-2:        #ffffff;
+  --bg:          #faf9ff;
+  --bg-1:        #F3F0FF;
+  --bg-2:        #faf9ff;
   --bg-3:        #F1F5F9;
   --text:        #0F172A;
   --text-muted:  #475569;
@@ -242,7 +242,11 @@ h1, h2, h3, h4 { line-height: 1.2; letter-spacing: -0.02em; }
   padding: 110px 0 100px;
   overflow: hidden;
   border-bottom: 1px solid var(--border);
-  background: #fff;
+  background:
+    radial-gradient(ellipse 80% 55% at 8%  -5%,  rgba(124,58,237,0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 95%  5%,  rgba(6,182,212,0.10)  0%, transparent 55%),
+    radial-gradient(ellipse 55% 40% at 50% 110%, rgba(99,102,241,0.09) 0%, transparent 60%),
+    #f9f7ff;
 }
 
 /* Interactive particle network hero background */
