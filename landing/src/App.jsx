@@ -172,6 +172,7 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
+        <SocialProof />
         <Problem />
         <HowItWorks />
         <AgentsSection />
@@ -212,6 +213,82 @@ function Nav() {
         </button>
       </div>
     </header>
+  );
+}
+
+/* ── Hero product mockup ─────────────────────────────────────────────────────*/
+const NUDGES = [
+  {
+    emoji: '📬', name: 'Iris', role: 'Inbox Triage',
+    msg: 'Rajesh Kumar — re: Invoice query',
+    sub: 'Needs reply · Partnership interest',
+    color: '#38BDF8', action: 'Reply',
+  },
+  {
+    emoji: '💰', name: 'Kira', role: 'Invoice Chaser',
+    msg: 'TechParts Pvt Ltd · ₹48,000 due',
+    sub: '23 days overdue · Draft ready',
+    color: '#10B981', action: 'Send',
+  },
+  {
+    emoji: '🎯', name: 'Arjun', role: 'Pipeline',
+    msg: 'BrightStar Agencies · ₹2.1L deal',
+    sub: 'Silent 9 days · Suggest a call',
+    color: '#F97316', action: 'Act',
+  },
+];
+
+function HeroDashboard() {
+  return (
+    <div className="hero-mockup">
+      <div className="mock-header">
+        <div className="mock-logo">N</div>
+        <div className="mock-title">
+          <span className="mock-greeting">Good morning, Praneeth</span>
+          <span className="mock-date">Mon, 5 May · 8:02 AM</span>
+        </div>
+        <div className="mock-status-dot" />
+      </div>
+      <div className="mock-body">
+        {NUDGES.map((n, i) => (
+          <div key={i} className="mock-nudge" style={{ '--nc': n.color }}>
+            <div className="mock-nudge-left">
+              <span className="mock-emoji">{n.emoji}</span>
+              <div className="mock-nudge-info">
+                <span className="mock-nudge-name">{n.name} · {n.role}</span>
+                <span className="mock-nudge-msg">{n.msg}</span>
+                <span className="mock-nudge-sub">{n.sub}</span>
+              </div>
+            </div>
+            <button className="mock-btn">{n.action}</button>
+          </div>
+        ))}
+      </div>
+      <div className="mock-footer">
+        <span className="mock-online" />
+        <span>8 agents running · synced 2m ago</span>
+        <span className="mock-shield">🔒 Local</span>
+      </div>
+    </div>
+  );
+}
+
+/* ── Social proof strip ──────────────────────────────────────────────────────*/
+const SP_SECTORS = [
+  '🏪 Retail', '⚖️ Consulting', '🏗️ Agency', '🚚 Logistics', '🏥 Healthcare', '💼 Finance',
+];
+
+function SocialProof() {
+  return (
+    <div className="social-proof">
+      <div className="container social-proof-inner">
+        <span className="sp-label">Trusted by 200+ Indian businesses</span>
+        <div className="sp-divider" />
+        <div className="sp-pills">
+          {SP_SECTORS.map(s => <span key={s} className="sp-pill">{s}</span>)}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -359,54 +436,51 @@ function Hero() {
   return (
     <section id="top" className="hero-section">
       <HeroBg />
-
-      <div className="container hero-center">
-        <div className="hero-badge">
-          <ShieldCheck size={11} />
-          Local-first · Privacy by design · Made for Indian SMBs
-        </div>
-
-        {/* BlurText animated headline */}
-        <BlurText
-          text="Your private AI team"
-          tag="h1"
-          className="hero-headline"
-          animateBy="words"
-          direction="bottom"
-          delay={100}
-          stepDuration={0.4}
-        />
-        <BlurText
-          text="that works while you sleep"
-          tag="h1"
-          className="hero-headline grad-text"
-          animateBy="words"
-          direction="bottom"
-          delay={100}
-          stepDuration={0.4}
-          style={{ marginTop: 0 }}
-        />
-
-        <p className="hero-sub" style={{ animationDelay: '0.4s' }}>
-          8 named AI agents handle your inbox, chase invoices, prep meetings,
-          watch your pipeline, and make outbound calls — all running on your
-          laptop. The cloud only sees redacted data, and only when you allow it.
-        </p>
-
-        <div className="hero-actions">
-          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-            Start free <ArrowRight size={15} />
-          </a>
-          <a href="#agents" className="btn btn-ghost btn-lg">
-            Meet the agents
-          </a>
-        </div>
-
-        <div className="hero-trust">
-          <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
+      <div className="container">
+        <div className="hero-split">
+          <div className="hero-text">
+            <div className="hero-badge">
+              <ShieldCheck size={11} />
+              Local-first · Privacy by design · Made for Indian SMBs
+            </div>
+            <BlurText
+              text="Your private AI team"
+              tag="h1"
+              className="hero-headline"
+              animateBy="words"
+              delay={100}
+            />
+            <BlurText
+              text="that works while you sleep"
+              tag="h1"
+              className="hero-headline grad-text"
+              animateBy="words"
+              delay={100}
+              style={{ marginTop: 0 }}
+            />
+            <p className="hero-sub">
+              8 named AI agents handle your inbox, chase invoices, prep meetings,
+              watch your pipeline, and make outbound calls — all on your laptop.
+              The cloud only sees redacted data, and only when you allow it.
+            </p>
+            <div className="hero-actions">
+              <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
+                Start free <ArrowRight size={15} />
+              </a>
+              <a href="#agents" className="btn btn-ghost btn-lg">
+                Meet the agents
+              </a>
+            </div>
+            <div className="hero-trust">
+              <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
+              <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
+              <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
+              <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
+            </div>
+          </div>
+          <div className="hero-visual">
+            <HeroDashboard />
+          </div>
         </div>
       </div>
     </section>
@@ -517,21 +591,20 @@ function AgentsSection() {
           </p>
         </div>
         <div className="agents-grid">
-          {AGENTS.map(a => {
-            const Icon = a.icon;
-            return (
-              <div key={a.name} className="agent-card" style={{ '--agent-color': a.color }}>
-                <div className="agent-icon-wrap">
-                  <Icon size={18} />
-                </div>
+          {AGENTS.map(a => (
+            <div key={a.name} className="agent-card" style={{ '--agent-color': a.color }}>
+              <div className="agent-card-header">
+                <span className="agent-emoji">{a.emoji}</span>
+              </div>
+              <div className="agent-card-body">
                 <div className="agent-meta">
                   <span className="agent-role">{a.role}</span>
                   <span className="agent-name">{a.name}</span>
                 </div>
                 <p className="agent-desc">{a.desc}</p>
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       </div>
     </section>
