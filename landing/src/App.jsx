@@ -4,6 +4,9 @@ import {
   Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check,
 } from 'lucide-react';
+import Aurora   from './components/Aurora';
+import BlurText from './components/BlurText';
+import Magnet   from './components/Magnet';
 
 const APP_URL  = import.meta.env.VITE_APP_URL  || 'https://app.nexusagent.in';
 const MAIL     = 'hi@nexusagent.in';
@@ -61,13 +64,6 @@ const STATS = [
   { value: '₹0', label: 'To start', suffix: '' },
 ];
 
-const TERMINAL_TASKS = [
-  { agent: 'Atlas', color: '#F59E0B', task: 'Morning briefing ready — 3 overdue items flagged', time: '08:00', action: 'View' },
-  { agent: 'Kira', color: '#10B981', task: 'INV-2847 is 12 days overdue → reminder drafted', time: '08:02', action: 'Approve' },
-  { agent: 'Arjun', color: '#F97316', task: '"TechServe – ₹2.4L" deal stale for 9 days', time: '08:04', action: 'Follow up' },
-  { agent: 'Iris', color: '#38BDF8', task: '3 new emails classified — 1 reply draft ready', time: '08:15', action: 'Review' },
-  { agent: 'Sage', color: '#8B5CF6', task: 'Meeting with Rahul at 11:00 AM — briefing ready', time: '10:31', action: 'View' },
-];
 
 const HOW_IT_WORKS = [
   {
@@ -225,76 +221,70 @@ function Nav() {
 function Hero() {
   return (
     <section id="top" className="hero-section">
-      <div className="hero-orb orb-1" />
-      <div className="hero-orb orb-2" />
-      <div className="hero-orb orb-3" />
+      {/* Aurora animated WebGL background */}
+      <div className="hero-aurora">
+        <Aurora
+          colorStops={['#7C3AED', '#06B6D4', '#8B5CF6']}
+          amplitude={0.7}
+          blend={0.25}
+          speed={0.6}
+        />
+      </div>
 
-      <div className="container hero-inner">
-        <div className="hero-text">
-          <div className="hero-badge">
-            <ShieldCheck size={11} />
-            Local-first · Privacy by design · Made for Indian SMBs
-          </div>
-          <h1 className="hero-headline">
-            Your private AI team<br />
-            <span className="grad-text">that works while you sleep</span>
-          </h1>
-          <p className="hero-sub">
-            8 named AI agents handle your inbox, chase invoices, prep meetings,
-            watch your pipeline, and make outbound calls — all running on your
-            laptop. The cloud only sees redacted data, and only when you allow it.
-          </p>
-          <div className="hero-actions">
+      <div className="container hero-center">
+        <div className="hero-badge">
+          <ShieldCheck size={11} />
+          Local-first · Privacy by design · Made for Indian SMBs
+        </div>
+
+        {/* BlurText animated headline */}
+        <BlurText
+          text="Your private AI team"
+          tag="h1"
+          className="hero-headline"
+          animateBy="words"
+          direction="bottom"
+          delay={100}
+          stepDuration={0.4}
+        />
+        <BlurText
+          text="that works while you sleep"
+          tag="h1"
+          className="hero-headline grad-text"
+          animateBy="words"
+          direction="bottom"
+          delay={100}
+          stepDuration={0.4}
+          style={{ marginTop: 0 }}
+        />
+
+        <p className="hero-sub" style={{ animationDelay: '0.4s' }}>
+          8 named AI agents handle your inbox, chase invoices, prep meetings,
+          watch your pipeline, and make outbound calls — all running on your
+          laptop. The cloud only sees redacted data, and only when you allow it.
+        </p>
+
+        <div className="hero-actions">
+          <Magnet magnetStrength={4}>
             <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
               Start free <ArrowRight size={15} />
             </a>
+          </Magnet>
+          <Magnet magnetStrength={4}>
             <a href="#agents" className="btn btn-ghost btn-lg">
               Meet the agents
             </a>
-          </div>
-          <div className="hero-trust">
-            <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
-            <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
-            <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
-            <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
-          </div>
+          </Magnet>
         </div>
 
-        <div className="hero-visual">
-          <HeroTerminal />
+        <div className="hero-trust">
+          <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
         </div>
       </div>
     </section>
-  );
-}
-
-function HeroTerminal() {
-  return (
-    <div className="terminal-wrap">
-      <div className="terminal-titlebar">
-        <div className="terminal-dots">
-          <span style={{ background: '#FF5F57' }} />
-          <span style={{ background: '#FFBD2E' }} />
-          <span style={{ background: '#28CA41' }} />
-        </div>
-        <span className="terminal-title">Agent Inbox — Today</span>
-        <span className="terminal-chip">{TERMINAL_TASKS.length} tasks</span>
-      </div>
-      <div className="terminal-body">
-        {TERMINAL_TASKS.map((t, i) => (
-          <div key={i} className="t-row" style={{ '--delay': `${i * 0.08}s` }}>
-            <span className="t-badge" style={{ '--c': t.color }}>{t.agent}</span>
-            <span className="t-task">{t.task}</span>
-            <span className="t-time">{t.time}</span>
-            <span className="t-action">{t.action} →</span>
-          </div>
-        ))}
-      </div>
-      <div className="terminal-footer">
-        <span className="terminal-status"><span className="status-dot" /> All agents running</span>
-        <span className="terminal-model">Llama 3.1 8B · local</span>
-      </div>
-    </div>
   );
 }
 
@@ -568,12 +558,16 @@ function CTA() {
           Five minutes to set up. Zero vendor lock-in.<br />Your data stays yours.
         </p>
         <div className="cta-actions">
-          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-            Start free <ArrowRight size={15} />
-          </a>
-          <a href={GITHUB} target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
-            View source on GitHub
-          </a>
+          <Magnet magnetStrength={4}>
+            <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
+              Start free <ArrowRight size={15} />
+            </a>
+          </Magnet>
+          <Magnet magnetStrength={4}>
+            <a href={GITHUB} target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
+              View source on GitHub
+            </a>
+          </Magnet>
         </div>
         <p className="cta-fine">No credit card · Self-hostable · Runs on your laptop</p>
       </div>
