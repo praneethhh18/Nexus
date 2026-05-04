@@ -81,7 +81,7 @@ const COMPARE_ROWS = [
   { feature: 'Scheduled AI workflows',     nexus: true,       zoho: 'Partial',      salesforce: 'Partial'     },
   { feature: 'Outbound voice (SIP)',        nexus: true,       zoho: 'Add-on',       salesforce: 'Add-on'      },
   { feature: 'Self-hosted option',         nexus: true,       zoho: false,          salesforce: false         },
-  { feature: 'Starting price',             nexus: '₹0',       zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
+  { feature: 'Starting price',             nexus: 'Free',     zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
 ];
 
 const TIERS = [
