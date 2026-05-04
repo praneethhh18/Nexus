@@ -4,7 +4,6 @@ import {
   Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check,
 } from 'lucide-react';
-import BlurText from './components/BlurText';
 
 const APP_URL  = import.meta.env.VITE_APP_URL  || 'https://app.nexusagent.in';
 const MAIL     = 'hi@nexusagent.in';
@@ -223,272 +222,36 @@ function Nav() {
   );
 }
 
-/* ── Hero product mockup ─────────────────────────────────────────────────────*/
-const NUDGES = [
-  {
-    emoji: '📬', name: 'Iris', role: 'Inbox Triage',
-    msg: 'Rajesh Kumar — re: Invoice query',
-    sub: 'Needs reply · Partnership interest',
-    color: '#38BDF8', action: 'Reply',
-  },
-  {
-    emoji: '💰', name: 'Kira', role: 'Invoice Chaser',
-    msg: 'TechParts Pvt Ltd · ₹48,000 due',
-    sub: '23 days overdue · Draft ready',
-    color: '#10B981', action: 'Send',
-  },
-  {
-    emoji: '🎯', name: 'Arjun', role: 'Pipeline',
-    msg: 'BrightStar Agencies · ₹2.1L deal',
-    sub: 'Silent 9 days · Suggest a call',
-    color: '#F97316', action: 'Act',
-  },
-];
-
-function HeroDashboard() {
-  return (
-    <div className="hero-mockup">
-      <div className="mock-header">
-        <div className="mock-logo">N</div>
-        <div className="mock-title">
-          <span className="mock-greeting">Good morning, Praneeth</span>
-          <span className="mock-date">Mon, 5 May · 8:02 AM</span>
-        </div>
-        <div className="mock-status-dot" />
-      </div>
-      <div className="mock-body">
-        {NUDGES.map((n, i) => (
-          <div key={i} className="mock-nudge" style={{ '--nc': n.color }}>
-            <div className="mock-nudge-left">
-              <span className="mock-emoji">{n.emoji}</span>
-              <div className="mock-nudge-info">
-                <span className="mock-nudge-name">{n.name} · {n.role}</span>
-                <span className="mock-nudge-msg">{n.msg}</span>
-                <span className="mock-nudge-sub">{n.sub}</span>
-              </div>
-            </div>
-            <button className="mock-btn">{n.action}</button>
-          </div>
-        ))}
-      </div>
-      <div className="mock-footer">
-        <span className="mock-online" />
-        <span>8 agents running · synced 2m ago</span>
-        <span className="mock-shield">🔒 Local</span>
-      </div>
-    </div>
-  );
-}
-
-/* ── Social proof strip ──────────────────────────────────────────────────────*/
-const SP_SECTORS = [
-  '🏪 Retail', '⚖️ Consulting', '🏗️ Agency', '🚚 Logistics', '🏥 Healthcare', '💼 Finance',
-];
-
-function SocialProof() {
-  return (
-    <div className="social-proof">
-      <div className="container social-proof-inner">
-        <span className="sp-label">Trusted by 200+ Indian businesses</span>
-        <div className="sp-divider" />
-        <div className="sp-pills">
-          {SP_SECTORS.map(s => <span key={s} className="sp-pill">{s}</span>)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/* ── Hero background: Interactive Particle Network ──────────────────────────
-   Canvas-based floating particles that connect with lines and react to the
-   mouse — cursor repels nearby particles, creating a live network effect.    */
-function HeroBg() {
-  const canvasRef = useRef(null);
-  const mouse     = useRef({ x: -9999, y: -9999 });
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-
-    const COLORS   = ['67,56,202', '13,148,136', '79,70,229', '5,150,105'];
-    const COUNT    = 75;
-    const CONNECT  = 140;   // line draw distance
-    const REPEL    = 110;   // mouse repel radius
-    const SPEED    = 0.45;
-
-    let W, H, particles, rafId;
-
-    const resize = () => {
-      W = canvas.width  = canvas.offsetWidth;
-      H = canvas.height = canvas.offsetHeight;
-    };
-
-    const mkParticle = () => ({
-      x:  Math.random() * W,
-      y:  Math.random() * H,
-      vx: (Math.random() - 0.5) * SPEED,
-      vy: (Math.random() - 0.5) * SPEED,
-      r:  Math.random() * 1.8 + 1.2,
-      col: COLORS[Math.floor(Math.random() * COLORS.length)],
-    });
-
-    const tick = () => {
-      ctx.clearRect(0, 0, W, H);
-
-      for (const p of particles) {
-        // Mouse repel
-        const dx = p.x - mouse.current.x;
-        const dy = p.y - mouse.current.y;
-        const d2 = dx * dx + dy * dy;
-        if (d2 < REPEL * REPEL && d2 > 0) {
-          const d = Math.sqrt(d2);
-          const force = (REPEL - d) / REPEL * 0.6;
-          p.vx += (dx / d) * force;
-          p.vy += (dy / d) * force;
-        }
-
-        // Speed cap + gentle damping
-        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-        if (spd > 2.2) { p.vx *= 0.9; p.vy *= 0.9; }
-        p.vx *= 0.998; p.vy *= 0.998;
-
-        // Drift back to base speed when far from mouse
-        if (spd < SPEED * 0.5) {
-          p.vx += (Math.random() - 0.5) * 0.04;
-          p.vy += (Math.random() - 0.5) * 0.04;
-        }
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // Wrap edges
-        if (p.x < -10)    p.x = W + 10;
-        if (p.x > W + 10) p.x = -10;
-        if (p.y < -10)    p.y = H + 10;
-        if (p.y > H + 10) p.y = -10;
-      }
-
-      // Draw connections
-      for (let i = 0; i < particles.length; i++) {
-        for (let j = i + 1; j < particles.length; j++) {
-          const dx = particles[i].x - particles[j].x;
-          const dy = particles[i].y - particles[j].y;
-          const d  = Math.sqrt(dx * dx + dy * dy);
-          if (d < CONNECT) {
-            ctx.beginPath();
-            ctx.moveTo(particles[i].x, particles[i].y);
-            ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(67,56,202,${(1 - d / CONNECT) * 0.18})`;
-            ctx.lineWidth   = 0.8;
-            ctx.stroke();
-          }
-        }
-        // Mouse connection lines
-        const mdx = particles[i].x - mouse.current.x;
-        const mdy = particles[i].y - mouse.current.y;
-        const md  = Math.sqrt(mdx * mdx + mdy * mdy);
-        if (md < CONNECT * 1.1) {
-          ctx.beginPath();
-          ctx.moveTo(particles[i].x, particles[i].y);
-          ctx.lineTo(mouse.current.x, mouse.current.y);
-          ctx.strokeStyle = `rgba(13,148,136,${(1 - md / (CONNECT * 1.1)) * 0.28})`;
-          ctx.lineWidth   = 0.9;
-          ctx.stroke();
-        }
-      }
-
-      // Draw dots
-      for (const p of particles) {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${p.col},0.65)`;
-        ctx.fill();
-      }
-
-      rafId = requestAnimationFrame(tick);
-    };
-
-    const onMove = e => {
-      const r = canvas.getBoundingClientRect();
-      mouse.current = { x: e.clientX - r.left, y: e.clientY - r.top };
-    };
-    const onLeave = () => { mouse.current = { x: -9999, y: -9999 }; };
-
-    resize();
-    particles = Array.from({ length: COUNT }, mkParticle);
-    window.addEventListener('resize', resize);
-    canvas.parentElement?.addEventListener('mousemove', onMove);
-    canvas.parentElement?.addEventListener('mouseleave', onLeave);
-    rafId = requestAnimationFrame(tick);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('resize', resize);
-      canvas.parentElement?.removeEventListener('mousemove', onMove);
-      canvas.parentElement?.removeEventListener('mouseleave', onLeave);
-    };
-  }, []);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      aria-hidden
-      className="hero-particles"
-    />
-  );
-}
 
 function Hero() {
   return (
     <section id="top" className="hero-section">
-      <HeroBg />
       <div className="container hero-center">
-        <div className="hero-badge">
-          <ShieldCheck size={11} />
-          Local-first · Privacy by design · Made for Indian SMBs
+        <div className="hero-eyebrow">
+          <ShieldCheck size={12} />
+          Local-first AI · Privacy by design · Made for Indian SMBs
         </div>
-        <BlurText
-          text="Your private AI team"
-          tag="h1"
-          className="hero-headline"
-          animateBy="words"
-          delay={100}
-        />
-        <BlurText
-          text="that works while you sleep"
-          tag="h1"
-          className="hero-headline grad-text"
-          animateBy="words"
-          delay={100}
-          style={{ marginTop: 0 }}
-        />
-        <div className="hero-agents">
-          {AGENTS.map((a, i) => (
-            <span
-              key={a.name}
-              className="hero-agent-chip"
-              style={{ '--ac': a.color, animationDelay: `${i * 80}ms` }}
-            >
-              <span className="hero-agent-emoji">{a.emoji}</span>
-              <span className="hero-agent-name">{a.name}</span>
-              <span className="hero-agent-role">{a.role}</span>
-            </span>
-          ))}
-        </div>
+        <h1 className="hero-headline">
+          The AI team your<br />
+          business actually needs
+        </h1>
+        <p className="hero-sub">
+          8 autonomous agents handle your CRM, inbox, invoices, meetings, and outbound calls —
+          running on your laptop, with your data never leaving your machine.
+        </p>
         <div className="hero-actions">
           <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-            Start free <ArrowRight size={15} />
+            Start free <ArrowRight size={14} />
           </a>
-          <a href="#agents" className="btn btn-ghost btn-lg">
-            Meet the agents
+          <a href="#pricing" className="btn btn-ghost btn-lg">
+            See pricing
           </a>
         </div>
         <div className="hero-trust">
           <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute install</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute setup</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> ₹0 to start</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> Free to start</span>
         </div>
       </div>
     </section>
