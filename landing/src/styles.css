@@ -1,3 +1,16 @@
+/* ── BlurText animation ──────────────────────────────────────────────────────*/
+@keyframes blur-in {
+  from { filter: blur(10px); opacity: 0; transform: translateY(16px); }
+  to   { filter: blur(0px);  opacity: 1; transform: translateY(0); }
+}
+.blur-word {
+  display: inline-block;
+  opacity: 0;
+}
+.blur-word-in {
+  animation: blur-in 0.55s ease-out both;
+}
+
 /* ── Design tokens — Light theme ────────────────────────────────────────────*/
 :root {
   --bg:          #ffffff;

@@ -4,7 +4,7 @@ import {
   Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check,
 } from 'lucide-react';
-import Aurora   from './components/Aurora';
+import Aurora, { AuroraErrorBoundary } from './components/Aurora';
 import BlurText from './components/BlurText';
 import Magnet   from './components/Magnet';
 
@@ -221,14 +221,16 @@ function Nav() {
 function Hero() {
   return (
     <section id="top" className="hero-section">
-      {/* Aurora animated WebGL background */}
+      {/* Aurora animated WebGL background — fails silently if WebGL unavailable */}
       <div className="hero-aurora">
-        <Aurora
-          colorStops={['#7C3AED', '#06B6D4', '#8B5CF6']}
-          amplitude={0.7}
-          blend={0.25}
-          speed={0.6}
-        />
+        <AuroraErrorBoundary>
+          <Aurora
+            colorStops={['#7C3AED', '#06B6D4', '#8B5CF6']}
+            amplitude={0.7}
+            blend={0.25}
+            speed={0.6}
+          />
+        </AuroraErrorBoundary>
       </div>
 
       <div className="container hero-center">
