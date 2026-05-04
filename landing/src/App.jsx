@@ -187,30 +187,58 @@ export default function App() {
 }
 
 function Nav() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]       = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header className="nav-wrap">
-      <div className="container nav-inner">
+    <header className="nav-outer">
+      <div className={`nav-pill ${scrolled ? 'nav-pill-scrolled' : ''} ${open ? 'nav-pill-open' : ''}`}>
         <a href="#top" className="logo">
           <span className="logo-mark">N</span>
           NexusAgent
         </a>
-        <nav className={`nav-links ${open ? 'nav-open' : ''}`}>
+
+        <div className="nav-pill-divider" />
+
+        <nav className="nav-links">
           <a href="#agents"  onClick={() => setOpen(false)}>Agents</a>
           <a href="#privacy" onClick={() => setOpen(false)}>Privacy</a>
           <a href="#pricing" onClick={() => setOpen(false)}>Pricing</a>
           <a href="#faq"     onClick={() => setOpen(false)}>FAQ</a>
         </nav>
+
+        <div className="nav-pill-divider" />
+
         <div className="nav-ctas">
-          <a href={`${APP_URL}/login`}  className="btn btn-ghost btn-sm">Sign in</a>
-          <a href={`${APP_URL}/setup`}  className="btn btn-primary btn-sm">
-            Start free <ArrowRight size={13} />
+          <a href={`${APP_URL}/login`} className="nav-signin">Sign in</a>
+          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-sm">
+            Start free <ArrowRight size={12} />
           </a>
         </div>
+
         <button className="nav-burger" onClick={() => setOpen(o => !o)} aria-label="Menu">
-          {open ? <X size={20} /> : <Menu size={20} />}
+          {open ? <X size={18} /> : <Menu size={18} />}
         </button>
       </div>
+
+      {open && (
+        <div className="nav-mobile-menu">
+          <a href="#agents"  onClick={() => setOpen(false)}>Agents</a>
+          <a href="#privacy" onClick={() => setOpen(false)}>Privacy</a>
+          <a href="#pricing" onClick={() => setOpen(false)}>Pricing</a>
+          <a href="#faq"     onClick={() => setOpen(false)}>FAQ</a>
+          <div className="nav-mobile-ctas">
+            <a href={`${APP_URL}/login`}  className="btn btn-ghost btn-sm" style={{width:'100%', justifyContent:'center'}}>Sign in</a>
+            <a href={`${APP_URL}/setup`}  className="btn btn-primary btn-sm" style={{width:'100%', justifyContent:'center'}}>Start free <ArrowRight size={12}/></a>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -166,45 +166,69 @@ h1, h2, h3, h4 {
 .section     { padding: 96px 0; border-bottom: 1px solid var(--border); }
 .section-alt { background: var(--bg-1); }
 
-/* ── Nav ─────────────────────────────────────────────────────────────────────*/
-.nav-wrap {
+/* ── Nav — Floating Pill ─────────────────────────────────────────────────────*/
+.nav-outer {
   position: sticky;
-  top: 0;
+  top: 14px;
   z-index: 100;
-  background: rgba(245,243,238,0.88);
-  backdrop-filter: blur(18px);
-  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 24px;
+  pointer-events: none;
 }
 
-.nav-inner {
+.nav-pill {
+  pointer-events: all;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 0;
-  gap: 24px;
+  gap: 6px;
+  background: rgba(254,252,248,0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(22,20,12,0.11);
+  border-radius: 999px;
+  padding: 6px 6px 6px 14px;
+  box-shadow: 0 2px 12px rgba(22,20,12,0.06), 0 1px 3px rgba(22,20,12,0.04);
+  transition: box-shadow 0.2s;
+  max-width: 780px;
+  width: 100%;
+}
+
+.nav-pill-scrolled {
+  box-shadow: 0 6px 28px rgba(22,20,12,0.10), 0 2px 6px rgba(22,20,12,0.06);
+}
+
+.nav-pill-divider {
+  width: 1px;
+  height: 18px;
+  background: var(--border-strong);
+  flex-shrink: 0;
+  margin: 0 4px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   font-family: 'Urbanist', sans-serif;
   font-weight: 800;
-  font-size: 17px;
+  font-size: 16px;
   color: var(--text);
   letter-spacing: -0.02em;
   text-decoration: none;
+  flex-shrink: 0;
 }
 .logo:hover { color: var(--text); }
 
 .logo-mark {
-  width: 30px; height: 30px;
-  border-radius: 9px;
+  width: 26px; height: 26px;
+  border-radius: 7px;
   background: var(--accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
   color: #fff;
   flex-shrink: 0;
@@ -213,30 +237,79 @@ h1, h2, h3, h4 {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 0;
   flex: 1;
   justify-content: center;
 }
 .nav-links a {
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  padding: 6px 13px;
-  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  border-radius: 999px;
   text-decoration: none;
   transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
 }
-.nav-links a:hover { color: var(--text); background: var(--bg-1); }
+.nav-links a:hover { color: var(--text); background: rgba(22,20,12,0.06); }
 
-.nav-ctas  { display: flex; align-items: center; gap: 8px; }
+.nav-ctas {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.nav-signin {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: 999px;
+  transition: color 0.12s, background 0.12s;
+  white-space: nowrap;
+}
+.nav-signin:hover { color: var(--text); background: rgba(22,20,12,0.06); }
+
 .nav-burger {
   display: none;
   background: none;
   border: none;
   color: var(--text);
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
+  border-radius: 999px;
+  margin-right: 2px;
 }
+.nav-burger:hover { background: rgba(22,20,12,0.06); }
+
+/* Mobile dropdown below the pill */
+.nav-mobile-menu {
+  pointer-events: all;
+  margin-top: 8px;
+  background: rgba(254,252,248,0.97);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border-strong);
+  border-radius: 20px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  max-width: 780px;
+  box-shadow: 0 8px 32px rgba(22,20,12,0.10);
+}
+.nav-mobile-menu a {
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 14px;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: color 0.1s, background 0.1s;
+}
+.nav-mobile-menu a:hover { color: var(--text); background: var(--bg-1); }
+.nav-mobile-ctas { display: flex; gap: 8px; margin-top: 8px; }
 
 /* ── Hero ────────────────────────────────────────────────────────────────────*/
 .hero-section {
@@ -716,21 +789,10 @@ h1, h2, h3, h4 {
 
 @media (max-width: 768px) {
   .section { padding: 64px 0; }
-  .nav-links {
-    display: none;
-    position: fixed;
-    top: 57px; left: 0; right: 0;
-    background: rgba(245,243,238,0.97);
-    flex-direction: column;
-    padding: 16px 24px;
-    border-bottom: 1px solid var(--border);
-    box-shadow: var(--shadow-md);
-    z-index: 99;
-    backdrop-filter: blur(18px);
-  }
-  .nav-links.nav-open { display: flex; }
-  .nav-links a { padding: 12px 0; font-size: 16px; }
-  .nav-ctas  { display: none; }
+  .nav-links  { display: none; }
+  .nav-pill-divider { display: none; }
+  .nav-ctas   { display: none; }
+  .nav-signin { display: none; }
   .nav-burger { display: flex; }
   .hero-section  { padding: 72px 0 60px; }
   .hero-headline { font-size: clamp(30px, 8vw, 46px); }
