@@ -97,13 +97,6 @@ const FAQS = [
     a: 'Settings → Export all data → ZIP. You get every table as CSV: contacts, tasks, invoices, documents, conversations, agent runs. No lock-in, no export fees, no waiting.' },
 ];
 
-const DEMO_ROWS = [
-  { status: 'status-done',   agent: 'Atlas', icon: '✓', text: 'Morning briefing ready — 3 open tasks, 2 overdue invoices',     time: 'just now' },
-  { status: 'status-done',   agent: 'Iris',  icon: '✓', text: 'Triaged 14 emails · 2 flagged for your reply',                  time: '2m ago'   },
-  { status: 'status-done',   agent: 'Kira',  icon: '✓', text: 'Invoice reminder sent → Mehta Traders ₹45,000',                 time: '4m ago'   },
-  { status: 'status-active', agent: 'Arjun', icon: '⟳', text: 'Scanning pipeline for deals silent 7+ days…',                  time: '—'        },
-  { status: 'status-wait',   agent: 'Sage',  icon: '○', text: 'Meeting prep queued: Sharma & Co. at 10:30 AM',                 time: '10:00 AM' },
-];
 
 // ── App ───────────────────────────────────────────────────────────────────────
 
@@ -199,26 +192,6 @@ function Hero() {
           <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute setup</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Runs on your laptop</span>
-        </div>
-
-        {/* Static agent activity card — no JS, pure CSS */}
-        <div className="hero-demo">
-          <div className="demo-topbar">
-            <span className="demo-dot r" />
-            <span className="demo-dot y" />
-            <span className="demo-dot g" />
-            <span className="demo-topbar-title">NexusAgent · Agent Activity · Today 8:07 AM</span>
-          </div>
-          <div className="demo-body">
-            {DEMO_ROWS.map((row, i) => (
-              <div key={i} className={`demo-row ${row.status}`}>
-                <span className="demo-icon">{row.icon}</span>
-                <span className="demo-agent-tag">{row.agent}</span>
-                <span className="demo-text">{row.text}</span>
-                <span className="demo-time">{row.time}</span>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </section>
