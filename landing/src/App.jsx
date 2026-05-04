@@ -203,16 +203,16 @@ function Hero() {
 function AgentHubVisual() {
   const W = 560, H = 420, cx = 280, cy = 204;
 
-  // Scattered asymmetric positions — NOT a perfect circle
+  // Spread positions — no overlaps, asymmetric
   const NODES = [
-    { role: 'Chief of Staff',  Icon: Sun,        color: '#F59E0B', x: 192, y: 50  },
-    { role: 'Research',        Icon: Search,     color: '#6366F1', x: 58,  y: 148 },
-    { role: 'Inbox Triage',    Icon: Mail,       color: '#0EA5E9', x: 70,  y: 306 },
-    { role: 'Invoice Chaser',  Icon: TrendingUp, color: '#10B981', x: 228, y: 372 },
-    { role: 'Meeting Prep',    Icon: Clock,      color: '#8B5CF6', x: 392, y: 355 },
-    { role: 'Pipeline Watch',  Icon: Target,     color: '#F97316', x: 492, y: 175 },
-    { role: 'Voice Agent',     Icon: Phone,      color: '#06B6D4', x: 388, y: 52  },
-    { role: 'Memory Keeper',   Icon: Brain,      color: '#EC4899', x: 318, y: 48  },
+    { role: 'Chief of Staff',  Icon: Sun,        color: '#F59E0B', x: 148, y: 58  },
+    { role: 'Research',        Icon: Search,     color: '#6366F1', x: 50,  y: 156 },
+    { role: 'Inbox Triage',    Icon: Mail,       color: '#0EA5E9', x: 62,  y: 302 },
+    { role: 'Invoice Chaser',  Icon: TrendingUp, color: '#10B981', x: 222, y: 374 },
+    { role: 'Meeting Prep',    Icon: Clock,      color: '#8B5CF6', x: 394, y: 358 },
+    { role: 'Pipeline Watch',  Icon: Target,     color: '#F97316', x: 492, y: 172 },
+    { role: 'Voice Agent',     Icon: Phone,      color: '#06B6D4', x: 422, y: 58  },
+    { role: 'Memory Keeper',   Icon: Brain,      color: '#EC4899', x: 280, y: 38  },
   ].map((n, i) => {
     // Right-angle path: horizontal-first or vertical-first based on which delta is larger
     const dx = Math.abs(n.x - cx), dy = Math.abs(n.y - cy);
@@ -280,14 +280,11 @@ function AgentHubVisual() {
         ))}
       </svg>
 
-      {/* Agent icon cards */}
+      {/* Agent icon nodes — no card, no text */}
       {NODES.map(n => (
         <div key={n.role} className="hub-node"
           style={{ left: `${(n.x / W) * 100}%`, top: `${(n.y / H) * 100}%`, '--nc': n.color }}>
-          <div className="hub-node-icon">
-            <n.Icon size={17} />
-          </div>
-          <span className="hub-node-role">{n.role}</span>
+          <n.Icon size={20} />
         </div>
       ))}
 
