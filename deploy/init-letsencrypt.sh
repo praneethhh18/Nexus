@@ -1,42 +1,43 @@
 #!/usr/bin/env bash
 # First-time Let's Encrypt setup for NexusAgent + Vox.
-# Run ONCE on a fresh EC2 after DNS A-records are pointing to this server's IP.
+# Run ONCE on a fresh EC2 after the Elastic IP is attached.
 #
-# Usage:  ./deploy/init-letsencrypt.sh <base-domain> <email>
-# Example: ./deploy/init-letsencrypt.sh nexusapp.com admin@example.com
+# Usage:  ./deploy/init-letsencrypt.sh <app-domain> <vox-domain> <email>
+# Example (nip.io):  ./deploy/init-letsencrypt.sh app.54.123.45.67.nip.io vox.54.123.45.67.nip.io admin@gmail.com
+# Example (custom):  ./deploy/init-letsencrypt.sh app.mycompany.com vox.mycompany.com admin@mycompany.com
 set -euo pipefail
 
-DOMAIN="${1:?usage: $0 <base-domain> <email>}"
-EMAIL="${2:?usage: $0 <base-domain> <email>}"
-APP_DOMAIN="app.${DOMAIN}"
-VOX_DOMAIN="vox.${DOMAIN}"
+APP_DOMAIN="${1:?usage: $0 <app-domain> <vox-domain> <email>}"
+VOX_DOMAIN="${2:?usage: $0 <app-domain> <vox-domain> <email>}"
+EMAIL="${3:?usage: $0 <app-domain> <vox-domain> <email>}"
 
 CONF_DIR="./data/certbot/conf"
 WWW_DIR="./data/certbot/www"
 
 echo "================================================================"
 echo " Let's Encrypt setup"
-echo "   App domain : $APP_DOMAIN"
-echo "   Vox domain : $VOX_DOMAIN"
-echo "   Email      : $EMAIL"
+echo "   App : $APP_DOMAIN"
+echo "   Vox : $VOX_DOMAIN"
+echo "   Email: $EMAIL"
 echo "================================================================"
 echo ""
 
-# 1. Confirm DNS is resolving before we waste an ACME attempt
+# 1. Confirm DNS resolves before wasting an ACME attempt
 for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
   if ! host "$d" >/dev/null 2>&1; then
-    echo "ERROR: $d does not resolve. Point your DNS A-record to this server's IP first."
+    echo "ERROR: $d does not resolve. Check your IP / nip.io domain and try again."
     exit 1
   fi
   echo "✓ DNS OK: $d"
 done
 echo ""
 
-# 2. Patch the yourdomain.com placeholder in nginx.conf
-sed -i "s/yourdomain\.com/${DOMAIN}/g" ./deploy/nginx.conf
-echo "✓ nginx.conf updated with $DOMAIN"
+# 2. Patch domain placeholders in nginx.conf
+sed -i "s|app\.yourdomain\.com|${APP_DOMAIN}|g" ./deploy/nginx.conf
+sed -i "s|vox\.yourdomain\.com|${VOX_DOMAIN}|g" ./deploy/nginx.conf
+echo "✓ nginx.conf updated"
 
-# 3. Create directories
+# 3. Create cert directories
 mkdir -p "$CONF_DIR/live/$APP_DOMAIN" "$CONF_DIR/live/$VOX_DOMAIN" "$WWW_DIR"
 
 # 4. Dummy self-signed certs so nginx can start before real certs exist
@@ -51,12 +52,12 @@ for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
 done
 echo ""
 
-# 5. Start nginx + certbot so nginx can serve the ACME challenge
+# 5. Start nginx + certbot (nginx serves the ACME challenge on port 80)
 echo "→ Starting proxy and certbot..."
 docker compose up -d proxy certbot
-sleep 3  # give nginx a moment to be ready
+sleep 3
 
-# 6. Issue real certs (replaces the dummy ones)
+# 6. Issue real certs
 for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
   echo "→ Requesting cert for $d..."
   docker compose run --rm certbot certonly \
@@ -64,18 +65,16 @@ for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
     --email "$EMAIL" --agree-tos --no-eff-email \
     --force-renewal \
     -d "$d"
-  echo "✓ Real cert issued for $d"
+  echo "✓ Cert issued for $d"
 done
 echo ""
 
-# 7. Reload nginx to pick up the real certs
+# 7. Reload nginx with real certs
 docker compose exec proxy nginx -s reload
-echo "✓ nginx reloaded with real certs"
+echo "✓ nginx reloaded"
 echo ""
 echo "================================================================"
 echo " HTTPS is live!"
 echo "   https://$APP_DOMAIN"
 echo "   https://$VOX_DOMAIN"
-echo ""
-echo " Next: docker compose up -d (starts the full stack)"
 echo "================================================================"
