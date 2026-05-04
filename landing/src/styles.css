@@ -58,7 +58,7 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { color: var(--accent-lit); }
 
 h1, h2, h3, h4 {
-  font-family: 'Syne', system-ui, sans-serif;
+  font-family: 'Urbanist', system-ui, sans-serif;
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
@@ -188,7 +188,7 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Urbanist', sans-serif;
   font-weight: 800;
   font-size: 17px;
   color: var(--text);
@@ -287,7 +287,7 @@ h1, h2, h3, h4 {
 }
 
 .hero-headline {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Urbanist', sans-serif;
   font-size: clamp(38px, 5vw, 64px);
   font-weight: 800;
   line-height: 1.1;
@@ -376,7 +376,7 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Syne', sans-serif;
+  font-family: 'Urbanist', sans-serif;
   font-weight: 800;
   font-size: 13px;
   color: #fff;
@@ -457,7 +457,7 @@ h1, h2, h3, h4 {
   color: var(--agent-color);
   opacity: 0.9;
 }
-.agent-name  { font-family: 'Syne', sans-serif; font-size: 17px; font-weight: 800; color: var(--text); }
+.agent-name  { font-family: 'Urbanist', sans-serif; font-size: 17px; font-weight: 800; color: var(--text); }
 .agent-desc  { font-size: 12px; color: var(--text-muted); line-height: 1.55; }
 
 /* ── Privacy ─────────────────────────────────────────────────────────────────*/
@@ -498,7 +498,7 @@ h1, h2, h3, h4 {
   flex-shrink: 0;
 }
 .privacy-icon  { color: var(--accent); margin-bottom: 6px; }
-.privacy-title { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+.privacy-title { font-family: 'Urbanist', sans-serif; font-size: 15px; font-weight: 700; margin-bottom: 6px; }
 .privacy-body  { font-size: 13px; color: var(--text-muted); line-height: 1.65; }
 
 /* ── Compare ─────────────────────────────────────────────────────────────────*/
@@ -603,7 +603,7 @@ h1, h2, h3, h4 {
   color: var(--text-dim);
 }
 .price-amount {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Urbanist', sans-serif;
   font-size: 36px;
   font-weight: 800;
   line-height: 1;
@@ -661,7 +661,7 @@ h1, h2, h3, h4 {
 }
 .cta-inner    { position: relative; }
 .cta-headline {
-  font-family: 'Syne', sans-serif;
+  font-family: 'Urbanist', sans-serif;
   font-size: clamp(28px, 4vw, 52px);
   font-weight: 800;
   letter-spacing: -0.03em;
