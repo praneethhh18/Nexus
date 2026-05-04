@@ -484,19 +484,17 @@ img, svg { display: block; }
 .privacy-card {
   padding: 36px;
   border-radius: var(--r-xl);
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
-  transition: background 0.2s, border-color 0.2s;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-sm);
+  transition: box-shadow 0.2s, transform 0.2s;
 }
-.privacy-card:hover {
-  background: rgba(255,255,255,0.05);
-  border-color: rgba(255,255,255,0.09);
-}
+.privacy-card:hover { box-shadow: var(--sh-md); transform: translateY(-3px); }
 .privacy-num {
   font-family: 'Urbanist', sans-serif;
   font-size: 12px;
   font-weight: 800;
-  color: rgba(255,255,255,0.18);
+  color: var(--text-dim);
   letter-spacing: 1.2px;
   text-transform: uppercase;
   margin-bottom: 18px;
@@ -504,21 +502,21 @@ img, svg { display: block; }
 .privacy-icon-box {
   width: 40px; height: 40px;
   border-radius: var(--r-md);
-  background: rgba(5,150,105,0.14);
+  background: var(--ok-pale);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #34D399;
+  color: var(--ok);
   margin-bottom: 18px;
 }
 .privacy-title {
   font-family: 'Urbanist', sans-serif;
   font-size: 19px;
   font-weight: 700;
-  color: #F1F5F9;
+  color: var(--text);
   margin-bottom: 10px;
 }
-.privacy-body { font-size: 14px; color: #64748B; line-height: 1.75; }
+.privacy-body { font-size: 14px; color: var(--text-muted); line-height: 1.75; }
 
 /* ── Compare Table ───────────────────────────────────────────────────────── */
 .compare-wrap {

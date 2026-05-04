@@ -314,14 +314,14 @@ function AgentsSection() {
 
 function PrivacySection() {
   return (
-    <section id="privacy" className="section section-dark">
+    <section id="privacy" className="section section-alt">
       <div className="container">
         <div className="section-header section-header-c">
-          <span className="eyebrow eyebrow-dim">The differentiator</span>
-          <h2 className="section-h2 section-h2-light">
+          <span className="eyebrow">The differentiator</span>
+          <h2 className="section-h2">
             4 layers between your data and the cloud
           </h2>
-          <p className="section-sub section-sub-dim" style={{ margin: '12px auto 0' }}>
+          <p className="section-sub" style={{ margin: '12px auto 0' }}>
             Every outbound prompt passes through four gates before leaving your machine.
             Because "we don't train on your data" is not a privacy posture.
           </p>
