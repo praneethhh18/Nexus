@@ -37,19 +37,30 @@ router = APIRouter(tags=["voice_calls"])
 
 
 def _lab_url() -> str:
+    """Internal server-to-server URL (e.g. http://vox-server:8765 in Docker)."""
     url = (os.getenv("LAB_URL") or os.getenv("VOX_LAB_URL") or "").rstrip("/")
     if not url:
         raise HTTPException(
             500,
             "LAB_URL not configured — set it in NexusAgent/.env to the "
-            "voice-agent server URL (e.g. http://localhost:8765).",
+            "voice-agent server URL (e.g. http://vox-server:8765 in Docker, "
+            "http://localhost:8765 in local dev).",
         )
     return url
 
 
+def _vox_public_url() -> str:
+    """Browser-reachable URL for the vox server's precall / cockpit pages.
+    In Docker this differs from LAB_URL (the internal network address).
+    Set VOX_PUBLIC_URL=https://vox.yourdomain.com in production .env.
+    Falls back to LAB_URL for local dev where both point to localhost:8765.
+    """
+    return (os.getenv("VOX_PUBLIC_URL") or _lab_url()).rstrip("/")
+
+
 def _public_callback_url() -> str:
     """The lab POSTs back here when a call ends. Must be reachable from the lab.
-    For local dev with both services on localhost, http://localhost:8000 works.
+    Set NEXUS_PUBLIC_URL=https://app.yourdomain.com in production .env.
     """
     base = (os.getenv("NEXUS_PUBLIC_URL")
             or f"http://localhost:{os.getenv('NEXUS_PORT', '8000')}")
@@ -176,7 +187,7 @@ async def prepare_dial(
         json.dumps(payload, ensure_ascii=False).encode("utf-8")
     ).decode("ascii")
 
-    lab_url = _lab_url()  # browser-reachable lab URL
+    lab_url = _vox_public_url()  # must be browser-reachable, not the internal Docker URL
     precall_url = f"{lab_url}/precall?p={encoded}"
 
     logger.info(

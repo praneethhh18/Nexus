@@ -16,6 +16,7 @@ outputs/workflow_outputs/
 data/nexusagent.db
 data/.jwt_secret
 data/.whatsapp_secret
+data/certbot/
 backups/
 workflows/saved/
 workflows/api_keys.json
