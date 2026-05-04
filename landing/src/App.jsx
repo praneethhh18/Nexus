@@ -276,16 +276,14 @@ function Hero() {
         </p>
 
         <div className="hero-actions">
-          <Magnet magnetStrength={4}>
+          <Magnet magnetStrength={3} padding={60}>
             <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
               Start free <ArrowRight size={15} />
             </a>
           </Magnet>
-          <Magnet magnetStrength={4}>
-            <a href="#agents" className="btn btn-ghost btn-lg">
-              Meet the agents
-            </a>
-          </Magnet>
+          <a href="#agents" className="btn btn-ghost btn-lg">
+            Meet the agents
+          </a>
         </div>
 
         <div className="hero-trust">

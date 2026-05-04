@@ -258,9 +258,9 @@ h1, h2, h3, h4 { line-height: 1.2; letter-spacing: -0.02em; }
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(ellipse 70% 55% at 15% -5%,  rgba(124,58,237,0.13) 0%, transparent 65%),
-    radial-gradient(ellipse 55% 50% at 88% 15%,  rgba(6,182,212,0.10)  0%, transparent 60%),
-    radial-gradient(ellipse 45% 40% at 50% 110%, rgba(99,102,241,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 75% 60% at 10%  0%,   rgba(124,58,237,0.22) 0%, transparent 65%),
+    radial-gradient(ellipse 60% 55% at 92%  10%,  rgba(6,182,212,0.18)  0%, transparent 60%),
+    radial-gradient(ellipse 50% 45% at 50%  115%, rgba(99,102,241,0.12) 0%, transparent 60%),
     #ffffff;
 }
 
@@ -269,7 +269,7 @@ h1, h2, h3, h4 { line-height: 1.2; letter-spacing: -0.02em; }
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.038;
+  opacity: 0.055;
 }
 
 .hero-center {
@@ -703,7 +703,7 @@ h1, h2, h3, h4 { line-height: 1.2; letter-spacing: -0.02em; }
   position: relative;
   overflow: hidden;
   padding: 100px 0;
-  background: linear-gradient(135deg, #F5F3FF 0%, #EFF6FF 50%, #ECFEFF 100%);
+  background: linear-gradient(135deg, #EDE9FE 0%, #EFF6FF 50%, #ECFEFF 100%);
   border-bottom: 1px solid var(--border);
   text-align: center;
 }
