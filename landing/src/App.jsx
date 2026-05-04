@@ -4,7 +4,6 @@ import {
   Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check,
 } from 'lucide-react';
-import Aurora, { AuroraErrorBoundary } from './components/Aurora';
 import BlurText from './components/BlurText';
 import Magnet   from './components/Magnet';
 
@@ -218,20 +217,30 @@ function Nav() {
   );
 }
 
+/* ── Hero background: Noise + Gradient ──────────────────────────────────────
+   Soft radial colour blobs (purple top-left, cyan top-right) with a fractal
+   noise grain layer on top — same technique Stripe and Linear use.           */
+function HeroBg() {
+  return (
+    <div aria-hidden className="hero-bg">
+      {/* Colour gradient blobs */}
+      <div className="hero-bg-grad" />
+      {/* SVG fractal-noise grain — adds the tactile "paper" texture */}
+      <svg className="hero-bg-noise" xmlns="http://www.w3.org/2000/svg">
+        <filter id="fnoise">
+          <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch" />
+          <feColorMatrix type="saturate" values="0" />
+        </filter>
+        <rect width="100%" height="100%" filter="url(#fnoise)" />
+      </svg>
+    </div>
+  );
+}
+
 function Hero() {
   return (
     <section id="top" className="hero-section">
-      {/* Aurora animated WebGL background — fails silently if WebGL unavailable */}
-      <div className="hero-aurora">
-        <AuroraErrorBoundary>
-          <Aurora
-            colorStops={['#7C3AED', '#06B6D4', '#8B5CF6']}
-            amplitude={0.7}
-            blend={0.25}
-            speed={0.6}
-          />
-        </AuroraErrorBoundary>
-      </div>
+      <HeroBg />
 
       <div className="container hero-center">
         <div className="hero-badge">
