@@ -245,31 +245,14 @@ h1, h2, h3, h4 { line-height: 1.2; letter-spacing: -0.02em; }
   background: #fff;
 }
 
-/* Noise + Gradient hero background */
-.hero-bg {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.hero-bg-grad {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 75% 60% at 10%  0%,   rgba(124,58,237,0.22) 0%, transparent 65%),
-    radial-gradient(ellipse 60% 55% at 92%  10%,  rgba(6,182,212,0.18)  0%, transparent 60%),
-    radial-gradient(ellipse 50% 45% at 50%  115%, rgba(99,102,241,0.12) 0%, transparent 60%),
-    #ffffff;
-}
-
-.hero-bg-noise {
+/* Interactive particle network hero background */
+.hero-particles {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.055;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .hero-center {

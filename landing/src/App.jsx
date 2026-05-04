@@ -1,11 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ShieldCheck, ArrowRight, CheckCircle2, X,
   Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check,
 } from 'lucide-react';
 import BlurText from './components/BlurText';
-import Magnet   from './components/Magnet';
 
 const APP_URL  = import.meta.env.VITE_APP_URL  || 'https://app.nexusagent.in';
 const MAIL     = 'hi@nexusagent.in';
@@ -217,23 +216,143 @@ function Nav() {
   );
 }
 
-/* ── Hero background: Noise + Gradient ──────────────────────────────────────
-   Soft radial colour blobs (purple top-left, cyan top-right) with a fractal
-   noise grain layer on top — same technique Stripe and Linear use.           */
+/* ── Hero background: Interactive Particle Network ──────────────────────────
+   Canvas-based floating particles that connect with lines and react to the
+   mouse — cursor repels nearby particles, creating a live network effect.    */
 function HeroBg() {
+  const canvasRef = useRef(null);
+  const mouse     = useRef({ x: -9999, y: -9999 });
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const COLORS   = ['124,58,237', '6,182,212', '99,102,241', '139,92,246'];
+    const COUNT    = 75;
+    const CONNECT  = 140;   // line draw distance
+    const REPEL    = 110;   // mouse repel radius
+    const SPEED    = 0.45;
+
+    let W, H, particles, rafId;
+
+    const resize = () => {
+      W = canvas.width  = canvas.offsetWidth;
+      H = canvas.height = canvas.offsetHeight;
+    };
+
+    const mkParticle = () => ({
+      x:  Math.random() * W,
+      y:  Math.random() * H,
+      vx: (Math.random() - 0.5) * SPEED,
+      vy: (Math.random() - 0.5) * SPEED,
+      r:  Math.random() * 1.8 + 1.2,
+      col: COLORS[Math.floor(Math.random() * COLORS.length)],
+    });
+
+    const tick = () => {
+      ctx.clearRect(0, 0, W, H);
+
+      for (const p of particles) {
+        // Mouse repel
+        const dx = p.x - mouse.current.x;
+        const dy = p.y - mouse.current.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < REPEL * REPEL && d2 > 0) {
+          const d = Math.sqrt(d2);
+          const force = (REPEL - d) / REPEL * 0.6;
+          p.vx += (dx / d) * force;
+          p.vy += (dy / d) * force;
+        }
+
+        // Speed cap + gentle damping
+        const spd = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+        if (spd > 2.2) { p.vx *= 0.9; p.vy *= 0.9; }
+        p.vx *= 0.998; p.vy *= 0.998;
+
+        // Drift back to base speed when far from mouse
+        if (spd < SPEED * 0.5) {
+          p.vx += (Math.random() - 0.5) * 0.04;
+          p.vy += (Math.random() - 0.5) * 0.04;
+        }
+
+        p.x += p.vx;
+        p.y += p.vy;
+
+        // Wrap edges
+        if (p.x < -10)    p.x = W + 10;
+        if (p.x > W + 10) p.x = -10;
+        if (p.y < -10)    p.y = H + 10;
+        if (p.y > H + 10) p.y = -10;
+      }
+
+      // Draw connections
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const d  = Math.sqrt(dx * dx + dy * dy);
+          if (d < CONNECT) {
+            ctx.beginPath();
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(124,58,237,${(1 - d / CONNECT) * 0.22})`;
+            ctx.lineWidth   = 0.8;
+            ctx.stroke();
+          }
+        }
+        // Mouse connection lines
+        const mdx = particles[i].x - mouse.current.x;
+        const mdy = particles[i].y - mouse.current.y;
+        const md  = Math.sqrt(mdx * mdx + mdy * mdy);
+        if (md < CONNECT * 1.1) {
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x, particles[i].y);
+          ctx.lineTo(mouse.current.x, mouse.current.y);
+          ctx.strokeStyle = `rgba(6,182,212,${(1 - md / (CONNECT * 1.1)) * 0.35})`;
+          ctx.lineWidth   = 0.9;
+          ctx.stroke();
+        }
+      }
+
+      // Draw dots
+      for (const p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${p.col},0.65)`;
+        ctx.fill();
+      }
+
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const onMove = e => {
+      const r = canvas.getBoundingClientRect();
+      mouse.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    const onLeave = () => { mouse.current = { x: -9999, y: -9999 }; };
+
+    resize();
+    particles = Array.from({ length: COUNT }, mkParticle);
+    window.addEventListener('resize', resize);
+    canvas.parentElement?.addEventListener('mousemove', onMove);
+    canvas.parentElement?.addEventListener('mouseleave', onLeave);
+    rafId = requestAnimationFrame(tick);
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', resize);
+      canvas.parentElement?.removeEventListener('mousemove', onMove);
+      canvas.parentElement?.removeEventListener('mouseleave', onLeave);
+    };
+  }, []);
+
   return (
-    <div aria-hidden className="hero-bg">
-      {/* Colour gradient blobs */}
-      <div className="hero-bg-grad" />
-      {/* SVG fractal-noise grain — adds the tactile "paper" texture */}
-      <svg className="hero-bg-noise" xmlns="http://www.w3.org/2000/svg">
-        <filter id="fnoise">
-          <feTurbulence type="fractalNoise" baseFrequency="0.68" numOctaves="4" stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#fnoise)" />
-      </svg>
-    </div>
+    <canvas
+      ref={canvasRef}
+      aria-hidden
+      className="hero-particles"
+    />
   );
 }
 
@@ -276,11 +395,9 @@ function Hero() {
         </p>
 
         <div className="hero-actions">
-          <Magnet magnetStrength={3} padding={60}>
-            <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-              Start free <ArrowRight size={15} />
-            </a>
-          </Magnet>
+          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
+            Start free <ArrowRight size={15} />
+          </a>
           <a href="#agents" className="btn btn-ghost btn-lg">
             Meet the agents
           </a>
