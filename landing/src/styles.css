@@ -800,7 +800,7 @@ img, svg { display: block; }
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
   .pricing-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 1024px) {
