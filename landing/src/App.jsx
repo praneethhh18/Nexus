@@ -303,7 +303,7 @@ function HeroBg() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const COLORS   = ['124,58,237', '6,182,212', '99,102,241', '139,92,246'];
+    const COLORS   = ['67,56,202', '13,148,136', '79,70,229', '5,150,105'];
     const COUNT    = 75;
     const CONNECT  = 140;   // line draw distance
     const REPEL    = 110;   // mouse repel radius
@@ -371,7 +371,7 @@ function HeroBg() {
             ctx.beginPath();
             ctx.moveTo(particles[i].x, particles[i].y);
             ctx.lineTo(particles[j].x, particles[j].y);
-            ctx.strokeStyle = `rgba(124,58,237,${(1 - d / CONNECT) * 0.22})`;
+            ctx.strokeStyle = `rgba(67,56,202,${(1 - d / CONNECT) * 0.18})`;
             ctx.lineWidth   = 0.8;
             ctx.stroke();
           }
@@ -384,7 +384,7 @@ function HeroBg() {
           ctx.beginPath();
           ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(mouse.current.x, mouse.current.y);
-          ctx.strokeStyle = `rgba(6,182,212,${(1 - md / (CONNECT * 1.1)) * 0.35})`;
+          ctx.strokeStyle = `rgba(13,148,136,${(1 - md / (CONNECT * 1.1)) * 0.28})`;
           ctx.lineWidth   = 0.9;
           ctx.stroke();
         }
