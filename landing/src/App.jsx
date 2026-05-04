@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import {
-  ShieldCheck, ArrowRight, CheckCircle2, X, Bot, Zap,
-  Inbox, Mail, FileText, Users, BarChart3, GitBranch,
-  Phone, Search, Brain, Sun, Target, Clock, Lock,
-  Star, TrendingUp, ChevronDown, Menu, Check,
-  MessageSquare, Database, Cpu, Globe,
+  ShieldCheck, ArrowRight, CheckCircle2, X,
+  Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
+  TrendingUp, ChevronDown, Menu, Check,
 } from 'lucide-react';
 
-const APP_URL = import.meta.env.VITE_APP_URL || '/app';
+const APP_URL  = import.meta.env.VITE_APP_URL  || 'https://app.nexusagent.in';
+const MAIL     = 'hi@nexusagent.in';
+const GITHUB   = 'https://github.com/praneethhh18/Nexus';
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 
@@ -133,28 +133,13 @@ const TIERS = [
     name: 'Business', price: '₹12,999', cadence: '/month',
     desc: 'For growing businesses that need SSO + hands-on onboarding.',
     items: ['Up to 20 users', 'Unlimited documents', 'SSO (Google / Microsoft)', 'WhatsApp bridge', 'SLA + onboarding call'],
-    cta: 'Talk to us', featured: false, href: 'mailto:hi@nexusagent.in',
+    cta: 'Talk to us', featured: false, href: `mailto:${MAIL}`,
   },
   {
     name: 'Self-hosted', price: '₹24,999', cadence: 'one-time',
     desc: 'Your server, your data, your rules. Yours forever.',
     items: ['Unlimited everything', 'Docker + Helm deploy', 'Source code access', 'Updates for 12 months', 'Private Slack channel'],
-    cta: 'Buy license', featured: false, href: 'mailto:hi@nexusagent.in',
-  },
-];
-
-const TESTIMONIALS = [
-  {
-    name: 'Rahul Mehta', role: 'Founder, TechServe Solutions', location: 'Pune', stars: 5,
-    text: 'Arjun flags stale deals every Monday morning. We closed 3 deals last quarter that would have gone cold. Atlas alone saves me an hour every day.',
-  },
-  {
-    name: 'Priya Nair', role: 'Director, Coastal Exports', location: 'Kochi', stars: 5,
-    text: 'Kira recovered ₹4.2L in overdue payments last month. The reminders are polite enough that we haven\'t damaged a single client relationship.',
-  },
-  {
-    name: 'Amit Shah', role: 'CEO, GrowthFirst Agency', location: 'Ahmedabad', stars: 5,
-    text: 'Pitched this to 3 clients worried about data going to ChatGPT. The local-first story sealed the deal. All 3 are now on Business plan.',
+    cta: 'Buy license', featured: false, href: `mailto:${MAIL}`,
   },
 ];
 
@@ -200,7 +185,6 @@ export default function App() {
         <PrivacySection />
         <CompareTable />
         <Pricing />
-        <Testimonials />
         <FAQ />
         <CTA />
       </main>
@@ -549,38 +533,6 @@ function Pricing() {
   );
 }
 
-function Testimonials() {
-  return (
-    <section className="section section-alt">
-      <div className="container">
-        <div className="section-header">
-          <span className="eyebrow">Early customers</span>
-          <h2 className="section-h2">Indian businesses already running on NexusAgent</h2>
-        </div>
-        <div className="testi-grid">
-          {TESTIMONIALS.map(t => (
-            <div key={t.name} className="testi-card">
-              <div className="testi-stars">
-                {Array.from({ length: t.stars }).map((_, i) => (
-                  <Star key={i} size={13} fill="currentColor" />
-                ))}
-              </div>
-              <p className="testi-text">"{t.text}"</p>
-              <div className="testi-author">
-                <div className="testi-avatar">{t.name.charAt(0)}</div>
-                <div>
-                  <div className="testi-name">{t.name}</div>
-                  <div className="testi-role">{t.role} · {t.location}</div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function FAQ() {
   return (
     <section id="faq" className="section">
@@ -619,7 +571,7 @@ function CTA() {
           <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
             Start free <ArrowRight size={15} />
           </a>
-          <a href="https://github.com/praneethhh18/Nexus" target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
+          <a href={GITHUB} target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
             View source on GitHub
           </a>
         </div>
@@ -643,7 +595,7 @@ function Footer() {
             8 agents. Local-first. Your data stays yours.
           </p>
           <p className="footer-contact">
-            <a href="mailto:hi@nexusagent.in">hi@nexusagent.in</a>
+            <a href={`mailto:${MAIL}`}>{MAIL}</a>
           </p>
         </div>
         <div className="footer-col">
@@ -656,7 +608,7 @@ function Footer() {
         <div className="footer-col">
           <div className="footer-col-title">Company</div>
           <a href="mailto:hi@nexusagent.in">Contact</a>
-          <a href="https://github.com/praneethhh18/Nexus" target="_blank" rel="noreferrer">GitHub</a>
+          <a href={GITHUB} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${APP_URL}/login`}>Sign in</a>
           <a href={`${APP_URL}/setup`}>Get started</a>
         </div>
