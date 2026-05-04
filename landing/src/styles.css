@@ -365,33 +365,63 @@ img, svg { display: block; }
 }
 .problem-text .section-sub { margin-top: 18px; }
 
-.pain-stack {
+/* ── Agent Hub Visual ────────────────────────────────────────────────────── */
+.hub-vis {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 500 / 440;
+  max-width: 480px;
+  align-self: center;
+}
+.hub-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.hub-agent {
+  position: absolute;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
-  gap: 10px;
-}
-.pain-item {
-  display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 15px 18px;
+  gap: 4px;
   background: var(--bg-card);
-  border: 1px solid var(--border);
+  border: 1.5px solid color-mix(in srgb, var(--nc, var(--accent)) 28%, transparent);
   border-radius: var(--r-lg);
-  box-shadow: var(--sh-xs);
-  font-size: 14px;
-  color: var(--text-muted);
-  transition: border-color 0.15s, box-shadow 0.15s;
+  padding: 10px 13px;
+  box-shadow: 0 2px 10px rgba(15,23,42,0.07);
+  min-width: 66px;
+  text-align: center;
+  z-index: 2;
 }
-.pain-item:hover { border-color: var(--border-md); box-shadow: var(--sh-sm); }
-.pain-icon-box {
-  width: 32px; height: 32px;
-  border-radius: var(--r-sm);
-  background: rgba(220,38,38,0.07);
+.hub-agent-emoji { font-size: 19px; line-height: 1; }
+.hub-agent-name  { font-size: 10.5px; font-weight: 700; color: var(--text-muted); line-height: 1; }
+
+.hub-center {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 3;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+  gap: 6px;
+  background: var(--accent);
+  border-radius: var(--r-xl);
+  padding: 18px 22px;
+  box-shadow: 0 8px 36px rgba(29,78,216,0.32);
+  min-width: 108px;
+  text-align: center;
+}
+.hub-center-icon  { font-size: 26px; line-height: 1; }
+.hub-center-label {
+  font-family: 'Urbanist', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
 /* ── How It Works ────────────────────────────────────────────────────────── */
@@ -797,6 +827,7 @@ img, svg { display: block; }
   .section { padding: 72px 0; }
   .section-header { margin-bottom: 40px; }
   .problem-grid { grid-template-columns: 1fr; gap: 44px; }
+  .hub-vis { max-width: 360px; margin: 0 auto; }
   .steps-grid { grid-template-columns: 1fr; }
   .privacy-grid { grid-template-columns: 1fr; }
   .footer-inner { grid-template-columns: 1fr 1fr; gap: 36px; }

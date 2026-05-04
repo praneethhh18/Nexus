@@ -198,16 +198,97 @@ function Hero() {
   );
 }
 
+// ── Agent Hub Visual ─────────────────────────────────────────────────────────
+
+function AgentHubVisual() {
+  const W = 500, H = 440, cx = 250, cy = 218, R = 148;
+  const NODES = [
+    { name: 'Atlas', emoji: '🌅', color: '#F59E0B', angle: -90  },
+    { name: 'Iris',  emoji: '📬', color: '#0EA5E9', angle: -45  },
+    { name: 'Kira',  emoji: '💰', color: '#10B981', angle:   0  },
+    { name: 'Arjun', emoji: '🎯', color: '#F97316', angle:  45  },
+    { name: 'Sage',  emoji: '📋', color: '#8B5CF6', angle:  90  },
+    { name: 'Echo',  emoji: '🧠', color: '#EC4899', angle: 135  },
+    { name: 'Nyx',   emoji: '🔍', color: '#6366F1', angle: 180  },
+    { name: 'Vox',   emoji: '📞', color: '#06B6D4', angle: -135 },
+  ].map(n => {
+    const rad = (n.angle * Math.PI) / 180;
+    return { ...n, ax: cx + R * Math.cos(rad), ay: cy + R * Math.sin(rad) };
+  });
+
+  return (
+    <div className="hub-vis">
+      <svg className="hub-svg" viewBox={`0 0 ${W} ${H}`} fill="none">
+        <defs>
+          {NODES.map(n => (
+            <path key={n.name} id={`hp-${n.name}`}
+              d={`M ${n.ax.toFixed(1)} ${n.ay.toFixed(1)} L ${cx} ${cy}`} />
+          ))}
+        </defs>
+
+        {/* Pulse rings around center */}
+        <circle cx={cx} cy={cy} r="40" stroke="rgba(29,78,216,0.12)" strokeWidth="1" fill="none">
+          <animate attributeName="r"       values="40;60;40" dur="3s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.6;0;0.6" dur="3s" repeatCount="indefinite" />
+        </circle>
+        <circle cx={cx} cy={cy} r="40" stroke="rgba(29,78,216,0.07)" strokeWidth="1" fill="none">
+          <animate attributeName="r"       values="40;80;40" dur="3s" begin="0.8s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" begin="0.8s" repeatCount="indefinite" />
+        </circle>
+
+        {NODES.map((n, i) => {
+          const mx = (n.ax + cx) / 2;
+          const my = (n.ay + cy) / 2;
+          return (
+            <g key={n.name}>
+              {/* Dashed spoke */}
+              <line
+                x1={n.ax.toFixed(1)} y1={n.ay.toFixed(1)}
+                x2={cx} y2={cy}
+                stroke={n.color} strokeWidth="1.5"
+                strokeDasharray="4 5" opacity="0.22"
+              />
+              {/* Midpoint diamond */}
+              <polygon
+                points={`${mx},${my - 4.5} ${mx + 4.5},${my} ${mx},${my + 4.5} ${mx - 4.5},${my}`}
+                fill={n.color} opacity="0.45"
+              />
+              {/* Travelling dot */}
+              <circle r="3.5" fill={n.color} opacity="0.9">
+                <animateMotion
+                  dur={`${1.6 + i * 0.18}s`}
+                  repeatCount="indefinite"
+                  begin={`${i * 0.38}s`}
+                >
+                  <mpath href={`#hp-${n.name}`} />
+                </animateMotion>
+              </circle>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Agent nodes */}
+      {NODES.map(n => (
+        <div key={n.name} className="hub-agent"
+          style={{ left: `${(n.ax / W) * 100}%`, top: `${(n.ay / H) * 100}%`, '--nc': n.color }}>
+          <span className="hub-agent-emoji">{n.emoji}</span>
+          <span className="hub-agent-name">{n.name}</span>
+        </div>
+      ))}
+
+      {/* Center hub */}
+      <div className="hub-center" style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }}>
+        <div className="hub-center-icon">🏢</div>
+        <div className="hub-center-label">Your<br />Business</div>
+      </div>
+    </div>
+  );
+}
+
 // ── Problem ───────────────────────────────────────────────────────────────────
 
 function Problem() {
-  const pains = [
-    'Email tool doesn\'t know your CRM',
-    'Invoices go unpaid for weeks',
-    'Deals go stale with no follow-up',
-    'Meetings start without any context',
-    'Vendor AI reads your customer data',
-  ];
   return (
     <section className="section section-alt">
       <div className="container problem-grid">
@@ -215,28 +296,19 @@ function Problem() {
           <span className="eyebrow">The problem</span>
           <h2 className="section-h2">
             Your business runs on 7 tools.<br />
-            None of them talk to each other.
+            None of them act on it.
           </h2>
           <p className="section-sub">
             Email, CRM, invoicing, docs, spreadsheets — every one holds a piece
-            of your business. None of them act on it. You become the integration
-            layer, manually copying data and chasing follow-ups all day.
+            of your business but none of them work for you. You become the
+            integration layer, manually copying data and chasing follow-ups all day.
           </p>
-          <p className="section-sub" style={{ marginTop: 10 }}>
-            Meanwhile, every SaaS tool trains on your client data, locks you into
-            annual contracts, and raises prices 12% every renewal.
+          <p className="section-sub" style={{ marginTop: 12 }}>
+            NexusAgent puts 8 dedicated agents to work — each one focused on a
+            single job, all of them feeding into your business.
           </p>
         </div>
-        <div className="pain-stack">
-          {pains.map(text => (
-            <div key={text} className="pain-item">
-              <div className="pain-icon-box">
-                <X size={14} className="icon-err" />
-              </div>
-              <span>{text}</span>
-            </div>
-          ))}
-        </div>
+        <AgentHubVisual />
       </div>
     </section>
   );
