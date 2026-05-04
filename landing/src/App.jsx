@@ -89,7 +89,7 @@ const TIERS = [
     desc: 'Try NexusAgent with a couple of workflows on your own machine.',
     items: ['1 user', '2 workflows active', 'Local LLM only', 'Up to 100 documents', 'GitHub issues for support'],
     cta: 'Get started',        href: `${APP_URL}/setup` },
-  { name: 'Pro',         price: '₹3,999',  period: '/month',    featured: true,
+  { name: 'Pro',         price: '₹3,999',  period: '/month',    featured: false,
     desc: 'All 8 workflows for a small team, with cloud LLM as an option.',
     items: ['Up to 5 users', 'All 8 workflows', 'Up to 1,000 documents', 'Cloud LLM opt-in', 'Outbound voice calls', 'Email support'],
     cta: 'Get early access',   href: `mailto:${MAIL}` },
@@ -202,7 +202,7 @@ function Hero() {
 
         <div className="hero-actions">
           <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-            Start free — it's ₹0 <ArrowRight size={14} />
+            Get started free <ArrowRight size={14} />
           </a>
           <a href="#how-it-works" className="btn btn-outline btn-lg">
             See how it works
