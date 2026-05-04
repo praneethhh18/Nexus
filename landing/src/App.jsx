@@ -497,6 +497,9 @@ function CompareTable() {
 // ── Pricing ───────────────────────────────────────────────────────────────────
 
 function Pricing() {
+  const [active, setActive] = useState('Pro');
+  const tier = TIERS.find(t => t.name === active);
+
   return (
     <section id="pricing" className="section">
       <div className="container">
@@ -507,33 +510,49 @@ function Pricing() {
             Prices in ₹. USD available at checkout. GST as applicable.
           </p>
         </div>
-        <div className="pricing-grid">
+
+        {/* Compact tier selector row */}
+        <div className="pricing-selector">
           {TIERS.map(t => (
-            <div key={t.name} className={`price-card ${t.featured ? 'price-featured' : ''}`}>
-              {t.featured && <div className="price-pop-tag">Most popular</div>}
-              <div className="price-name">{t.name}</div>
-              <div className="price-row">
-                <span className="price-amount">{t.price}</span>
-                <span className="price-period">{t.period}</span>
-              </div>
-              <p className="price-desc">{t.desc}</p>
-              <div className="price-divider" />
-              <ul className="price-list">
-                {t.items.map(item => (
-                  <li key={item}>
-                    {t.featured
-                      ? <CheckCircle2 size={14} className="icon-ok-light" />
-                      : <CheckCircle2 size={14} className="icon-ok" />}
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              <a href={t.href} className={`btn price-cta ${t.featured ? 'btn-white' : 'btn-outline'}`}>
-                {t.cta} <ArrowRight size={13} />
-              </a>
-            </div>
+            <button
+              key={t.name}
+              className={`price-tab ${active === t.name ? 'price-tab-active' : ''}`}
+              onClick={() => setActive(t.name)}
+            >
+              <span className="price-tab-name">{t.name}</span>
+              <span className="price-tab-amount">{t.price}</span>
+              <span className="price-tab-period">{t.period}</span>
+            </button>
           ))}
         </div>
+
+        {/* Detail panel for selected tier */}
+        {tier && (
+          <div className="price-detail">
+            <div className="price-detail-left">
+              <div className="price-detail-name">{tier.name}</div>
+              <div className="price-detail-row">
+                <span className="price-amount">{tier.price}</span>
+                <span className="price-period">{tier.period}</span>
+              </div>
+              <p className="price-desc">{tier.desc}</p>
+              <a href={tier.href} className="btn btn-primary btn-lg price-detail-cta">
+                {tier.cta} <ArrowRight size={14} />
+              </a>
+            </div>
+            <div className="price-detail-divider" />
+            <ul className="price-detail-list">
+              {tier.items.map(item => (
+                <li key={item}>
+                  <CheckCircle2 size={15} className="icon-ok" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <p className="price-fine">Prices in ₹ · GST as applicable · USD available at checkout</p>
       </div>
     </section>
   );
