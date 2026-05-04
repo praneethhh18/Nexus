@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # EC2 one-shot bootstrap for NexusAgent + nexuscaller-lab.
-# Run as the ubuntu user on a fresh Ubuntu 22.04 t3.medium.
+# Run as the ubuntu user on a fresh Ubuntu 22.04 t2.micro (AWS free tier) or larger.
 # Security Group must have ports 22, 80, 443 open.
 # Uses nip.io for free automatic HTTPS — no domain purchase needed.
 #
@@ -61,15 +61,19 @@ read -rp "→ Enter your base domain, or press Enter to use nip.io: " BASE_DOMAI
 if [[ -z "$BASE_DOMAIN" ]]; then
   APP_DOMAIN="app.${PUBLIC_IP}.nip.io"
   VOX_DOMAIN="vox.${PUBLIC_IP}.nip.io"
+  ROOT_DOMAIN=""
   echo ""
-  echo "  Using nip.io:"
+  echo "  Using nip.io (no landing page domain — nip.io is subdomain-only):"
   echo "   App → https://$APP_DOMAIN"
   echo "   Vox → https://$VOX_DOMAIN"
 else
   APP_DOMAIN="app.${BASE_DOMAIN}"
   VOX_DOMAIN="vox.${BASE_DOMAIN}"
+  ROOT_DOMAIN="${BASE_DOMAIN}"
   echo ""
   echo "  Make sure these DNS A-records point to $PUBLIC_IP before continuing:"
+  echo "   $BASE_DOMAIN        →  $PUBLIC_IP"
+  echo "   www.$BASE_DOMAIN    →  $PUBLIC_IP"
   echo "   $APP_DOMAIN  →  $PUBLIC_IP"
   echo "   $VOX_DOMAIN  →  $PUBLIC_IP"
   echo ""
@@ -97,6 +101,11 @@ sed -i "s|NEXUS_PUBLIC_URL=.*|NEXUS_PUBLIC_URL=https://${APP_DOMAIN}|"   "$NEXUS
 sed -i "s|VOX_PUBLIC_URL=.*|VOX_PUBLIC_URL=https://${VOX_DOMAIN}|"       "$NEXUS_ENV"
 sed -i "s|APP_BASE_URL=.*|APP_BASE_URL=https://${APP_DOMAIN}|"           "$NEXUS_ENV"
 sed -i "s|GOOGLE_OAUTH_REDIRECT_URI=.*|GOOGLE_OAUTH_REDIRECT_URI=https://${APP_DOMAIN}/api/calendar/oauth/callback|" "$NEXUS_ENV"
+
+# Inject landing page URL if using a real domain
+if [[ -n "$ROOT_DOMAIN" ]]; then
+  sed -i "s|LANDING_URL=.*|LANDING_URL=https://${ROOT_DOMAIN}|" "$NEXUS_ENV" 2>/dev/null || true
+fi
 
 echo "✓ URLs + VOICE_CALLBACK_SECRET auto-injected"
 echo ""
@@ -131,7 +140,7 @@ docker compose pull
 echo ""
 echo "→ Getting free SSL certificates..."
 chmod +x ./deploy/init-letsencrypt.sh
-./deploy/init-letsencrypt.sh "$APP_DOMAIN" "$VOX_DOMAIN" "$EMAIL"
+./deploy/init-letsencrypt.sh "$APP_DOMAIN" "$VOX_DOMAIN" "$EMAIL" "${ROOT_DOMAIN:-}"
 
 # ── 8. Start full stack ───────────────────────────────────────────────────────
 echo ""
@@ -142,8 +151,9 @@ echo ""
 echo "========================================================"
 echo " All done! Your NexusAgent is live:"
 echo ""
-echo "   App → https://$APP_DOMAIN"
-echo "   Vox → https://$VOX_DOMAIN"
+[[ -n "${ROOT_DOMAIN:-}" ]] && echo "   Landing → https://$ROOT_DOMAIN"
+echo "   App     → https://$APP_DOMAIN"
+echo "   Vox     → https://$VOX_DOMAIN"
 echo ""
 echo " Add these to GitHub Actions secrets (both repos):"
 echo "   EC2_HOST   = $PUBLIC_IP"

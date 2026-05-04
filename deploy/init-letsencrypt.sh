@@ -7,23 +7,29 @@
 # Example (custom):  ./deploy/init-letsencrypt.sh app.mycompany.com vox.mycompany.com admin@mycompany.com
 set -euo pipefail
 
-APP_DOMAIN="${1:?usage: $0 <app-domain> <vox-domain> <email>}"
-VOX_DOMAIN="${2:?usage: $0 <app-domain> <vox-domain> <email>}"
-EMAIL="${3:?usage: $0 <app-domain> <vox-domain> <email>}"
+APP_DOMAIN="${1:?usage: $0 <app-domain> <vox-domain> <email> [root-domain]}"
+VOX_DOMAIN="${2:?usage: $0 <app-domain> <vox-domain> <email> [root-domain]}"
+EMAIL="${3:?usage: $0 <app-domain> <vox-domain> <email> [root-domain]}"
+ROOT_DOMAIN="${4:-}"   # optional: base domain for landing page (e.g. nexusagent.in)
 
 CONF_DIR="./data/certbot/conf"
 WWW_DIR="./data/certbot/www"
 
 echo "================================================================"
 echo " Let's Encrypt setup"
-echo "   App : $APP_DOMAIN"
-echo "   Vox : $VOX_DOMAIN"
-echo "   Email: $EMAIL"
+echo "   App     : $APP_DOMAIN"
+echo "   Vox     : $VOX_DOMAIN"
+[[ -n "$ROOT_DOMAIN" ]] && echo "   Landing : $ROOT_DOMAIN  www.$ROOT_DOMAIN"
+echo "   Email   : $EMAIL"
 echo "================================================================"
 echo ""
 
+# Build list of domains to certify
+DOMAINS=("$APP_DOMAIN" "$VOX_DOMAIN")
+[[ -n "$ROOT_DOMAIN" ]] && DOMAINS+=("$ROOT_DOMAIN")
+
 # 1. Confirm DNS resolves before wasting an ACME attempt
-for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
+for d in "${DOMAINS[@]}"; do
   if ! host "$d" >/dev/null 2>&1; then
     echo "ERROR: $d does not resolve. Check your IP / nip.io domain and try again."
     exit 1
@@ -35,13 +41,19 @@ echo ""
 # 2. Patch domain placeholders in nginx.conf
 sed -i "s|app\.yourdomain\.com|${APP_DOMAIN}|g" ./deploy/nginx.conf
 sed -i "s|vox\.yourdomain\.com|${VOX_DOMAIN}|g" ./deploy/nginx.conf
+if [[ -n "$ROOT_DOMAIN" ]]; then
+  sed -i "s|yourdomain\.com|${ROOT_DOMAIN}|g" ./deploy/nginx.conf
+fi
 echo "✓ nginx.conf updated"
 
 # 3. Create cert directories
-mkdir -p "$CONF_DIR/live/$APP_DOMAIN" "$CONF_DIR/live/$VOX_DOMAIN" "$WWW_DIR"
+for d in "${DOMAINS[@]}"; do
+  mkdir -p "$CONF_DIR/live/$d"
+done
+mkdir -p "$WWW_DIR"
 
 # 4. Dummy self-signed certs so nginx can start before real certs exist
-for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
+for d in "${DOMAINS[@]}"; do
   if [[ ! -f "$CONF_DIR/live/$d/fullchain.pem" ]]; then
     openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
       -keyout "$CONF_DIR/live/$d/privkey.pem" \
@@ -58,13 +70,15 @@ docker compose up -d proxy certbot
 sleep 3
 
 # 6. Issue real certs
-for d in "$APP_DOMAIN" "$VOX_DOMAIN"; do
+for d in "${DOMAINS[@]}"; do
+  EXTRA_SANS=""
+  [[ "$d" == "$ROOT_DOMAIN" ]] && EXTRA_SANS="-d www.$ROOT_DOMAIN"
   echo "→ Requesting cert for $d..."
   docker compose run --rm certbot certonly \
     --webroot --webroot-path /var/www/certbot \
     --email "$EMAIL" --agree-tos --no-eff-email \
     --force-renewal \
-    -d "$d"
+    -d "$d" $EXTRA_SANS
   echo "✓ Cert issued for $d"
 done
 echo ""
