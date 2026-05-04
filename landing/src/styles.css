@@ -574,7 +574,7 @@ img, svg { display: block; }
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 18px;
-  align-items: start;
+  align-items: stretch;
 }
 .price-card {
   background: var(--bg-card);
