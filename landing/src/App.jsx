@@ -201,86 +201,101 @@ function Hero() {
 // ── Agent Hub Visual ─────────────────────────────────────────────────────────
 
 function AgentHubVisual() {
-  const W = 500, H = 440, cx = 250, cy = 218, R = 148;
+  const W = 560, H = 420, cx = 280, cy = 204;
+
+  // Scattered asymmetric positions — NOT a perfect circle
   const NODES = [
-    { name: 'Chief of Staff',   emoji: '🌅', color: '#F59E0B', angle: -90  },
-    { name: 'Inbox Triage',     emoji: '📬', color: '#0EA5E9', angle: -45  },
-    { name: 'Invoice Chaser',   emoji: '💰', color: '#10B981', angle:   0  },
-    { name: 'Pipeline Watch',   emoji: '🎯', color: '#F97316', angle:  45  },
-    { name: 'Meeting Prep',     emoji: '📋', color: '#8B5CF6', angle:  90  },
-    { name: 'Memory Keeper',    emoji: '🧠', color: '#EC4899', angle: 135  },
-    { name: 'Research',         emoji: '🔍', color: '#6366F1', angle: 180  },
-    { name: 'Voice Agent',      emoji: '📞', color: '#06B6D4', angle: -135 },
-  ].map(n => {
-    const rad = (n.angle * Math.PI) / 180;
-    return { ...n, ax: cx + R * Math.cos(rad), ay: cy + R * Math.sin(rad) };
+    { role: 'Chief of Staff',  Icon: Sun,        color: '#F59E0B', x: 192, y: 50  },
+    { role: 'Research',        Icon: Search,     color: '#6366F1', x: 58,  y: 148 },
+    { role: 'Inbox Triage',    Icon: Mail,       color: '#0EA5E9', x: 70,  y: 306 },
+    { role: 'Invoice Chaser',  Icon: TrendingUp, color: '#10B981', x: 228, y: 372 },
+    { role: 'Meeting Prep',    Icon: Clock,      color: '#8B5CF6', x: 392, y: 355 },
+    { role: 'Pipeline Watch',  Icon: Target,     color: '#F97316', x: 492, y: 175 },
+    { role: 'Voice Agent',     Icon: Phone,      color: '#06B6D4', x: 388, y: 52  },
+    { role: 'Memory Keeper',   Icon: Brain,      color: '#EC4899', x: 318, y: 48  },
+  ].map((n, i) => {
+    // Right-angle path: horizontal-first or vertical-first based on which delta is larger
+    const dx = Math.abs(n.x - cx), dy = Math.abs(n.y - cy);
+    const bendX = dx >= dy ? cx      : n.x;  // horizontal-first → bend at (cx, n.y)
+    const bendY = dx >= dy ? n.y     : cy;   // vertical-first   → bend at (n.x, cy)
+    const pathD = `M ${n.x} ${n.y} L ${bendX} ${bendY} L ${cx} ${cy}`;
+    return { ...n, bendX, bendY, pathD, id: `np${i}` };
   });
 
   return (
     <div className="hub-vis">
       <svg className="hub-svg" viewBox={`0 0 ${W} ${H}`} fill="none">
         <defs>
+          <pattern id="hub-dots" width="26" height="26" patternUnits="userSpaceOnUse">
+            <circle cx="13" cy="13" r="1" fill="rgba(99,102,241,0.08)" />
+          </pattern>
           {NODES.map(n => (
-            <path key={n.name} id={`hp-${n.name}`}
-              d={`M ${n.ax.toFixed(1)} ${n.ay.toFixed(1)} L ${cx} ${cy}`} />
+            <path key={n.id} id={n.id} d={n.pathD} />
           ))}
         </defs>
 
-        {/* Pulse rings around center */}
-        <circle cx={cx} cy={cy} r="40" stroke="rgba(29,78,216,0.12)" strokeWidth="1" fill="none">
-          <animate attributeName="r"       values="40;60;40" dur="3s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.6;0;0.6" dur="3s" repeatCount="indefinite" />
+        {/* Dot grid background */}
+        <rect width={W} height={H} fill="url(#hub-dots)" rx="20" />
+
+        {/* Center pulse rings */}
+        <circle cx={cx} cy={cy} r="44" stroke="rgba(29,78,216,0.10)" strokeWidth="1" fill="none">
+          <animate attributeName="r"       values="44;64;44" dur="3.2s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.7;0;0.7" dur="3.2s" repeatCount="indefinite" />
         </circle>
-        <circle cx={cx} cy={cy} r="40" stroke="rgba(29,78,216,0.07)" strokeWidth="1" fill="none">
-          <animate attributeName="r"       values="40;80;40" dur="3s" begin="0.8s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="0.4;0;0.4" dur="3s" begin="0.8s" repeatCount="indefinite" />
+        <circle cx={cx} cy={cy} r="44" stroke="rgba(29,78,216,0.06)" strokeWidth="1" fill="none">
+          <animate attributeName="r"       values="44;84;44" dur="3.2s" begin="1s" repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.5;0;0.5" dur="3.2s" begin="1s" repeatCount="indefinite" />
         </circle>
 
-        {NODES.map((n, i) => {
-          const mx = (n.ax + cx) / 2;
-          const my = (n.ay + cy) / 2;
-          return (
-            <g key={n.name}>
-              {/* Dashed spoke */}
-              <line
-                x1={n.ax.toFixed(1)} y1={n.ay.toFixed(1)}
-                x2={cx} y2={cy}
-                stroke={n.color} strokeWidth="1.5"
-                strokeDasharray="4 5" opacity="0.22"
-              />
-              {/* Midpoint diamond */}
-              <polygon
-                points={`${mx},${my - 4.5} ${mx + 4.5},${my} ${mx},${my + 4.5} ${mx - 4.5},${my}`}
-                fill={n.color} opacity="0.45"
-              />
-              {/* Travelling dot */}
-              <circle r="3.5" fill={n.color} opacity="0.9">
-                <animateMotion
-                  dur={`${1.6 + i * 0.18}s`}
-                  repeatCount="indefinite"
-                  begin={`${i * 0.38}s`}
-                >
-                  <mpath href={`#hp-${n.name}`} />
-                </animateMotion>
-              </circle>
-            </g>
-          );
-        })}
+        {NODES.map((n, i) => (
+          <g key={n.id}>
+            {/* Right-angle connector line */}
+            <path
+              d={n.pathD}
+              stroke={n.color} strokeWidth="1.5"
+              strokeDasharray="5 5" opacity="0.22"
+              fill="none"
+            />
+            {/* Diamond at the bend point */}
+            <polygon
+              points={`
+                ${n.bendX},${n.bendY - 5}
+                ${n.bendX + 5},${n.bendY}
+                ${n.bendX},${n.bendY + 5}
+                ${n.bendX - 5},${n.bendY}
+              `}
+              fill={n.color} opacity="0.55"
+            />
+            {/* Travelling dot along the right-angle path */}
+            <circle r="3.5" fill={n.color} opacity="0.95">
+              <animateMotion
+                dur={`${1.7 + i * 0.19}s`}
+                repeatCount="indefinite"
+                begin={`${i * 0.42}s`}
+              >
+                <mpath href={`#${n.id}`} />
+              </animateMotion>
+            </circle>
+          </g>
+        ))}
       </svg>
 
-      {/* Agent nodes */}
+      {/* Agent icon cards */}
       {NODES.map(n => (
-        <div key={n.name} className="hub-agent"
-          style={{ left: `${(n.ax / W) * 100}%`, top: `${(n.ay / H) * 100}%`, '--nc': n.color }}>
-          <span className="hub-agent-emoji">{n.emoji}</span>
-          <span className="hub-agent-name">{n.name}</span>
+        <div key={n.role} className="hub-node"
+          style={{ left: `${(n.x / W) * 100}%`, top: `${(n.y / H) * 100}%`, '--nc': n.color }}>
+          <div className="hub-node-icon">
+            <n.Icon size={17} />
+          </div>
+          <span className="hub-node-role">{n.role}</span>
         </div>
       ))}
 
-      {/* Center hub */}
-      <div className="hub-center" style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }}>
-        <div className="hub-center-icon">🏢</div>
-        <div className="hub-center-label">Your<br />Business</div>
+      {/* Center hub card */}
+      <div className="hub-center-card"
+        style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }}>
+        <div className="hub-center-n">N</div>
+        <span className="hub-center-label">NexusAgent</span>
       </div>
     </div>
   );
