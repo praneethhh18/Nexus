@@ -203,14 +203,14 @@ function Hero() {
 function AgentHubVisual() {
   const W = 500, H = 440, cx = 250, cy = 218, R = 148;
   const NODES = [
-    { name: 'Atlas', emoji: '🌅', color: '#F59E0B', angle: -90  },
-    { name: 'Iris',  emoji: '📬', color: '#0EA5E9', angle: -45  },
-    { name: 'Kira',  emoji: '💰', color: '#10B981', angle:   0  },
-    { name: 'Arjun', emoji: '🎯', color: '#F97316', angle:  45  },
-    { name: 'Sage',  emoji: '📋', color: '#8B5CF6', angle:  90  },
-    { name: 'Echo',  emoji: '🧠', color: '#EC4899', angle: 135  },
-    { name: 'Nyx',   emoji: '🔍', color: '#6366F1', angle: 180  },
-    { name: 'Vox',   emoji: '📞', color: '#06B6D4', angle: -135 },
+    { name: 'Chief of Staff',   emoji: '🌅', color: '#F59E0B', angle: -90  },
+    { name: 'Inbox Triage',     emoji: '📬', color: '#0EA5E9', angle: -45  },
+    { name: 'Invoice Chaser',   emoji: '💰', color: '#10B981', angle:   0  },
+    { name: 'Pipeline Watch',   emoji: '🎯', color: '#F97316', angle:  45  },
+    { name: 'Meeting Prep',     emoji: '📋', color: '#8B5CF6', angle:  90  },
+    { name: 'Memory Keeper',    emoji: '🧠', color: '#EC4899', angle: 135  },
+    { name: 'Research',         emoji: '🔍', color: '#6366F1', angle: 180  },
+    { name: 'Voice Agent',      emoji: '📞', color: '#06B6D4', angle: -135 },
   ].map(n => {
     const rad = (n.angle * Math.PI) / 180;
     return { ...n, ax: cx + R * Math.cos(rad), ay: cy + R * Math.sin(rad) };

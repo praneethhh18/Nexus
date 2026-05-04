@@ -397,7 +397,7 @@ img, svg { display: block; }
   z-index: 2;
 }
 .hub-agent-emoji { font-size: 19px; line-height: 1; }
-.hub-agent-name  { font-size: 10.5px; font-weight: 700; color: var(--text-muted); line-height: 1; }
+.hub-agent-name  { font-size: 10px; font-weight: 600; color: var(--text-muted); line-height: 1.2; max-width: 72px; text-align: center; }
 
 .hub-center {
   position: absolute;
