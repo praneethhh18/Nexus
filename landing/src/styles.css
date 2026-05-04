@@ -186,10 +186,10 @@ h1, h2, h3, h4 {
   background: rgba(254,252,248,0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(22,20,12,0.11);
+  border: 1px solid rgba(22,20,12,0.14);
   border-radius: 999px;
   padding: 6px 6px 6px 14px;
-  box-shadow: 0 2px 12px rgba(22,20,12,0.06), 0 1px 3px rgba(22,20,12,0.04);
+  box-shadow: 0 4px 20px rgba(22,20,12,0.09), 0 1px 4px rgba(22,20,12,0.05);
   transition: box-shadow 0.2s;
   max-width: 780px;
   width: 100%;
@@ -314,7 +314,7 @@ h1, h2, h3, h4 {
 /* ── Hero ────────────────────────────────────────────────────────────────────*/
 .hero-section {
   position: relative;
-  padding: 110px 0 100px;
+  padding: 80px 0 100px;
   overflow: hidden;
   border-bottom: 1px solid var(--border);
   background:
