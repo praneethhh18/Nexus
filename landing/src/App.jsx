@@ -309,11 +309,10 @@ function AgentHubVisual() {
         </div>
       ))}
 
-      {/* Center hub card */}
-      <div className="hub-center-card"
+      {/* Center hub — same style as nodes but larger */}
+      <div className="hub-center-icon"
         style={{ left: `${(cx / W) * 100}%`, top: `${(cy / H) * 100}%` }}>
-        <LogoMark size={44} />
-        <span className="hub-center-label">NexusAgent</span>
+        <LogoMark size={52} />
       </div>
     </div>
   );
