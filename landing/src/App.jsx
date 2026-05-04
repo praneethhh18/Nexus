@@ -1,13 +1,91 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   ShieldCheck, ArrowRight, CheckCircle2, X,
   Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
-  TrendingUp, ChevronDown, Menu, Check,
+  TrendingUp, ChevronDown, Menu, Check, Loader2,
 } from 'lucide-react';
 
 const APP_URL = import.meta.env.VITE_APP_URL || 'https://app.nexusagent.in';
 const MAIL    = 'hi@nexusagent.in';
 const GITHUB  = 'https://github.com/praneethhh18/Nexus';
+
+// ── Early-access modal ────────────────────────────────────────────────────────
+
+function EarlyAccessModal({ tier, onClose }) {
+  const [name,    setName]    = useState('');
+  const [email,   setEmail]   = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done,    setDone]    = useState(false);
+  const [error,   setError]   = useState('');
+  const emailRef = useRef(null);
+
+  useEffect(() => { emailRef.current?.focus(); }, []);
+
+  // Close on Escape
+  useEffect(() => {
+    const fn = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [onClose]);
+
+  const submit = async e => {
+    e.preventDefault();
+    setError(''); setLoading(true);
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, tier }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || 'Something went wrong');
+      setDone(true);
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-box">
+        <button className="modal-close" onClick={onClose}><X size={16} /></button>
+        {done ? (
+          <div className="modal-done">
+            <CheckCircle2 size={40} className="icon-ok" />
+            <h3>You're on the list!</h3>
+            <p>We'll reach out to <strong>{email}</strong> when {tier} access opens.</p>
+            <button className="btn btn-outline" onClick={onClose}>Close</button>
+          </div>
+        ) : (
+          <>
+            <div className="modal-tier-badge">{tier}</div>
+            <h3 className="modal-title">Get early access</h3>
+            <p className="modal-sub">Leave your details and we'll contact you when your plan is ready.</p>
+            <form className="modal-form" onSubmit={submit}>
+              <input
+                type="text" placeholder="Your name" value={name}
+                onChange={e => setName(e.target.value)}
+                className="modal-input"
+              />
+              <input
+                ref={emailRef}
+                type="email" placeholder="Work email *" value={email}
+                onChange={e => setEmail(e.target.value)}
+                required className="modal-input"
+              />
+              {error && <p className="modal-error">{error}</p>}
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? <Loader2 size={15} className="spin" /> : <ArrowRight size={15} />}
+                {loading ? 'Submitting…' : 'Join waitlist'}
+              </button>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ── Logo Mark SVG ─────────────────────────────────────────────────────────────
 
@@ -497,11 +575,21 @@ function CompareTable() {
 // ── Pricing ───────────────────────────────────────────────────────────────────
 
 function Pricing() {
-  const [active, setActive] = useState('Pro');
+  const [active,  setActive]  = useState('Pro');
+  const [modal,   setModal]   = useState(null); // tier name or null
   const tier = TIERS.find(t => t.name === active);
+
+  const handleCta = t => {
+    if (t.name === 'Free') {
+      window.location.href = `${APP_URL}/setup`;
+    } else {
+      setModal(t.name);
+    }
+  };
 
   return (
     <section id="pricing" className="section">
+      {modal && <EarlyAccessModal tier={modal} onClose={() => setModal(null)} />}
       <div className="container">
         <div className="section-header section-header-c">
           <span className="eyebrow">Pricing</span>
@@ -536,9 +624,9 @@ function Pricing() {
                 <span className="price-period">{tier.period}</span>
               </div>
               <p className="price-desc">{tier.desc}</p>
-              <a href={tier.href} className="btn btn-primary btn-lg price-detail-cta">
+              <button className="btn btn-primary btn-lg price-detail-cta" onClick={() => handleCta(tier)}>
                 {tier.cta} <ArrowRight size={14} />
-              </a>
+              </button>
             </div>
             <div className="price-detail-divider" />
             <ul className="price-detail-list">
@@ -647,10 +735,10 @@ function Footer() {
         </div>
         <div className="footer-col">
           <div className="footer-col-title">Legal</div>
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
-          <a href="#">Security</a>
-          <a href="#">Data Handling</a>
+          <a href={`mailto:${MAIL}?subject=Privacy Policy`}>Privacy Policy</a>
+          <a href={`mailto:${MAIL}?subject=Terms of Service`}>Terms of Service</a>
+          <a href={`mailto:${MAIL}?subject=Security`}>Security</a>
+          <a href={`mailto:${MAIL}?subject=Data Handling`}>Data Handling</a>
         </div>
       </div>
       <div className="footer-bottom">

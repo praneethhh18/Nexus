@@ -90,7 +90,13 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"],
+    allow_origins=[
+        "http://localhost:5173", "http://127.0.0.1:5173",  # app frontend
+        "http://localhost:4000", "http://127.0.0.1:4000",  # landing page
+        "http://localhost:3000",
+        "https://nexusagent.in", "https://www.nexusagent.in",
+        "https://app.nexusagent.in",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -350,6 +356,7 @@ from api.routers import (
     doc_intake         as _r_doc_intake,
     smtp               as _r_smtp,
     voice_calls        as _r_voice_calls,
+    waitlist           as _r_waitlist,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -361,7 +368,8 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_calendar, _r_database, _r_analytics, _r_team, _r_whatsapp,
            _r_workflows, _r_voice, _r_settings, _r_search, _r_backup, _r_intake,
            _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply, _r_forge,
-           _r_meeting_notes, _r_doc_intake, _r_smtp, _r_voice_calls):
+           _r_meeting_notes, _r_doc_intake, _r_smtp, _r_voice_calls,
+           _r_waitlist):
     app.include_router(_r.router)
 
 
