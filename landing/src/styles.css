@@ -462,14 +462,14 @@ img, svg { display: block; }
   background: var(--agent-color, var(--accent));
 }
 .agent-body { padding: 22px 20px; }
-.agent-emoji-box {
+.agent-icon-box {
   width: 46px; height: 46px;
   border-radius: var(--r-md);
   background: color-mix(in srgb, var(--agent-color, var(--accent)) 12%, transparent);
+  color: var(--agent-color, var(--accent));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
   margin-bottom: 16px;
 }
 .agent-role {

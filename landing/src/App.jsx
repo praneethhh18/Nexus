@@ -406,7 +406,7 @@ function AgentsSection() {
             <div key={a.name} className="agent-card" style={{ '--agent-color': a.color }}>
               <div className="agent-color-bar" />
               <div className="agent-body">
-                <div className="agent-emoji-box">{a.emoji}</div>
+                <div className="agent-icon-box"><a.icon size={22} /></div>
                 <div className="agent-role">{a.role}</div>
                 <div className="agent-name">{a.name}</div>
                 <p className="agent-desc">{a.desc}</p>
