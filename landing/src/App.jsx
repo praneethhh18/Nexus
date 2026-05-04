@@ -33,89 +33,89 @@ function LogoMark({ size = 32 }) {
 // ── Data ─────────────────────────────────────────────────────────────────────
 
 const AGENTS = [
-  { name: 'Atlas', role: 'Chief of Staff',    emoji: '🌅', color: '#F59E0B', icon: Sun,
-    desc: 'Delivers your 8 AM briefing: open tasks, overdue invoices, today\'s meetings, stale deals — one clean page.' },
+  { name: 'Atlas', role: 'Daily Briefing',    emoji: '🌅', color: '#F59E0B', icon: Sun,
+    desc: 'Each morning, pulls together your open tasks, overdue invoices, and today\'s meetings into one summary.' },
   { name: 'Iris',  role: 'Inbox Triage',      emoji: '📬', color: '#0EA5E9', icon: Mail,
-    desc: 'Reads new email every 15 min, classifies intent, and surfaces reply drafts for one-click approval.' },
-  { name: 'Kira',  role: 'Invoice Chaser',    emoji: '💰', color: '#10B981', icon: TrendingUp,
-    desc: 'Detects overdue invoices and drafts polite payment reminders. Approve or skip in one click.' },
-  { name: 'Arjun', role: 'Pipeline Watcher',  emoji: '🎯', color: '#F97316', icon: Target,
-    desc: 'Flags deals silent for 7+ days and suggests a next action you can take immediately.' },
+    desc: 'Checks your inbox on a schedule, classifies emails by intent, and drafts suggested replies for you to review.' },
+  { name: 'Kira',  role: 'Invoice Follow-up', emoji: '💰', color: '#10B981', icon: TrendingUp,
+    desc: 'Looks for overdue invoices and drafts a follow-up message. You approve before anything is sent.' },
+  { name: 'Arjun', role: 'Pipeline Review',   emoji: '🎯', color: '#F97316', icon: Target,
+    desc: 'Surfaces deals that haven\'t had activity in a while and suggests what to do next.' },
   { name: 'Sage',  role: 'Meeting Prep',      emoji: '📋', color: '#8B5CF6', icon: Clock,
-    desc: '30 min before any calendar event, compiles contact history, open items, and a one-page agenda.' },
+    desc: 'Before a scheduled meeting, gathers relevant contact history and open items so you\'re not going in blind.' },
   { name: 'Echo',  role: 'Memory Keeper',     emoji: '🧠', color: '#EC4899', icon: Brain,
-    desc: 'Weekly review of all conversations — distils key facts into your permanent business memory store.' },
-  { name: 'Nyx',   role: 'Research Agent',    emoji: '🔍', color: '#6366F1', icon: Search,
-    desc: 'Deep-dives on companies, prospects, and market segments. Returns structured summaries with cited sources.' },
-  { name: 'Vox',   role: 'Voice Agent',       emoji: '📞', color: '#06B6D4', icon: Phone,
-    desc: 'Makes outbound calls via SIP/PSTN. Transcribes and summarises every call, then logs it to your CRM.' },
+    desc: 'Periodically reviews your conversations and notes key facts about contacts and deals into a searchable store.' },
+  { name: 'Nyx',   role: 'Research',          emoji: '🔍', color: '#6366F1', icon: Search,
+    desc: 'Runs web research on a company or contact and returns a structured summary you can use before a call.' },
+  { name: 'Vox',   role: 'Voice Calls',       emoji: '📞', color: '#06B6D4', icon: Phone,
+    desc: 'Makes outbound calls over SIP and logs a transcript and summary back to the CRM. Needs a Twilio account.' },
 ];
 
 const HOW_IT_WORKS = [
-  { step: '01', title: 'Connect your tools',
-    desc: 'Link email, calendar, and import contacts in under 5 minutes. OAuth + CSV — no complex setup.',
+  { step: '01', title: 'Connect your accounts',
+    desc: 'Link Gmail, Google Calendar, and bring in contacts via CSV. No coding needed.',
     items: ['Gmail / Outlook', 'Google Calendar', 'CSV contact import', 'WhatsApp (optional)'] },
-  { step: '02', title: 'Agents run in the background',
-    desc: 'Your 8 agents start immediately. They monitor inbox, flag invoices, prep meetings — round the clock.',
-    items: ['No prompting required', 'Runs on your laptop', 'Local LLM by default', 'Cloud only when you allow'] },
-  { step: '03', title: 'You approve, not manage',
-    desc: 'Check your unified inbox every morning. Approve a reply, trigger a follow-up, or skip. Done in minutes.',
-    items: ['One-click approvals', 'Inline context for every task', 'Nothing sent without your OK', 'Full audit trail'] },
+  { step: '02', title: 'Workflows run on a schedule',
+    desc: 'Each agent checks for tasks at a set interval and queues anything that needs your attention.',
+    items: ['Runs on your laptop', 'Uses Ollama by default', 'Cloud LLM opt-in', 'You control the schedule'] },
+  { step: '03', title: 'You review and confirm',
+    desc: 'Nothing gets sent or logged without your approval. You see what the agent found and decide what to do.',
+    items: ['Approve or skip each suggestion', 'See the context behind every task', 'Full action history', 'No surprises'] },
 ];
 
 const PRIVACY_POINTS = [
-  { n: '01', title: 'Kill switch',
-    body: 'Set ALLOW_CLOUD_LLM=false. Every prompt stays on your local model. One flag, zero exceptions, no restart needed.' },
-  { n: '02', title: 'Sensitivity routing',
-    body: 'Any prompt touching DB rows, customer records, or credentials is force-routed to local inference — regardless of your global setting.' },
-  { n: '03', title: 'PII redaction',
-    body: 'Emails, phones, Aadhaar/PAN, cards, secrets → opaque tokens before anything hits the cloud. Restored in the response.' },
-  { n: '04', title: 'Audit log',
-    body: 'Every cloud call logged as a SHA-256 fingerprint + character count. The raw prompt is never stored. Compliance-ready from day one.' },
+  { n: '01', title: 'Local by default',
+    body: 'NexusAgent runs on Ollama. By default, no prompts leave your machine. You can opt into cloud LLMs if you need them.' },
+  { n: '02', title: 'Sensitive data stays local',
+    body: 'Prompts that touch customer records or credentials are always routed to the local model, regardless of your cloud setting.' },
+  { n: '03', title: 'PII scrubbing before cloud calls',
+    body: 'If you enable cloud LLMs, emails, phone numbers, and other personal data are replaced with placeholders before the prompt is sent.' },
+  { n: '04', title: 'Action log',
+    body: 'Every agent action is recorded — what it checked, what it suggested, and what you approved. You always have a clear trail.' },
 ];
 
 const COMPARE_ROWS = [
-  { feature: 'Autonomous AI agents',  nexus: true,   notion: false,   salesforce: false,     zoho: false },
-  { feature: 'Local-first / private', nexus: true,   notion: false,   salesforce: false,     zoho: false },
-  { feature: 'Outbound voice calls',  nexus: true,   notion: false,   salesforce: 'Add-on',  zoho: false },
-  { feature: 'WhatsApp integration',  nexus: true,   notion: false,   salesforce: false,     zoho: true  },
-  { feature: 'Self-hosted option',    nexus: true,   notion: false,   salesforce: false,     zoho: false },
-  { feature: 'Built-in document RAG', nexus: true,   notion: 'Basic', salesforce: false,     zoho: false },
-  { feature: 'Starting price',        nexus: '₹0',   notion: '₹800/mo', salesforce: '₹6,000/mo', zoho: '₹1,400/mo' },
+  { feature: 'Runs on your laptop',        nexus: true,       zoho: false,          salesforce: false         },
+  { feature: 'Local LLM support',          nexus: true,       zoho: false,          salesforce: false         },
+  { feature: 'Data stays on your machine', nexus: true,       zoho: false,          salesforce: false         },
+  { feature: 'Scheduled AI workflows',     nexus: true,       zoho: 'Partial',      salesforce: 'Partial'     },
+  { feature: 'Outbound voice (SIP)',        nexus: true,       zoho: 'Add-on',       salesforce: 'Add-on'      },
+  { feature: 'Self-hosted option',         nexus: true,       zoho: false,          salesforce: false         },
+  { feature: 'Starting price',             nexus: '₹0',       zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
 ];
 
 const TIERS = [
   { name: 'Free',        price: '₹0',      period: 'forever',   featured: false,
-    desc: 'For solo operators exploring the local-first stack.',
-    items: ['1 user · 1 business', '2 agents of your choice', '100 documents in RAG', 'Local LLM only', 'Community support'],
-    cta: 'Start free',         href: `${APP_URL}/setup` },
+    desc: 'Try NexusAgent with a couple of workflows on your own machine.',
+    items: ['1 user', '2 workflows active', 'Local LLM only', 'Up to 100 documents', 'GitHub issues for support'],
+    cta: 'Get started',        href: `${APP_URL}/setup` },
   { name: 'Pro',         price: '₹3,999',  period: '/month',    featured: true,
-    desc: 'For small teams ready to put all 8 agents to work.',
-    items: ['Up to 5 users', 'All 8 agents + custom builder', '1,000 documents', 'Cloud LLM toggle', 'Outbound voice (Vox)', 'Priority support'],
-    cta: 'Start 14-day trial', href: `${APP_URL}/setup` },
-  { name: 'Business',   price: '₹12,999', period: '/month',    featured: false,
-    desc: 'For growing businesses that need SSO + hands-on onboarding.',
-    items: ['Up to 20 users', 'Unlimited documents', 'SSO (Google / Microsoft)', 'WhatsApp bridge', 'SLA + onboarding call'],
+    desc: 'All 8 workflows for a small team, with cloud LLM as an option.',
+    items: ['Up to 5 users', 'All 8 workflows', 'Up to 1,000 documents', 'Cloud LLM opt-in', 'Outbound voice calls', 'Email support'],
+    cta: 'Get early access',   href: `mailto:${MAIL}` },
+  { name: 'Business',    price: '₹12,999', period: '/month',    featured: false,
+    desc: 'For teams that need more users, SSO, and direct onboarding help.',
+    items: ['Up to 20 users', 'Unlimited documents', 'SSO (Google / Microsoft)', 'WhatsApp integration', 'Onboarding call included'],
     cta: 'Talk to us',         href: `mailto:${MAIL}` },
   { name: 'Self-hosted', price: '₹24,999', period: 'one-time',  featured: false,
-    desc: 'Your server, your data, your rules. Yours forever.',
-    items: ['Unlimited everything', 'Docker + Helm deploy', 'Source code access', 'Updates for 12 months', 'Private Slack channel'],
-    cta: 'Buy license',        href: `mailto:${MAIL}` },
+    desc: 'Deploy on your own server. One-time payment, no recurring fees.',
+    items: ['Unlimited users', 'Docker deploy', 'Source code access', '12 months of updates', 'Setup support via email'],
+    cta: 'Contact us',         href: `mailto:${MAIL}` },
 ];
 
 const FAQS = [
-  { q: 'Does my data really stay local?',
-    a: 'Yes. Embeddings are always local via Ollama. Prompts touching customer data are force-routed to the local LLM. When you allow cloud calls, prompts are PII-redacted first and audited — the raw prompt is never stored.' },
+  { q: 'Does my data stay on my machine?',
+    a: 'By default, yes. NexusAgent uses Ollama to run a local LLM, so prompts don\'t leave your laptop. If you enable a cloud LLM, personal data in prompts is replaced with placeholders before being sent. You can disable cloud entirely with one config flag.' },
   { q: 'What hardware do I need?',
-    a: 'Any laptop with 8 GB RAM runs Llama 3.1 8B well. 16 GB lets you use 14B+ models. The setup wizard detects your RAM and recommends the right model tier automatically.' },
-  { q: 'How does it compare to Zoho CRM or Salesforce?',
-    a: 'Zoho and Salesforce are databases you manually maintain. NexusAgent is an active team that updates the CRM for you — chasing payments, flagging stale deals, prepping meetings — while keeping your data private on your machine.' },
+    a: 'You need a laptop or desktop with at least 8 GB RAM to run a small local model (Llama 3.1 8B). 16 GB gives you better model options. You also need to have Ollama installed before setup.' },
+  { q: 'How is this different from Zoho or Salesforce?',
+    a: 'Zoho and Salesforce are CRM databases — you enter data, they store it. NexusAgent adds scheduled workflows that check your inbox, flag overdue invoices, and prep meeting notes, all running on your own machine. They serve different purposes and you might use both.' },
   { q: 'Can Vox make calls to Indian numbers?',
-    a: 'Yes. Vox uses Twilio SIP trunking and supports Indian PSTN numbers out of the box. You need a Twilio account and a DID number (~₹200/month). Call costs are standard Twilio rates.' },
-  { q: 'Can I run it completely offline?',
-    a: 'Yes. Set ALLOW_CLOUD_LLM=false. Everything runs locally — Ollama for LLM, local embeddings for RAG. Voice calls require Twilio (internet only for that service). Everything else is fully offline-capable.' },
-  { q: 'How do I export my data if I want to leave?',
-    a: 'Settings → Export all data → ZIP. You get every table as CSV: contacts, tasks, invoices, documents, conversations, agent runs. No lock-in, no export fees, no waiting.' },
+    a: 'Yes, but you need a Twilio account with a DID number. Twilio supports Indian PSTN numbers. The call cost is billed directly by Twilio at their standard rates — NexusAgent doesn\'t add a markup.' },
+  { q: 'Can I run it without internet?',
+    a: 'Most features work offline — the local LLM, CRM, documents, and workflow scheduling all run on your machine. Voice calls need Twilio (internet required). If you\'ve enabled a cloud LLM, that needs internet too.' },
+  { q: 'Can I export my data?',
+    a: 'Yes. You can export all your contacts, tasks, documents, and agent history from settings. Everything comes out as CSV files. There\'s no export fee and no lock-in.' },
 ];
 
 
@@ -190,13 +190,14 @@ function Hero() {
         </div>
 
         <h1 className="hero-h1">
-          The AI business team<br />
-          that keeps your data <strong>private</strong>
+          An AI business team<br />
+          that runs on <strong>your laptop</strong>
         </h1>
 
         <p className="hero-sub">
-          8 autonomous agents handle your CRM, inbox, invoices, meetings, and
-          outbound calls — running on your laptop, your data never leaving your machine.
+          8 agents handle your CRM, inbox, invoices, meetings, and outbound calls —
+          running locally by default, so your data stays on your machine unless you
+          choose otherwise.
         </p>
 
         <div className="hero-actions">
@@ -210,7 +211,7 @@ function Hero() {
 
         <div className="hero-trust">
           <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> 5-minute setup</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> Open source</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Runs on your laptop</span>
         </div>
@@ -354,10 +355,10 @@ function HowItWorks() {
       <div className="container">
         <div className="section-header section-header-c">
           <span className="eyebrow">How it works</span>
-          <h2 className="section-h2">From zero to autonomous in 5 minutes</h2>
+          <h2 className="section-h2">Connect, configure, approve</h2>
           <p className="section-sub">
-            No devops, no configuration files, no API keys to hunt down. Just connect
-            your tools and your agents start working.
+            Link your accounts, set your schedules, and review what each agent surfaces.
+            No code, no config files, no surprises.
           </p>
         </div>
         <div className="steps-grid">
@@ -390,10 +391,10 @@ function AgentsSection() {
       <div className="container">
         <div className="section-header section-header-c">
           <span className="eyebrow">The team</span>
-          <h2 className="section-h2">8 agents that work while you sleep</h2>
+          <h2 className="section-h2">8 agents, each with one job</h2>
           <p className="section-sub">
-            Each agent has a single responsibility and runs on a schedule.
-            Rename any of them — they keep their role, just your preferred name.
+            Each agent runs on a schedule and surfaces tasks for your review.
+            Rename any of them — the role stays, only the label changes.
           </p>
         </div>
         <div className="agents-grid">
@@ -468,9 +469,8 @@ function CompareTable() {
               <tr>
                 <th className="compare-feat-col">Feature</th>
                 <th className="compare-nexus-col">NexusAgent</th>
-                <th>Notion AI</th>
-                <th>Salesforce</th>
                 <th>Zoho CRM</th>
+                <th>Salesforce</th>
               </tr>
             </thead>
             <tbody>
@@ -478,9 +478,8 @@ function CompareTable() {
                 <tr key={row.feature}>
                   <td className="compare-feat">{row.feature}</td>
                   <td className="compare-nexus-col">{cell(row.nexus)}</td>
-                  <td>{cell(row.notion)}</td>
-                  <td>{cell(row.salesforce)}</td>
                   <td>{cell(row.zoho)}</td>
+                  <td>{cell(row.salesforce)}</td>
                 </tr>
               ))}
             </tbody>
@@ -571,10 +570,10 @@ function CTA() {
     <section className="cta-section">
       <div className="cta-glow" />
       <div className="container cta-body">
-        <h2 className="cta-h2">Your team of 8 is ready.</h2>
+        <h2 className="cta-h2">Try it on your machine.</h2>
         <p className="cta-sub">
-          Five minutes to set up. Zero vendor lock-in.<br />
-          Your data stays on your machine, always.
+          Free to start. No vendor lock-in.<br />
+          Your data stays on your laptop by default.
         </p>
         <div className="cta-btns">
           <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
@@ -602,7 +601,7 @@ function Footer() {
             NexusAgent
           </a>
           <p className="footer-tagline">
-            A private AI business OS for Indian SMBs.<br />
+            AI workflows for your business, running locally.<br />
             8 agents. Local-first. Your data stays yours.
           </p>
           <p className="footer-contact">
