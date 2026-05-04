@@ -328,6 +328,55 @@ h1, h2, h3, h4 {
   margin-bottom: 8px;
 }
 
+/* ── Hero agent chips ────────────────────────────────────────────────────────*/
+@keyframes chip-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.92); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0); }
+}
+
+.hero-agents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  margin: 24px 0 4px;
+}
+
+.hero-agent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px 7px 10px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+  cursor: default;
+  animation: chip-in 0.45s ease-out both;
+  transition: box-shadow 0.18s, transform 0.18s, border-color 0.18s;
+}
+.hero-agent-chip:hover {
+  transform: translateY(-3px);
+  border-color: var(--ac);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--ac) 20%, transparent);
+}
+
+.hero-agent-emoji { font-size: 16px; line-height: 1; }
+
+.hero-agent-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.hero-agent-role {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding-left: 6px;
+  border-left: 1px solid var(--border-strong);
+}
+
 .hero-actions {
   display: flex;
   gap: 12px;

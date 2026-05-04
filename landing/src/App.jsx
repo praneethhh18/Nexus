@@ -463,11 +463,19 @@ function Hero() {
           delay={100}
           style={{ marginTop: 0 }}
         />
-        <p className="hero-sub">
-          8 named AI agents handle your inbox, chase invoices, prep meetings,
-          watch your pipeline, and make outbound calls — all on your laptop.
-          The cloud only sees redacted data, and only when you allow it.
-        </p>
+        <div className="hero-agents">
+          {AGENTS.map((a, i) => (
+            <span
+              key={a.name}
+              className="hero-agent-chip"
+              style={{ '--ac': a.color, animationDelay: `${i * 80}ms` }}
+            >
+              <span className="hero-agent-emoji">{a.emoji}</span>
+              <span className="hero-agent-name">{a.name}</span>
+              <span className="hero-agent-role">{a.role}</span>
+            </span>
+          ))}
+        </div>
         <div className="hero-actions">
           <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
             Start free <ArrowRight size={15} />
