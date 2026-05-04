@@ -172,7 +172,6 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
-        <StatsStrip />
         <Problem />
         <HowItWorks />
         <AgentsSection />
