@@ -572,7 +572,7 @@ img, svg { display: block; }
 /* ── Pricing ─────────────────────────────────────────────────────────────── */
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 18px;
   align-items: start;
 }
@@ -800,11 +800,12 @@ img, svg { display: block; }
 }
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 1200px) {
+  .pricing-grid { grid-template-columns: repeat(3, 1fr); }
+}
 @media (max-width: 1024px) {
   .agents-grid  { grid-template-columns: repeat(2, 1fr); }
-  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
-  .price-featured { transform: none; }
-  .price-featured:hover { transform: translateY(-4px); }
+  .pricing-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (max-width: 768px) {
@@ -842,7 +843,7 @@ img, svg { display: block; }
 @media (max-width: 560px) {
   .hero-h1 { letter-spacing: -0.025em; }
   .agents-grid  { grid-template-columns: 1fr; }
-  .pricing-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: repeat(2, 1fr); }
   .footer-inner { grid-template-columns: 1fr; }
   .footer-bottom-inner { flex-direction: column; gap: 6px; text-align: center; }
   .cta-btns { flex-direction: column; align-items: center; }
