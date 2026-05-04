@@ -684,16 +684,12 @@ function CTA() {
           Five minutes to set up. Zero vendor lock-in.<br />Your data stays yours.
         </p>
         <div className="cta-actions">
-          <Magnet magnetStrength={4}>
-            <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-              Start free <ArrowRight size={15} />
-            </a>
-          </Magnet>
-          <Magnet magnetStrength={4}>
-            <a href={GITHUB} target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
-              View source on GitHub
-            </a>
-          </Magnet>
+          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
+            Start free <ArrowRight size={15} />
+          </a>
+          <a href={GITHUB} target="_blank" rel="noreferrer" className="btn btn-ghost btn-lg">
+            View source on GitHub
+          </a>
         </div>
         <p className="cta-fine">No credit card · Self-hostable · Runs on your laptop</p>
       </div>
