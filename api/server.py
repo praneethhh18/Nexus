@@ -69,6 +69,36 @@ try:
 except Exception as e:
     logger.warning(f"Index pass failed: {e}")
 
+# Auto-seed Gmail IMAP account for email triage if env vars are set and no
+# account exists yet. Uses imap.gmail.com:993 — works for any Gmail app password.
+try:
+    from config.settings import GMAIL_USER, GMAIL_APP_PASSWORD
+    if GMAIL_USER and GMAIL_APP_PASSWORD:
+        from agents.email_triage import save_account, get_account
+        from api.auth import ensure_default_admin
+        ensure_default_admin()
+        from config.db import get_conn as _gc
+        with _gc() as _c:
+            _biz = _c.execute("SELECT id FROM nexus_businesses LIMIT 1").fetchone()
+        if _biz:
+            _bid = _biz[0] if isinstance(_biz, tuple) else _biz["id"]
+            if not get_account(_bid):
+                save_account(
+                    business_id=_bid,
+                    imap_host="imap.gmail.com",
+                    imap_port=993,
+                    username=GMAIL_USER,
+                    password=GMAIL_APP_PASSWORD,
+                    folder="INBOX",
+                    enabled=True,
+                    auto_draft_reply=True,
+                )
+                logger.info(f"[Boot] Gmail IMAP auto-seeded for business {_bid} ({GMAIL_USER})")
+            else:
+                logger.debug(f"[Boot] Gmail IMAP already configured for business {_bid}")
+except Exception as e:
+    logger.warning(f"Gmail IMAP auto-seed failed: {e}")
+
 # Apply pending schema migrations (idempotent, no-op on already-applied).
 try:
     from db.migrate import apply_pending
