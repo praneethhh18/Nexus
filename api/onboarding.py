@@ -147,8 +147,7 @@ def _autodetect(business_id: str) -> Dict[str, bool]:
     """Infer completion from the actual state of the workspace."""
     auto: Dict[str, bool] = {k: False for k in STEP_KEYS}
     try:
-        from config.settings import DB_PATH as _DB
-        conn = sqlite3.connect(_DB)
+        conn = get_conn()
         conn.row_factory = sqlite3.Row
         try:
             # profile: business row exists with a non-empty name

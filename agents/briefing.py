@@ -505,26 +505,17 @@ def _deliver_discord(narrative: str) -> bool:
 
 def _deliver_whatsapp(business_id: str, narrative: str) -> bool:
     try:
-        conn = get_conn(); conn.row_factory = sqlite3.Row
-        try:
-            row = conn.execute(
-                "SELECT phone FROM nexus_whatsapp_accounts WHERE business_id = ? LIMIT 1",
-                (business_id,),
-            ).fetchone()
-        finally: conn.close()
-        if not row or not row["phone"]:
+        from api import whatsapp as _wa
+        phone = _wa.get_linked_phone(business_id)
+        if not phone:
             return False
-    except Exception:
-        return False
-    # The WhatsApp bridge handles outbound itself via its own webhook — we just
-    # record a notification and let the bridge pick it up on next poll.
-    try:
-        from api.notifications import push
-        push(title="Morning briefing", message=narrative[:800],
-             type="briefing", business_id=business_id)
+        # WhatsApp message limit is 4096 chars
+        wa_text = narrative[:3900] + ("\n…(truncated)" if len(narrative) > 3900 else "")
+        _wa.send_outbound(phone, wa_text)
+        logger.info(f"[Briefing] WhatsApp delivered to {phone}")
         return True
     except Exception as e:
-        logger.warning(f"[Briefing] whatsapp note failed: {e}")
+        logger.warning(f"[Briefing] WhatsApp delivery failed: {e}")
         return False
 
 

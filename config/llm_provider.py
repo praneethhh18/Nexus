@@ -21,6 +21,7 @@ from loguru import logger
 from config.settings import OLLAMA_BASE_URL, EMBED_MODEL
 from config import privacy
 from config import cloud_budget
+from config import llm_router
 
 # ── Provider detection ──────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
@@ -125,18 +126,30 @@ def _stream_ollama(prompt: str) -> Generator[str, None, None]:
 # ── Unified entry points ─────────────────────────────────────────────────────
 def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
            temperature: float = 0.1, fast: bool = False,
-           sensitive: bool = False) -> str:
+           sensitive: bool = False, force_cloud: bool = False) -> str:
     """
-    Plain prompt → text. `fast=True` routes to the cheaper model tier when supported.
+    Plain prompt → text.
 
-    `sensitive=True` forces the request to stay on the local Ollama model even if
-    a cloud provider is configured. Use this for any prompt that includes raw DB
-    rows, customer records, credentials, or internal business data.
+    sensitive=True   — always stays on local Ollama (PII / DB rows / secrets).
+    force_cloud=True — skip complexity routing and always use cloud when available.
+    fast=True        — prefer the cheaper/faster cloud tier (Nova Lite, etc.).
+
+    When neither flag overrides, the complexity router decides: simple CRUD ops
+    and short lookups stay on Ollama; drafting, analysis, and multi-step
+    reasoning go to the cloud provider.
     """
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()
     )
+    if use_cloud and not force_cloud:
+        decision = llm_router.classify(prompt, system=system)
+        use_cloud = (decision == "cloud")
+        if not use_cloud:
+            logger.debug(f"[Router] local — complexity=simple, prompt[:60]={prompt[:60]!r}")
+        else:
+            logger.debug(f"[Router] cloud — complexity=complex, prompt[:60]={prompt[:60]!r}")
+
     if use_cloud and USE_CLAUDE:
         return _invoke_claude(prompt, system, max_tokens, temperature)
     if use_cloud and USE_BEDROCK:
@@ -147,12 +160,16 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
 
 
 def stream(prompt: str, system: str = "", max_tokens: int = 1024,
-           fast: bool = False, sensitive: bool = False) -> Generator[str, None, None]:
-    """Stream text tokens one by one. See `invoke` for the sensitive flag."""
+           fast: bool = False, sensitive: bool = False,
+           force_cloud: bool = False) -> Generator[str, None, None]:
+    """Stream text tokens one by one. See `invoke` for flag semantics."""
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()
     )
+    if use_cloud and not force_cloud:
+        use_cloud = llm_router.classify(prompt, system=system) == "cloud"
+
     if use_cloud and USE_CLAUDE:
         yield from _stream_claude(prompt, system, max_tokens)
         return

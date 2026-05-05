@@ -14,6 +14,7 @@ import {
 import {
   listProviders, listConnections, connectProvider, disconnectProvider, pingProvider,
 } from '../services/integrations';
+import { calendarStart, calendarStatus, calendarDisconnect } from '../services/calendar';
 import EmptyState from '../components/EmptyState';
 
 
@@ -81,6 +82,119 @@ function ConnectForm({ provider, onCancel, onSaved }) {
           {busy ? <Loader2 size={11} style={{ animation: 'spin 1s linear infinite' }} /> : <Plug size={11} />}
           Connect
         </button>
+      </div>
+    </div>
+  );
+}
+
+
+function GoogleCalendarCard({ provider }) {
+  const [status, setStatus] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    calendarStatus()
+      .then(setStatus)
+      .catch(() => setStatus({ configured: false, connected: false }));
+  }, []);
+
+  const connect = async () => {
+    setBusy(true); setErr('');
+    try {
+      const { authorize_url } = await calendarStart();
+      const popup = window.open(authorize_url, 'google-cal-oauth',
+        'width=520,height=620,left=200,top=100');
+      const interval = setInterval(() => {
+        if (!popup || popup.closed) {
+          clearInterval(interval);
+          calendarStatus().then(setStatus).catch(() => {});
+          setBusy(false);
+        }
+      }, 1000);
+    } catch (e) {
+      setErr(e.message || String(e));
+      setBusy(false);
+    }
+  };
+
+  const disconnect = async () => {
+    if (!confirm('Disconnect Google Calendar?')) return;
+    try {
+      await calendarDisconnect();
+      setStatus(s => ({ ...s, connected: false, connection: null }));
+    } catch (e) { alert(e.message); }
+  };
+
+  const isConnected = status?.connected;
+  const notConfigured = status && !status.configured;
+  const dotColor = isConnected ? 'var(--color-ok)' : 'var(--color-text-dim)';
+
+  return (
+    <div className="panel" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        <span style={{ fontSize: 24 }}>{provider.icon || '📅'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 600, color: 'var(--color-text)',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            {provider.name}
+            <span style={{
+              width: 7, height: 7, borderRadius: '50%', background: dotColor,
+              boxShadow: `0 0 6px ${dotColor}`,
+            }} />
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>
+            {isConnected
+              ? `Connected · ${status.connection?.account_email || 'calendar linked'}`
+              : notConfigured
+              ? 'Set GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET in .env to enable'
+              : 'Not connected'}
+          </div>
+        </div>
+      </div>
+
+      <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0, lineHeight: 1.5 }}>
+        {provider.description}
+      </p>
+
+      {err && (
+        <div style={{
+          padding: '4px 8px', fontSize: 10, borderRadius: 'var(--r-sm)',
+          background: 'color-mix(in srgb, var(--color-err) 10%, transparent)',
+          color: 'var(--color-err)',
+        }}>
+          <AlertCircle size={10} style={{ verticalAlign: 'middle' }} /> {err}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        {!isConnected && !notConfigured && (
+          <button
+            onClick={connect} disabled={busy || status === null}
+            className="btn-primary"
+            style={{ fontSize: 11, padding: '4px 10px' }}
+          >
+            {busy
+              ? <Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} />
+              : <Plug size={10} />}
+            Connect with Google
+          </button>
+        )}
+        {isConnected && (
+          <button onClick={disconnect} className="btn-ghost"
+            style={{ fontSize: 11, padding: '4px 8px', color: 'var(--color-err)' }}>
+            <Trash2 size={10} /> Disconnect
+          </button>
+        )}
+        {provider.docs_url && (
+          <a href={provider.docs_url} target="_blank" rel="noreferrer"
+            className="btn-ghost"
+            style={{ fontSize: 10, padding: '4px 8px', marginLeft: 'auto' }}>
+            Docs <ExternalLink size={10} />
+          </a>
+        )}
       </div>
     </div>
   );
@@ -307,13 +421,15 @@ export default function Integrations() {
               gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
             }}>
               {items.map(p => (
-                <ProviderCard
-                  key={p.key}
-                  provider={p}
-                  connection={connections[p.key]}
-                  onConnected={load}
-                  onDisconnected={load}
-                />
+                p.key === 'google_calendar'
+                  ? <GoogleCalendarCard key={p.key} provider={p} />
+                  : <ProviderCard
+                      key={p.key}
+                      provider={p}
+                      connection={connections[p.key]}
+                      onConnected={load}
+                      onDisconnected={load}
+                    />
               ))}
             </div>
           </div>

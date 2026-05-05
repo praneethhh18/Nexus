@@ -1,10 +1,5 @@
 """
-Lightweight SQLite migration runner.
-
-Why not Alembic: this codebase uses raw `sqlite3.connect()` everywhere, not
-SQLAlchemy. Alembic without an ORM is awkward, and SQLite's schema-change
-constraints (limited ALTER TABLE) don't match Alembic's autogeneration model
-anyway. A small handwritten runner fits the codebase style and is one file.
+Lightweight migration runner — supports SQLite (default) and Postgres.
 
 How it works:
 
@@ -26,6 +21,16 @@ How it works:
 
   4. Running it twice is a no-op. Tests assert this.
 
+Backend notes:
+
+  - On Postgres (`DATABASE_URL=postgresql://...`) the runner uses
+    `config.db.get_conn()` and executes statements one-by-one after
+    splitting on `;`. `_translate_sql()` converts AUTOINCREMENT→BIGSERIAL,
+    datetime('now')→NOW(), and so on automatically.
+  - On SQLite (default) it opens a native `sqlite3.Connection` and uses
+    `executescript` for multi-statement files. SQLite-specific env:
+    `db_path` arg overrides `DB_PATH` for tests.
+
 Adding a migration:
 
     1. Touch `db/migrations/0002_add_foo_column.sql`.
@@ -34,14 +39,11 @@ Adding a migration:
 
 Conventions:
 
-  - Migrations should be **idempotent where possible** (`IF NOT EXISTS`,
-    `IF EXISTS`). SQLite doesn't roll back DDL on error, so partial
-    failure is awkward — be defensive.
+  - Migrations should be idempotent (`IF NOT EXISTS`, `IF EXISTS`).
   - Don't edit a migration after it's shipped. Ship a follow-up instead.
-  - The 0001 baseline is intentionally a no-op marker — existing
-    workspaces already have the schema; new ones get it via the
-    legacy `setup_database()` + per-module `CREATE IF NOT EXISTS`
-    pattern. This runner only manages **future** schema changes.
+  - The 0001 baseline is intentionally a no-op marker — existing workspaces
+    already have the schema; new ones get it via `setup_database()` +
+    per-module `CREATE IF NOT EXISTS` pattern.
 """
 from __future__ import annotations
 
@@ -62,7 +64,7 @@ _FILENAME_RE = re.compile(r"^(\d{4})_([a-z0-9_]+)\.sql$", re.IGNORECASE)
 
 
 # ── Ledger ──────────────────────────────────────────────────────────────────
-def _ensure_ledger(conn: sqlite3.Connection) -> None:
+def _ensure_ledger(conn) -> None:
     conn.execute(f"""
         CREATE TABLE IF NOT EXISTS {LEDGER_TABLE} (
             version    INTEGER PRIMARY KEY,
@@ -74,7 +76,7 @@ def _ensure_ledger(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _applied_versions(conn: sqlite3.Connection) -> dict[int, dict]:
+def _applied_versions(conn) -> dict[int, dict]:
     rows = conn.execute(
         f"SELECT version, name, applied_at, sha256 FROM {LEDGER_TABLE}"
     ).fetchall()
@@ -102,7 +104,6 @@ def _discover() -> List[Tuple[int, str, Path]]:
         out.append((version, name, p))
     out.sort(key=lambda t: t[0])
 
-    # Sanity-check for duplicate version numbers — common copy-paste mistake.
     seen = set()
     for v, n, p in out:
         if v in seen:
@@ -118,19 +119,18 @@ def _sha256(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def _split_statements(sql: str) -> list[str]:
+    """Split a SQL script into individual statements by semicolons."""
+    parts = re.split(r";", sql)
+    return [p.strip() for p in parts if p.strip()]
+
+
 # ── Apply ───────────────────────────────────────────────────────────────────
-def _apply_one(conn: sqlite3.Connection, version: int, name: str, path: Path) -> None:
+def _apply_one_sqlite(conn: sqlite3.Connection, version: int, name: str, path: Path) -> None:
     sql = path.read_text(encoding="utf-8")
     if not sql.strip():
-        # An empty file (or whitespace-only) is a valid no-op marker —
-        # see the 0001 baseline.
         logger.info(f"[Migrate] {path.name} is empty — recording as no-op")
     else:
-        # `executescript` issues its own implicit COMMIT before running, so
-        # wrapping it in BEGIN/COMMIT here would error with "no transaction
-        # is active" on the COMMIT. Migrations should make their statements
-        # idempotent (`IF NOT EXISTS`, `IF EXISTS`) so partial failure is
-        # safe to retry.
         try:
             conn.executescript(sql)
         except Exception:
@@ -146,15 +146,52 @@ def _apply_one(conn: sqlite3.Connection, version: int, name: str, path: Path) ->
     logger.info(f"[Migrate] applied {version:04d}_{name}")
 
 
+def _apply_one_pg(conn, version: int, name: str, path: Path) -> None:
+    """Apply a migration on Postgres — split by semicolons, run one by one."""
+    sql = path.read_text(encoding="utf-8")
+    if not sql.strip():
+        logger.info(f"[Migrate] {path.name} is empty — recording as no-op")
+    else:
+        stmts = _split_statements(sql)
+        try:
+            for stmt in stmts:
+                conn.execute(stmt)  # _translate_sql applied inside _PgConn.execute
+        except Exception:
+            conn.rollback()
+            logger.error(f"[Migrate] {path.name} failed; ledger NOT updated — fix the SQL and retry")
+            raise
+
+    conn.execute(
+        f"INSERT INTO {LEDGER_TABLE} (version, name, applied_at, sha256) "
+        f"VALUES (?, ?, ?, ?)",
+        (version, name, datetime.now(timezone.utc).isoformat(), _sha256(sql)),
+    )
+    conn.commit()
+    logger.info(f"[Migrate] applied {version:04d}_{name}")
+
+
+def _apply_one(conn, version: int, name: str, path: Path, *, is_pg: bool) -> None:
+    if is_pg:
+        _apply_one_pg(conn, version, name, path)
+    else:
+        _apply_one_sqlite(conn, version, name, path)
+
+
 def apply_pending(db_path: str | None = None) -> List[dict]:
     """
     Apply every unapplied migration in order. Returns the list of newly
-    applied migrations (each as a dict with version/name/applied_at).
-    Idempotent — safe to call on every boot.
+    applied migrations. Idempotent — safe to call on every boot.
     """
-    target = db_path or DB_PATH
-    Path(target).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(target)
+    from config.db import get_conn, is_postgres
+
+    pg = is_postgres()
+    if pg:
+        conn = get_conn()
+    else:
+        target = db_path or DB_PATH
+        Path(target).parent.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(target)
+
     try:
         _ensure_ledger(conn)
         applied = _applied_versions(conn)
@@ -165,7 +202,6 @@ def apply_pending(db_path: str | None = None) -> List[dict]:
         new_runs: List[dict] = []
         for version, name, path in discovered:
             if version in applied:
-                # Drift check — existing migration but file changed.
                 stored_sha = applied[version]["sha256"]
                 file_sha = _sha256(path.read_text(encoding="utf-8"))
                 if stored_sha != file_sha:
@@ -175,7 +211,7 @@ def apply_pending(db_path: str | None = None) -> List[dict]:
                         "Don't edit shipped migrations — add a follow-up instead."
                     )
                 continue
-            _apply_one(conn, version, name, path)
+            _apply_one(conn, version, name, path, is_pg=pg)
             new_runs.append({
                 "version": version, "name": name,
                 "path": path.name,
@@ -187,10 +223,17 @@ def apply_pending(db_path: str | None = None) -> List[dict]:
 
 def status(db_path: str | None = None) -> dict:
     """Inspection helper — returns applied + pending migrations."""
-    target = db_path or DB_PATH
-    if not Path(target).exists():
-        return {"applied": [], "pending": [t[0] for t in _discover()]}
-    conn = sqlite3.connect(target)
+    from config.db import get_conn, is_postgres
+
+    pg = is_postgres()
+    if pg:
+        conn = get_conn()
+    else:
+        target = db_path or DB_PATH
+        if not Path(target).exists():
+            return {"applied": [], "pending": [t[0] for t in _discover()]}
+        conn = sqlite3.connect(target)
+
     try:
         _ensure_ledger(conn)
         applied = _applied_versions(conn)
@@ -212,7 +255,7 @@ def _main() -> int:
     parser = argparse.ArgumentParser(description="Apply pending NexusAgent migrations.")
     parser.add_argument("--status", action="store_true",
                         help="Show applied + pending migrations and exit.")
-    parser.add_argument("--db", default=None, help="Override DB path (defaults to DB_PATH).")
+    parser.add_argument("--db", default=None, help="Override DB path (SQLite only; ignored on Postgres).")
     args = parser.parse_args()
 
     if args.status:

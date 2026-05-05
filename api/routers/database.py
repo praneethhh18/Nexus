@@ -2,8 +2,8 @@
 Database explorer + bulk CSV/Excel import.
 
 Read-only schema/data inspection plus a one-shot import that creates or
-appends to a tenant table. Built-in `nexus_*` and `sqlite_*` tables are
-write-protected so users can't accidentally overwrite them.
+appends to a tenant table. Built-in `nexus_*` tables are write-protected
+so users can't accidentally overwrite them.
 
 Also exposes `POST /api/sql/execute` — an auth-gated raw-SQL runner used by
 the dev-mode SQL Editor. SELECT-only by default; write statements require
@@ -22,34 +22,95 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from pydantic import BaseModel
 
 from api.auth import get_current_context
-from config.db import get_conn
+from config.db import get_conn, is_postgres, list_tables as _list_tables, list_columns as _list_columns
 
 router = APIRouter(tags=["database"])
 
 _SYSTEM_TABLE_PREFIXES = ("nexus_", "sqlite_")
 
 
-@router.get("/api/database/tables")
-def list_tables(ctx: dict = Depends(get_current_context)):
-    import pandas as pd
+def _qi(name: str) -> str:
+    """Quote an identifier appropriately for the active backend."""
+    if is_postgres():
+        return '"' + name.replace('"', '""') + '"'
+    return "[" + name + "]"
 
+
+def _get_column_info(conn, table: str) -> list[dict]:
+    """Return column metadata as a list of dicts with normalized keys."""
+    if is_postgres():
+        cur = conn.execute(
+            "SELECT column_name, data_type, is_nullable, column_default, ordinal_position "
+            "FROM information_schema.columns WHERE table_name = ? ORDER BY ordinal_position",
+            (table,),
+        )
+        rows = cur.fetchall()
+        pk_cur = conn.execute(
+            "SELECT kcu.column_name FROM information_schema.table_constraints tc "
+            "JOIN information_schema.key_column_usage kcu "
+            "  ON tc.constraint_name = kcu.constraint_name "
+            "WHERE tc.constraint_type = 'PRIMARY KEY' AND tc.table_name = ?",
+            (table,),
+        )
+        pk_cols = {r[0] for r in pk_cur.fetchall()}
+        return [
+            {
+                "cid": i,
+                "name": r[0],
+                "type": r[1],
+                "notnull": int(r[2] == "NO"),
+                "dflt_value": r[3],
+                "pk": int(r[0] in pk_cols),
+            }
+            for i, r in enumerate(rows)
+        ]
+    # SQLite: get_conn() returns a native sqlite3.Connection — PRAGMA works directly
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return [
+        {"cid": r[0], "name": r[1], "type": r[2], "notnull": r[3], "dflt_value": r[4], "pk": r[5]}
+        for r in rows
+    ]
+
+
+def _get_fk_info(conn, table: str) -> list[dict]:
+    """Return FK metadata as a list of dicts. Empty list if not supported."""
+    try:
+        if is_postgres():
+            cur = conn.execute(
+                "SELECT kcu.column_name, ccu.table_name, ccu.column_name "
+                "FROM information_schema.table_constraints tc "
+                "JOIN information_schema.key_column_usage kcu "
+                "  ON tc.constraint_name = kcu.constraint_name "
+                "JOIN information_schema.constraint_column_usage ccu "
+                "  ON ccu.constraint_name = tc.constraint_name "
+                "WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = ?",
+                (table,),
+            )
+            rows = cur.fetchall()
+            return [{"from": r[0], "table": r[1], "to": r[2]} for r in rows]
+        rows = conn.execute(f"PRAGMA foreign_key_list({table})").fetchall()
+        return [{"id": r[0], "seq": r[1], "table": r[2], "from": r[3], "to": r[4]} for r in rows]
+    except Exception:
+        return []
+
+
+@router.get("/api/database/tables")
+def list_tables_endpoint(ctx: dict = Depends(get_current_context)):
     conn = get_conn()
     try:
-        tables = pd.read_sql_query(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name", conn
-        )["name"].tolist()
-
+        tables = _list_tables(conn)
         result = []
         for t in tables:
             try:
-                count = conn.execute(f"SELECT COUNT(*) FROM [{t}]").fetchone()[0]
+                row = conn.execute(f"SELECT COUNT(*) FROM {_qi(t)}").fetchone()
+                count = int(row[0]) if row else 0
             except Exception:
                 count = 0
-            cols = pd.read_sql_query(f"PRAGMA table_info([{t}])", conn)
+            col_count = len(_list_columns(conn, t))
             result.append({
                 "name": t,
                 "row_count": count,
-                "column_count": len(cols),
+                "column_count": col_count,
                 "is_system": t.startswith(_SYSTEM_TABLE_PREFIXES),
             })
     finally:
@@ -60,32 +121,43 @@ def list_tables(ctx: dict = Depends(get_current_context)):
 @router.get("/api/database/tables/{table_name}")
 def get_table_detail(table_name: str, limit: int = 50,
                      ctx: dict = Depends(get_current_context)):
-    import pandas as pd
-
-    if not table_name.replace("_", "").isalnum():
+    if not re.match(r'^[A-Za-z_][A-Za-z0-9_]*$', table_name):
         raise HTTPException(400, "Invalid table name")
 
     conn = get_conn()
     try:
-        cols = pd.read_sql_query(f"PRAGMA table_info([{table_name}])", conn)
-        if cols.empty:
+        cols = _get_column_info(conn, table_name)
+        if not cols:
             raise HTTPException(404, "Table not found")
-        fks = pd.read_sql_query(f"PRAGMA foreign_key_list([{table_name}])", conn)
-        row_count = conn.execute(f"SELECT COUNT(*) FROM [{table_name}]").fetchone()[0]
+        fks = _get_fk_info(conn, table_name)
+
+        row = conn.execute(f"SELECT COUNT(*) FROM {_qi(table_name)}").fetchone()
+        row_count = int(row[0]) if row else 0
 
         limit = max(1, min(limit, 500))
-        df = pd.read_sql_query(f"SELECT * FROM [{table_name}] LIMIT {limit}", conn)
+        cursor = conn.execute(f"SELECT * FROM {_qi(table_name)} LIMIT {limit}")
+        col_names = [d[0] for d in (cursor.description or [])]
+        raw_rows = cursor.fetchall()
+        data = [dict(zip(col_names, r)) for r in raw_rows]
 
         stats = []
-        for _, col in cols.iterrows():
-            if col["type"] in ("INTEGER", "REAL", "NUMERIC"):
+        numeric_types = ("integer", "real", "numeric", "float", "double", "bigint",
+                         "smallint", "decimal", "bigserial", "serial")
+        for col in cols:
+            if any(t in (col["type"] or "").lower() for t in numeric_types):
                 try:
-                    s = pd.read_sql_query(
-                        f"SELECT MIN([{col['name']}]) as min, MAX([{col['name']}]) as max, "
-                        f"ROUND(AVG([{col['name']}]), 2) as avg FROM [{table_name}]",
-                        conn,
-                    )
-                    stats.append({"column": col["name"], **s.iloc[0].to_dict()})
+                    cn = col["name"]
+                    row = conn.execute(
+                        f"SELECT MIN({_qi(cn)}), MAX({_qi(cn)}), AVG({_qi(cn)}) "
+                        f"FROM {_qi(table_name)}"
+                    ).fetchone()
+                    if row:
+                        stats.append({
+                            "column": cn,
+                            "min": row[0],
+                            "max": row[1],
+                            "avg": round(float(row[2] or 0), 2) if row[2] is not None else None,
+                        })
                 except Exception:
                     pass
     finally:
@@ -94,9 +166,9 @@ def get_table_detail(table_name: str, limit: int = 50,
     return {
         "name": table_name,
         "row_count": row_count,
-        "columns": cols.to_dict(orient="records"),
-        "foreign_keys": fks.to_dict(orient="records") if not fks.empty else [],
-        "data": df.to_dict(orient="records"),
+        "columns": cols,
+        "foreign_keys": fks,
+        "data": data,
         "column_stats": stats,
     }
 
@@ -123,7 +195,6 @@ async def import_data(
         if preview.get("error"):
             raise HTTPException(400, preview["error"])
 
-        # Refuse to overwrite built-in tenant/system tables.
         name = table_name or preview["suggested_table_name"]
         if name.startswith(_SYSTEM_TABLE_PREFIXES):
             raise HTTPException(400, "Cannot overwrite system tables")
@@ -181,8 +252,6 @@ class SQLExecuteRequest(BaseModel):
     limit: int = 500
 
 
-# Statements we always block — the auth tables and platform metadata live
-# under `nexus_*` / `sqlite_*`; clobbering them locks out the user.
 _DANGEROUS_PATTERNS = [
     re.compile(r"\b(DROP|TRUNCATE)\s+TABLE\s+[\"\[`]?nexus_", re.IGNORECASE),
     re.compile(r"\b(DROP|TRUNCATE)\s+TABLE\s+[\"\[`]?sqlite_", re.IGNORECASE),
@@ -202,12 +271,11 @@ def _is_write_statement(sql: str) -> bool:
 @router.post("/api/sql/execute")
 def execute_sql(req: SQLExecuteRequest, ctx: dict = Depends(get_current_context)):
     """
-    Run a raw SQL statement against the local SQLite DB.
+    Run a raw SQL statement against the database.
 
     Defaults are conservative — SELECT only, max 500 rows, 15 s timeout.
     Set `allow_writes=true` to permit INSERT/UPDATE/DELETE on user tables;
-    `nexus_*` and `sqlite_*` tables are *always* protected from DROP/TRUNCATE
-    so a fat-finger can't lock the user out of their own workspace.
+    `nexus_*` tables are always protected from DROP/TRUNCATE.
     """
     sql = (req.sql or "").strip().rstrip(";").strip()
     if not sql:
@@ -217,8 +285,6 @@ def execute_sql(req: SQLExecuteRequest, ctx: dict = Depends(get_current_context)
         if pat.search(sql):
             raise HTTPException(403, "That statement targets protected system tables.")
 
-    # Reject multi-statement payloads — sqlite3 only runs one anyway, but
-    # callers may not realise that and this is clearer.
     if ";" in sql:
         raise HTTPException(400, "Only one statement per request. Remove trailing or embedded semicolons.")
 
@@ -234,11 +300,14 @@ def execute_sql(req: SQLExecuteRequest, ctx: dict = Depends(get_current_context)
     started = time.time()
     conn = get_conn()
     try:
-        # 15-second wall-clock cap via SQLite progress handler.
-        deadline = started + 15
-        def _check():
-            return 1 if time.time() > deadline else 0
-        conn.set_progress_handler(_check, 1000)
+        # Timeout: SQLite supports a progress handler; Postgres uses statement_timeout.
+        if not is_postgres():
+            deadline = started + 15
+            def _check():
+                return 1 if time.time() > deadline else 0
+            conn.set_progress_handler(_check, 1000)
+        else:
+            conn.execute("SET LOCAL statement_timeout = '15s'")
 
         if is_write:
             cursor = conn.execute(sql)
@@ -256,10 +325,9 @@ def execute_sql(req: SQLExecuteRequest, ctx: dict = Depends(get_current_context)
                 "sql": sql,
             }
 
-        # SELECT path — apply outer LIMIT so a runaway query can't OOM us.
         capped = f"SELECT * FROM ({sql}) AS _capped LIMIT {limit + 1}"
         cursor = conn.execute(capped)
-        cols = [d[0] for d in cursor.description] if cursor.description else []
+        cols = [d[0] for d in (cursor.description or [])]
         raw = cursor.fetchall()
         truncated = len(raw) > limit
         if truncated:
@@ -276,13 +344,10 @@ def execute_sql(req: SQLExecuteRequest, ctx: dict = Depends(get_current_context)
             "duration_ms": int((time.time() - started) * 1000),
             "sql": sql,
         }
-    except sqlite3.OperationalError as e:
+    except Exception as e:
         msg = str(e)
-        # The progress handler raises "interrupted" when we cancel for timeout.
-        if "interrupted" in msg.lower():
+        if any(k in msg.lower() for k in ("interrupted", "timeout", "statement timeout", "canceling")):
             raise HTTPException(408, "Query exceeded the 15-second timeout.")
         raise HTTPException(400, f"SQL error: {msg}")
-    except sqlite3.DatabaseError as e:
-        raise HTTPException(400, f"Database error: {e}")
     finally:
         conn.close()

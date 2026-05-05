@@ -14,20 +14,30 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  const afterLogin = () => {
+    const pendingInvite = sessionStorage.getItem('nexus_pending_invite');
+    if (pendingInvite) {
+      sessionStorage.removeItem('nexus_pending_invite');
+      navigate(`/accept-invite?token=${pendingInvite}`);
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError(''); setInfo(''); setLoading(true);
     try {
       if (mode === 'signup') {
         await signup(email, name, password);
-        navigate('/');
+        afterLogin();
       } else {
         const res = await login(email, password, needs2fa ? totpCode : null);
         if (res.requires_2fa) {
           setNeeds2fa(true);
           setInfo(res.message || 'Enter the 6-digit code from your authenticator app.');
         } else {
-          navigate('/');
+          afterLogin();
         }
       }
     } catch (err) {

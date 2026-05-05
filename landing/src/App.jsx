@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   ShieldCheck, ArrowRight, CheckCircle2, X,
-  Mail, Phone, Search, Brain, Sun, Target, Clock, Lock,
+  Mail, Phone, Moon, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check, Loader2,
 } from 'lucide-react';
 
@@ -123,8 +123,8 @@ const AGENTS = [
     desc: 'Before a scheduled meeting, gathers relevant contact history and open items so you\'re not going in blind.' },
   { name: 'Echo',  role: 'Memory Keeper',     emoji: '🧠', color: '#EC4899', icon: Brain,
     desc: 'Periodically reviews your conversations and notes key facts about contacts and deals into a searchable store.' },
-  { name: 'Nyx',   role: 'Research',          emoji: '🔍', color: '#6366F1', icon: Search,
-    desc: 'Runs web research on a company or contact and returns a structured summary you can use before a call.' },
+  { name: 'Nyx',   role: 'Evening Digest',     emoji: '🌙', color: '#6366F1', icon: Moon,
+    desc: 'At 6 PM, wraps up the day — tasks closed, invoices sent, deals advanced — and suggests what to tackle tomorrow.' },
   { name: 'Vox',   role: 'Voice Calls',       emoji: '📞', color: '#06B6D4', icon: Phone,
     desc: 'Makes outbound calls over SIP and logs a transcript and summary back to the CRM. Needs a Twilio account.' },
 ];
@@ -310,7 +310,7 @@ function AgentHubVisual() {
   // Spread positions — no overlaps, asymmetric
   const NODES = [
     { role: 'Chief of Staff',  Icon: Sun,        color: '#F59E0B', x: 148, y: 58  },
-    { role: 'Research',        Icon: Search,     color: '#6366F1', x: 50,  y: 156 },
+    { role: 'Evening Digest',  Icon: Moon,       color: '#6366F1', x: 50,  y: 156 },
     { role: 'Inbox Triage',    Icon: Mail,       color: '#0EA5E9', x: 62,  y: 302 },
     { role: 'Invoice Chaser',  Icon: TrendingUp, color: '#10B981', x: 222, y: 374 },
     { role: 'Meeting Prep',    Icon: Clock,      color: '#8B5CF6', x: 394, y: 358 },

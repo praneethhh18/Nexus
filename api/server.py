@@ -99,6 +99,28 @@ try:
 except Exception as e:
     logger.warning(f"Gmail IMAP auto-seed failed: {e}")
 
+# Auto-seed workspace SMTP from env GMAIL creds so Settings → Email shows as configured.
+try:
+    from config.settings import GMAIL_USER, GMAIL_APP_PASSWORD, EMAIL_ENABLED
+    if EMAIL_ENABLED:
+        from config.db import get_conn as _gc2
+        from api import smtp_credentials as _smtp_creds
+        with _gc2() as _c2:
+            _biz2 = _c2.execute("SELECT id FROM nexus_businesses LIMIT 1").fetchone()
+        if _biz2:
+            _bid2 = _biz2[0] if isinstance(_biz2, tuple) else _biz2["id"]
+            if not _smtp_creds.get_config(_bid2):
+                _smtp_creds.save_config(
+                    _bid2, "system",
+                    host="smtp.gmail.com", port=587,
+                    username=GMAIL_USER, password=GMAIL_APP_PASSWORD,
+                    from_email=GMAIL_USER, from_name="NexusAgent",
+                    use_tls=True,
+                )
+                logger.info(f"[Boot] Workspace SMTP auto-seeded ({GMAIL_USER})")
+except Exception as e:
+    logger.warning(f"Workspace SMTP auto-seed failed: {e}")
+
 # Apply pending schema migrations (idempotent, no-op on already-applied).
 try:
     from db.migrate import apply_pending

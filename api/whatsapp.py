@@ -175,6 +175,43 @@ def get_bridge_secret() -> str:
     return _expected_secret()
 
 
+def send_outbound(phone: str, text: str) -> dict:
+    """
+    Push a message to a WhatsApp number via the local bridge HTTP server.
+    The bridge must be running (whatsapp_bridge/server.js) with WA_HTTP_PORT set.
+    Raises on any error so callers can catch and log gracefully.
+    """
+    import requests as _req
+    bridge_url = (os.getenv("WHATSAPP_BRIDGE_URL", "http://localhost:3001")).rstrip("/")
+    secret = _expected_secret()
+    resp = _req.post(
+        f"{bridge_url}/send",
+        json={"to": phone, "text": text},
+        headers={"X-Nexus-Secret": secret, "Content-Type": "application/json"},
+        timeout=15,
+    )
+    if not resp.ok:
+        raise RuntimeError(f"Bridge returned {resp.status_code}: {resp.text[:200]}")
+    data = resp.json()
+    if not data.get("ok"):
+        raise RuntimeError(data.get("error", "unknown bridge error"))
+    return data
+
+
+def get_linked_phone(business_id: str) -> Optional[str]:
+    """Return the first phone number linked to this business, or None."""
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            f"SELECT phone FROM {ACCOUNTS_TABLE} WHERE active_business_id = ? LIMIT 1",
+            (business_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    return row["phone"] if row else None
+
+
 # ── Link code flow ───────────────────────────────────────────────────────────
 def _new_code() -> str:
     # 6 chars: readable, no ambiguous 0/O/1/I

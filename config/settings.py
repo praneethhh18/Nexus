@@ -172,6 +172,10 @@ def enable_sqlite_production_mode():
       mmap_size=134217728  — 128MB memory-mapped I/O (read speedup)
       busy_timeout=10000   — wait up to 10s on lock contention
     """
+    from config.db import is_postgres
+    if is_postgres():
+        logger.debug("[DB] Postgres backend — skipping SQLite WAL setup")
+        return
     import sqlite3
     if not Path(DB_PATH).exists():
         return  # will be created by first connect; settings applied then

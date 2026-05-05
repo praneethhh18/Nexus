@@ -142,6 +142,10 @@ class _PgCursor:
             yield self._wrap(r)
 
     @property
+    def description(self):
+        return self._c.description
+
+    @property
     def rowcount(self):
         return self._c.rowcount
 
@@ -194,6 +198,7 @@ class _PgConn:
 
 
 _PARAM_RE = re.compile(r"\?")
+_OR_IGNORE_RE = re.compile(r"\bINSERT\s+OR\s+IGNORE\s+INTO\b", re.IGNORECASE)
 
 
 def _translate_sql(sql: str) -> str:
@@ -205,9 +210,9 @@ def _translate_sql(sql: str) -> str:
       INTEGER PRIMARY KEY AUTOINCREMENT → BIGSERIAL PRIMARY KEY
       datetime('now')  → NOW()
       LOWER(col) LIKE ? → LOWER(col) LIKE %s   (handled by ? → %s)
-      INSERT OR REPLACE INTO → INSERT INTO ... ON CONFLICT ... DO UPDATE
-        (NOT handled here — callers that use OR REPLACE must change SQL)
-      PRAGMA ...        → silently ignored
+      INSERT OR IGNORE INTO → INSERT INTO ... ON CONFLICT DO NOTHING
+      INSERT OR REPLACE INTO → NOT handled — callers must rewrite explicitly
+      PRAGMA ...        → silently ignored (→ SELECT 1)
     """
     out = sql
 
@@ -220,6 +225,11 @@ def _translate_sql(sql: str) -> str:
 
     # datetime('now') → NOW()
     out = re.sub(r"datetime\(\s*'now'\s*\)", "NOW()", out, flags=re.IGNORECASE)
+
+    # INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    if _OR_IGNORE_RE.search(out):
+        out = _OR_IGNORE_RE.sub("INSERT INTO", out)
+        out = out.rstrip() + " ON CONFLICT DO NOTHING"
 
     # Placeholder style
     out = _PARAM_RE.sub("%s", out)

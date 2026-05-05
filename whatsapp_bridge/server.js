@@ -18,6 +18,7 @@
 
 import 'dotenv/config';
 import fs from 'fs';
+import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import pino from 'pino';
@@ -36,6 +37,66 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const NEXUS_API_URL = (process.env.NEXUS_API_URL || 'http://localhost:8000').replace(/\/$/, '');
 const NEXUS_WEBHOOK_SECRET = process.env.NEXUS_WEBHOOK_SECRET || '';
 const AUTH_DIR = process.env.WA_AUTH_DIR || path.join(__dirname, 'auth');
+const WA_HTTP_PORT = parseInt(process.env.WA_HTTP_PORT || '3001', 10);
+
+// Active Baileys socket — set once connected, cleared on logout.
+let _activeSock = null;
+
+// ── Outbound HTTP server ─────────────────────────────────────────────────────
+// POST /send  { to: "91XXXXXXXXXX", text: "..." }  → sends a WA message
+// GET  /health                                     → { ok, connected }
+const outboundServer = http.createServer((req, res) => {
+  const secret = req.headers['x-nexus-secret'] || '';
+  if (NEXUS_WEBHOOK_SECRET && secret !== NEXUS_WEBHOOK_SECRET) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: false, error: 'Forbidden' }));
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, connected: !!_activeSock }));
+    return;
+  }
+
+  if (req.method === 'POST' && req.url === '/send') {
+    let body = '';
+    req.on('data', d => { body += d; });
+    req.on('end', async () => {
+      try {
+        const { to, text } = JSON.parse(body);
+        if (!_activeSock) {
+          res.writeHead(503, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: 'WhatsApp not connected yet' }));
+          return;
+        }
+        if (!to || !text) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ ok: false, error: '`to` and `text` are required' }));
+          return;
+        }
+        const digits = to.replace(/[^0-9]/g, '');
+        const jid = `${digits}@s.whatsapp.net`;
+        await _activeSock.sendMessage(jid, { text });
+        console.log(`[nexus-whatsapp] ⇒ outbound to ${digits}: ${text.slice(0, 60)}${text.length > 60 ? '…' : ''}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: true }));
+      } catch (e) {
+        console.error('[nexus-whatsapp] outbound send failed:', e.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ ok: false, error: e.message }));
+      }
+    });
+    return;
+  }
+
+  res.writeHead(404);
+  res.end('Not found');
+});
+
+outboundServer.listen(WA_HTTP_PORT, () => {
+  console.log(`[nexus-whatsapp] Outbound HTTP server on port ${WA_HTTP_PORT}`);
+});
 
 if (!NEXUS_WEBHOOK_SECRET) {
   console.error('[nexus-whatsapp] NEXUS_WEBHOOK_SECRET is required in .env');
@@ -168,10 +229,12 @@ async function startBridge() {
       qrcode.generate(qr, { small: true });
     }
     if (connection === 'open') {
+      _activeSock = sock;
       const phone = (sock.user?.id || '').split(':')[0];
       console.log(`[nexus-whatsapp] ✅ Connected as ${phone}. Waiting for messages...`);
     }
     if (connection === 'close') {
+      _activeSock = null;
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
       console.log(`[nexus-whatsapp] disconnected (code=${statusCode}, loggedOut=${loggedOut})`);

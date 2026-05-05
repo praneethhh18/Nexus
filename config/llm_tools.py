@@ -26,6 +26,7 @@ from loguru import logger
 from config.llm_provider import USE_CLAUDE, USE_BEDROCK, _get_claude, CLAUDE_MODEL, invoke as plain_invoke
 from config import privacy
 from config import cloud_budget
+from config import llm_router
 
 
 # ── Public API ───────────────────────────────────────────────────────────────
@@ -37,25 +38,35 @@ def invoke_with_tools(
     temperature: float = 0.1,
     fast: bool = False,
     sensitive: bool = False,
+    force_cloud: bool = False,
 ) -> Dict[str, Any]:
     """
     Run a single LLM turn with tool use enabled.
 
-    messages: list of {role, content} where content can be:
-        - str (user/assistant text)
-        - list of content blocks (assistant tool_use, user tool_result)
-          matching Claude's message format.
-
-    tools: list of {name, description, input_schema} — same format Claude uses.
-
-    sensitive: when True, forces the local Ollama tool-use path even if a cloud
-    provider is configured. Use for agents that handle raw DB rows, customer
-    records, or internal business data.
+    messages    — list of {role, content}; content may be str or Claude content blocks.
+    tools       — list of {name, description, input_schema}.
+    sensitive   — True forces local Ollama regardless of complexity (PII / DB data).
+    force_cloud — True bypasses complexity routing and always uses cloud if available.
     """
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()
     )
+    if use_cloud and not force_cloud:
+        # Extract the last user message as the prompt for classification
+        last_user = ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                c = m.get("content", "")
+                last_user = c if isinstance(c, str) else " ".join(
+                    b.get("text", "") for b in c if isinstance(b, dict) and b.get("type") == "text"
+                )
+                break
+        decision = llm_router.classify(
+            last_user, system=system, messages=messages, tools=tools
+        )
+        use_cloud = (decision == "cloud")
+
     if use_cloud and USE_CLAUDE:
         return _invoke_claude_tools(messages, tools, system, max_tokens, temperature)
     if use_cloud and USE_BEDROCK:

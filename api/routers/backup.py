@@ -32,6 +32,7 @@ from fastapi.responses import FileResponse
 from loguru import logger
 
 from api.auth import get_current_user
+from config.db import is_postgres
 from config.settings import DB_PATH, CHROMA_PATH
 
 router = APIRouter(tags=["backup"])
@@ -57,12 +58,30 @@ def _vacuum_snapshot(db_path: str, dest: Path) -> int:
     """
     conn = sqlite3.connect(db_path)
     try:
-        # VACUUM INTO requires the destination not to exist yet.
         if dest.exists():
             dest.unlink()
         conn.execute(f"VACUUM INTO '{str(dest).replace(chr(39), chr(39) * 2)}'")
     finally:
         conn.close()
+    return dest.stat().st_size if dest.exists() else 0
+
+
+def _pg_dump(dest: Path) -> int:
+    """
+    Run pg_dump (custom format) to capture a Postgres snapshot. Returns bytes.
+    Requires pg_dump to be installed and DATABASE_URL to be set.
+    """
+    import subprocess
+    database_url = os.getenv("DATABASE_URL", "")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL is not set — cannot pg_dump")
+    result = subprocess.run(
+        ["pg_dump", database_url, "--format=custom", f"--file={dest}"],
+        capture_output=True,
+        timeout=300,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"pg_dump failed: {result.stderr.decode(errors='replace')}")
     return dest.stat().st_size if dest.exists() else 0
 
 
@@ -76,8 +95,16 @@ def _build_backup_zip(staging: Path) -> Path:
         chroma_db/...          (verbatim copy, omitted if folder doesn't exist)
         README.txt             (one-paragraph "what this is")
     """
-    snapshot_path = staging / "nexusagent.db"
-    snapshot_size = _vacuum_snapshot(DB_PATH, snapshot_path)
+    if is_postgres():
+        snapshot_path = staging / "nexusagent.dump"
+        snapshot_size = _pg_dump(snapshot_path)
+        snapshot_filename = "nexusagent.dump"
+        snapshot_note = "Postgres pg_dump (custom format). Restore with: pg_restore -d <dbname> nexusagent.dump"
+    else:
+        snapshot_path = staging / "nexusagent.db"
+        snapshot_size = _vacuum_snapshot(DB_PATH, snapshot_path)
+        snapshot_filename = "nexusagent.db"
+        snapshot_note = "SQLite database (clean VACUUM INTO snapshot)"
 
     chroma_dir = Path(CHROMA_PATH)
     chroma_files: list = []
@@ -93,9 +120,11 @@ def _build_backup_zip(staging: Path) -> Path:
         "version": BACKUP_VERSION,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "host": os.uname().nodename if hasattr(os, "uname") else os.environ.get("COMPUTERNAME", ""),
+        "backend": "postgres" if is_postgres() else "sqlite",
         "db": {
-            "filename": "nexusagent.db",
+            "filename": snapshot_filename,
             "bytes":    snapshot_size,
+            "notes":    snapshot_note,
         },
         "chroma": {
             "included":  bool(chroma_files),
@@ -103,35 +132,33 @@ def _build_backup_zip(staging: Path) -> Path:
             "bytes":     chroma_total,
         },
         "notes": (
-            "Disaster-recovery snapshot. Restore on a fresh install by "
-            "stopping the server, replacing data/nexusagent.db with the "
-            "bundled copy, and replacing the chroma_db/ folder. A guided "
-            "restore endpoint is on the roadmap."
+            "Disaster-recovery snapshot. See README.txt for restore instructions."
         ),
     }
 
     readme = (
         "NexusAgent — Full Backup\n"
         f"Created: {manifest['created_at']}\n"
+        f"Backend: {manifest['backend']}\n"
         f"DB: {snapshot_size:,} bytes  ·  Chroma: {chroma_total:,} bytes "
         f"({len(chroma_files)} files)\n\n"
         "What's inside:\n"
-        "  manifest.json   — version + sizes + creation time\n"
-        "  nexusagent.db   — SQLite database (clean VACUUM INTO snapshot)\n"
-        "  chroma_db/      — vector store for the RAG knowledge base\n\n"
-        "How to restore (manual, until the restore endpoint ships):\n"
-        "  1. Stop the NexusAgent server (uvicorn / start.bat).\n"
+        "  manifest.json     — version + sizes + creation time\n"
+        f"  {snapshot_filename:<18s}— {snapshot_note}\n"
+        "  chroma_db/        — vector store for the RAG knowledge base\n\n"
+        "How to restore:\n"
+        "  1. Stop the NexusAgent server.\n"
         "  2. Back up your existing data/ and chroma_db/ folders.\n"
-        "  3. Replace data/nexusagent.db with the file from this zip.\n"
+        "  3. Restore the DB snapshot (see manifest.db.notes for command).\n"
         "  4. Replace the chroma_db/ folder with the one from this zip.\n"
-        "  5. Restart. Login should work with your previous credentials.\n"
+        "  5. Restart.\n"
     )
 
     zip_path = staging / "nexus_backup.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
         zf.writestr("manifest.json", json.dumps(manifest, indent=2))
         zf.writestr("README.txt", readme)
-        zf.write(snapshot_path, "nexusagent.db")
+        zf.write(snapshot_path, snapshot_filename)
         for p in chroma_files:
             arcname = "chroma_db/" + str(p.relative_to(chroma_dir)).replace(os.sep, "/")
             zf.write(p, arcname)
@@ -192,7 +219,14 @@ def backup_info(user: dict = Depends(get_current_user)):
 
     db_bytes = 0
     try:
-        if Path(DB_PATH).exists():
+        if is_postgres():
+            from config.db import get_conn as _gc
+            with _gc() as _c:
+                row = _c.execute(
+                    "SELECT pg_database_size(current_database())"
+                ).fetchone()
+                db_bytes = int(row[0] or 0) if row else 0
+        elif Path(DB_PATH).exists():
             db_bytes = Path(DB_PATH).stat().st_size
     except Exception:
         pass
