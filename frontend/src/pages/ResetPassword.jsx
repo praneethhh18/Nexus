@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { resetPassword } from '../services/auth';
 
@@ -33,7 +33,7 @@ function pwScore(pw) {
   if (!pw || pw.length < 8) return 1;
   let s = 1;
   if (pw.length >= 10) s++;
-  if (/[A-Z]/.test(pw) && /[0-9!@#$%^&*_\-]/.test(pw)) s++;
+  if (/[A-Z]/.test(pw) && /[0-9!@#$%^&*_-]/.test(pw)) s++;
   return s;
 }
 
@@ -185,10 +185,6 @@ export default function ResetPassword() {
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!token) setError('Invalid or missing reset link. Please request a new one.');
-  }, [token]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

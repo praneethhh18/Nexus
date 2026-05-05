@@ -32,7 +32,7 @@ function pwScore(pw) {
   if (!pw || pw.length < 8) return 1;
   let s = 1;
   if (pw.length >= 10) s++;
-  if (/[A-Z]/.test(pw) && /[0-9!@#$%^&*_\-]/.test(pw)) s++;
+  if (/[A-Z]/.test(pw) && /[0-9!@#$%^&*_-]/.test(pw)) s++;
   return s;
 }
 
