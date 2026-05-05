@@ -1,9 +1,11 @@
 # Core LLM + Orchestration
-langchain>=0.3.0
-langchain-community>=0.3.0
-langchain-core>=0.3.0
+langchain>=0.3.22
+langchain-community>=0.3.22
+langchain-core>=0.3.22
 langchain-ollama>=0.3.0
+langchain-text-splitters>=1.1.2
 langgraph>=0.2.0
+langsmith>=0.7.31
 ollama>=0.3.0
 
 # RAG + Embeddings
@@ -32,7 +34,7 @@ kaleido>=0.2.1
 
 # Actions + Notifications
 discord-webhook>=1.3.0
-requests>=2.32.0
+requests>=2.33.0
 plyer>=2.1.0
 
 # API Server
@@ -45,7 +47,7 @@ email-validator>=2.0.0  # required by pydantic EmailStr (smtp router)
 # Auth
 pyjwt>=2.8.0
 bcrypt>=4.0.0
-cryptography>=43.0.0  # Fernet encryption for per-tenant SMTP credentials
+cryptography>=46.0.5  # Fernet encryption; >=46.0.5 fixes ECDH subgroup attack CVE
 
 # AI Provider (Claude API — optional, falls back to local Ollama)
 anthropic>=0.40.0
