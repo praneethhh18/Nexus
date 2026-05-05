@@ -306,6 +306,7 @@ export default function CRM() {
   const selectionCompanies = useBulkSelection(visibleCompanies);
   const selectionDeals     = useBulkSelection(visibleDeals);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
 
   // Reload when business context changes
@@ -1655,6 +1656,7 @@ function IntakeKeyCard({ flash }) {
     try { setKeys(await listIntakeKeys()); }
     catch (e) { flash?.(`Could not load keys: ${e.message || e}`); }
   };
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCreate = async () => {

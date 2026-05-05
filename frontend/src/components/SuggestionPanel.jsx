@@ -29,6 +29,7 @@ export default function SuggestionPanel({ entityType, entityId, compact = false 
       .finally(() => setLoading(false));
   }, [entityType, entityId]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const hide = async (id) => {

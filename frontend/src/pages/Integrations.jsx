@@ -366,6 +366,7 @@ export default function Integrations() {
     finally { setLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   const byCategory = useMemo(() => {

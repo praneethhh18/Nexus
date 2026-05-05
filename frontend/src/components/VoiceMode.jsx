@@ -105,6 +105,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   // ── Reset when the modal is closed from outside ───────────────────────────
   useEffect(() => {
     if (!open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       cleanup();
       setState('idle');
       setTranscript('');

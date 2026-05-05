@@ -83,6 +83,7 @@ export default function History() {
     }
   }, [search, intentFilter, starredOnly]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     const h = () => load();

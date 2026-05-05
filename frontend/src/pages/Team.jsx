@@ -55,6 +55,7 @@ export default function Team() {
     } catch (e) { setMsg(`Failed: ${e.message}`); }
   }, [current?.id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();

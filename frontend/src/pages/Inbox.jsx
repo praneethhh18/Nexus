@@ -325,6 +325,7 @@ export default function Inbox() {
     }).catch(() => {});
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();

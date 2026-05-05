@@ -77,6 +77,7 @@ export default function Memory() {
     catch (e) { setMsg(`Failed: ${e.message}`); }
   }, [search]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();

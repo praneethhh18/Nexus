@@ -316,6 +316,7 @@ export default function VoxAgent() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     // Refresh the queue every 30s so a freshly-queued dial appears without

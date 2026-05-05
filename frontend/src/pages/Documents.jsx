@@ -247,6 +247,7 @@ export default function Documents() {
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();

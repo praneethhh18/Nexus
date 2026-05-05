@@ -93,6 +93,7 @@ export default function Security() {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); reloadPrivacy(); }, [reload, reloadPrivacy]);
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };

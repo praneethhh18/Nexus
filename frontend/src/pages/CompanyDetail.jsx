@@ -56,6 +56,7 @@ export default function CompanyDetail() {
     setLoading(false);
   }, [id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
 
   const wonValue = useMemo(

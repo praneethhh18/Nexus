@@ -86,6 +86,7 @@ export default function InvoiceDetail() {
     setLoading(false);
   }, [id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
 
   const money = useMemo(

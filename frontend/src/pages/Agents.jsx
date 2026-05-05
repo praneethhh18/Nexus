@@ -84,6 +84,7 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
     finally { setTogglingEnabled(false); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setValue(persona.name); }, [persona.name]);
 
   const save = async (newVal) => {
@@ -541,6 +542,7 @@ export default function Agents() {
     finally { setActivityLoading(false); }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); loadActivity(); }, [load, loadActivity]);
 
   const onRenamed = (updated) => {

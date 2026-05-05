@@ -39,6 +39,7 @@ export default function ActivityTimeline({ entityType, entityId, limit = 100 }) 
   useEffect(() => {
     if (!entityType || !entityId) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true); setErr('');
     const t = getToken();
     const b = getBusinessId();

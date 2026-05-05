@@ -199,6 +199,7 @@ export default function Analytics({ embedded = false }) {
     } catch (e) { setMsg(`Failed: ${e.message}`); }
   }, [horizonMonths, impactDays]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();

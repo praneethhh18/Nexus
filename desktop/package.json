@@ -19,7 +19,7 @@
   "dependencies": {},
   "devDependencies": {
     "cross-env": "^10.1.0",
-    "electron": "^32.0.0",
+    "electron": "^36.0.0",
     "electron-builder": "^26.8.1"
   },
   "build": {

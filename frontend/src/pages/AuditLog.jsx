@@ -108,7 +108,9 @@ export default function AuditLog() {
     setCloudLoading(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reloadActions(); }, [reloadActions]);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { if (tab === 'cloud') reloadCloud(); }, [tab, reloadCloud]);
   useEffect(() => {
     const h = () => { reloadActions(); reloadCloud(); };

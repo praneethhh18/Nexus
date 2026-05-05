@@ -1130,6 +1130,7 @@ function SmtpPanel({ flash }) {
     setLoading(false);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { refresh(); }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));

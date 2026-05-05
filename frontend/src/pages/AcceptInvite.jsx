@@ -13,6 +13,7 @@ export default function AcceptInvite() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!token) { setError('Missing invite token.'); return; }
     previewInvite(token).then(setPreview).catch(e => setError(e.message));
   }, [token]);

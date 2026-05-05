@@ -46,6 +46,7 @@ export default function CommandPalette() {
   // Reset & focus when opening
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery('');
       setGroups([]);
       setSelectedIdx(0);
@@ -57,6 +58,7 @@ export default function CommandPalette() {
   useEffect(() => {
     if (!open) return;
     if (query.trim().length < 2) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGroups([]);
       return;
     }

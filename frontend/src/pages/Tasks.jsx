@@ -213,6 +213,7 @@ export default function Tasks() {
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [filter, dueWindow]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();

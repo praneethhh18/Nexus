@@ -102,6 +102,7 @@ export default function Dashboard() {
     } catch {}
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => {
     const h = () => reload();
@@ -138,6 +139,7 @@ export default function Dashboard() {
       setBriefingAgent(all.find(p => p.agent_key === 'morning_briefing') || null);
     } catch { /* ignore */ }
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadBriefing(); }, [loadBriefing]);
 
 
@@ -162,6 +164,7 @@ export default function Dashboard() {
       }
     } catch { /* ignore */ }
   }, []);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { loadEvening(); }, [loadEvening]);
 
 

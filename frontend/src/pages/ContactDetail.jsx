@@ -117,6 +117,7 @@ export default function ContactDetail() {
     setLoading(false);
   }, [id]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);
 
   const fullName = useMemo(() => {

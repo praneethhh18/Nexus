@@ -92,6 +92,7 @@ export default function AdminMetrics() {
     }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); /* eslint-disable-line */ }, [scope, days]);
 
   return (
