@@ -220,6 +220,31 @@ def _translate_sql(sql: str) -> str:
     if out.strip().upper().startswith("PRAGMA"):
         return "SELECT 1"  # Postgres-safe no-op
 
+    # ── COLLATE NOCASE — SQLite-only, translate to Postgres equivalents ──
+    # Inside UNIQUE(...) constraints, Postgres can't accept function calls
+    # inline, so just strip the modifier (case-insensitive uniqueness is
+    # lost; the app layer already validates).
+    out = re.sub(
+        r"(UNIQUE\s*\([^)]*?)\s+COLLATE\s+NOCASE",
+        r"\1",
+        out,
+        flags=re.IGNORECASE,
+    )
+    # `col = ? COLLATE NOCASE` → `LOWER(col) = LOWER(?)`  (WHERE clauses)
+    out = re.sub(
+        r"(\b\w+(?:\.\w+)?)\s*=\s*\?\s+COLLATE\s+NOCASE\b",
+        r"LOWER(\1) = LOWER(?)",
+        out,
+        flags=re.IGNORECASE,
+    )
+    # Remaining `col COLLATE NOCASE` → `LOWER(col)`  (ORDER BY clauses, etc.)
+    out = re.sub(
+        r"(\b\w+(?:\.\w+)?)\s+COLLATE\s+NOCASE\b",
+        r"LOWER(\1)",
+        out,
+        flags=re.IGNORECASE,
+    )
+
     # AUTOINCREMENT isn't valid on Postgres
     out = re.sub(r"INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT", "BIGSERIAL PRIMARY KEY", out, flags=re.IGNORECASE)
 

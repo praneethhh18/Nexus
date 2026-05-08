@@ -120,9 +120,78 @@ def _sha256(text: str) -> str:
 
 
 def _split_statements(sql: str) -> list[str]:
-    """Split a SQL script into individual statements by semicolons."""
-    parts = re.split(r";", sql)
-    return [p.strip() for p in parts if p.strip()]
+    """Split a SQL script into individual statements by semicolons.
+    Aware of `-- line comments`, `/* block comments */`, `'string literals'`,
+    `"identifiers"`, and `$tag$ ... $tag$` dollar-quoted blocks (Postgres),
+    so a `;` inside any of those does NOT split the statement."""
+    out: list[str] = []
+    buf: list[str] = []
+    i, n = 0, len(sql)
+    state = "code"  # one of: code, line_comment, block_comment, single, double, dollar
+    dollar_tag = ""  # for state == "dollar"
+
+    while i < n:
+        ch = sql[i]
+        nxt = sql[i + 1] if i + 1 < n else ""
+
+        if state == "code":
+            if ch == "-" and nxt == "-":
+                state = "line_comment"
+                buf.append(ch); buf.append(nxt); i += 2; continue
+            if ch == "/" and nxt == "*":
+                state = "block_comment"
+                buf.append(ch); buf.append(nxt); i += 2; continue
+            if ch == "'":
+                state = "single"; buf.append(ch); i += 1; continue
+            if ch == '"':
+                state = "double"; buf.append(ch); i += 1; continue
+            if ch == "$":
+                # Look ahead for $tag$ start (tag may be empty: $$)
+                m = re.match(r"\$([A-Za-z_][A-Za-z0-9_]*)?\$", sql[i:])
+                if m:
+                    dollar_tag = m.group(0)  # includes both $ chars
+                    buf.append(dollar_tag); i += len(dollar_tag); state = "dollar"; continue
+            if ch == ";":
+                stmt = "".join(buf).strip()
+                if stmt:
+                    out.append(stmt)
+                buf = []
+                i += 1
+                continue
+            buf.append(ch); i += 1
+        elif state == "line_comment":
+            buf.append(ch)
+            if ch == "\n":
+                state = "code"
+            i += 1
+        elif state == "block_comment":
+            buf.append(ch)
+            if ch == "*" and nxt == "/":
+                buf.append(nxt); i += 2; state = "code"; continue
+            i += 1
+        elif state == "single":
+            buf.append(ch)
+            if ch == "'" and nxt == "'":  # escaped single-quote
+                buf.append(nxt); i += 2; continue
+            if ch == "'":
+                state = "code"
+            i += 1
+        elif state == "double":
+            buf.append(ch)
+            if ch == '"' and nxt == '"':  # escaped double-quote
+                buf.append(nxt); i += 2; continue
+            if ch == '"':
+                state = "code"
+            i += 1
+        elif state == "dollar":
+            if sql[i:i + len(dollar_tag)] == dollar_tag:
+                buf.append(dollar_tag); i += len(dollar_tag); state = "code"; dollar_tag = ""; continue
+            buf.append(ch); i += 1
+
+    tail = "".join(buf).strip()
+    if tail:
+        out.append(tail)
+    return out
 
 
 # ── Apply ───────────────────────────────────────────────────────────────────
@@ -274,7 +343,7 @@ def _main() -> int:
         return 0
     print(f"Applied {len(runs)} migration(s):")
     for r in runs:
-        print(f"  ✓ {r['version']:04d}_{r['name']}")
+        print(f"  [ok] {r['version']:04d}_{r['name']}")
     return 0
 
 
