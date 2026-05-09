@@ -14,6 +14,7 @@ import {
   DEAL_STAGES, INTERACTION_TYPES,
 } from '../services/crm';
 import { bulkDeleteContacts, bulkDeleteCompanies, bulkDeleteDeals, bulkDealStage, bulkTagsFor } from '../services/tags';
+import { prepareDialForContact } from '../services/voice_calls';
 import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
 import { TagChips, TagPicker } from '../components/TagChips';
 import TagFilterBar, { filterItems } from '../components/TagFilterBar';
@@ -27,6 +28,46 @@ const STAGE_COLORS = {
 };
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
+
+// ── Quick-action buttons on a contact row (Vox call · WhatsApp · Email) ────
+const waLink = (phone) => phone ? `https://wa.me/${phone.replace(/\D/g, '')}` : null;
+
+function ContactQuickActions({ contact, flash, size = 11 }) {
+  const wa = waLink(contact.phone);
+  const onCall = async (e) => {
+    e.stopPropagation();
+    if (!contact.phone) return flash?.('No phone number on this contact');
+    try {
+      const r = await prepareDialForContact({ contact_id: contact.id, purpose: 'a quick check-in' });
+      if (r?.precall_url) window.open(r.precall_url, '_blank', 'noopener');
+      else flash?.('Could not start call — no precall URL returned');
+    } catch (err) {
+      flash?.(`Vox call failed: ${err.message}`);
+    }
+  };
+  const stop = (e) => e.stopPropagation();
+  const linkBtn = (href, title, Icon, color) => (
+    <a href={href} target="_blank" rel="noreferrer" onClick={stop} title={title}
+       className="btn-ghost" style={{ padding: 4, display: 'inline-flex', color }}>
+      <Icon size={size} />
+    </a>
+  );
+  return (
+    <>
+      <button
+        className="btn-ghost"
+        style={{ padding: 4, opacity: contact.phone ? 1 : 0.35 }}
+        onClick={onCall}
+        title={contact.phone ? `Call ${contact.phone} via Vox` : 'No phone — add one to call'}
+        disabled={!contact.phone}
+      >
+        <Phone size={size} />
+      </button>
+      {wa && linkBtn(wa, `WhatsApp ${contact.phone}`, MessageSquare, 'var(--color-ok)')}
+      {contact.email && linkBtn(`mailto:${contact.email}`, `Email ${contact.email}`, Mail, 'var(--color-info)')}
+    </>
+  );
+}
 
 // ── Reusable modal ──────────────────────────────────────────────────────────
 function Modal({ title, onClose, children, wide = false }) {
@@ -474,6 +515,7 @@ export default function CRM() {
                         <td>{c.phone || '—'}</td>
                         <td><TagChips tags={tagsByContact[c.id] || []} size="xs" /></td>
                         <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
+                          <ContactQuickActions contact={c} flash={flash} />
                           <button className="btn-ghost" style={{ padding: 4 }} onClick={() => navigate(`/crm/contacts/${c.id}`)} title="Open"><ChevronRight size={11} /></button>
                           <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setActivityFor({ kind: 'contact', record: c })} title="Activity"><Activity size={11} /></button>
                           <button className="btn-ghost" style={{ padding: 4 }} onClick={() => setModal({ kind: 'contact', record: c })}><Edit3 size={11} /></button>

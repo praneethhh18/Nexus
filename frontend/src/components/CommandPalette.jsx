@@ -2,10 +2,13 @@
  * Global search command palette — opens with Ctrl+K / Cmd+K from anywhere.
  * Searches across contacts, companies, deals, tasks, invoices, documents,
  * memory, and recent conversations. Keyboard navigable.
+ *
+ * Slash commands (typed at start): /call /wa /email /task /invoice /lead
+ *  /outreach /agents /agent <name>  → run a quick action or jump to a page.
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Building2, Briefcase, CheckSquare, Receipt, FileType2, Brain, MessageSquare, X } from 'lucide-react';
+import { Search, User, Building2, Briefcase, CheckSquare, Receipt, FileType2, Brain, MessageSquare, Phone, Mail, Plus, Send, Bot, Zap } from 'lucide-react';
 import { globalSearch } from '../services/security';
 
 const KIND_META = {
@@ -17,7 +20,23 @@ const KIND_META = {
   document:     { icon: FileType2,    color: '#a78bfa', label: 'Document' },
   memory:       { icon: Brain,        color: 'var(--color-warn)', label: 'Memory' },
   conversation: { icon: MessageSquare, color: 'var(--color-text-dim)', label: 'Chat' },
+  command:      { icon: Zap,          color: 'var(--color-warn)', label: 'Quick action' },
 };
+
+// Slash commands the palette recognises. Each entry produces a synthetic
+// search-result item the user can fire with Enter — same nav model as a real
+// search hit, no parallel UI to maintain.
+const COMMANDS = [
+  { trigger: '/call',     icon: Phone,        title: 'Call …',          description: 'Vox: outbound voice call to a contact', route: '/crm?action=call' },
+  { trigger: '/wa',       icon: MessageSquare, title: 'WhatsApp …',      description: 'Open WhatsApp chat with a contact',     route: '/crm?action=wa' },
+  { trigger: '/email',    icon: Mail,         title: 'Email …',         description: 'Compose an email to a contact',         route: '/crm?action=email' },
+  { trigger: '/task',     icon: Plus,         title: 'New task',        description: 'Create a task',                          route: '/tasks?new=1' },
+  { trigger: '/invoice',  icon: Receipt,      title: 'New invoice',     description: 'Draft an invoice',                       route: '/invoices?new=1' },
+  { trigger: '/lead',     icon: Search,       title: 'Find leads',      description: 'Run Lead Hunter (find new prospects)',  route: '/agents?focus=lead-hunter' },
+  { trigger: '/outreach', icon: Send,         title: 'Run outreach',    description: 'Bulk message a contact segment',        route: '/agents?focus=outreach' },
+  { trigger: '/agents',   icon: Bot,          title: 'Open Agents',     description: 'Manage your custom agents',              route: '/agents' },
+  { trigger: '/agent',    icon: Bot,          title: 'New custom agent', description: 'Define a new scheduled agent',         route: '/agents?new=1' },
+];
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
@@ -54,18 +73,48 @@ export default function CommandPalette() {
     }
   }, [open]);
 
-  // Debounced search
+  // Debounced search — handles both slash commands and free-text search
   useEffect(() => {
     if (!open) return;
-    if (query.trim().length < 2) {
+    const q = query.trim();
+
+    // Slash commands take precedence — they don't need a 2-char minimum.
+    if (q.startsWith('/')) {
+      const matches = COMMANDS
+        .filter((c) => c.trigger.startsWith(q.toLowerCase()) || c.trigger.startsWith('/' + q.toLowerCase().slice(1)))
+        .map((c) => ({
+          id:       c.trigger,
+          title:    c.title,
+          subtitle: `${c.trigger} · ${c.description}`,
+          route:    c.route,
+          _command: c,
+        }));
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setGroups([]);
+      setGroups(matches.length ? [{ kind: 'command', items: matches }] : []);
+      setSelectedIdx(0);
       return;
     }
+
+    if (q.length < 2) {
+      // Show all commands as a starting menu when palette is empty
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setGroups([{
+        kind: 'command',
+        items: COMMANDS.map((c) => ({
+          id:       c.trigger,
+          title:    c.title,
+          subtitle: `${c.trigger} · ${c.description}`,
+          route:    c.route,
+          _command: c,
+        })),
+      }]);
+      return;
+    }
+
     const t = setTimeout(async () => {
       setLoading(true);
       try {
-        const res = await globalSearch(query.trim(), 6);
+        const res = await globalSearch(q, 6);
         setGroups(res.groups || []);
         setSelectedIdx(0);
       } catch {}
@@ -136,9 +185,9 @@ export default function CommandPalette() {
         </div>
 
         <div style={{ flex: 1, overflow: 'auto' }}>
-          {query.trim().length < 2 ? (
+          {query.trim().length < 2 && groups.length === 0 ? (
             <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>
-              Type at least 2 characters. <span style={{ color: 'var(--color-text-dim)' }}>Tip: try a contact name, a deal title, or an invoice number.</span>
+              Type 2+ chars to search · or start with <code style={{ background: 'var(--color-surface-2)', padding: '1px 4px', borderRadius: 3 }}>/</code> for quick actions.
             </div>
           ) : loading && groups.length === 0 ? (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 12 }}>Searching…</div>
