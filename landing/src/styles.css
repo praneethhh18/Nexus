@@ -190,17 +190,66 @@ img, svg { display: block; }
   position: sticky;
   top: 0;
   z-index: 200;
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   border-bottom: 1px solid transparent;
-  transition: border-color 0.25s, box-shadow 0.25s;
+  transition: border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  overflow: hidden;
+  isolation: isolate;
+  /* Cursor position written by JS — defaults off-screen so the spotlight
+     starts hidden until the user actually moves the mouse over the header. */
+  --mx: -200px;
+  --my: -200px;
 }
 .nav-scrolled {
   border-bottom-color: var(--border);
   box-shadow: 0 1px 24px rgba(15,23,42,0.07);
+  background: rgba(255,255,255,0.88);
 }
+
+/* Smart-sticky: slides up out of view on scroll-down, slides back on scroll-up */
+.nav-wrap {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.25s, box-shadow 0.25s, background 0.25s;
+  will-change: transform;
+}
+.nav-hidden {
+  transform: translateY(-100%);
+}
+
+/* Animated WebGL aurora layer — sits behind everything else, very subtle.
+   Hard-cut at the bottom so the fade-out doesn't draw a visible color band
+   where the header meets the page below. */
+.nav-aurora {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: 0.12;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(180deg, #000 0%, #000 94%, transparent 100%);
+          mask: linear-gradient(180deg, #000 0%, #000 94%, transparent 100%);
+}
+.nav-aurora canvas { display: block; width: 100% !important; height: 100% !important; }
+
+/* Cursor-following radial spotlight — soft glow centered on (--mx, --my) */
+.nav-spotlight {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    320px circle at var(--mx) var(--my),
+    rgba(124, 58, 237, 0.18) 0%,
+    rgba(59, 130, 246, 0.10) 35%,
+    transparent 70%
+  );
+  transition: background 0.05s linear;
+}
+
 .nav-inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   height: 64px;
@@ -233,6 +282,7 @@ img, svg { display: block; }
   box-shadow: 0 2px 8px rgba(29,78,216,0.28);
 }
 .nav-links {
+  position: relative;
   display: flex;
   align-items: center;
   flex: 1;
@@ -240,15 +290,39 @@ img, svg { display: block; }
   gap: 2px;
 }
 .nav-links a {
+  position: relative;
+  z-index: 1;
   color: var(--text-muted);
   font-size: 14px;
   font-weight: 600;
   padding: 6px 14px;
   border-radius: var(--r-md);
   text-decoration: none;
-  transition: color 0.12s, background 0.12s;
+  transition: color 0.18s ease;
 }
-.nav-links a:hover { color: var(--text); background: var(--bg-1); }
+.nav-links a:hover { color: var(--text); background: transparent; }
+
+/* Single sliding pill that flies between hovered nav items. JS sets
+   transform + width via inline style; the spring easing here makes the
+   motion feel alive instead of teleporting. */
+.nav-pill {
+  position: absolute;
+  top: 0; left: 0;
+  z-index: 0;
+  border-radius: var(--r-md);
+  background: linear-gradient(135deg,
+    rgba(124, 58, 237, 0.12),
+    rgba(59, 130, 246, 0.10));
+  border: 1px solid rgba(124, 58, 237, 0.18);
+  box-shadow: 0 4px 14px -4px rgba(124, 58, 237, 0.20);
+  transition:
+    transform 0.32s cubic-bezier(0.34, 1.40, 0.64, 1),
+    width     0.32s cubic-bezier(0.34, 1.40, 0.64, 1),
+    height    0.32s cubic-bezier(0.34, 1.40, 0.64, 1),
+    opacity   0.18s ease;
+  pointer-events: none;
+  will-change: transform, width;
+}
 .nav-ctas { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .nav-signin {
   font-size: 14px;
@@ -269,6 +343,25 @@ img, svg { display: block; }
   cursor: pointer;
   padding: 6px;
   border-radius: var(--r-md);
+}
+
+/* Magnetic CTA — JS writes inline transform during pull; cubic-bezier here
+   is for the snap-back when the cursor leaves the magnetic radius. */
+.nav-cta-magnetic {
+  transition:
+    transform 0.5s cubic-bezier(0.34, 1.45, 0.64, 1),
+    box-shadow 0.2s ease;
+  will-change: transform;
+}
+.nav-cta-magnetic:hover {
+  box-shadow: 0 8px 22px rgba(29, 78, 216, 0.35);
+}
+
+/* Reduce motion preference — kill the cursor effects + spring */
+@media (prefers-reduced-motion: reduce) {
+  .nav-aurora, .nav-spotlight { display: none; }
+  .nav-pill { transition: opacity 0.15s linear; }
+  .nav-cta-magnetic { transition: none; }
 }
 
 /* ── Hero ────────────────────────────────────────────────────────────────── */

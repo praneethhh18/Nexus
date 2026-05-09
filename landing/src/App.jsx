@@ -4,6 +4,7 @@ import {
   Mail, Phone, Moon, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check, Loader2,
 } from 'lucide-react';
+import Aurora, { AuroraErrorBoundary } from './components/Aurora';
 
 const APP_URL = import.meta.env.VITE_APP_URL || 'https://app.nexusagent.in';
 const MAIL    = 'hi@nexusagent.in';
@@ -206,33 +207,171 @@ export default function App() {
 
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
+// Nav links — easier to keep the pill animation and the rendered <a>s in sync
+const NAV_LINKS = [
+  { id: 'agents',  label: 'Agents',  href: '#agents'  },
+  { id: 'privacy', label: 'Privacy', href: '#privacy' },
+  { id: 'pricing', label: 'Pricing', href: '#pricing' },
+  { id: 'faq',     label: 'FAQ',     href: '#faq'     },
+];
+
 function Nav() {
-  const [open, setOpen]       = useState(false);
+  const [open, setOpen]         = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hidden,   setHidden]   = useState(false);
+  const [hoveredLink, setHoveredLink] = useState(null);
+  const [pillStyle, setPillStyle]     = useState({ opacity: 0 });
+
+  const wrapRef     = useRef(null);
+  const linksRef    = useRef(null);
+  const ctaRef      = useRef(null);
+  const linkRefs    = useRef({});
+
+  // Scrolled + smart-sticky: hide on scroll-down past the fold, show on scroll-up.
+  // Always visible within the first 80px so the top of the page never feels broken.
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 8);
+    let lastY = window.scrollY;
+    const fn = () => {
+      const y = window.scrollY;
+      setScrolled(y > 8);
+      if (y < 80) {
+        setHidden(false);             // top of page — always visible
+      } else if (y > lastY + 4) {
+        setHidden(true);              // scrolling DOWN — vanish
+      } else if (y < lastY - 4) {
+        setHidden(false);             // scrolling UP — reveal
+      }
+      lastY = y;
+    };
     window.addEventListener('scroll', fn, { passive: true });
     return () => window.removeEventListener('scroll', fn);
   }, []);
+
+  // Don't keep a stale pill visible while the header is hidden — looks weird
+  // when the bar reappears with a glowing pill at a non-hovered link.
+  useEffect(() => {
+    if (hidden && pillStyle.opacity) setPillStyle((s) => ({ ...s, opacity: 0 }));
+  }, [hidden, pillStyle.opacity]);
+
+  // Sliding pill — recompute target rect whenever hover changes
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => {
+    if (!hoveredLink || !linksRef.current) {
+      setPillStyle((s) => ({ ...s, opacity: 0 }));
+      return;
+    }
+    const el = linkRefs.current[hoveredLink];
+    if (!el) return;
+    const parentRect = linksRef.current.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    setPillStyle({
+      opacity: 1,
+      transform: `translate3d(${rect.left - parentRect.left}px, ${rect.top - parentRect.top}px, 0)`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+    });
+  }, [hoveredLink]);
+
+  // Cursor spotlight — write --mx / --my CSS vars on the wrap
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const onMove = (e) => {
+      const rect = wrap.getBoundingClientRect();
+      wrap.style.setProperty('--mx', `${e.clientX - rect.left}px`);
+      wrap.style.setProperty('--my', `${e.clientY - rect.top}px`);
+    };
+    wrap.addEventListener('mousemove', onMove);
+    return () => wrap.removeEventListener('mousemove', onMove);
+  }, []);
+
+  // Magnetic CTA — pull "Start free" gently toward cursor when within 100px
+  useEffect(() => {
+    const btn = ctaRef.current;
+    if (!btn) return;
+    const onMove = (e) => {
+      const rect = btn.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const RANGE = 100;
+      if (dist < RANGE) {
+        const pull = (1 - dist / RANGE) * 10;
+        const ux = dx / (dist || 1), uy = dy / (dist || 1);
+        btn.style.transform = `translate3d(${ux * pull}px, ${uy * pull}px, 0)`;
+      } else if (btn.style.transform) {
+        btn.style.transform = '';
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      if (btn) btn.style.transform = '';
+    };
+  }, []);
+
   return (
-    <header className={`nav-wrap ${scrolled ? 'nav-scrolled' : ''}`}>
+    <header ref={wrapRef} className={`nav-wrap ${scrolled ? 'nav-scrolled' : ''} ${hidden ? 'nav-hidden' : ''}`}>
+      {/* Animated WebGL aurora behind everything — error boundary so a stale
+          GPU driver can't break the whole header. */}
+      <div className="nav-aurora" aria-hidden>
+        <AuroraErrorBoundary>
+          <Aurora
+            colorStops={['#7C3AED', '#06B6D4', '#3B82F6']}
+            amplitude={0.6}
+            blend={0.5}
+            speed={0.7}
+          />
+        </AuroraErrorBoundary>
+      </div>
+
+      {/* Cursor-tracking radial spotlight overlay */}
+      <div className="nav-spotlight" aria-hidden />
+
       <div className="container nav-inner">
         <a href="#top" className="logo">
           <LogoMark size={32} />
           NexusAgent
         </a>
-        <nav className={`nav-links ${open ? 'nav-open' : ''}`}>
-          <a href="#agents"  onClick={() => setOpen(false)}>Agents</a>
-          <a href="#privacy" onClick={() => setOpen(false)}>Privacy</a>
-          <a href="#pricing" onClick={() => setOpen(false)}>Pricing</a>
-          <a href="#faq"     onClick={() => setOpen(false)}>FAQ</a>
+
+        <nav
+          ref={linksRef}
+          className={`nav-links ${open ? 'nav-open' : ''}`}
+          onMouseLeave={() => setHoveredLink(null)}
+        >
+          {/* Sliding pill — single absolutely-positioned element that flies
+              between the hovered link's bounds */}
+          <span
+            className="nav-pill"
+            style={pillStyle}
+            aria-hidden
+          />
+          {NAV_LINKS.map((l) => (
+            <a
+              key={l.id}
+              ref={(el) => { linkRefs.current[l.id] = el; }}
+              href={l.href}
+              onMouseEnter={() => setHoveredLink(l.id)}
+              onClick={() => setOpen(false)}
+            >
+              {l.label}
+            </a>
+          ))}
         </nav>
+
         <div className="nav-ctas">
           <a href={`${APP_URL}/login`} className="nav-signin">Sign in</a>
-          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-sm">
+          <a
+            ref={ctaRef}
+            href={`${APP_URL}/setup`}
+            className="btn btn-primary btn-sm nav-cta-magnetic"
+          >
             Start free <ArrowRight size={13} />
           </a>
         </div>
+
         <button className="nav-burger" onClick={() => setOpen(o => !o)} aria-label="Menu">
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
