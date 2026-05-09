@@ -204,7 +204,9 @@ async def voice_callback(
     x_voice_callback_secret: Optional[str] = Header(None, alias="X-Voice-Callback-Secret"),
 ):
     """The lab POSTs the full call record here after the call ends.
-    Stored in nexus_voice_calls + mirrored as a CRM interaction."""
+    Stored in nexus_voice_calls + mirrored as a CRM interaction.
+    If the call was triggered from WhatsApp, also sends the summary back to
+    the originating chat via the WhatsApp bridge."""
     expected = os.getenv("VOICE_CALLBACK_SECRET", "")
     if expected and x_voice_callback_secret != expected:
         logger.warning("[voice/callback] rejected: bad / missing secret")
@@ -215,12 +217,58 @@ async def voice_callback(
     except Exception:
         raise HTTPException(400, "body must be JSON")
 
-    if not payload.get("call_sid"):
+    call_sid = payload.get("call_sid") or ""
+    if not call_sid:
         raise HTTPException(400, "call_sid is required")
 
     # business_id may be empty for ad-hoc CLI calls — store anyway, just won't
     # mirror to CRM. Real CRM-triggered calls always have it.
     record = voice_calls.store_completed_call(payload, created_by="vox")
+
+    # If this call originated from a WhatsApp request, deliver the summary
+    # back to the same chat so the user sees the result without opening the app.
+    try:
+        from agents.tools.voice_tools import get_pending_call, clear_pending_call
+        pending = get_pending_call(call_sid)
+        if pending:
+            summary = payload.get("summary") or {}
+            target = pending.get("target_name") or pending.get("target_phone") or "the contact"
+            outcome = summary.get("outcome") or "—"
+            headline = summary.get("headline") or "Call completed (no summary captured)."
+            next_step = summary.get("next_step") or ""
+            duration = payload.get("duration_sec") or 0
+
+            lines = [
+                f"📞 Call to *{target}* finished.",
+                "",
+                f"*Outcome:* {outcome}",
+                f"*Summary:* {headline}",
+            ]
+            if next_step:
+                lines.append(f"*Next step:* {next_step}")
+            if duration:
+                m, s = divmod(int(duration), 60)
+                lines.append(f"_Duration: {m}m {s}s · logged in CRM._")
+            else:
+                lines.append("_Logged in CRM._")
+
+            try:
+                from api.whatsapp import send_outbound
+                send_outbound(pending["whatsapp_phone"], "\n".join(lines))
+                logger.info(
+                    f"[voice/callback] WhatsApp summary sent to "
+                    f"{pending['whatsapp_phone']} for call_sid={call_sid}"
+                )
+            except Exception as e:
+                logger.warning(f"[voice/callback] WhatsApp summary delivery failed: {e}")
+            finally:
+                # Whether or not the WhatsApp send worked, clear the pending row;
+                # don't want it to re-fire if the lab retries the callback.
+                clear_pending_call(call_sid)
+    except Exception as e:
+        # Pending-callback bookkeeping is best-effort — never fail the lab callback over it.
+        logger.warning(f"[voice/callback] pending-callback handling failed: {e}")
+
     return {"ok": True, "id": record["id"]}
 
 

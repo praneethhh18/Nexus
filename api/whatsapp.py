@@ -33,7 +33,7 @@ from typing import Optional, Dict, Any, List
 from fastapi import HTTPException
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, is_postgres
 from utils.timez import now_iso, now_utc_naive
 
 ACCOUNTS_TABLE = "nexus_whatsapp_accounts"
@@ -86,10 +86,32 @@ def _get_conn():
         content TEXT NOT NULL,
         ts TEXT NOT NULL
     )""")
+    if is_postgres():
+        _repair_history_id_sequence(conn)
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_wa_user ON {ACCOUNTS_TABLE}(user_id)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_wa_hist_phone ON {HISTORY_TABLE}(phone, id)")
     conn.commit()
     return conn
+
+
+def _repair_history_id_sequence(conn) -> None:
+    """
+    Keep the Postgres id sequence ahead of migrated WhatsApp history rows.
+
+    Older SQLite -> Postgres migrations can create/copy rows with explicit ids
+    while leaving the sequence at 1. The next insert then tries id=1 again and
+    raises a UniqueViolation. Running this on startup is cheap and idempotent.
+    """
+    seq = f"{HISTORY_TABLE}_id_seq"
+    conn.execute(f"CREATE SEQUENCE IF NOT EXISTS {seq}")
+    conn.execute(
+        f"ALTER TABLE {HISTORY_TABLE} ALTER COLUMN id SET DEFAULT nextval('{seq}')"
+    )
+    conn.execute(f"ALTER SEQUENCE {seq} OWNED BY {HISTORY_TABLE}.id")
+    conn.execute(
+        f"SELECT setval('{seq}', "
+        f"COALESCE((SELECT MAX(id) FROM {HISTORY_TABLE}), 0) + 1, false)"
+    )
 
 
 def _load_history(phone: str, max_turns: int = HISTORY_TURNS) -> List[Dict[str, str]]:
@@ -611,6 +633,7 @@ def handle_inbound(phone: str, text: str, message_id: str = "") -> Dict[str, Any
     from api.auth import get_user_by_id
     from api.businesses import get_business, get_member_role
     from agents.agent_loop import run_agent
+    from agents.tools.voice_tools import WHATSAPP_ORIGIN
 
     user = get_user_by_id(user_id)
     if not user:
@@ -629,6 +652,10 @@ def handle_inbound(phone: str, text: str, message_id: str = "") -> Dict[str, Any
     history = _load_history(phone)
     messages = history + [{"role": "user", "content": text}]
 
+    # Mark this run as WhatsApp-originated so any tool that places async work
+    # (e.g. dial_contact → outbound voice call) can route the eventual result
+    # back to this chat.
+    _origin_token = WHATSAPP_ORIGIN.set(phone)
     try:
         result = run_agent(
             messages=messages,
@@ -641,6 +668,8 @@ def handle_inbound(phone: str, text: str, message_id: str = "") -> Dict[str, Any
     except Exception as e:
         logger.exception("[WhatsApp] Agent run failed")
         return {"text": f"Sorry — something broke while processing that: {e}", "attachments": []}
+    finally:
+        WHATSAPP_ORIGIN.reset(_origin_token)
 
     reply_text = _format_reply(result)
     attachments = _detect_attachments(result)

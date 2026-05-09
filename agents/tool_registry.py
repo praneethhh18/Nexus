@@ -224,7 +224,7 @@ def _register_all():
     from agents.tools import (  # noqa: F401
         crm_tools, task_tools, invoice_tools, document_tools,
         calendar_tools, memory_tools, notification_tools, rag_tools,
-        analytics_tools,
+        analytics_tools, voice_tools,
     )
 
 
