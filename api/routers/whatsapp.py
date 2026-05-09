@@ -225,17 +225,8 @@ async def whatsapp_inbound_document(
     is_pdf = name.endswith(".pdf") or "pdf" in mime
     is_image = mime.startswith("image/") or any(name.endswith(ext) for ext in (".jpg", ".jpeg", ".png", ".webp", ".heic"))
 
-    if is_image and not is_pdf:
-        return {
-            "text": (
-                "I can read PDFs and pasted text, but I don't OCR photos yet. "
-                "If that was a photo of a document, try sending the PDF version "
-                "or paste the text into the chat."
-            ),
-            "attachments": [],
-        }
-
-    # Read with hard cap.
+    # Read with hard cap. (Same buffer is used for image→business-card path
+    # below if it's an image, OR for the PDF path lower down.)
     buf = bytearray()
     while True:
         chunk = await file.read(64 * 1024)
@@ -246,6 +237,58 @@ async def whatsapp_inbound_document(
             raise HTTPException(413, f"File too large (max {_MAX_MEDIA_BYTES // (1024*1024)} MB)")
     if not buf:
         raise HTTPException(400, "Empty file.")
+
+    # Image path: business-card scan via Bedrock Nova vision.
+    # If it's a photo (not a PDF), assume the user is snapping a business
+    # card — extract contact details and create a CRM contact in one shot.
+    if is_image and not is_pdf:
+        try:
+            from api import business_card as _bc
+            extracted = _bc.extract_business_card(bytes(buf))
+        except RuntimeError as e:
+            logger.info(f"[WhatsApp] business card extraction unavailable: {e}")
+            return {
+                "text": (
+                    "Photo received but business-card scanning isn't configured. "
+                    "Send the PDF version, or paste the text in chat."
+                ),
+                "attachments": [],
+            }
+        except Exception as e:
+            logger.exception("[WhatsApp] business card extraction crashed")
+            return {"text": f"Sorry — couldn't read that card: {e}", "attachments": []}
+
+        if extracted.get("confidence") == "low" and not (extracted.get("first_name") or extracted.get("phone") or extracted.get("email")):
+            return {
+                "text": (
+                    "I looked at the photo but couldn't find clear contact details. "
+                    "If that's a business card, try a sharper / better-lit shot. "
+                    "If it's a document, send the PDF instead."
+                ),
+                "attachments": [],
+            }
+
+        # Auto-create the contact and tell the user what was captured
+        try:
+            contact = _bc.create_contact_from_extraction(
+                business_id=account["active_business_id"],
+                user_id=account["user_id"],
+                extracted=extracted,
+            )
+        except Exception as e:
+            logger.exception("[WhatsApp] business card → contact create failed")
+            return {"text": f"Read the card but couldn't save the contact: {e}", "attachments": []}
+
+        full_name = " ".join(filter(None, [extracted.get("first_name"), extracted.get("last_name")])).strip() or "(no name)"
+        lines = [f"📇 *Contact added:* {full_name}"]
+        if extracted.get("title"):   lines.append(f"💼 {extracted['title']}")
+        if extracted.get("company"): lines.append(f"🏢 {extracted['company']}")
+        if extracted.get("phone"):   lines.append(f"📞 {extracted['phone']}")
+        if extracted.get("email"):   lines.append(f"✉️ {extracted['email']}")
+        if extracted.get("confidence") == "low":
+            lines.append("\n_Low confidence — open the contact to verify details._")
+        lines.append(f"\n_View: /crm/contacts/{contact['id']}_")
+        return {"text": "\n".join(lines), "attachments": []}
 
     # Extract text. Reuse doc_intake's helpers — sensitive=True is enforced inside.
     from api.routers import doc_intake as _di
