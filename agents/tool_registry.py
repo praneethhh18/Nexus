@@ -225,7 +225,7 @@ def _register_all():
         crm_tools, task_tools, invoice_tools, document_tools,
         calendar_tools, memory_tools, notification_tools, rag_tools,
         analytics_tools, voice_tools, lead_hunter_tools, outreach_tools,
-        custom_agent_tools,
+        custom_agent_tools, email_template_tools,
     )
 
 

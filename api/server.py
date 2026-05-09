@@ -410,6 +410,7 @@ from api.routers import (
     voice_calls        as _r_voice_calls,
     voice_agent_tools  as _r_voice_agent_tools,
     waitlist           as _r_waitlist,
+    email_templates    as _r_email_templates,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -422,7 +423,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_workflows, _r_voice, _r_settings, _r_search, _r_backup, _r_intake,
            _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply, _r_forge,
            _r_meeting_notes, _r_doc_intake, _r_smtp, _r_voice_calls,
-           _r_voice_agent_tools, _r_waitlist):
+           _r_voice_agent_tools, _r_waitlist, _r_email_templates):
     app.include_router(_r.router)
 
 
