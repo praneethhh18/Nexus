@@ -226,7 +226,7 @@ def _register_all():
         calendar_tools, memory_tools, notification_tools, rag_tools,
         analytics_tools, voice_tools, lead_hunter_tools, outreach_tools,
         custom_agent_tools, email_template_tools,
-        contact_memory_tools, lead_scorer_tools,
+        contact_memory_tools, lead_scorer_tools, magic_search_tools,
     )
 
 

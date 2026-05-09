@@ -4,6 +4,13 @@ import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
          Sun, Moon, ArrowRight, Lock, Unlock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import ContactPreviewLink from '../components/ContactPreviewLink';
+
+// Custom markdown component map: links to /crm/contacts/<id> render with a
+// hover-preview card so the user sees the contact summary inline.
+const MD_COMPONENTS = {
+  a: ({ node, ...props }) => <ContactPreviewLink {...props} />,
+};
 import { sendMessage, getConversation, getConversations, deleteConversation,
          exportMarkdown, uploadDocument, downloadReport,
          setConversationSensitive } from '../services/api';
@@ -904,7 +911,7 @@ export default function Chat() {
             <div key={i} className={`msg-row ${msg.role === 'user' ? 'user' : ''}`}>
               {msg.role === 'assistant' && <div className="msg-avatar bot">N</div>}
               <div className={`msg-bubble ${msg.role === 'user' ? 'user' : 'bot'}`}>
-                <div className="chat-markdown"><ReactMarkdown>{msg.content}</ReactMarkdown></div>
+                <div className="chat-markdown"><ReactMarkdown components={MD_COMPONENTS}>{msg.content}</ReactMarkdown></div>
                 {/* Agent tool calls */}
                 {msg.tool_calls?.length > 0 && (
                   <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -984,7 +991,7 @@ export default function Chat() {
               <div className="msg-avatar bot">N</div>
               <div className="msg-bubble bot">
                 <div className="chat-markdown" style={{ fontSize: 13 }}>
-                  <ReactMarkdown>{streamingText}</ReactMarkdown>
+                  <ReactMarkdown components={MD_COMPONENTS}>{streamingText}</ReactMarkdown>
                   <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', marginLeft: 2, animation: 'pulse-dot 0.8s ease-in-out infinite', borderRadius: 1 }} />
                 </div>
               </div>

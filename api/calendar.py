@@ -333,3 +333,62 @@ def list_upcoming_events(user_id: str, days_ahead: int = 14, max_results: int = 
             "organizer_email": (ev.get("organizer") or {}).get("email", ""),
         })
     return result
+
+
+# ── Event creation ──────────────────────────────────────────────────────────
+def create_event(user_id: str, *, summary: str, start_iso: str, end_iso: str,
+                  description: str = "", location: str = "",
+                  attendees: Optional[List[str]] = None,
+                  add_meet_link: bool = False,
+                  timezone_name: str = "Asia/Kolkata") -> Dict[str, Any]:
+    """Create a calendar event on the user's primary calendar.
+
+    Times must be ISO-8601 strings. If they don't include a timezone, we
+    treat them as `timezone_name` (default Asia/Kolkata for the SMB market).
+    Returns the created event with link + hangout URL when applicable.
+    """
+    import requests
+    access_token = _get_valid_access_token(user_id)
+    url = GOOGLE_EVENTS_URL_TMPL.format(calendar_id="primary")
+
+    body: Dict[str, Any] = {
+        "summary":     (summary or "Meeting").strip()[:200],
+        "description": (description or "").strip()[:5000],
+        "start": {"dateTime": start_iso, "timeZone": timezone_name},
+        "end":   {"dateTime": end_iso,   "timeZone": timezone_name},
+    }
+    if location:
+        body["location"] = location.strip()[:200]
+    if attendees:
+        body["attendees"] = [{"email": e.strip()} for e in attendees if e and "@" in e]
+    params: Dict[str, Any] = {}
+    if add_meet_link:
+        # conferenceDataVersion=1 is required for Meet link generation
+        body["conferenceData"] = {
+            "createRequest": {
+                "requestId": f"nexus-{int(datetime.now(timezone.utc).timestamp())}",
+                "conferenceSolutionKey": {"type": "hangoutsMeet"},
+            }
+        }
+        params["conferenceDataVersion"] = 1
+
+    resp = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {access_token}",
+                 "Content-Type":  "application/json"},
+        params=params, json=body, timeout=15,
+    )
+    if resp.status_code not in (200, 201):
+        logger.warning(f"[Calendar] Event create failed: {resp.status_code} {resp.text[:200]}")
+        raise HTTPException(resp.status_code, f"Calendar API error: {resp.text[:200]}")
+
+    ev = resp.json()
+    return {
+        "id":            ev.get("id"),
+        "summary":       ev.get("summary"),
+        "start":         (ev.get("start") or {}).get("dateTime"),
+        "end":           (ev.get("end") or {}).get("dateTime"),
+        "html_link":     ev.get("htmlLink", ""),
+        "hangout_link":  ev.get("hangoutLink", ""),
+        "attendees":     [a.get("email") for a in (ev.get("attendees") or []) if a.get("email")],
+    }
