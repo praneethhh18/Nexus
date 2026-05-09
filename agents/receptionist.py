@@ -209,7 +209,18 @@ def finalize_call(*, call_sid: str, business_id: str, business_name: str,
     except Exception as e:
         logger.warning(f"[receptionist] voice_calls.store failed: {e}")
 
-    # 3. If the owner has a linked WhatsApp number, push the digest
+    # 3. Distil per-contact memory so future interactions have context.
+    if contact_id:
+        try:
+            from api import contact_memory
+            contact_memory.auto_extract_from_call(
+                business_id=business_id, contact_id=contact_id,
+                call_sid=call_sid, transcript=transcript, summary=summary,
+            )
+        except Exception as e:
+            logger.warning(f"[receptionist] per-contact memory extract failed: {e}")
+
+    # 4. If the owner has a linked WhatsApp number, push the digest
     try:
         _push_whatsapp_digest(business_id, from_number, summary, duration_sec)
     except Exception as e:

@@ -225,6 +225,26 @@ async def voice_callback(
     # mirror to CRM. Real CRM-triggered calls always have it.
     record = voice_calls.store_completed_call(payload, created_by="vox")
 
+    # Distil 1-3 durable facts from the transcript into per-contact memory so
+    # the next call/email to this contact has prior context auto-loaded.
+    # Best-effort — never fail the lab callback over an extraction error.
+    try:
+        contact_id  = (payload.get("contact_id") or "").strip()
+        business_id = (payload.get("business_id") or "").strip()
+        transcript  = payload.get("turns") or []
+        summary_blob = payload.get("summary") or {}
+        if contact_id and business_id and transcript:
+            from api import contact_memory
+            saved = contact_memory.auto_extract_from_call(
+                business_id=business_id, contact_id=contact_id,
+                call_sid=call_sid, transcript=transcript, summary=summary_blob,
+            )
+            if saved:
+                logger.info(f"[voice/callback] saved {saved} per-contact memory fact(s) "
+                            f"for contact={contact_id} from call={call_sid}")
+    except Exception as e:
+        logger.warning(f"[voice/callback] per-contact memory extract failed: {e}")
+
     # If this call originated from a WhatsApp request, deliver the summary
     # back to the same chat so the user sees the result without opening the app.
     try:

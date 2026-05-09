@@ -594,6 +594,10 @@ def run_evening_for_business(business_id: str, deliver: bool = True) -> Dict:
         except Exception as e:
             logger.debug(f"[Briefing] evening in-app notif skipped: {e}")
         if _deliver_discord(narrative): delivered.append("discord")
+        # Match the morning briefing — push the wrap to the owner's WhatsApp
+        # if they've linked one. _deliver_whatsapp is idempotent + no-ops
+        # if no phone is linked, so this is safe to always call.
+        if _deliver_whatsapp(business_id, narrative): delivered.append("whatsapp")
 
     return _save(business_id, narrative, data, mode, delivered, kind="evening")
 
