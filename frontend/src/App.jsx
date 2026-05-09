@@ -43,6 +43,8 @@ const Pricing       = lazy(() => import('./pages/Pricing'));
 const Database      = lazy(() => import('./pages/Database'));
 const SQLEditor     = lazy(() => import('./pages/SQLEditor'));
 const WhatIf        = lazy(() => import('./pages/WhatIf'));
+const EmailTemplates = lazy(() => import('./pages/EmailTemplates'));
+const NotFound      = lazy(() => import('./pages/NotFound'));
 
 
 function ProtectedRoute({ children }) {
@@ -123,6 +125,8 @@ export default function App() {
             <Route path="/database"      element={L(Database)} />
             <Route path="/sql"           element={L(SQLEditor)} />
             <Route path="/whatif"        element={L(WhatIf)} />
+            <Route path="/email-templates" element={L(EmailTemplates)} />
+            <Route path="*"              element={L(NotFound)} />
           </Route>
         </Routes>
       </BrowserRouter>

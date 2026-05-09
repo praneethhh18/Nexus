@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { markNotificationRead, deleteNotification } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
@@ -15,6 +15,7 @@ const NAV_MAIN = [
   { to: '/crm', icon: Users, label: 'CRM' },
   { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
   { to: '/invoices', icon: Receipt, label: 'Invoices' },
+  { to: '/email-templates', icon: Mail, label: 'Email templates' },
   { to: '/documents', icon: FileType2, label: 'Documents' },
   { to: '/reports', icon: FileText, label: 'Reports' },
   { to: '/workflows', icon: GitBranch, label: 'Workflows' },
