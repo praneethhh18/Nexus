@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   ShieldCheck, ArrowRight, CheckCircle2, X,
   Mail, Phone, Moon, Brain, Sun, Target, Clock, Lock,
@@ -109,25 +109,6 @@ function LogoMark({ size = 32 }) {
 }
 
 // ── Data ─────────────────────────────────────────────────────────────────────
-
-const AGENTS = [
-  { name: 'Atlas', role: 'Daily Briefing',    emoji: '🌅', color: '#F59E0B', icon: Sun,
-    desc: 'Each morning, pulls together your open tasks, overdue invoices, and today\'s meetings into one summary.' },
-  { name: 'Iris',  role: 'Inbox Triage',      emoji: '📬', color: '#0EA5E9', icon: Mail,
-    desc: 'Checks your inbox on a schedule, classifies emails by intent, and drafts suggested replies for you to review.' },
-  { name: 'Kira',  role: 'Invoice Follow-up', emoji: '💰', color: '#10B981', icon: TrendingUp,
-    desc: 'Looks for overdue invoices and drafts a follow-up message. You approve before anything is sent.' },
-  { name: 'Arjun', role: 'Pipeline Review',   emoji: '🎯', color: '#F97316', icon: Target,
-    desc: 'Surfaces deals that haven\'t had activity in a while and suggests what to do next.' },
-  { name: 'Sage',  role: 'Meeting Prep',      emoji: '📋', color: '#8B5CF6', icon: Clock,
-    desc: 'Before a scheduled meeting, gathers relevant contact history and open items so you\'re not going in blind.' },
-  { name: 'Echo',  role: 'Memory Keeper',     emoji: '🧠', color: '#EC4899', icon: Brain,
-    desc: 'Periodically reviews your conversations and notes key facts about contacts and deals into a searchable store.' },
-  { name: 'Nyx',   role: 'Evening Digest',     emoji: '🌙', color: '#6366F1', icon: Moon,
-    desc: 'At 6 PM, wraps up the day — tasks closed, invoices sent, deals advanced — and suggests what to tackle tomorrow.' },
-  { name: 'Vox',   role: 'Voice Calls',       emoji: '📞', color: '#06B6D4', icon: Phone,
-    desc: 'Makes outbound calls over SIP and logs a transcript and summary back to the CRM. Needs a Twilio account.' },
-];
 
 const HOW_IT_WORKS = [
   { step: '01', title: 'Connect your accounts',
@@ -266,28 +247,27 @@ function Hero() {
   return (
     <section id="top" className="hero-section">
       <div className="container hero-inner">
-        <div className="hero-badge">
+        <div className="hero-eyebrow">
           <ShieldCheck size={12} />
-          Local-first · Privacy by design · Made for Indian SMBs
+          Built for the Indian SMB grind
         </div>
 
         <h1 className="hero-h1">
-          An AI business team<br />
-          that runs on <strong>your laptop</strong>
+          <span className="hero-h1-line">An AI business team</span>
+          <span className="hero-h1-line">that runs on <strong>your laptop</strong></span>
         </h1>
 
         <p className="hero-sub">
-          8 agents handle your CRM, inbox, invoices, meetings, and outbound calls —
-          running locally by default, so your data stays on your machine unless you
-          choose otherwise.
+          A growing team of specialised agents handling CRM, inbox, invoices,
+          meetings and calls — locally by default, so your data stays on your machine.
         </p>
 
         <div className="hero-actions">
           <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-            Get started free <ArrowRight size={14} />
+            Start free <ArrowRight size={14} />
           </a>
-          <a href="#how-it-works" className="btn btn-outline btn-lg">
-            See how it works
+          <a href="#agents" className="btn btn-outline btn-lg">
+            Meet the team
           </a>
         </div>
 
@@ -295,8 +275,592 @@ function Hero() {
           <span><CheckCircle2 size={13} className="icon-ok" /> No credit card</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Open source</span>
           <span><CheckCircle2 size={13} className="icon-ok" /> Self-hostable</span>
-          <span><CheckCircle2 size={13} className="icon-ok" /> Runs on your laptop</span>
+          <span><CheckCircle2 size={13} className="icon-ok" /> Runs offline</span>
         </div>
+      </div>
+    </section>
+  );
+}
+
+
+// ── Agents data (interactive, auto-playing demo) ────────────────────────────
+
+const DEMO_AGENTS = [
+  {
+    id: 'atlas', name: 'Atlas', role: 'Daily briefing',
+    Icon: Sun, c: '#F59E0B',
+    tagline: 'Your morning at a glance.',
+    desc: 'Each morning, Atlas pulls together your open tasks, overdue invoices, and today\'s meetings into a single summary you can scan in 30 seconds.',
+    schedule: 'Every morning · 8:00 AM',
+    runsOn: 'Local LLM (Ollama)',
+    connects: ['Gmail', 'Google Calendar', 'Internal CRM'],
+    statuses: ['Reading calendar…', 'Pulling open tasks…', 'Building summary'],
+    suggestion: 'Suggestion · Follow up with Mehta Industries — last touched 14 days ago.',
+  },
+  {
+    id: 'iris', name: 'Iris', role: 'Inbox triage',
+    Icon: Mail, c: '#0EA5E9',
+    tagline: 'Your inbox, sorted.',
+    desc: 'Checks your inbox on a schedule, classifies emails by intent (urgent / lead / FYI), and drafts suggested replies for you to review before sending.',
+    schedule: 'Every 30 minutes',
+    runsOn: 'Local LLM (Ollama)',
+    connects: ['Gmail / IMAP', 'Internal CRM'],
+    statuses: ['Fetching new mail…', 'Classifying intent…', 'Drafting reply'],
+    suggestion: 'Draft ready · Reply to Rohan about contract v3, attach revised pricing.',
+  },
+  {
+    id: 'kira', name: 'Kira', role: 'Invoice follow-up',
+    Icon: TrendingUp, c: '#10B981',
+    tagline: 'Get paid on time.',
+    desc: 'Looks for overdue invoices and drafts polite follow-up messages in Hindi or English. You approve before anything gets sent — never any surprises.',
+    schedule: 'Daily · 10:00 AM',
+    runsOn: 'Local LLM (Ollama)',
+    connects: ['Internal CRM', 'Gmail', 'WhatsApp'],
+    statuses: ['Scanning invoices…', 'Found 3 overdue…', 'Drafting reminders'],
+    suggestion: 'Send 3 reminders · Polite follow-up drafted in Hindi + English.',
+  },
+  {
+    id: 'arjun', name: 'Arjun', role: 'Pipeline review',
+    Icon: Target, c: '#F97316',
+    tagline: 'No deal slips through.',
+    desc: 'Surfaces deals that haven\'t had activity in a while, suggests next actions based on history, and flags the highest-value risks for your attention.',
+    schedule: 'Weekly · Monday 9:00 AM',
+    runsOn: 'Local LLM (Ollama)',
+    connects: ['Internal CRM'],
+    statuses: ['Reading 24 deals…', 'Checking activity…', 'Ranking risk'],
+    suggestion: 'Top risk · Acme Foods — proposal sent, no reply for 16 days.',
+  },
+  {
+    id: 'sage', name: 'Sage', role: 'Meeting prep',
+    Icon: Clock, c: '#8B5CF6',
+    tagline: 'Walk in prepared.',
+    desc: 'Before each scheduled meeting, gathers relevant contact history, open items, and past notes so you\'re not going in blind. Briefing arrives 15 minutes early.',
+    schedule: '15 minutes before each meeting',
+    runsOn: 'Local LLM (Ollama)',
+    connects: ['Google Calendar', 'Internal CRM'],
+    statuses: ['Reading calendar…', 'Pulling contact history…', 'Building brief'],
+    suggestion: 'Brief ready · 4 PM with Mehta — pricing pushback on tier 2 last call.',
+  },
+  {
+    id: 'echo', name: 'Echo', role: 'Memory keeper',
+    Icon: Brain, c: '#EC4899',
+    tagline: 'Never forget a detail.',
+    desc: 'Periodically reviews your conversations and notes the key facts about contacts and deals into a searchable memory store you can query in plain English.',
+    schedule: 'Hourly',
+    runsOn: 'Local LLM (Ollama) + embeddings',
+    connects: ['Gmail', 'Vox transcripts', 'Internal CRM'],
+    statuses: ['Indexing emails…', 'Extracting facts…', 'Updating memory'],
+    suggestion: '3 new memories · Acme Net-30, CFO Anjali approval, Q2 ₹4.8L.',
+  },
+  {
+    id: 'vox', name: 'Vox', role: 'Voice calls',
+    Icon: Phone, c: '#06B6D4',
+    tagline: 'Outbound calls, fully logged.',
+    desc: 'Makes outbound calls over SIP using ElevenLabs voice, captures full transcripts, and logs a structured summary back to the CRM. Bring your own Twilio.',
+    schedule: 'On demand',
+    runsOn: 'Cloud (Groq + ElevenLabs + Twilio)',
+    connects: ['Twilio', 'Internal CRM'],
+    statuses: ['Dialling +91 98765…', 'Speaking…', 'Transcribing'],
+    suggestion: 'Logged · Payment expected by Friday — INV-2087 marked "promised".',
+  },
+  {
+    id: 'nyx', name: 'Nyx', role: 'Evening digest',
+    Icon: Moon, c: '#6366F1',
+    tagline: 'End your day with a summary.',
+    desc: 'At 6 PM, wraps up the day — tasks closed, invoices sent, deals advanced — and suggests what to tackle tomorrow morning so you start clear-headed.',
+    schedule: 'Every evening · 6:00 PM',
+    runsOn: 'Local LLM (Ollama)',
+    connects: ['Internal CRM', 'Gmail'],
+    statuses: ['Tallying actions…', 'Summarising day…', 'Planning tomorrow'],
+    suggestion: 'Tomorrow · 3 meetings, prep needed for Mehta — block 30 min at 3:30 PM.',
+  },
+];
+
+// ── Hooks: streaming text + work cycle ──────────────────────────────────────
+
+function useStream(text, speed = 22, deps = []) {
+  const [out, setOut] = useState('');
+  useEffect(() => {
+    setOut('');
+    if (!text) return;
+    let i = 0;
+    const id = setInterval(() => {
+      i += 1;
+      setOut(text.slice(0, i));
+      if (i >= text.length) clearInterval(id);
+    }, speed);
+    return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, ...deps]);
+  return out;
+}
+
+// Phases: scan (0) → think (1) → reveal (2) → click (3) → done (4)
+const PHASE_DURATIONS = [1100, 1100, 1900, 700, 600];
+
+function useWorkPhase(active, paused, onCycleEnd) {
+  const [phase, setPhase] = useState(0);
+
+  // Reset phase whenever the active agent changes
+  useEffect(() => { setPhase(0); }, [active]);
+
+  useEffect(() => {
+    if (paused) return;
+    const id = setTimeout(() => {
+      if (phase < 4) {
+        setPhase(phase + 1);
+      } else {
+        onCycleEnd();
+      }
+    }, PHASE_DURATIONS[phase]);
+    return () => clearTimeout(id);
+  }, [phase, paused, onCycleEnd]);
+
+  return phase;
+}
+
+// ── Network background — drifting nodes + connecting strings ───────────────
+
+const NETWORK_NODES = [
+  { x: 12,  y: 18, r: 4 },
+  { x: 28,  y: 8,  r: 3 },
+  { x: 46,  y: 22, r: 5 },
+  { x: 64,  y: 12, r: 3.5 },
+  { x: 82,  y: 26, r: 4 },
+  { x: 92,  y: 52, r: 3 },
+  { x: 78,  y: 76, r: 4 },
+  { x: 56,  y: 88, r: 3.5 },
+  { x: 32,  y: 80, r: 4 },
+  { x: 8,   y: 64, r: 3 },
+  { x: 18,  y: 44, r: 3.5 },
+  { x: 70,  y: 48, r: 4 },
+];
+
+const NETWORK_LINES = [
+  [0,1],[1,2],[2,3],[3,4],[4,5],[5,6],[6,7],[7,8],[8,9],[9,10],[10,0],
+  [2,10],[3,11],[7,11],[2,11],[5,11],[1,11],[8,10],[6,11],[0,8],
+];
+
+function AgentNetwork({ color }) {
+  return (
+    <div className="agent-network" aria-hidden style={{ '--c': color }}>
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="agent-network-svg">
+        {NETWORK_LINES.map(([a, b], i) => {
+          const A = NETWORK_NODES[a], B = NETWORK_NODES[b];
+          // Curved path through a midpoint with slight offset for organic feel
+          const mx = (A.x + B.x) / 2 + (i % 2 === 0 ? 2 : -2);
+          const my = (A.y + B.y) / 2 + (i % 3 === 0 ? -2 : 2);
+          return (
+            <path
+              key={i}
+              d={`M ${A.x} ${A.y} Q ${mx} ${my} ${B.x} ${B.y}`}
+              className="agent-network-line"
+              style={{ animationDelay: `${(i % 6) * 0.4}s` }}
+            />
+          );
+        })}
+        {NETWORK_NODES.map((n, i) => (
+          <g key={i}>
+            <circle cx={n.x} cy={n.y} r={n.r * 1.6} className="agent-network-node-halo"
+                    style={{ animationDelay: `${(i % 5) * 0.3}s` }} />
+            <circle cx={n.x} cy={n.y} r={n.r} className="agent-network-node" />
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// ── Live Demo Panel ─────────────────────────────────────────────────────────
+
+function LiveDemoPanel({ active, onPick, paused, phase }) {
+  const agent = DEMO_AGENTS.find(a => a.id === active);
+
+  // Status ticker: scan/think → status; reveal → "Ready"; click/done → "Approved ✓"
+  const statusText =
+    phase === 0 ? agent.statuses[0] :
+    phase === 1 ? agent.statuses[1] :
+    phase === 2 ? agent.statuses[2] :
+                  'Approved ✓';
+
+  return (
+    <div className="hero-dash">
+      <div className="hero-dash-glow hero-dash-glow-a" />
+      <div className="hero-dash-glow hero-dash-glow-b" />
+
+      <div className="hero-dash-frame">
+        <div className="hero-dash-chrome">
+          <span className="dot dot-r" />
+          <span className="dot dot-y" />
+          <span className="dot dot-g" />
+          <div className="hero-dash-url">
+            <ShieldCheck size={10} /> app.nexusagent.in
+          </div>
+        </div>
+
+        <div className="hero-dash-body">
+          <aside className="hero-dash-side">
+            <div className="hero-dash-side-logo">
+              <LogoMark size={20} />
+            </div>
+            {DEMO_AGENTS.map(a => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onPick(a.id)}
+                className={`hero-dash-side-item ${active === a.id ? 'is-active' : ''}`}
+                style={{ '--c': a.c }}
+                aria-label={a.name}
+                title={`${a.name} — ${a.role}`}
+              >
+                <a.Icon size={13} />
+              </button>
+            ))}
+          </aside>
+
+          <div className="hero-dash-main" key={active}>
+            <div className="hero-dash-head">
+              <div>
+                <div className="hero-dash-eye" style={{ color: agent.c }}>{agent.role}</div>
+                <div className="hero-dash-title">{agent.name} · agent</div>
+              </div>
+              <span className="hero-dash-pill" style={{ '--c': agent.c }}>
+                <span className="pulse" /> {paused ? 'Demo' : 'Live'}
+              </span>
+            </div>
+
+            {/* Live status ticker — shows what the agent is doing now */}
+            <div className={`hero-dash-status hero-dash-status-${
+              phase >= 3 ? 'done' : (phase === 2 ? 'ready' : 'work')
+            }`} style={{ '--c': agent.c }} key={`s-${active}-${phase}`}>
+              <span className="hero-dash-status-dot" />
+              <span className="hero-dash-status-t">{statusText}</span>
+            </div>
+
+            <AgentDemo id={active} color={agent.c} phase={phase} agent={agent} paused={paused} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Per-agent demo views ────────────────────────────────────────────────────
+
+function AgentDemo({ id, color, phase, agent, paused }) {
+  // Hide raw content until phase >= 1, makes the "scanning" stage feel real
+  const ready = phase >= 1;
+  const reveal = phase >= 2;
+  const approved = phase >= 3;
+
+  // Streaming suggestion text — only types during reveal phase
+  const streamed = useStream(reveal ? agent.suggestion : '', 18, [id, phase]);
+
+  if (id === 'atlas') return (
+    <>
+      <div className="hero-dash-stats">
+        <div className="hero-dash-stat">
+          <div className="hero-dash-stat-n">12</div>
+          <div className="hero-dash-stat-l">Open tasks</div>
+        </div>
+        <div className="hero-dash-stat hero-dash-stat-warn">
+          <div className="hero-dash-stat-n">₹2.4L</div>
+          <div className="hero-dash-stat-l">Overdue invoices</div>
+        </div>
+        <div className="hero-dash-stat hero-dash-stat-ok">
+          <div className="hero-dash-stat-n">3</div>
+          <div className="hero-dash-stat-l">Meetings today</div>
+        </div>
+      </div>
+      <DemoFeed rows={[
+        { c: '#0EA5E9', Icon: Mail,       n: 'Iris',  body: <>drafted reply to <em>Rohan@acme.in</em></>, t: '2m' },
+        { c: '#10B981', Icon: TrendingUp, n: 'Kira',  body: <>queued 3 invoice reminders</>,             t: '11m' },
+        { c: '#06B6D4', Icon: Phone,      n: 'Vox',   body: <>completed call · <em>Sharma Textiles</em></>, t: '23m' },
+      ]} />
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} />
+    </>
+  );
+
+  if (id === 'iris') return (
+    <>
+      <div className="hero-dash-list">
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#0EA5E9' }}>R</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">Rohan Kapoor · acme.in</div>
+            <div className="hero-dash-list-s">Re: Q2 contract renewal — sending v3…</div>
+          </div>
+          <span className="hero-dash-tag" style={{ '--c': '#DC2626' }}>Urgent</span>
+        </div>
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#8B5CF6' }}>P</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">Priya Sharma · textile.in</div>
+            <div className="hero-dash-list-s">Bulk order inquiry for festive season</div>
+          </div>
+          <span className="hero-dash-tag" style={{ '--c': '#10B981' }}>Lead</span>
+        </div>
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#F59E0B' }}>A</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">Aarav Singh · vendor</div>
+            <div className="hero-dash-list-s">Invoice attached — please review</div>
+          </div>
+          <span className="hero-dash-tag" style={{ '--c': '#6366F1' }}>FYI</span>
+        </div>
+      </div>
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} />
+    </>
+  );
+
+  if (id === 'kira') return (
+    <>
+      <div className="hero-dash-list">
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#DC2626' }}>₹</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">INV-2087 · Sharma Textiles</div>
+            <div className="hero-dash-list-s">₹85,000 · 18 days overdue</div>
+          </div>
+          <span className="hero-dash-tag" style={{ '--c': '#DC2626' }}>2nd notice</span>
+        </div>
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#F59E0B' }}>₹</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">INV-2091 · Mehta Industries</div>
+            <div className="hero-dash-list-s">₹1,20,000 · 9 days overdue</div>
+          </div>
+          <span className="hero-dash-tag" style={{ '--c': '#F59E0B' }}>1st notice</span>
+        </div>
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#F59E0B' }}>₹</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">INV-2094 · Singh Logistics</div>
+            <div className="hero-dash-list-s">₹35,000 · 4 days overdue</div>
+          </div>
+          <span className="hero-dash-tag" style={{ '--c': '#F59E0B' }}>1st notice</span>
+        </div>
+      </div>
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} btn="Send all" />
+    </>
+  );
+
+  if (id === 'arjun') return (
+    <>
+      <div className="hero-dash-stats">
+        <div className="hero-dash-stat">
+          <div className="hero-dash-stat-n">24</div>
+          <div className="hero-dash-stat-l">Active deals</div>
+        </div>
+        <div className="hero-dash-stat hero-dash-stat-warn">
+          <div className="hero-dash-stat-n">7</div>
+          <div className="hero-dash-stat-l">Stale &gt; 14d</div>
+        </div>
+        <div className="hero-dash-stat hero-dash-stat-ok">
+          <div className="hero-dash-stat-n">₹14L</div>
+          <div className="hero-dash-stat-l">Pipeline value</div>
+        </div>
+      </div>
+      <DemoFeed rows={[
+        { c: '#F97316', Icon: Target,  n: 'Acme Foods',     body: <>no activity for <em>16 days</em></>,           t: '!' },
+        { c: '#F97316', Icon: Target,  n: 'Sharma Textiles', body: <>proposal sent · awaiting reply <em>11d</em></>, t: '!' },
+        { c: '#10B981', Icon: TrendingUp, n: 'Bharat Tech',  body: <>moved to <em>Negotiation</em></>,             t: '✓' },
+      ]} />
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} btn="Open" />
+    </>
+  );
+
+  if (id === 'sage') return (
+    <>
+      <div className="hero-dash-meet">
+        <div className="hero-dash-meet-time">4:00 PM · today</div>
+        <div className="hero-dash-meet-title">Mehta Industries — pricing call</div>
+        <div className="hero-dash-meet-people">
+          <span className="hero-dash-avatar" style={{ background: '#8B5CF6' }}>R</span>
+          <span className="hero-dash-avatar" style={{ background: '#0EA5E9' }}>K</span>
+          <span className="hero-dash-avatar" style={{ background: '#F59E0B' }}>+1</span>
+          <span className="hero-dash-meet-meta">Rajesh Mehta, Kavita V., +1 other</span>
+        </div>
+      </div>
+      <div className="hero-dash-notes">
+        <div className="hero-dash-note-h">Sage's prep notes</div>
+        <ul className="hero-dash-note-list">
+          <li>Last contact: 14 days ago — pricing pushback on tier 2</li>
+          <li>Open invoice INV-2091 (₹1.2L, 9d overdue)</li>
+          <li>Mentioned competitor: Zoho — counter with local-first angle</li>
+        </ul>
+      </div>
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} btn="Open brief" />
+    </>
+  );
+
+  if (id === 'echo') return (
+    <>
+      <div className="hero-dash-search">
+        <Brain size={11} />
+        <span className="hero-dash-search-q">"acme renewal terms"</span>
+        <span className="hero-dash-search-n">3 results</span>
+      </div>
+      <div className="hero-dash-list">
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#EC4899' }}>1</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">Acme prefers Net-30 payment</div>
+            <div className="hero-dash-list-s">From email · Rohan Kapoor · 12 days ago</div>
+          </div>
+        </div>
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#EC4899' }}>2</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">Renewal needs CFO Anjali's approval</div>
+            <div className="hero-dash-list-s">From call · Vox transcript · 8 days ago</div>
+          </div>
+        </div>
+        <div className="hero-dash-list-row">
+          <div className="hero-dash-avatar" style={{ background: '#EC4899' }}>3</div>
+          <div className="hero-dash-list-text">
+            <div className="hero-dash-list-t">Q2 contract value: ₹4.8L</div>
+            <div className="hero-dash-list-s">From CRM · Deal record · 3 days ago</div>
+          </div>
+        </div>
+      </div>
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} btn="Save" />
+    </>
+  );
+
+  if (id === 'vox') return (
+    <>
+      <div className="hero-dash-call">
+        <div className="hero-dash-call-ring">
+          <Phone size={16} />
+        </div>
+        <div className="hero-dash-call-info">
+          <div className="hero-dash-call-name">Sharma Textiles · Priya</div>
+          <div className="hero-dash-call-meta">Outbound · 4m 12s · ✓ completed</div>
+        </div>
+        <div className="hero-dash-call-wave">
+          {[8,14,22,16,28,12,20,30,18,10,24,14,8].map((h,i) => (
+            <span key={i} style={{ height: `${h}px`, animationDelay: `${i * 0.07}s` }} />
+          ))}
+        </div>
+      </div>
+      <div className="hero-dash-trans">
+        <div className="hero-dash-trans-row">
+          <span className="hero-dash-trans-who" style={{ color: '#06B6D4' }}>Vox</span>
+          <span className="hero-dash-trans-t">Hi Priya, calling about INV-2087, ₹85,000…</span>
+        </div>
+        <div className="hero-dash-trans-row">
+          <span className="hero-dash-trans-who" style={{ color: '#475569' }}>Priya</span>
+          <span className="hero-dash-trans-t">Yes, we'll clear it by Friday. Confirmed.</span>
+        </div>
+      </div>
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} btn="View" />
+    </>
+  );
+
+  if (id === 'nyx') return (
+    <>
+      <div className="hero-dash-stats">
+        <div className="hero-dash-stat hero-dash-stat-ok">
+          <div className="hero-dash-stat-n">9</div>
+          <div className="hero-dash-stat-l">Tasks closed</div>
+        </div>
+        <div className="hero-dash-stat hero-dash-stat-ok">
+          <div className="hero-dash-stat-n">5</div>
+          <div className="hero-dash-stat-l">Invoices sent</div>
+        </div>
+        <div className="hero-dash-stat">
+          <div className="hero-dash-stat-n">2</div>
+          <div className="hero-dash-stat-l">Deals advanced</div>
+        </div>
+      </div>
+      <DemoFeed rows={[
+        { c: '#10B981', Icon: TrendingUp, n: 'Today',    body: <>collected <em>₹1,40,000</em> in payments</>,    t: '✓' },
+        { c: '#0EA5E9', Icon: Mail,       n: 'Inbox',    body: <>cleared 23 emails · 4 awaiting your review</>, t: '✓' },
+        { c: '#6366F1', Icon: Moon,       n: 'Tomorrow', body: <>3 meetings scheduled · 1 prep needed</>,        t: '→' },
+      ]} />
+      <DemoSuggest streamed={streamed} text={agent.suggestion} phase={phase} color={color} btn="Plan day" />
+    </>
+  );
+
+  return null;
+}
+
+function DemoFeed({ rows }) {
+  return (
+    <div className="hero-dash-feed">
+      {rows.map((r, i) => (
+        <div key={i} className="hero-dash-feed-row" style={{ '--c': r.c }}>
+          <div className="hero-dash-feed-dot"><r.Icon size={11} /></div>
+          <div className="hero-dash-feed-text">
+            <strong>{r.n}</strong> {r.body}
+          </div>
+          <span className="hero-dash-feed-time">{r.t}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DemoSuggest({ text, streamed, btn = 'Approve', phase, color }) {
+  // phase >= 3 means the agent has "clicked" approve — morph button to ✓
+  const approved = phase >= 3;
+  // Cursor floats in during phase 3 (the click moment) before button morphs
+  const showCursor = phase === 3;
+  const empty = phase < 2; // suggestion not yet revealed
+
+  // Use streamed text when provided, fall back to static text
+  const display = streamed != null ? streamed : text;
+
+  return (
+    <div
+      className={`hero-dash-suggest ${empty ? 'is-empty' : ''} ${approved ? 'is-approved' : ''}`}
+      style={{ '--c': color }}
+    >
+      <div className="hero-dash-suggest-icon">
+        {approved ? <Check size={12} /> : <Brain size={12} />}
+      </div>
+      <div className="hero-dash-suggest-text">
+        {empty ? (
+          <span className="hero-dash-suggest-skel">
+            <span /><span /><span />
+          </span>
+        ) : (
+          <>
+            {display}
+            {!approved && display && display.length < (text?.length ?? 999) && (
+              <span className="hero-dash-suggest-caret" />
+            )}
+          </>
+        )}
+      </div>
+      <button className={`hero-dash-suggest-btn ${approved ? 'is-approved' : ''}`}>
+        {approved ? <><Check size={11} /> Done</> : btn}
+      </button>
+      {showCursor && <span className="hero-dash-cursor" aria-hidden />}
+    </div>
+  );
+}
+
+// ── Stats Strip ──────────────────────────────────────────────────────────────
+
+function StatsStrip() {
+  const stats = [
+    { n: '8',     l: 'Specialised agents',  s: 'Each focused on one job' },
+    { n: '100%',  l: 'Local-first by default', s: 'Your data, your machine' },
+    { n: '₹0',    l: 'Free to start',       s: 'No credit card required' },
+    { n: '< 2hr', l: 'Saved per day',       s: 'On manual ops, per user' },
+  ];
+  return (
+    <section className="stats-strip">
+      <div className="container stats-grid">
+        {stats.map(s => (
+          <div key={s.l} className="stat-cell">
+            <div className="stat-n">{s.n}</div>
+            <div className="stat-l">{s.l}</div>
+            <div className="stat-s">{s.s}</div>
+          </div>
+        ))}
       </div>
     </section>
   );
@@ -468,29 +1032,93 @@ function HowItWorks() {
 // ── Agents ────────────────────────────────────────────────────────────────────
 
 function AgentsSection() {
+  const [active, setActive] = useState('atlas');
+  const [paused, setPaused] = useState(false);
+
+  // When a cycle finishes for the current agent, hop to the next one
+  const advanceAgent = useCallback(() => {
+    setActive(prev => {
+      const i = DEMO_AGENTS.findIndex(a => a.id === prev);
+      return DEMO_AGENTS[(i + 1) % DEMO_AGENTS.length].id;
+    });
+  }, []);
+
+  const phase = useWorkPhase(active, paused, advanceAgent);
+  const pickAgent = id => { setActive(id); setPaused(true); };
+  const agent = DEMO_AGENTS.find(a => a.id === active);
+
   return (
-    <section id="agents" className="section section-alt">
+    <section id="agents" className="section section-alt agents-section" style={{ '--c': agent.c }}>
+      <div className="agents-bg" aria-hidden />
       <div className="container">
         <div className="section-header section-header-c">
           <span className="eyebrow">The team</span>
-          <h2 className="section-h2">8 agents, each with one job</h2>
+          <h2 className="section-h2">8 agents. One live demo.</h2>
           <p className="section-sub">
-            Each agent runs on a schedule and surfaces tasks for your review.
-            Rename any of them — the role stays, only the label changes.
+            Click any agent to see what it does and watch it work — live. Each one
+            runs on a schedule and surfaces tasks for your review.
           </p>
         </div>
-        <div className="agents-grid">
-          {AGENTS.map(a => (
-            <div key={a.name} className="agent-card" style={{ '--agent-color': a.color }}>
-              <div className="agent-color-bar" />
-              <div className="agent-body">
-                <div className="agent-icon-box"><a.icon size={22} /></div>
-                <div className="agent-role">{a.role}</div>
-                <div className="agent-name">{a.name}</div>
-                <p className="agent-desc">{a.desc}</p>
-              </div>
-            </div>
+
+        {/* Agent chip rail — all 8 visible at once */}
+        <div className="agent-chips" role="tablist">
+          {DEMO_AGENTS.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              role="tab"
+              aria-selected={active === a.id}
+              onClick={() => pickAgent(a.id)}
+              className={`agent-chip ${active === a.id ? 'is-active' : ''}`}
+              style={{ '--c': a.c }}
+            >
+              <span className="agent-chip-icon"><a.Icon size={14} /></span>
+              <span className="agent-chip-text">
+                <span className="agent-chip-name">{a.name}</span>
+                <span className="agent-chip-role">{a.role}</span>
+              </span>
+            </button>
           ))}
+        </div>
+
+        <div className="agents-split">
+          {/* Profile pane (left) — re-mounts on agent change to trigger animation */}
+          <div className="agent-profile" key={active} style={{ '--c': agent.c }}>
+            <div className="agent-profile-icon">
+              <agent.Icon size={26} />
+            </div>
+            <div className="agent-profile-eye">{agent.role}</div>
+            <h3 className="agent-profile-name">{agent.name}</h3>
+            <p className="agent-profile-tag">{agent.tagline}</p>
+            <p className="agent-profile-desc">{agent.desc}</p>
+
+            <dl className="agent-profile-meta">
+              <div>
+                <dt><Clock size={11} /> Schedule</dt>
+                <dd>{agent.schedule}</dd>
+              </div>
+              <div>
+                <dt><ShieldCheck size={11} /> Runs on</dt>
+                <dd>{agent.runsOn}</dd>
+              </div>
+              <div>
+                <dt><Target size={11} /> Connects</dt>
+                <dd>{agent.connects.join(' · ')}</dd>
+              </div>
+            </dl>
+
+            <div className="agent-profile-cta-row">
+              <a href={`${APP_URL}/setup`} className="btn btn-primary btn-sm">
+                Try {agent.name} <ArrowRight size={12} />
+              </a>
+              <span className="agent-profile-hint">
+                {paused ? 'Manual mode — pick another agent' : 'Auto-cycling · click to pause'}
+              </span>
+            </div>
+          </div>
+
+          {/* Live demo (right) */}
+          <LiveDemoPanel active={active} onPick={pickAgent} paused={paused} phase={phase} />
         </div>
       </div>
     </section>
