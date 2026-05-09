@@ -668,6 +668,89 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE PASS — applied across all 30+ pages without per-page edits.
+   Keys to legibility on phone: tables scroll, modals go full-screen, inputs are
+   touch-friendly, the chat input never scrolls off, action buttons stack.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Make every data-table overflow horizontally on small viewports. The .card
+   wrapper most pages use becomes the scroll container. Touch + trackpad both
+   handle this naturally. */
+@media (max-width: 768px) {
+  .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .data-table { font-size: 11.5px; min-width: 540px; }
+  .data-table th, .data-table td { padding: 6px 10px; }
+
+  /* Hide the de-prioritised columns the CRM tables show. Pages opt-in by
+     adding class="hide-on-mobile" to the relevant <th>/<td>. */
+  .hide-on-mobile { display: none !important; }
+
+  /* Modal containers — most app modals are absolutely-positioned divs that
+     hard-code a width. Override to fill the phone viewport so users can
+     read + tap inside them. */
+  .modal-box,
+  div[class*="modal"][style*="width"] {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 92vh !important;
+  }
+
+  /* Form inputs — at least 16px font-size to prevent iOS auto-zoom on focus. */
+  input, textarea, select, .field-input {
+    font-size: 16px !important;
+  }
+  /* But keep small chips / dropdowns dense on desktop — only enlarge on phone. */
+  .pill, .chip { font-size: 11px !important; }
+
+  /* Right-side drawers (Activity, Suggestions) cover full width on phone
+     instead of the tiny 320px sidebar that's unreadable. */
+  .side-drawer,
+  div[role="dialog"][class*="drawer"] {
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  /* CRM bulk action bar — sticks to the bottom of the screen so it stays
+     reachable while scrolling a long contact list. */
+  .bulk-action-bar {
+    position: fixed !important;
+    bottom: 8px !important;
+    left: 8px !important; right: 8px !important;
+    z-index: 50;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+  }
+}
+
+/* Phones — squeeze further. */
+@media (max-width: 480px) {
+  /* Layout sidebar collapses to icon-only above (60px wide). Reclaim those
+     pixels for the page body. */
+  .page-body { padding: 10px !important; }
+
+  /* Top bar / header should not waste vertical real estate on small screens. */
+  .page-header { padding: 8px 10px !important; }
+  .page-header h1 { font-size: 15px !important; }
+
+  /* Modals: full-screen feels native on phone. */
+  .modal-box {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+  }
+
+  /* Tap targets: at least 44px (WCAG / Apple HIG). */
+  button, .btn-primary, .btn-ghost {
+    min-height: 40px;
+  }
+
+  /* Make the agent chat input larger + give the send button real estate. */
+  .chat-input-bar input,
+  .chat-input-bar textarea { min-height: 40px; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    RESPONSIVE PRIMITIVES — apply these on JSX rows that need mobile-first wrap.
    ═══════════════════════════════════════════════════════════════════════════ */
 

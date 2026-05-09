@@ -227,7 +227,7 @@ def _register_all():
         analytics_tools, voice_tools, lead_hunter_tools, outreach_tools,
         custom_agent_tools, email_template_tools,
         contact_memory_tools, lead_scorer_tools, magic_search_tools,
-        proposal_tools,
+        proposal_tools, call_queue_tools,
     )
 
 

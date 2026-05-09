@@ -487,7 +487,13 @@ export default function CRM() {
                           title="Select all visible"
                         />
                       </th>
-                      <th>Name</th><th>Title</th><th>Company</th><th>Email</th><th>Phone</th><th>Tags</th><th style={{ width: 110 }}></th>
+                      <th>Name</th>
+                      <th className="hide-on-mobile">Title</th>
+                      <th className="hide-on-mobile">Company</th>
+                      <th className="hide-on-mobile">Email</th>
+                      <th>Phone</th>
+                      <th className="hide-on-mobile">Tags</th>
+                      <th style={{ width: 110 }}></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -507,13 +513,13 @@ export default function CRM() {
                         <td style={{ fontWeight: 500, color: 'var(--color-text)' }}>
                           {(c.first_name + ' ' + c.last_name).trim() || '—'}
                         </td>
-                        <td>{c.title || '—'}</td>
-                        <td>{c.company_name || '—'}</td>
-                        <td onClick={(e) => e.stopPropagation()}>
+                        <td className="hide-on-mobile">{c.title || '—'}</td>
+                        <td className="hide-on-mobile">{c.company_name || '—'}</td>
+                        <td className="hide-on-mobile" onClick={(e) => e.stopPropagation()}>
                           {c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}
                         </td>
                         <td>{c.phone || '—'}</td>
-                        <td><TagChips tags={tagsByContact[c.id] || []} size="xs" /></td>
+                        <td className="hide-on-mobile"><TagChips tags={tagsByContact[c.id] || []} size="xs" /></td>
                         <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
                           <ContactQuickActions contact={c} flash={flash} />
                           <button className="btn-ghost" style={{ padding: 4 }} onClick={() => navigate(`/crm/contacts/${c.id}`)} title="Open"><ChevronRight size={11} /></button>
