@@ -281,6 +281,19 @@ def start_agent_scheduler():
             run_log.finish(rid, status="error", error=str(e))
     _register("agent-outbound-caller", _cron(hour=0, minute=5), _vox_heartbeat)
 
+    # Privacy Bridge: ping every registered customer endpoint every 5 min so
+    # the LLM router knows whether to route sensitive prompts there or fall
+    # back to cloud-with-redaction. Cheap — single HTTP GET per customer.
+    def _privacy_bridge_health():
+        try:
+            from api import privacy_bridge as _pb
+            n = _pb.health_check_all_due(stale_minutes=5)
+            if n:
+                logger.debug(f"[AgentScheduler] privacy-bridge health checks: {n} bridges pinged")
+        except Exception as e:
+            logger.warning(f"[AgentScheduler] privacy_bridge health loop failed: {e}")
+    _register("privacy-bridge-health", IntervalTrigger(minutes=5), _privacy_bridge_health)
+
     # Register user-defined custom agents from the DB
     try:
         rebuild_custom_jobs()

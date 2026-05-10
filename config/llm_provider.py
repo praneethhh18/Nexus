@@ -130,7 +130,10 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     """
     Plain prompt → text.
 
-    sensitive=True   — always stays on local Ollama (PII / DB rows / secrets).
+    sensitive=True   — never sent to cloud LLM. Order of preference:
+                       (1) customer's Privacy Bridge Ollama if registered + healthy
+                       (2) server-local Ollama (if configured)
+                       (3) cloud LLM with PII redaction (privacy.scrub layer)
     force_cloud=True — skip complexity routing and always use cloud when available.
     fast=True        — prefer the cheaper/faster cloud tier (Nova Lite, etc.).
 
@@ -138,6 +141,27 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     and short lookups stay on Ollama; drafting, analysis, and multi-step
     reasoning go to the cloud provider.
     """
+    # Privacy Bridge: if this is a sensitive prompt and the active business
+    # has a registered + healthy Privacy Bridge endpoint, route there first.
+    # Customer's Ollama on their laptop computes the response → genuinely
+    # "your data, your machine" with the SaaS form-factor.
+    if sensitive:
+        try:
+            from api import privacy_bridge as _pb
+            biz_id = cloud_budget.get_active_business()
+            if biz_id and _pb.get_endpoint_for_use(biz_id):
+                try:
+                    return _pb.invoke_via_bridge(
+                        biz_id, prompt, system=system,
+                        max_tokens=max_tokens, temperature=temperature,
+                    )
+                except RuntimeError as e:
+                    # Bridge unreachable / down → fall through to next tier
+                    logger.debug(f"[Privacy Bridge] fell through to cloud-redacted: {e}")
+        except Exception as e:
+            # Never block sensitive prompts on a bridge bug
+            logger.warning(f"[Privacy Bridge] lookup error: {e}")
+
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()
