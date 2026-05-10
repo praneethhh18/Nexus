@@ -187,6 +187,24 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
            fast: bool = False, sensitive: bool = False,
            force_cloud: bool = False) -> Generator[str, None, None]:
     """Stream text tokens one by one. See `invoke` for flag semantics."""
+    # Privacy Bridge first when sensitive=True. Same precedence as invoke():
+    # customer's laptop → server-local Ollama → cloud-with-redaction.
+    if sensitive:
+        try:
+            from api import privacy_bridge as _pb
+            biz_id = cloud_budget.get_active_business()
+            if biz_id and _pb.get_endpoint_for_use(biz_id):
+                try:
+                    yield from _pb.stream_via_bridge(
+                        biz_id, prompt, system=system,
+                        max_tokens=max_tokens,
+                    )
+                    return
+                except RuntimeError as e:
+                    logger.debug(f"[Privacy Bridge] stream fell through to cloud-redacted: {e}")
+        except Exception as e:
+            logger.warning(f"[Privacy Bridge] stream lookup error: {e}")
+
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()

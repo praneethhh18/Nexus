@@ -141,21 +141,61 @@ def get_endpoint_for_use(business_id: str) -> Optional[str]:
     """Return the endpoint URL ONLY if it's currently usable.
     Used by the LLM router. Skips revoked + unconfigured. Returns None if down,
     so the router falls back to cloud-with-redaction immediately."""
+    info = get_endpoint_info(business_id)
+    return info["endpoint_url"] if info else None
+
+
+def get_endpoint_info(business_id: str) -> Optional[Dict[str, Any]]:
+    """Like get_endpoint_for_use but also returns the registered model list.
+    Used by invoke_via_bridge so we don't hardcode a model name the
+    customer's Ollama might not have installed."""
     conn = _conn()
     conn.row_factory = sqlite3.Row
     try:
         row = conn.execute(
-            f"SELECT endpoint_url, status FROM {TABLE} "
+            f"SELECT endpoint_url, status, ollama_models FROM {TABLE} "
             f"WHERE business_id = ? AND endpoint_url IS NOT NULL",
             (business_id,),
         ).fetchone()
     finally:
         conn.close()
-    if not row:
+    if not row or row["status"] in ("revoked", "down"):
         return None
-    if row["status"] in ("revoked", "down"):
-        return None
-    return row["endpoint_url"]
+    models: list = []
+    if row["ollama_models"]:
+        try:
+            models = json.loads(row["ollama_models"])
+        except Exception:
+            models = []
+    return {"endpoint_url": row["endpoint_url"], "ollama_models": models}
+
+
+# Models we prefer, in order — first one the customer has installed wins.
+# All three are sensible "general purpose" picks the installer recommends.
+_PREFERRED_MODELS = (
+    "llama3.1:8b-instruct-q4_K_M",
+    "llama3.1:8b",
+    "llama3:8b",
+    "mistral:7b",
+    "qwen2.5:7b",
+)
+
+
+def _pick_model(installed: list, override: Optional[str] = None) -> str:
+    """Pick the best available model. Prefers explicit override, then our
+    preference list, then whatever the customer happens to have installed."""
+    if override and any(m == override or m.startswith(override + ":") for m in installed):
+        return override
+    for pref in _PREFERRED_MODELS:
+        if pref in installed:
+            return pref
+        # Tolerate variant tags ("llama3.1:8b" matches "llama3.1:8b-instruct-...")
+        base = pref.split(":")[0]
+        for m in installed:
+            if m == pref or m.startswith(base + ":"):
+                return m
+    # Fall back to whatever they have, or the canonical default if list is empty
+    return installed[0] if installed else "llama3.1:8b"
 
 
 # ── Bridge installer registers its tunnel URL here ─────────────────────────
@@ -317,17 +357,22 @@ def health_check_all_due(stale_minutes: int = 5) -> int:
 
 # ── Forwarder — used by config/llm_provider.py ─────────────────────────────
 def invoke_via_bridge(business_id: str, prompt: str, system: str = "",
-                      model: str = "llama3.1:8b-instruct-q4_K_M",
+                      model: Optional[str] = None,
                       max_tokens: int = 1024,
                       temperature: float = 0.4) -> str:
     """Forward an LLM request to the customer's Ollama. Raises RuntimeError
-    if endpoint isn't usable (caller falls back to cloud-with-redaction)."""
-    endpoint = get_endpoint_for_use(business_id)
-    if not endpoint:
+    if endpoint isn't usable (caller falls back to cloud-with-redaction).
+
+    Picks a model from the customer's registered installed-models list so we
+    don't hardcode a tag they don't have. Pass `model` to override.
+    """
+    info = get_endpoint_info(business_id)
+    if not info:
         raise RuntimeError("no usable privacy bridge for this business")
 
+    chosen_model = _pick_model(info["ollama_models"], override=model)
     payload = {
-        "model": model,
+        "model": chosen_model,
         "prompt": prompt,
         "system": system,
         "stream": False,
@@ -335,7 +380,7 @@ def invoke_via_bridge(business_id: str, prompt: str, system: str = "",
     }
     try:
         with httpx.Client(timeout=60.0) as client:
-            r = client.post(endpoint.rstrip("/") + "/api/generate", json=payload)
+            r = client.post(info["endpoint_url"].rstrip("/") + "/api/generate", json=payload)
     except Exception as e:
         # Mark as down so subsequent calls skip it without retrying
         _mark_down(business_id, str(e)[:200])
@@ -346,6 +391,54 @@ def invoke_via_bridge(business_id: str, prompt: str, system: str = "",
         raise RuntimeError(f"bridge returned HTTP {r.status_code}")
 
     return (r.json().get("response") or "").strip()
+
+
+def stream_via_bridge(business_id: str, prompt: str, system: str = "",
+                      model: Optional[str] = None,
+                      max_tokens: int = 1024,
+                      temperature: float = 0.4):
+    """Streaming counterpart to invoke_via_bridge. Yields response chunks as
+    they arrive from the customer's Ollama. Raises RuntimeError on failure
+    so the caller can fall back to cloud-with-redaction."""
+    info = get_endpoint_info(business_id)
+    if not info:
+        raise RuntimeError("no usable privacy bridge for this business")
+
+    chosen_model = _pick_model(info["ollama_models"], override=model)
+    payload = {
+        "model": chosen_model,
+        "prompt": prompt,
+        "system": system,
+        "stream": True,
+        "options": {"num_predict": max_tokens, "temperature": temperature},
+    }
+    try:
+        with httpx.stream(
+            "POST",
+            info["endpoint_url"].rstrip("/") + "/api/generate",
+            json=payload,
+            timeout=120.0,
+        ) as r:
+            if r.status_code != 200:
+                _mark_down(business_id, f"HTTP {r.status_code}")
+                raise RuntimeError(f"bridge returned HTTP {r.status_code}")
+            for line in r.iter_lines():
+                if not line:
+                    continue
+                try:
+                    chunk = json.loads(line)
+                except Exception:
+                    continue
+                piece = chunk.get("response") or ""
+                if piece:
+                    yield piece
+                if chunk.get("done"):
+                    break
+    except RuntimeError:
+        raise
+    except Exception as e:
+        _mark_down(business_id, str(e)[:200])
+        raise RuntimeError(f"bridge unreachable: {e}")
 
 
 def _mark_down(business_id: str, error: str) -> None:

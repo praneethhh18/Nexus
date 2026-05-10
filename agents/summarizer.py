@@ -62,8 +62,10 @@ def _summarize_chunk(turns: List[Dict[str, Any]]) -> str:
         f"\n\n{transcript}"
     )
     try:
+        # Conversation transcripts contain customer messages + replies → PII.
+        # Privacy Bridge routes this to the customer's laptop when registered.
         out = llm_invoke(prompt, system="You compress conversation transcripts.",
-                         max_tokens=500, temperature=0.0)
+                         max_tokens=500, temperature=0.0, sensitive=True)
         return out.strip()
     except Exception as e:
         logger.warning(f"[Summarizer] fallback to naive summary: {e}")
@@ -198,8 +200,10 @@ def consolidate_business_memory(
 
     prompt = _CONSOLIDATE_PROMPT.format(memory_list=memory_list)
     try:
+        # Memory consolidation works directly on stored facts about contacts,
+        # deals, and conversations — pure PII. Route through Privacy Bridge.
         raw = llm_invoke(prompt, system="You are a careful data janitor.",
-                         max_tokens=2000, temperature=0.0)
+                         max_tokens=2000, temperature=0.0, sensitive=True)
     except Exception as e:
         return {"applied": False, "reason": f"LLM error: {e}", "plan": None}
 

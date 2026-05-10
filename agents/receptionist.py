@@ -147,7 +147,10 @@ def summarize_call(transcript: List[Dict[str, str]],
     prompt = f"Transcript:\n{convo}\n\nSummarise as JSON only."
 
     try:
-        raw = llm_provider.invoke(prompt, system=system, max_tokens=400, temperature=0.1)
+        # Call transcript + caller name = PII. Route through Privacy Bridge
+        # when configured so the customer's call data stays on their laptop.
+        raw = llm_provider.invoke(prompt, system=system, max_tokens=400,
+                                   temperature=0.1, sensitive=True)
         # Trim common LLM wrappers (```json ... ```)
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", (raw or "").strip(),
                      flags=re.MULTILINE)
