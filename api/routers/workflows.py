@@ -32,12 +32,24 @@ def get_workflow_templates(ctx: dict = Depends(get_current_context)):
 
 @router.post("/api/workflows/generate-from-text")
 def generate_workflow_from_text(body: dict, ctx: dict = Depends(get_current_context)):
-    """Take a natural-language description and return a workflow draft (not saved)."""
+    """Convert plain English → workflow JSON via LLM. Returns a DRAFT — the
+    user must review + click Save to persist it.
+
+    Plan gate: Magic Workflows is a Pro+ feature. LLM token cost per call
+    is ~₹2-4 with our prompt (rich few-shot examples eat tokens) so we
+    don't comp it on Free/Starter.
+    """
     description = (body.get("description") or "").strip()
     if not description:
         raise HTTPException(400, "description is required")
     if len(description) > 2000:
         raise HTTPException(400, "description too long (max 2000 chars)")
+
+    # Plan-gate — Pro and up. Free/Starter users get a 402 with a clear
+    # "upgrade to Pro" message that the frontend turns into a CTA.
+    from api.plan_gate import require_plan
+    require_plan(ctx["business_id"], "pro")
+
     from agents.workflow_builder import build_workflow
     try:
         wf = build_workflow(description)

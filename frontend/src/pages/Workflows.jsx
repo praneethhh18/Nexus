@@ -216,6 +216,38 @@ export default function Workflows() {
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
+  // Magic Workflows: one-shot generate from natural-language description.
+  // Backend returns the draft (not saved); we drop the user into the
+  // canvas builder so they can review + tweak + Save explicitly.
+  // Errors map to friendly messages — 402 = upgrade prompt, others = raw.
+  const runGenerate = async () => {
+    const prompt = nlPrompt.trim();
+    if (!prompt || nlBusy) return;
+    setNlBusy(true);
+    try {
+      const wf = await generateWorkflowFromText(prompt);
+      openBuilderFromTemplate(wf);
+      setNlPrompt('');
+      const warningCount = wf?._validation?.errors?.length || 0;
+      flash(
+        warningCount
+          ? `Generated with ${warningCount} warning(s) — review the canvas.`
+          : 'Generated — review and save.',
+      );
+    } catch (err) {
+      const msg = String(err?.message || err);
+      // Backend uses 402 Payment Required for plan gates; service.js bubbles
+      // the detail string through. Detect it and route the user to /pricing.
+      if (/requires the .* plan/i.test(msg) || /HTTP 402/.test(msg)) {
+        flash('Magic Workflows is a Pro feature. Upgrade at /pricing.');
+      } else {
+        flash(`Failed: ${msg}`);
+      }
+    } finally {
+      setNlBusy(false);
+    }
+  };
+
   // ── Gallery: one-click enable a template ────────────────────────────────────
   const enableTemplate = async (tmpl) => {
     setEnablingName(tmpl.name);
@@ -431,57 +463,74 @@ export default function Workflows() {
           {/* How-to guide — first-timer onboarding. Dismissible & persisted. */}
           <WorkflowsGuide />
 
-          {/* AI-assisted builder */}
+          {/* AI-assisted builder — "Magic Workflows".
+              Plan-gated to Pro+ on the backend; we surface the upgrade CTA
+              when a 402 comes back. */}
           <div className="panel" style={{ padding: 16, marginBottom: 16, background: 'linear-gradient(135deg, var(--color-bg), var(--color-surface-2))', border: '1px solid color-mix(in srgb, var(--color-ok) 19%, transparent)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <Sparkles size={16} color="var(--color-ok)" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Describe an automation in plain English</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                Magic Workflows — describe what you want, AI builds it
+              </span>
             </div>
-            <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 10px' }}>
-              e.g. <em>"Every Monday at 9am, post a Slack summary of last week's sales"</em> or
-              <em> "When a new deal reaches proposal stage, create a follow-up task for me in 3 days"</em>
+            <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
+              Type the automation in plain English. AI picks the right trigger
+              + steps + conditions and shows you the visual graph to review.
             </p>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input
+
+            {/* One-click example chips — fill the textarea, user clicks Generate. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+              {[
+                "Every Monday at 9am, summarise last week's deals and email it to me",
+                "When an anomaly is detected in sales, slack me a generated report",
+                "Daily at 10am, draft reminders for invoices overdue more than 14 days",
+                "On a new contact from web form, send WhatsApp greeting + create CRM task",
+              ].map((ex, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setNlPrompt(ex)}
+                  disabled={nlBusy}
+                  style={{
+                    fontSize: 11, padding: '4px 10px', borderRadius: 999,
+                    background: 'var(--color-surface-1)',
+                    border: '1px solid var(--color-border)',
+                    color: 'var(--color-text-muted)', cursor: 'pointer',
+                  }}
+                >
+                  {ex.length > 64 ? ex.slice(0, 64) + '…' : ex}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+              <textarea
                 className="field-input"
-                placeholder="Describe what you want..."
+                placeholder="e.g. When a deal reaches proposal stage, schedule a follow-up call in 3 days and send the contact a recap email"
                 value={nlPrompt}
                 onChange={(e) => setNlPrompt(e.target.value)}
                 onKeyDown={async (e) => {
-                  if (e.key !== 'Enter' || !nlPrompt.trim() || nlBusy) return;
-                  setNlBusy(true);
-                  try {
-                    const wf = await generateWorkflowFromText(nlPrompt);
-                    openBuilderFromTemplate(wf);
-                    setNlPrompt('');
-                    flash('Generated — review and save.');
-                  } catch (err) {
-                    flash(`Failed: ${err.message}`);
+                  // Cmd/Ctrl+Enter submits; plain Enter inserts newline
+                  if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && nlPrompt.trim() && !nlBusy) {
+                    e.preventDefault();
+                    await runGenerate();
                   }
-                  setNlBusy(false);
                 }}
-                style={{ flex: 1, fontSize: 12 }}
+                style={{ flex: 1, fontSize: 13, minHeight: 64, resize: 'vertical', fontFamily: 'inherit' }}
                 disabled={nlBusy}
               />
               <button
                 className="btn-primary"
                 disabled={nlBusy || !nlPrompt.trim()}
-                onClick={async () => {
-                  setNlBusy(true);
-                  try {
-                    const wf = await generateWorkflowFromText(nlPrompt);
-                    openBuilderFromTemplate(wf);
-                    setNlPrompt('');
-                    flash('Generated — review and save.');
-                  } catch (err) {
-                    flash(`Failed: ${err.message}`);
-                  }
-                  setNlBusy(false);
-                }}
+                onClick={runGenerate}
+                style={{ alignSelf: 'stretch', minWidth: 110 }}
               >
-                {nlBusy ? 'Thinking...' : 'Generate'}
+                {nlBusy ? 'Generating…' : 'Generate'}
               </button>
             </div>
+            <p style={{ fontSize: 10, color: 'var(--color-text-dim)', margin: '6px 0 0' }}>
+              Cmd/Ctrl + Enter to generate. Pro plan and above.
+            </p>
           </div>
 
           <p style={{ fontSize: 12, color: 'var(--color-text-dim)', marginBottom: 16 }}>
