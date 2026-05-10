@@ -111,17 +111,18 @@ const TIERS = [
   {
     id: 'self_hosted',
     name: 'Self-hosted',
-    price: '₹49,999',
+    price: '₹4,99,000',
     cadence: 'one-time',
-    desc: 'Run the whole stack on your own server. Yours forever.',
+    desc: 'Full source + Docker deploy on your own server. One-time license.',
     items: [
       'Unlimited users on your server',
       'Docker + Helm deploy',
-      'Source code access',
-      '12 months of updates',
+      'Full source code access',
+      '12 months of updates included',
       'Bring-your-own API keys',
+      'Optional ₹74,999/year support contract',
     ],
-    cta: 'Buy license',
+    cta: 'Talk to sales',
     icon: Server,
   },
 ];

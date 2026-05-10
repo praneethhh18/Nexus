@@ -167,12 +167,12 @@ const TIERS = [
     items: ['Up to 10 users', '10,000 documents', '2,000 WhatsApp/mo', '300 voice mins/mo',
             'Privacy Bridge (data on your laptop)', 'Cloud LLM with PII redaction', 'Priority 24h support'],
     cta: 'Subscribe',          plan: 'privacy' },
-  { name: 'Self-hosted', price: '₹49,999',  period: 'one-time', featured: false,
-    desc: 'Deploy on your own infra. One-time license, you bring your own API keys.',
-    items: ['Unlimited users', 'Docker + Helm deploy', 'Source code access',
-            '12 months of updates', 'Bring-your-own API keys (no usage fees from us)',
-            'Setup support via email'],
-    cta: 'Buy license',        href: `mailto:${MAIL}` },
+  { name: 'Self-hosted', price: '₹4,99,000', period: 'one-time', featured: false,
+    desc: 'Full source + Docker deploy on your own infra. One-time license + optional support.',
+    items: ['Unlimited users on your server', 'Docker + Helm deploy', 'Full source code access',
+            '12 months of updates included', 'Bring-your-own API keys (no usage fees from us)',
+            'Optional ₹74,999/year support contract'],
+    cta: 'Talk to sales',      href: `mailto:${MAIL}` },
 ];
 
 const FAQS = [
