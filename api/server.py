@@ -45,6 +45,19 @@ if not Path(DB_PATH).exists():
 # Enable WAL mode + production pragmas — 10× write throughput, concurrent reads
 enable_sqlite_production_mode()
 
+# Apply any pending DB migrations BEFORE any router boots — routers may
+# depend on a column added by a recent migration. Uses the existing runner
+# at db/migrate.py (full SHA-256 tracking + dual-backend support).
+try:
+    from db.migrate import apply_pending as _apply_migrations
+    _applied = _apply_migrations()
+    if _applied:
+        logger.info(f"[Boot] Applied {len(_applied)} pending migration(s): "
+                    f"{[m['name'] for m in _applied]}")
+except Exception as _migr_err:
+    logger.error(f"[Boot] Migration runner failed: {_migr_err}")
+    raise
+
 # Auto-load sample docs
 from utils.sample_docs_generator import ensure_documents_loaded
 ensure_documents_loaded()

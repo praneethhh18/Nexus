@@ -51,10 +51,6 @@ def pipeline_velocity(business_id: str) -> Dict[str, Any]:
             f"WHERE business_id = ? ORDER BY deal_id, at ASC",
             (business_id,),
         ).fetchall()
-        deals = conn.execute(
-            f"SELECT id, stage, updated_at FROM {DEALS_TABLE} WHERE business_id = ?",
-            (business_id,),
-        ).fetchall()
     finally:
         conn.close()
 

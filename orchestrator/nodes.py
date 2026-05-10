@@ -314,7 +314,6 @@ def synthesizer_node(state: State) -> State:
     # ── Tier 1: Multi-Agent Results ────────────────────────────────────
     multi_agent = state.get("multi_agent", False)
     agent_results = state.get("agent_results", {})
-    agents_used = state.get("agents_used", [])
 
     # ── Tier 1: Personalized context ───────────────────────────────────
     personalized_ctx = state.get("personalized_context", "")

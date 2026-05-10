@@ -202,4 +202,4 @@ def build_memory_context(business_id: str, query: str = "", max_entries: int = 1
         lines.append(f"[{r['kind']}] {r['content']}")
     if not lines:
         return ""
-    return "Known facts about this business:\n" + "\n".join(f"- {l}" for l in lines)
+    return "Known facts about this business:\n" + "\n".join(f"- {ln}" for ln in lines)

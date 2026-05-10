@@ -444,8 +444,8 @@ def _format_reply(agent_result: Dict[str, Any]) -> str:
     parts = [answer]
 
     tool_calls = agent_result.get("tool_calls") or []
-    # Summarize any tool calls that happened
-    succeeded = [tc for tc in tool_calls if not tc.get("pending_approval") and not tc.get("error")]
+    # Summarize tool calls that need user attention (succeeded count is
+    # implicit — it's tool_calls minus queued + failed)
     queued = [tc for tc in tool_calls if tc.get("pending_approval")]
     failed = [tc for tc in tool_calls if tc.get("error")]
 

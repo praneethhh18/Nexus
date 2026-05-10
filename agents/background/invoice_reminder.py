@@ -16,7 +16,7 @@ from datetime import date, timedelta
 from loguru import logger
 
 from config.db import get_conn
-from utils.timez import now_iso, now_utc_naive
+from utils.timez import now_utc_naive
 
 # Only re-nag once every N days per invoice
 REMINDER_INTERVAL_DAYS = int(os.getenv("INVOICE_REMINDER_INTERVAL_DAYS", "7"))

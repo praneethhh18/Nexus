@@ -34,3 +34,11 @@ ignore = [
 # Smoke + repro scripts are intentionally side-effect heavy and
 # import for monkey-patching, not direct use.
 "scripts/*"           = ["F401"]
+# server.py runs a heavy bootstrap (env load, settings, DB ensure, migrations)
+# BEFORE the bulk of the imports. The imports-not-at-top warnings are by design.
+"api/server.py"       = ["E402"]
+# tools/*.py are CLI scripts that munge sys.path before importing.
+"tools/*"             = ["E402"]
+# Workflow nodes accept dynamic context dicts; "unused" locals are reserved
+# placeholders for inputs the workflow engine populates at runtime.
+"workflows/nodes/*"   = ["F841"]

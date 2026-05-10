@@ -95,10 +95,6 @@ def build_pdf(
         "H1", parent=styles["Heading1"],
         textColor=NEXUS_BLUE, fontSize=14, spaceAfter=8,
     )
-    h2_style = ParagraphStyle(
-        "H2", parent=styles["Heading2"],
-        textColor=ACCENT, fontSize=11, spaceAfter=6,
-    )
     bullet_style = ParagraphStyle(
         "Bullet", parent=style_body,
         leftIndent=20, bulletIndent=10, spaceAfter=4,

@@ -222,9 +222,16 @@ def _dial_contact(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
         "callback_url":   callback_url,
     }
 
+    # Shared-secret auth — Vox /api/dial rejects requests missing this header
+    # in production. Same env var on both ends.
+    headers = {}
+    vox_secret = os.getenv("VOX_SHARED_SECRET", "").strip()
+    if vox_secret:
+        headers["X-Vox-Secret"] = vox_secret
+
     try:
         with httpx.Client(timeout=20.0) as client:
-            r = client.post(f"{lab_url}/api/dial", json=payload)
+            r = client.post(f"{lab_url}/api/dial", json=payload, headers=headers)
     except Exception as e:
         raise RuntimeError(f"Vox lab unreachable at {lab_url}: {e}")
 

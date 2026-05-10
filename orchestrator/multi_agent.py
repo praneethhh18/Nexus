@@ -124,7 +124,6 @@ FINAL: <how to combine all results into a final answer>"""
         """Parse LLM response into a TaskPlan."""
         steps = []
         summary = ""
-        final_summary = ""
 
         lines = response.strip().split("\n")
         current_step = None
@@ -169,7 +168,9 @@ FINAL: <how to combine all results into a final answer>"""
                     steps.append(TaskStep(**current_step))
                     current_step = None
             elif line.upper().startswith("FINAL:"):
-                final_summary = line.split(":", 1)[1].strip()
+                # FINAL: lines are emitted by the planner but not currently
+                # surfaced — TaskPlan only exposes per-step summaries.
+                pass
 
         if not steps:
             return self._fallback_plan(query)

@@ -65,7 +65,7 @@ def main():
     texts = [d.page_content for d in docs]
     metas = [d.metadata for d in docs]
     embeddings = embed_documents(texts)
-    added = add_documents(texts, embeddings, metas)
+    add_documents(texts, embeddings, metas)
     stats = get_collection_stats()
     logger.info(f"Collection stats: {stats}")
 

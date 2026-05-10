@@ -143,9 +143,14 @@ async def dial_contact(
 
     payload = _build_payload_for_contact(business_id, contact_id, body)
     lab_url = _lab_url()
+    # Shared-secret header — Vox /api/dial requires it in production
+    headers = {}
+    vox_secret = os.getenv("VOX_SHARED_SECRET", "").strip()
+    if vox_secret:
+        headers["X-Vox-Secret"] = vox_secret
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.post(f"{lab_url}/api/dial", json=payload)
+            r = await client.post(f"{lab_url}/api/dial", json=payload, headers=headers)
     except Exception as e:
         logger.exception(f"[voice/dial] lab unreachable at {lab_url}: {e}")
         raise HTTPException(502, f"lab unreachable: {e}")

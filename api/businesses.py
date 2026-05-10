@@ -312,7 +312,7 @@ def migrate_legacy_data() -> None:
         if not admin_row:
             return  # no users yet
 
-        admin_id, admin_name = admin_row[0], admin_row[1]
+        admin_id = admin_row[0]
 
         # Does a "Legacy Data" business already exist for this admin?
         existing = conn.execute(

@@ -159,9 +159,8 @@ def _build_template(business_id: str, intent: str, channel: str,
 def _personalize(template: str, contact: Dict[str, Any]) -> str:
     first = (contact.get("first_name") or "there").strip() or "there"
     title = (contact.get("title") or "").strip()
-    notes = (contact.get("notes") or "").strip()
 
-    # Best-effort business_type guess from title or notes
+    # Best-effort business_type guess from title
     btype = title or "your business"
     msg = (template
            .replace("{{first_name}}",   first)

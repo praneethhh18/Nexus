@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import Dict, Any, List, Tuple
 from loguru import logger
 
-from workflows.node_registry import get_node_def
 
 
 # ── Node dispatch table ───────────────────────────────────────────────────────
@@ -193,8 +192,6 @@ def execute_workflow(workflow: Dict[str, Any]) -> Dict[str, Any]:
             # Handle condition branching
             branch = ctx.pop("_branch", None)
             if branch is not None:
-                node_def = get_node_def(node_type)
-                all_outputs = node_def.get("outputs", [])
                 # Get children edges from this node
                 for (child_id, edge_label) in forward.get(node_id, []):
                     # If edge label doesn't match chosen branch, skip child

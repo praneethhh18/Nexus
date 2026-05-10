@@ -204,7 +204,7 @@ def _find_leads(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
 
     raw = _search_nominatim(query, location, max_results)
     if require_phone:
-        raw = [l for l in raw if l.get("phone")]
+        raw = [lead for lead in raw if lead.get("phone")]
 
     phone_idx = _existing_phone_set(business_id)
     name_idx  = _existing_name_set(business_id)
@@ -260,13 +260,13 @@ def _find_leads(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
     # doesn't blow up on a 50-result preview.
     preview = [
         {
-            "name":     l["name"],
-            "phone":    l.get("phone") or "—",
-            "address":  l.get("address", "")[:120],
-            "website":  l.get("website") or "",
-            "category": l.get("category") or "",
+            "name":     lead["name"],
+            "phone":    lead.get("phone") or "—",
+            "address":  lead.get("address", "")[:120],
+            "website":  lead.get("website") or "",
+            "category": lead.get("category") or "",
         }
-        for l in fresh[:15]
+        for lead in fresh[:15]
     ]
 
     return {
