@@ -55,7 +55,8 @@ def get_subscription(business_id: str) -> Dict[str, Any]:
         row = conn.execute(
             f"SELECT business_id, plan, status, started_at, current_period_end, "
             f"razorpay_customer_id, razorpay_subscription_id, last_payment_id, "
-            f"updated_at FROM nexus_subscriptions WHERE business_id = {_ph()}",
+            f"trial_started_at, trial_ends_at, updated_at "
+            f"FROM nexus_subscriptions WHERE business_id = {_ph()}",
             (business_id,),
         ).fetchone()
     finally:
@@ -67,25 +68,138 @@ def get_subscription(business_id: str) -> Dict[str, Any]:
             "status":                "active",
             "started_at":            None,
             "current_period_end":    None,
+            "trial_started_at":      None,
+            "trial_ends_at":         None,
             "last_payment_id":       None,
         }
-    return dict(row) if hasattr(row, "keys") else {
-        "business_id":           row[0],
-        "plan":                  row[1],
-        "status":                row[2],
-        "started_at":            row[3],
-        "current_period_end":    row[4],
-        "razorpay_customer_id":  row[5],
-        "razorpay_subscription_id": row[6],
-        "last_payment_id":       row[7],
-        "updated_at":            row[8],
-    }
+    if hasattr(row, "keys"):
+        d = dict(row)
+    else:
+        d = {
+            "business_id":           row[0],
+            "plan":                  row[1],
+            "status":                row[2],
+            "started_at":            row[3],
+            "current_period_end":    row[4],
+            "razorpay_customer_id":  row[5],
+            "razorpay_subscription_id": row[6],
+            "last_payment_id":       row[7],
+            "trial_started_at":      row[8],
+            "trial_ends_at":         row[9],
+            "updated_at":            row[10],
+        }
+    # Convenience derived fields the frontend needs.
+    if d.get("status") == "trial" and d.get("trial_ends_at"):
+        try:
+            ends = datetime.fromisoformat(d["trial_ends_at"])
+            now = datetime.now(timezone.utc)
+            d["trial_days_remaining"] = max(0, (ends.date() - now.date()).days)
+            d["trial_active"] = ends > now
+        except Exception:
+            d["trial_days_remaining"] = None
+            d["trial_active"] = False
+    else:
+        d["trial_days_remaining"] = None
+        d["trial_active"] = False
+    return d
 
 
 def get_plan(business_id: str) -> str:
     """Convenience — just the plan key. Used by feature gates throughout
-    the codebase: `if check_plan(get_plan(biz), 'pro'): ...`"""
+    the codebase: `if check_plan(get_plan(biz), 'pro'): ...`
+
+    During trial, returns the trialled plan ('pro' typically) so feature
+    gates unlock the trial experience. Trial expiry handled by reap_expired.
+    """
     return (get_subscription(business_id) or {}).get("plan") or "free"
+
+
+# ── Trial lifecycle ───────────────────────────────────────────────────────
+TRIAL_PLAN = "pro"      # default tier the trial unlocks
+TRIAL_DAYS = 14         # change here + the email copy in billing_emails.py
+
+
+def start_trial(
+    business_id: str,
+    *,
+    plan: str = TRIAL_PLAN,
+    days: int = TRIAL_DAYS,
+    user_id: str = "",
+) -> Dict[str, Any]:
+    """Grant a trial subscription. Idempotent — if the business already has
+    a row (any status), this is a no-op so a second 'create_business' call
+    doesn't restart the clock or reset a paid plan back to trial.
+
+    Called from api/businesses.create_business() on first business creation.
+    Safe to call eagerly — won't override a paid-active subscription.
+    """
+    if not business_id:
+        raise ValueError("business_id required")
+
+    existing = get_subscription(business_id)
+    if existing.get("status") in ("active", "trial", "past_due", "cancelled"):
+        # Don't reset whatever already exists — even cancelled/past_due
+        # rows have history we want to keep.
+        if existing.get("started_at") or existing.get("trial_started_at"):
+            return existing
+
+    now = datetime.now(timezone.utc)
+    trial_ends = (now + timedelta(days=days)).isoformat()
+    started = now.isoformat()
+
+    conn = get_conn()
+    try:
+        conn.execute(
+            f"INSERT INTO nexus_subscriptions "
+            f"(business_id, plan, status, started_at, current_period_end, "
+            f" trial_started_at, trial_ends_at, updated_at) "
+            f"VALUES ({_ph()}, {_ph()}, 'trial', {_ph()}, {_ph()}, "
+            f"        {_ph()}, {_ph()}, {_ph()}) "
+            f"ON CONFLICT(business_id) DO NOTHING",
+            (business_id, plan, started, trial_ends, started, trial_ends, now_iso()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    record_event(
+        business_id=business_id,
+        event_type="trial_started",
+        plan=plan,
+        payload={"days": days, "user_id": user_id},
+    )
+    logger.info(f"[subscriptions] trial started biz={business_id} plan={plan} ends={trial_ends}")
+
+    # Welcome email — best-effort. Same fallback shape as record_payment side
+    # effects: missing customer email is fine, just skip.
+    try:
+        from api.businesses import get_business
+        from api.billing_emails import send_trial_started
+        from api.routers.billing import PLANS
+
+        biz = get_business(business_id) or {}
+        customer_email = ""
+        customer_name = ""
+        if user_id:
+            try:
+                from api.auth import get_user_by_id
+                u = get_user_by_id(user_id) or {}
+                customer_email = u.get("email", "")
+                customer_name = u.get("name", "")
+            except Exception:
+                pass
+        if customer_email:
+            send_trial_started(
+                to_email=customer_email,
+                customer_name=customer_name,
+                business_name=biz.get("name", "your workspace"),
+                plan_label=(PLANS.get(plan) or {}).get("label", plan),
+                trial_days=days,
+            )
+    except Exception as e:
+        logger.warning(f"[subscriptions] trial-started email failed: {e}")
+
+    return get_subscription(business_id)
 
 
 def record_payment(
@@ -136,10 +250,34 @@ def record_payment(
     finally:
         conn.close()
 
-    # 2. Upsert the current-state row. Postgres ON CONFLICT works here, the
-    #    SQLite path uses the same syntax (supported since 3.24).
+    # 2. Upsert the current-state row. Trial-aware: if there's still time
+    #    left on a trial, extend the period from trial_end so the customer
+    #    doesn't lose the remaining trial days they paid for.
     started_at = now_iso()
-    period_end = _period_end_for(plan)
+    existing = get_subscription(business_id)
+    base_for_period = datetime.now(timezone.utc)
+    if (existing.get("status") == "trial"
+            and existing.get("trial_ends_at")):
+        try:
+            trial_end = datetime.fromisoformat(existing["trial_ends_at"])
+            if trial_end > base_for_period:
+                base_for_period = trial_end   # extend FROM trial_end, not now
+        except Exception:
+            pass
+    plan_meta = None
+    try:
+        from api.routers.billing import PLANS
+        plan_meta = PLANS.get(plan) or {}
+    except Exception:
+        plan_meta = {}
+    period = (plan_meta or {}).get("period", "monthly")
+    if period == "annual":
+        period_end = (base_for_period + timedelta(days=365)).isoformat()
+    elif period in ("one-time", "custom"):
+        period_end = None
+    else:
+        period_end = (base_for_period + timedelta(days=30)).isoformat()
+
     conn = get_conn()
     try:
         conn.execute(
@@ -326,17 +464,35 @@ def cancel_subscription(business_id: str, reason: str = "") -> Dict[str, Any]:
 
 
 def reap_expired() -> int:
-    """Daily job: any subscription whose `current_period_end` is in the past
-    AND status='active' goes to status='past_due'. After 7 days past_due,
-    plan reverts to 'free'. Called from agents/background/scheduler.py."""
+    """Daily job: three transitions, ordered for safety.
+
+    1. Trial expiry: status='trial' AND trial_ends_at < now → plan='free',
+       status='active'. Customer keeps their data; only the Pro features
+       lock. The trial_started_at/trial_ends_at columns stay as audit.
+    2. Active expiry: status='active' AND current_period_end < now →
+       status='past_due'. Renewal-failure email sequence handles recovery.
+    3. Past-due expiry: status='past_due' for 7+ days → plan='free',
+       status='active'. The customer effectively cancelled.
+    """
     now = now_iso()
     seven_days_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
 
+    expired_trials = 0
     moved_to_past_due = 0
     moved_to_free = 0
 
     conn = get_conn()
     try:
+        # Step 0: trial → free when trial_ends_at is past
+        cur = conn.execute(
+            f"UPDATE nexus_subscriptions SET plan = 'free', status = 'active', "
+            f"updated_at = {_ph()} "
+            f"WHERE status = 'trial' AND trial_ends_at IS NOT NULL "
+            f"AND trial_ends_at < {_ph()}",
+            (now, now),
+        )
+        expired_trials = getattr(cur, "rowcount", 0) or 0
+
         # Step 1: active → past_due when current_period_end < now
         cur = conn.execute(
             f"UPDATE nexus_subscriptions SET status = 'past_due', updated_at = {_ph()} "
@@ -359,9 +515,11 @@ def reap_expired() -> int:
     finally:
         conn.close()
 
-    if moved_to_past_due or moved_to_free:
+    total = expired_trials + moved_to_past_due + moved_to_free
+    if total:
         logger.info(
-            f"[subscriptions reap] {moved_to_past_due} → past_due, "
-            f"{moved_to_free} → free"
+            f"[subscriptions reap] {expired_trials} trial→free, "
+            f"{moved_to_past_due} active→past_due, "
+            f"{moved_to_free} past_due→free"
         )
-    return moved_to_past_due + moved_to_free
+    return total

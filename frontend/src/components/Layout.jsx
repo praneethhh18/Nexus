@@ -8,6 +8,7 @@ import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurre
 import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
 import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
+import TrialBanner from './TrialBanner';
 
 const NAV_MAIN = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -436,6 +437,9 @@ export default function Layout() {
 
       {/* Main */}
       <main className="main-content">
+        {/* Trial countdown — renders as a strip above the route content
+            when status='trial'. Self-hides for paid + free users. */}
+        <TrialBanner />
         <Outlet />
       </main>
 

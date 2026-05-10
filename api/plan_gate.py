@@ -77,18 +77,25 @@ def is_unlimited(business_id: str, key: str) -> bool:
 
 def plan_summary(business_id: str) -> dict[str, Any]:
     """Single bundle for the frontend — current plan + label + numeric
-    limits + boolean feature flags. The Settings page calls this to render
-    the 'Your plan' panel without making 5 separate requests."""
+    limits + boolean feature flags + trial info. Settings/Pricing/Layout
+    all read from this so they don't drift from each other."""
     sub = get_subscription(business_id)
     plan_key = sub.get("plan") or "free"
     plan = PLANS.get(plan_key) or PLANS["free"]
     return {
-        "plan_key":            plan_key,
-        "label":               plan.get("label"),
-        "rank":                plan_rank(plan_key),
-        "status":              sub.get("status"),
-        "started_at":          sub.get("started_at"),
-        "current_period_end":  sub.get("current_period_end"),
-        "limits":              plan.get("limits") or {},
-        "features":            plan.get("features") or [],
+        "plan_key":              plan_key,
+        "label":                 plan.get("label"),
+        "rank":                  plan_rank(plan_key),
+        "status":                sub.get("status"),
+        "started_at":            sub.get("started_at"),
+        "current_period_end":    sub.get("current_period_end"),
+        # Trial fields — null when not on trial. Frontend uses these
+        # to render the persistent "X days left" banner.
+        "is_trial":              sub.get("status") == "trial",
+        "trial_started_at":      sub.get("trial_started_at"),
+        "trial_ends_at":         sub.get("trial_ends_at"),
+        "trial_days_remaining":  sub.get("trial_days_remaining"),
+        "trial_active":          sub.get("trial_active"),
+        "limits":                plan.get("limits") or {},
+        "features":              plan.get("features") or [],
     }

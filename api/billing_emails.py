@@ -230,6 +230,149 @@ def send_renewal_reminder(
         return False
 
 
+# ── Trial lifecycle emails ────────────────────────────────────────────────
+def send_trial_started(
+    *,
+    to_email: str,
+    customer_name: str,
+    business_name: str,
+    plan_label: str = "Pro",
+    trial_days: int = 14,
+) -> bool:
+    """Welcome email on signup — "your trial is live, here's how to start"."""
+    if not to_email:
+        return False
+    subject = f"Welcome to NexusAgent — your {trial_days}-day {plan_label} trial is live"
+    body = (
+        f"Hi {customer_name or 'there'},\n\n"
+        f"Welcome to NexusAgent. We've set up {business_name or 'your workspace'} "
+        f"with a {trial_days}-day {plan_label} trial — no card required.\n\n"
+        f"You have full access to:\n"
+        f"  ✓ All 8 AI agents (CRM, Vox voice, WhatsApp, email triage, briefing, etc.)\n"
+        f"  ✓ Cloud LLM (Claude / Bedrock)\n"
+        f"  ✓ Calendar + email integration\n"
+        f"  ✓ AI proposals + business card OCR\n\n"
+        f"First-day suggestions:\n"
+        f"  1. Add your first contact in CRM\n"
+        f"  2. Try the magic search: ask \"who are my top 5 deals?\"\n"
+        f"  3. Connect your calendar so meetings auto-prep\n\n"
+        f"Get started → {_app_url()}/\n\n"
+        f"You'll see a small banner showing days remaining at the top of the app. "
+        f"You can subscribe anytime from /pricing — paying during the trial keeps "
+        f"all your trial days, you don't lose them.\n\n"
+        f"Stuck? Reply to this email — we'll help.\n\n"
+        f"— Team NexusAgent"
+    )
+    try:
+        send_email(to=to_email, subject=subject, body=body, reply_to=_support_email())
+        logger.success(f"[billing-email] trial-started sent to {to_email}")
+        return True
+    except Exception as e:
+        logger.warning(f"[billing-email] trial-started failed: {e}")
+        return False
+
+
+def send_trial_reminder(
+    *,
+    to_email: str,
+    customer_name: str,
+    business_name: str,
+    plan_label: str,
+    days_remaining: int,
+) -> bool:
+    """Sent on trial day 7 (halfway), day 11 (3 left), day 13 (1 left).
+    Copy varies by `days_remaining`."""
+    if not to_email:
+        return False
+
+    if days_remaining >= 7:
+        # Halfway-point nudge — encourage exploration before pushing for upgrade.
+        subject = f"You're halfway through your NexusAgent {plan_label} trial"
+        body = (
+            f"Hi {customer_name or 'there'},\n\n"
+            f"Quick check-in — {business_name or 'your workspace'} has 7 days left "
+            f"on the {plan_label} trial.\n\n"
+            f"Some features people often miss in week 1:\n"
+            f"  • The magic search (top of any page) — ask anything in plain English\n"
+            f"  • Vox voice agent — make calls and the AI does the talking\n"
+            f"  • Privacy Bridge (Privacy tier) — sensitive prompts on YOUR laptop\n\n"
+            f"Open NexusAgent → {_app_url()}/\n\n"
+            f"Anything blocking? Just reply.\n\n"
+            f"— Team NexusAgent"
+        )
+    elif days_remaining >= 3:
+        subject = f"3 days left on your NexusAgent {plan_label} trial"
+        body = (
+            f"Hi {customer_name or 'there'},\n\n"
+            f"Your {plan_label} trial for {business_name or 'your workspace'} "
+            f"ends in 3 days.\n\n"
+            f"If you'd like to keep going, you can subscribe at:\n"
+            f"  → {_app_url()}/pricing\n\n"
+            f"You won't lose your trial days — paying now extends from your "
+            f"trial-end date, not from today.\n\n"
+            f"If NexusAgent isn't the right fit, no worries — your account "
+            f"drops to the Free tier when the trial ends, all your data stays.\n\n"
+            f"Questions? Reply to this email.\n\n"
+            f"— Team NexusAgent"
+        )
+    else:
+        # Day 13 — 1 day left.
+        subject = f"Last day of your NexusAgent {plan_label} trial"
+        body = (
+            f"Hi {customer_name or 'there'},\n\n"
+            f"Your {plan_label} trial ends tomorrow. After that, "
+            f"{business_name or 'your workspace'} drops to the Free tier "
+            f"(your data stays — Pro features just lock).\n\n"
+            f"To keep Pro:\n"
+            f"  → {_app_url()}/pricing  (UPI, card, or netbanking via Razorpay)\n\n"
+            f"Need more time? Reply to this email and we'll extend your trial — "
+            f"we'd rather you stick around.\n\n"
+            f"— Team NexusAgent"
+        )
+
+    try:
+        send_email(to=to_email, subject=subject, body=body, reply_to=_support_email())
+        return True
+    except Exception as e:
+        logger.warning(f"[billing-email] trial-reminder ({days_remaining}d) failed: {e}")
+        return False
+
+
+def send_trial_expired(
+    *,
+    to_email: str,
+    customer_name: str,
+    business_name: str,
+    plan_label: str = "Pro",
+) -> bool:
+    """Day 14 — trial ended. Friendly "you've moved to Free" email."""
+    if not to_email:
+        return False
+    subject = f"Your NexusAgent {plan_label} trial has ended"
+    body = (
+        f"Hi {customer_name or 'there'},\n\n"
+        f"Your 14-day {plan_label} trial for {business_name or 'your workspace'} "
+        f"has ended. We've moved you to the Free tier.\n\n"
+        f"What changes:\n"
+        f"  • All your data stays exactly where it is — nothing deleted\n"
+        f"  • Free tier limits: 1 user, 2 AI agents, 100 documents, local LLM only\n"
+        f"  • Pro features lock until you subscribe\n\n"
+        f"Want to keep Pro?\n"
+        f"  → {_app_url()}/pricing  (subscribe in 30 seconds with UPI)\n\n"
+        f"Or if NexusAgent wasn't right for you, no hard feelings — you can keep "
+        f"using the Free tier as long as you like, or export your data anytime "
+        f"from Settings.\n\n"
+        f"Was something missing? We'd love a 1-line reply telling us what.\n\n"
+        f"— Team NexusAgent"
+    )
+    try:
+        send_email(to=to_email, subject=subject, body=body, reply_to=_support_email())
+        return True
+    except Exception as e:
+        logger.warning(f"[billing-email] trial-expired failed: {e}")
+        return False
+
+
 # ── Renewal failure / grace period ────────────────────────────────────────
 def send_renewal_failed(
     *,

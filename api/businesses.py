@@ -102,6 +102,16 @@ def create_business(
         conn.close()
 
     logger.info(f"[Business] Created {bid} '{name}' owner={owner_id}")
+
+    # Auto-grant a 14-day Pro trial. Idempotent — won't override if a
+    # trial already exists. Best-effort: any failure here mustn't block
+    # business creation (the customer can still use the Free tier).
+    try:
+        from api.subscriptions import start_trial
+        start_trial(bid, user_id=owner_id)
+    except Exception as e:
+        logger.warning(f"[Business] trial auto-start failed for {bid}: {e}")
+
     return get_business(bid)
 
 

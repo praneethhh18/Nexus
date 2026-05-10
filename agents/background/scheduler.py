@@ -294,22 +294,82 @@ def start_agent_scheduler():
             logger.warning(f"[AgentScheduler] privacy_bridge health loop failed: {e}")
     _register("privacy-bridge-health", IntervalTrigger(minutes=5), _privacy_bridge_health)
 
-    # ── Subscription reaper + renewal reminders ─────────────────────────
-    # Once per day at 09:00 IST: send 3-day and 1-day renewal reminders,
-    # then move expired subscriptions to past_due → free per the rules
-    # in api/subscriptions.reap_expired().
+    # ── Subscription reaper + renewal + trial reminders ─────────────────
+    # Once per day at 09:00 IST. Order matters:
+    #   1. Send TRIAL reminders (day 7, 11, 13) — before any expiry runs
+    #   2. Send RENEWAL reminders (3-day, 1-day before period_end)
+    #   3. Send TRIAL EXPIRED emails to anyone reaped today
+    #   4. Run reap_expired() — flips trial→free, active→past_due, etc.
     def _subscription_daily():
         try:
             from api import subscriptions as _subs
             from api.routers.billing import PLANS
-            from api.billing_emails import send_renewal_reminder
+            from api.billing_emails import (
+                send_renewal_reminder, send_trial_reminder, send_trial_expired,
+            )
             from datetime import datetime, timezone, timedelta
-            from config.db import get_conn
+            from config.db import get_conn, is_postgres
+            from api.businesses import get_business
+            from api.auth import get_user_by_id
 
             now = datetime.now(timezone.utc)
-            three_days = (now + timedelta(days=3)).date()
-            one_day    = (now + timedelta(days=1)).date()
+            today = now.date()
 
+            def _resolve_customer(biz_id):
+                """Best-effort email + name lookup. Returns (email, name, bname)."""
+                try:
+                    biz = get_business(biz_id) or {}
+                    user = get_user_by_id(biz.get("owner_id") or "") or {}
+                    return (
+                        user.get("email") or biz.get("email") or "",
+                        user.get("name", ""),
+                        biz.get("name", "your workspace"),
+                    )
+                except Exception:
+                    return "", "", "your workspace"
+
+            # ── 1. Trial reminders (day 7, 11, 13 of the trial window) ────
+            conn = get_conn()
+            try:
+                trial_rows = conn.execute(
+                    "SELECT business_id, plan, trial_ends_at FROM nexus_subscriptions "
+                    "WHERE status = 'trial' AND trial_ends_at IS NOT NULL"
+                ).fetchall()
+            finally:
+                conn.close()
+
+            trial_reminders_sent = 0
+            for r in trial_rows:
+                biz_id = r[0] if not hasattr(r, "keys") else r["business_id"]
+                plan_key = r[1] if not hasattr(r, "keys") else r["plan"]
+                trial_end_str = r[2] if not hasattr(r, "keys") else r["trial_ends_at"]
+                try:
+                    end = datetime.fromisoformat(trial_end_str)
+                except Exception:
+                    continue
+                days_left = (end.date() - today).days
+                # Send on day 7-remaining (halfway), day 3, day 1.
+                if days_left not in (7, 3, 1):
+                    continue
+                email, name, bname = _resolve_customer(biz_id)
+                if not email:
+                    continue
+                plan_meta = PLANS.get(plan_key) or {}
+                if send_trial_reminder(
+                    to_email=email,
+                    customer_name=name,
+                    business_name=bname,
+                    plan_label=plan_meta.get("label", plan_key),
+                    days_remaining=days_left,
+                ):
+                    trial_reminders_sent += 1
+
+            if trial_reminders_sent:
+                logger.info(f"[AgentScheduler] sent {trial_reminders_sent} trial reminder(s)")
+
+            # ── 2. Renewal reminders (active subscriptions, 3-day + 1-day) ──
+            three_days = (today + timedelta(days=3))
+            one_day    = (today + timedelta(days=1))
             conn = get_conn()
             try:
                 rows = conn.execute(
@@ -320,7 +380,7 @@ def start_agent_scheduler():
             finally:
                 conn.close()
 
-            sent = 0
+            renewal_sent = 0
             for r in rows:
                 biz_id = r[0] if not hasattr(r, "keys") else r["business_id"]
                 plan_key = r[1] if not hasattr(r, "keys") else r["plan"]
@@ -329,43 +389,51 @@ def start_agent_scheduler():
                     end = datetime.fromisoformat(period_end_str)
                 except Exception:
                     continue
-
-                # Window: only send on the EXACT day matching 3-or-1-days-out
-                # so we don't spam (job runs every 24h anyway).
                 end_date = end.date()
                 if end_date not in (three_days, one_day):
                     continue
-                days_left = (end_date - now.date()).days
+                days_left = (end_date - today).days
                 if days_left not in (1, 3):
                     continue
-
                 plan_meta = PLANS.get(plan_key) or {}
-                # Resolve customer email — best-effort.
-                try:
-                    from api.businesses import get_business
-                    from api.auth import get_user_by_id
-                    biz = get_business(biz_id) or {}
-                    user = get_user_by_id(biz.get("owner_id") or "") or {}
-                    email = user.get("email") or biz.get("email") or ""
-                    name  = user.get("name", "")
-                    bname = biz.get("name", "your workspace")
-                except Exception:
-                    email, name, bname = "", "", "your workspace"
-
+                email, name, bname = _resolve_customer(biz_id)
                 if email and send_renewal_reminder(
-                    to_email=email,
-                    customer_name=name,
-                    business_name=bname,
+                    to_email=email, customer_name=name, business_name=bname,
                     plan_label=plan_meta.get("label", plan_key),
                     amount_inr=float(plan_meta.get("price_inr", 0)),
                     days_until_renewal=days_left,
                 ):
-                    sent += 1
+                    renewal_sent += 1
+            if renewal_sent:
+                logger.info(f"[AgentScheduler] sent {renewal_sent} renewal reminder(s)")
 
-            if sent:
-                logger.info(f"[AgentScheduler] sent {sent} renewal reminder(s)")
+            # ── 3. Trial-expired emails — find trials that EXPIRED in last 24h ──
+            # Captured BEFORE reap_expired flips them, so we know who to email.
+            conn = get_conn()
+            try:
+                expiring_now = conn.execute(
+                    "SELECT business_id, plan FROM nexus_subscriptions "
+                    "WHERE status = 'trial' AND trial_ends_at IS NOT NULL "
+                    "AND trial_ends_at < " + ("%s" if is_postgres() else "?"),
+                    (now.isoformat(),),
+                ).fetchall()
+            finally:
+                conn.close()
 
-            # Then run the expiry reaper.
+            expired_emailed = 0
+            for r in expiring_now:
+                biz_id = r[0] if not hasattr(r, "keys") else r["business_id"]
+                plan_key = r[1] if not hasattr(r, "keys") else r["plan"]
+                email, name, bname = _resolve_customer(biz_id)
+                if email and send_trial_expired(
+                    to_email=email, customer_name=name, business_name=bname,
+                    plan_label=(PLANS.get(plan_key) or {}).get("label", plan_key),
+                ):
+                    expired_emailed += 1
+            if expired_emailed:
+                logger.info(f"[AgentScheduler] sent {expired_emailed} trial-expired email(s)")
+
+            # ── 4. Reap expired subscriptions (trial→free, active→past_due, etc.) ──
             reaped = _subs.reap_expired()
             if reaped:
                 logger.info(f"[AgentScheduler] subscription reaper moved {reaped} row(s)")
