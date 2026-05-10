@@ -140,7 +140,7 @@ const COMPARE_ROWS = [
   { feature: 'Data stays on your machine', nexus: true,       zoho: false,          salesforce: false         },
   { feature: 'Scheduled AI workflows',     nexus: true,       zoho: 'Partial',      salesforce: 'Partial'     },
   { feature: 'Outbound voice (SIP)',        nexus: true,       zoho: 'Add-on',       salesforce: 'Add-on'      },
-  { feature: 'Self-hosted option',         nexus: true,       zoho: false,          salesforce: false         },
+  { feature: 'Deploy on YOUR cloud (VPC)', nexus: true,       zoho: false,          salesforce: false         },
   { feature: 'Starting price',             nexus: 'Free',     zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
 ];
 
@@ -167,11 +167,11 @@ const TIERS = [
     items: ['Up to 10 users', '10,000 documents', '2,000 WhatsApp/mo', '300 voice mins/mo',
             'Privacy Bridge (data on your laptop)', 'Cloud LLM with PII redaction', 'Priority 24h support'],
     cta: 'Subscribe',          plan: 'privacy' },
-  { name: 'Self-hosted', price: '₹4,99,000', period: 'one-time', featured: false,
-    desc: 'Full source + Docker deploy on your own infra. One-time license + optional support.',
-    items: ['Unlimited users on your server', 'Docker + Helm deploy', 'Full source code access',
-            '12 months of updates included', 'Bring-your-own API keys (no usage fees from us)',
-            'Optional ₹74,999/year support contract'],
+  { name: 'Enterprise',  price: 'Custom',   period: 'contact us', featured: false,
+    desc: 'We deploy on YOUR cloud. Dedicated infra, custom SLA, your data never touches ours.',
+    items: ['We deploy on your AWS / Azure / GCP', 'Unlimited users + documents',
+            'Privacy Bridge included', 'SSO (Okta / Google / Microsoft)',
+            'Dedicated infra + isolated data', '24/7 priority support + onboarding'],
     cta: 'Talk to sales',      href: `mailto:${MAIL}` },
 ];
 

@@ -48,7 +48,8 @@ router = APIRouter(tags=["billing"])
 #     (₹2,500/seat) — the SMB Indian buyer's mental anchor.
 #   - Pro is the "this is the obvious one" tier — most features unlocked.
 #   - Privacy is the moat — Privacy Bridge is unique to NexusAgent.
-#   - Self-hosted via separate sales conversation, not Razorpay.
+#   - Enterprise = managed deploy on customer's cloud (we keep the source);
+#     custom-quoted, no Razorpay, sales conversation only.
 PLANS = {
     "free": {
         "label":      "Free",
@@ -151,14 +152,11 @@ PLANS = {
         ],
         "purchasable": True,
     },
-    "self_hosted": {
-        "label":      "Self-hosted",
-        "price_inr":  499000,                # ₹4.99 L one-time license
-        "period":     "one-time",
+    "enterprise": {
+        "label":      "Enterprise",
+        "price_inr":  0,                     # custom — quoted per buyer
+        "period":     "custom",
         "rank":       4,
-        # Optional annual support contract — sold separately, this is the
-        # industry standard 15% of license to keep updates flowing forever.
-        "annual_support_inr": 74999,
         "limits": {
             "users":         -1,
             "agents":        8,
@@ -169,15 +167,17 @@ PLANS = {
             "privacy_bridge": True,
         },
         "features": [
-            "Unlimited users on your own server",
-            "Docker + Helm deploy",
-            "Full source code access",
-            "12 months of updates included",
-            "Bring-your-own API keys (no usage fees from us)",
-            "Setup support via email",
-            "Optional annual support: ₹74,999/year (priority + new versions)",
+            "We deploy on YOUR cloud (your AWS / Azure / GCP VPC)",
+            "Unlimited users + documents",
+            "Privacy Bridge included",
+            "SSO (Okta / Google Workspace / Microsoft Entra)",
+            "Dedicated infra + isolated data",
+            "Onboarding + 24/7 priority support",
+            "Custom contract, custom SLA, custom pricing",
         ],
-        "purchasable": False,  # license sale, mailto path — quote per buyer
+        # Not purchasable via Razorpay — sales conversation only. We deploy
+        # + manage; customer never gets source code. Keeps the moat intact.
+        "purchasable": False,
     },
 }
 
