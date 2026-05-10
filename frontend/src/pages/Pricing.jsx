@@ -13,9 +13,19 @@
 import { useState } from 'react';
 import {
   CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Mail,
-  ExternalLink, Server, Users as UsersIcon, Zap, Cloud,
+  ExternalLink, Server, Users as UsersIcon, Zap, Cloud, Loader2,
 } from 'lucide-react';
 import { getCurrentBusiness, getUser } from '../services/auth';
+import { openRazorpayCheckout } from '../services/billing';
+
+// Map of in-app tier id → backend plan key. Only tiers in this map get a
+// Razorpay button; the rest fall back to mailto (license sales, custom quotes).
+// Backend plan catalogue lives in api/routers/billing.py PLANS dict.
+const RZP_PLAN_FOR_TIER = {
+  pro: 'pro',
+  // 'business' could map to backend 'privacy' once the privacy bridge tier
+  // becomes self-serve. For now leave it on the "talk to us" mailto path.
+};
 
 // ── Tiers ────────────────────────────────────────────────────────────────────
 const TIERS = [
@@ -115,6 +125,12 @@ export default function Pricing() {
   const business = getCurrentBusiness();
   const currentTier = (business?.plan || 'free').toLowerCase();
 
+  // Razorpay checkout state — `paying` is the tier id currently in flight,
+  // null when nothing is in-flight. Used to disable other CTAs + show spinner.
+  const [paying, setPaying]     = useState(null);
+  const [payMsg, setPayMsg]     = useState('');
+  const [payErr, setPayErr]     = useState('');
+
   const subjectFor = (tier) => encodeURIComponent(
     `[NexusAgent] Upgrade to ${tier.name} — ${business?.name || 'my workspace'}`,
   );
@@ -123,19 +139,74 @@ export default function Pricing() {
     `Workspace: ${business?.name || '—'}\nUser: ${user?.email || '—'}\n\n` +
     `Please send the next steps.\n\nThanks.`,
   );
+  const mailtoFor = (tier) =>
+    `mailto:hi@nexusagent.app?subject=${subjectFor(tier)}&body=${bodyFor(tier)}`;
+
+  // Either an href (string), an onClick handler (function), or null (disabled).
+  // The TierCard knows how to render each shape.
   const ctaFor = (tier) => {
     if (tier.id === currentTier) return null;
-    if (tier.id === 'business' || tier.id === 'self_hosted') {
-      return `mailto:hi@nexusagent.app?subject=${subjectFor(tier)}&body=${bodyFor(tier)}`;
-    }
     if (tier.id === 'free') return null;
-    return `mailto:hi@nexusagent.app?subject=${subjectFor(tier)}&body=${bodyFor(tier)}`;
+
+    const rzpPlan = RZP_PLAN_FOR_TIER[tier.id];
+    if (rzpPlan) {
+      return async () => {
+        setPayMsg(''); setPayErr(''); setPaying(tier.id);
+        try {
+          const result = await openRazorpayCheckout({
+            plan:    rzpPlan,
+            email:   user?.email || '',
+            name:    business?.name || user?.name || '',
+            contact: user?.phone || '',
+          });
+          setPayMsg(`Payment verified. Welcome to ${tier.name}!`);
+          // Light reload after a beat so the "current plan" badge updates
+          // once the backend persists the subscription change.
+          setTimeout(() => window.location.reload(), 1500);
+          return result;
+        } catch (e) {
+          // Cancelled by user is not an error — silent dismiss.
+          if (/cancel/i.test(String(e?.message || ''))) {
+            setPayMsg('');
+          } else {
+            setPayErr(String(e?.message || 'Payment failed'));
+          }
+        } finally {
+          setPaying(null);
+        }
+      };
+    }
+
+    // All other paid tiers fall back to mailto (license sales / quotes).
+    return mailtoFor(tier);
   };
 
   return (
     <div className="page-body" style={{ maxWidth: 1180, margin: '0 auto' }}>
       <Header currentTier={currentTier} />
-      <Tiers currentTier={currentTier} ctaFor={ctaFor} />
+
+      {(payMsg || payErr) && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 'var(--r-md)',
+          background: payErr ? 'rgba(239,68,68,0.10)' : 'rgba(16,185,129,0.10)',
+          color: payErr ? '#DC2626' : '#10B981',
+          border: `1px solid ${payErr ? 'rgba(239,68,68,0.3)' : 'rgba(16,185,129,0.3)'}`,
+          marginBottom: 18, fontSize: 13,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          {payErr ? '⚠ ' : '✓ '}
+          {payErr || payMsg}
+          <button
+            onClick={() => { setPayMsg(''); setPayErr(''); }}
+            style={{
+              marginLeft: 'auto', background: 'transparent', border: 'none',
+              color: 'inherit', cursor: 'pointer', fontSize: 12,
+            }}
+          >dismiss</button>
+        </div>
+      )}
+
+      <Tiers currentTier={currentTier} ctaFor={ctaFor} payingTierId={paying} />
       <ServiceModel />
       <PrivacyAssurance />
       <FAQ />
@@ -178,7 +249,7 @@ function Header({ currentTier }) {
 }
 
 
-function Tiers({ currentTier, ctaFor }) {
+function Tiers({ currentTier, ctaFor, payingTierId }) {
   return (
     <div style={{
       display: 'grid',
@@ -190,7 +261,9 @@ function Tiers({ currentTier, ctaFor }) {
           key={t.id}
           tier={t}
           isCurrent={t.id === currentTier}
-          href={ctaFor(t)}
+          cta={ctaFor(t)}
+          isPaying={payingTierId === t.id}
+          anyPaying={!!payingTierId}
         />
       ))}
     </div>
@@ -198,8 +271,12 @@ function Tiers({ currentTier, ctaFor }) {
 }
 
 
-function TierCard({ tier, isCurrent, href }) {
+function TierCard({ tier, isCurrent, cta, isPaying, anyPaying }) {
   const Icon = tier.icon;
+  // cta is either a string (href / mailto), a function (Razorpay handler),
+  // or null (no action — current plan or not purchasable from here).
+  const isFn   = typeof cta === 'function';
+  const isHref = typeof cta === 'string' && cta.length > 0;
   return (
     <div
       style={{
@@ -296,9 +373,30 @@ function TierCard({ tier, isCurrent, href }) {
           }}>
             You are on this plan
           </div>
-        ) : href ? (
+        ) : isFn ? (
+          <button
+            type="button"
+            onClick={cta}
+            disabled={anyPaying}
+            className={tier.featured ? 'btn-primary' : 'btn-ghost'}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              width: '100%', cursor: anyPaying ? 'wait' : 'pointer',
+              opacity: anyPaying && !isPaying ? 0.55 : 1,
+            }}
+          >
+            {isPaying ? (
+              <>
+                <Loader2 size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                Opening checkout…
+              </>
+            ) : (
+              <>{tier.cta} <ArrowRight size={13} /></>
+            )}
+          </button>
+        ) : isHref ? (
           <a
-            href={href}
+            href={cta}
             className={tier.featured ? 'btn-primary' : 'btn-ghost'}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,

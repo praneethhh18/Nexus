@@ -71,5 +71,9 @@ loguru>=0.7.0
 # 5GB logs + 5M spans free for 1 year, then back to free tier (5K err/mo).
 sentry-sdk[fastapi]>=2.0
 
+# Razorpay — payment gateway for Indian customers (UPI / cards / netbanking).
+# Used by api/routers/billing.py for order creation + signature verification.
+razorpay>=1.4.2
+
 # Note for Python 3.12+:
 # pip install PyMuPDF --only-binary=PyMuPDF
