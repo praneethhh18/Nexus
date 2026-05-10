@@ -147,6 +147,36 @@ try:
 except Exception as e:
     logger.warning(f"Migration pass failed: {e}")
 
+# ── Sentry — production error reporting ──────────────────────────────────────
+# Only fires when SENTRY_DSN is set (set in production .env, unset in dev).
+# Captures unhandled exceptions, slow endpoints, and a sample of traces.
+# Free Education tier: 50K errors / 5GB logs / 5M spans / month for 1 year.
+try:
+    _sentry_dsn = os.getenv("SENTRY_DSN", "").strip()
+    if _sentry_dsn:
+        import sentry_sdk
+        from sentry_sdk.integrations.fastapi import FastApiIntegration
+        from sentry_sdk.integrations.starlette import StarletteIntegration
+        sentry_sdk.init(
+            dsn=_sentry_dsn,
+            environment=os.getenv("SENTRY_ENV", "production"),
+            release=VERSION,
+            # Sample 10% of transactions for perf monitoring — keeps spans
+            # well under the 5M/month Education quota at expected traffic.
+            traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
+            # PII off by default — we don't want customer prompts in error reports.
+            send_default_pii=False,
+            integrations=[
+                FastApiIntegration(transaction_style="endpoint"),
+                StarletteIntegration(transaction_style="endpoint"),
+            ],
+        )
+        logger.success(f"[Boot] Sentry initialised (env={os.getenv('SENTRY_ENV', 'production')})")
+except Exception as _sentry_err:
+    # Sentry failures must never block the boot.
+    logger.warning(f"[Boot] Sentry init failed: {_sentry_err}")
+
+
 # ── FastAPI App ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="NexusAgent API",

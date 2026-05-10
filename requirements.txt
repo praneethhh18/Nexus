@@ -66,5 +66,10 @@ pypdf>=6.10.2
 tqdm>=4.66.0
 loguru>=0.7.0
 
+# Production error reporting — only fires when SENTRY_DSN is set, so dev
+# environments stay quiet. Sentry for Education covers 50K errors/month +
+# 5GB logs + 5M spans free for 1 year, then back to free tier (5K err/mo).
+sentry-sdk[fastapi]>=2.0
+
 # Note for Python 3.12+:
 # pip install PyMuPDF --only-binary=PyMuPDF
