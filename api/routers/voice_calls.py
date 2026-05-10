@@ -136,7 +136,15 @@ async def dial_contact(
 ):
     """Direct dial — places the call immediately with the default Groq+ElevenLabs
     stack. Kept for the inline-modal flow and any programmatic callers.
-    UI now prefers /api/voice/prepare-dial → opens the lab's precall page first."""
+    UI now prefers /api/voice/prepare-dial → opens the lab's precall page first.
+
+    Plan gate: outbound voice (Vox) starts at the Pro tier. Free + Starter
+    users get a 402 with an upgrade CTA — voice minutes burn LiveKit + Twilio
+    + Cartesia + Deepgram all at once, so we don't comp them on the cheap tiers.
+    """
+    from api.plan_gate import require_plan
+    require_plan(ctx["business_id"], "pro")
+
     business_id = ctx["business_id"]
     user_id = ctx["user"]["id"]
     contact_id = (body.get("contact_id") or "").strip()

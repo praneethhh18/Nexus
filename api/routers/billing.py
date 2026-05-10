@@ -35,31 +35,184 @@ from api.auth import get_current_context
 
 router = APIRouter(tags=["billing"])
 
-# Plan catalogue — single source of truth for "what does each tier cost?".
-# Frontend reads /api/billing/plans to populate the pricing page so prices
-# never drift between the marketing site and the actual checkout amount.
+# Plan catalogue — single source of truth. Frontend (in-app /pricing AND
+# the public landing page) reads from /api/billing/plans so the price the
+# customer sees on marketing pages matches the price Razorpay actually
+# charges. Drift here = trust killer. Update everywhere or nowhere.
+#
+# Tier ladder (low → high). `rank` enforces upgrade-only flows in the UI
+# and `check_plan(required)` permission helper.
+#
+# Pricing principles:
+#   - Anchor against Zoho CRM Standard (₹1,200/seat) and HubSpot Starter
+#     (₹2,500/seat) — the SMB Indian buyer's mental anchor.
+#   - Pro is the "this is the obvious one" tier — most features unlocked.
+#   - Privacy is the moat — Privacy Bridge is unique to NexusAgent.
+#   - Self-hosted via separate sales conversation, not Razorpay.
 PLANS = {
+    "free": {
+        "label":      "Free",
+        "price_inr":  0,
+        "period":     "forever",
+        "rank":       0,
+        "limits": {
+            "users":         1,
+            "agents":        2,        # pick any 2 of the 8
+            "documents":     100,
+            "whatsapp_mo":   0,
+            "voice_min_mo":  0,
+            "cloud_llm":     False,
+            "privacy_bridge": False,
+        },
+        "features": [
+            "1 user",
+            "2 AI agents (you pick which)",
+            "100 documents in RAG",
+            "Local LLM only (no cloud)",
+            "Community support (GitHub issues)",
+        ],
+        "purchasable": False,  # not via Razorpay
+    },
     "starter": {
         "label":      "Starter",
-        "price_inr":  999,
+        "price_inr":  1499,
         "period":     "monthly",
-        "features":   ["Web CRM", "8 AI agents", "100 WhatsApp/mo", "30 voice mins/mo"],
+        "rank":       1,
+        "limits": {
+            "users":         2,
+            "agents":        5,
+            "documents":     500,
+            "whatsapp_mo":   100,
+            "voice_min_mo":  30,
+            "cloud_llm":     False,
+            "privacy_bridge": False,
+        },
+        "features": [
+            "2 users",
+            "5 AI agents (you pick which)",
+            "500 documents in RAG",
+            "100 WhatsApp messages/month",
+            "30 voice minutes/month (Vox)",
+            "Local LLM only",
+            "Email support",
+        ],
+        "purchasable": True,
     },
     "pro": {
         "label":      "Pro",
-        "price_inr":  2499,
+        "price_inr":  5999,                 # ⭐ flagship — anchor against HubSpot Starter
         "period":     "monthly",
-        "features":   ["Everything in Starter", "500 WhatsApp", "200 voice mins",
-                       "AI proposals", "Calendar + Email integration"],
+        "rank":       2,
+        "popular":    True,
+        "limits": {
+            "users":         5,
+            "agents":        8,             # all of them
+            "documents":     2000,
+            "whatsapp_mo":   500,
+            "voice_min_mo":  100,
+            "cloud_llm":     True,
+            "privacy_bridge": False,
+        },
+        "features": [
+            "Up to 5 users",
+            "All 8 AI agents",
+            "2,000 documents in RAG",
+            "500 WhatsApp messages/month",
+            "100 voice minutes/month",
+            "Cloud LLM enabled (Claude / Bedrock / NVIDIA)",
+            "AI proposals + Calendar + Email integration",
+            "Email support",
+        ],
+        "purchasable": True,
     },
     "privacy": {
         "label":      "Privacy",
-        "price_inr":  5999,
+        "price_inr":  14999,                # privacy bridge moat — premium pricing
         "period":     "monthly",
-        "features":   ["Everything in Pro", "Privacy Bridge (data on your laptop)",
-                       "2,000 WhatsApp", "500 voice mins", "Priority support"],
+        "rank":       3,
+        "limits": {
+            "users":         10,
+            "agents":        8,
+            "documents":     10000,
+            "whatsapp_mo":   2000,
+            "voice_min_mo":  300,
+            "cloud_llm":     True,
+            "privacy_bridge": True,
+        },
+        "features": [
+            "Up to 10 users",
+            "All 8 AI agents",
+            "10,000 documents in RAG",
+            "2,000 WhatsApp messages/month",
+            "300 voice minutes/month",
+            "Privacy Bridge — sensitive prompts run on YOUR laptop",
+            "Cloud LLM with PII redaction",
+            "Priority support (24h response)",
+        ],
+        "purchasable": True,
+    },
+    "business": {
+        "label":      "Business",
+        "price_inr":  29999,
+        "period":     "monthly",
+        "rank":       4,
+        "limits": {
+            "users":         25,
+            "agents":        8,
+            "documents":     -1,             # unlimited
+            "whatsapp_mo":   10000,
+            "voice_min_mo":  1000,
+            "cloud_llm":     True,
+            "privacy_bridge": True,
+        },
+        "features": [
+            "Up to 25 users",
+            "All 8 AI agents",
+            "Unlimited documents",
+            "SSO (Google / Microsoft)",
+            "Per-integration permissions",
+            "10,000 WhatsApp + 1,000 voice minutes/month",
+            "Privacy Bridge included",
+            "Onboarding call + dedicated Slack channel",
+        ],
+        "purchasable": False,  # bookable via mailto for sales conversation first
+    },
+    "self_hosted": {
+        "label":      "Self-hosted",
+        "price_inr":  49999,                 # one-time license fee
+        "period":     "one-time",
+        "rank":       5,
+        "limits": {
+            "users":         -1,
+            "agents":        8,
+            "documents":     -1,
+            "whatsapp_mo":   -1,
+            "voice_min_mo":  -1,
+            "cloud_llm":     True,
+            "privacy_bridge": True,
+        },
+        "features": [
+            "Unlimited users on your own server",
+            "Docker + Helm deploy",
+            "Source code access",
+            "12 months of updates included",
+            "Bring-your-own API keys (no usage fees from us)",
+            "Setup support via email",
+        ],
+        "purchasable": False,  # license sale, mailto path
     },
 }
+
+
+def plan_rank(plan_key: str) -> int:
+    """Numeric rank for upgrade comparisons. Unknown plan → 0 (treat as free)."""
+    return PLANS.get(plan_key, {}).get("rank", 0)
+
+
+def check_plan(business_plan: str, required: str) -> bool:
+    """True if `business_plan` meets or exceeds `required`. Used by feature
+    gates: `if not check_plan(biz.plan, 'pro'): raise 402`."""
+    return plan_rank(business_plan) >= plan_rank(required)
 
 
 def _client():
@@ -109,6 +262,16 @@ def list_plans():
         "currency":   "INR",
         "key_id":     os.getenv("RAZORPAY_KEY_ID", ""),  # public, safe to expose
     }
+
+
+# ── Current subscription state (for the in-app UI) ────────────────────────
+@router.get("/api/billing/subscription")
+def my_subscription(ctx: dict = Depends(get_current_context)):
+    """Return the current business's plan + limits + features. The Settings
+    and Pricing pages call this to render the 'Your plan' panel and to
+    decide which CTA each tier shows ('Upgrade' vs 'You're on this plan')."""
+    from api.plan_gate import plan_summary
+    return plan_summary(ctx["business_id"])
 
 
 # ── Order creation ────────────────────────────────────────────────────────
@@ -199,12 +362,34 @@ def verify_payment(
         )
         raise HTTPException(400, "invalid payment signature")
 
-    # Signature verified — payment is real. Hand off to subscription state
-    # update. For now we just log; wire this to a subscriptions table when the
-    # plans/seats schema lands.
+    # Signature verified — payment is real. Persist the subscription state
+    # change. record_payment() is idempotent on payment_id so a refresh that
+    # double-fires verify-payment won't double-extend the period.
+    plan_for_payment = body.plan or "pro"  # default to pro if client didn't echo it
+    plan_meta = PLANS.get(plan_for_payment) or {}
+    amount_paise = (plan_meta.get("price_inr") or 0) * 100
+
+    try:
+        from api import subscriptions as _subs
+        sub = _subs.record_payment(
+            business_id=ctx["business_id"],
+            plan=plan_for_payment,
+            amount_paise=amount_paise,
+            razorpay_order_id=body.razorpay_order_id,
+            razorpay_payment_id=body.razorpay_payment_id,
+            event_type="payment_verified",
+            extra_payload={"user_id": ctx["user"]["id"]},
+        )
+    except Exception as e:
+        # Verification succeeded — the payment IS valid. If our DB write
+        # bombs, log loudly but still return success so the customer doesn't
+        # think they paid for nothing. The audit log will catch the drift.
+        logger.exception(f"[billing] subscription persist failed: {e}")
+        sub = {"plan": plan_for_payment, "status": "active"}
+
     logger.success(
         f"[billing] payment verified payment={body.razorpay_payment_id} "
-        f"order={body.razorpay_order_id} plan={body.plan} biz={ctx['business_id']}"
+        f"order={body.razorpay_order_id} plan={plan_for_payment} biz={ctx['business_id']}"
     )
 
     return {
@@ -212,7 +397,8 @@ def verify_payment(
         "verified":    True,
         "order_id":    body.razorpay_order_id,
         "payment_id":  body.razorpay_payment_id,
-        "plan":        body.plan,
+        "plan":        plan_for_payment,
+        "subscription": sub,
         # Frontend uses this to redirect to a success page.
         "next":        "/settings?billing=success",
     }
@@ -254,6 +440,66 @@ async def razorpay_webhook(request: Request):
         raise HTTPException(400, "invalid JSON body")
 
     event_type = event.get("event", "?")
+    payload = event.get("payload", {}) or {}
     logger.info(f"[billing] webhook event={event_type}")
-    # Future: dispatch to subscription state updates by event_type.
+
+    # Razorpay's webhook payload schema:
+    #   payment.captured / payment.failed:
+    #       payload.payment.entity = {id, order_id, amount, status, notes:{business_id, plan}}
+    #   refund.created:
+    #       payload.refund.entity  = {id, payment_id, amount}
+    #       payload.payment.entity = {id, ...}  (the original payment being refunded)
+    from api import subscriptions as _subs
+
+    payment_entity = (payload.get("payment", {}) or {}).get("entity", {}) or {}
+    refund_entity  = (payload.get("refund",  {}) or {}).get("entity",  {}) or {}
+    notes = payment_entity.get("notes", {}) or {}
+    biz_id = notes.get("business_id") or ""
+    plan   = notes.get("plan") or "pro"
+
+    try:
+        if event_type == "payment.captured" and biz_id:
+            # Same effect as a successful verify-payment — record_payment is
+            # idempotent on payment_id so a webhook arriving after a fast
+            # /verify-payment call won't double-extend.
+            _subs.record_payment(
+                business_id=biz_id,
+                plan=plan,
+                amount_paise=int(payment_entity.get("amount", 0)),
+                razorpay_order_id=payment_entity.get("order_id", ""),
+                razorpay_payment_id=payment_entity.get("id", ""),
+                event_type="payment_captured",
+                extra_payload={"webhook": True},
+            )
+        elif event_type == "payment.failed" and biz_id:
+            _subs.record_event(
+                business_id=biz_id,
+                event_type="payment_failed",
+                plan=plan,
+                amount_paise=int(payment_entity.get("amount", 0)),
+                razorpay_order_id=payment_entity.get("order_id", ""),
+                razorpay_payment_id=payment_entity.get("id", ""),
+                payload={"reason": payment_entity.get("error_description", ""),
+                         "webhook": True},
+            )
+        elif event_type == "refund.created" and biz_id:
+            # Refund — log only. Manual review decides whether to revert
+            # the plan or keep it; we don't auto-downgrade on a refund
+            # because some refunds are partial / dispute-driven.
+            _subs.record_event(
+                business_id=biz_id,
+                event_type="refund_created",
+                plan=plan,
+                amount_paise=int(refund_entity.get("amount", 0)),
+                razorpay_payment_id=refund_entity.get("payment_id", ""),
+                payload={"refund_id": refund_entity.get("id", ""), "webhook": True},
+            )
+        else:
+            # Subscriptions, orders, etc. — log only for now.
+            logger.debug(f"[billing] webhook unhandled event_type={event_type}")
+    except Exception as e:
+        # Webhook handler failures must NEVER 500 — Razorpay retries failed
+        # webhooks and we'd loop forever. Log and ack-200.
+        logger.exception(f"[billing] webhook handler error: {e}")
+
     return {"ok": True, "event": event_type}

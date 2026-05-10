@@ -144,30 +144,41 @@ const COMPARE_ROWS = [
   { feature: 'Starting price',             nexus: 'Free',     zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
 ];
 
-// `plan` field maps to backend PLANS dict in api/routers/billing.py.
-// Tiers with a `plan` send the visitor through signup → /pricing?plan=X
-// where Razorpay checkout auto-opens for that plan after auth.
+// Pricing source of truth: api/routers/billing.py PLANS dict.
+// Update there + here in the same PR — landing must always reflect what
+// Razorpay actually charges. Tiers with a `plan` field hand off to the
+// signup → in-app /pricing?plan=X auto-checkout funnel.
 const TIERS = [
-  { name: 'Free',        price: '₹0',      period: 'forever',   featured: false,
-    desc: 'Try NexusAgent with a couple of workflows on your own machine.',
-    items: ['1 user', '2 workflows active', 'Local LLM only', 'Up to 100 documents', 'GitHub issues for support'],
+  { name: 'Free',        price: '₹0',       period: 'forever',  featured: false,
+    desc: 'Try NexusAgent with a couple of agents on your own machine.',
+    items: ['1 user', '2 AI agents', 'Local LLM only', '100 documents in RAG', 'GitHub-issue support'],
     cta: 'Get started',        href: `${APP_URL}/setup` },
-  { name: 'Starter',     price: '₹1,499',  period: '/month',    featured: false,
-    desc: 'More workflows for solo users who want to run everything locally.',
-    items: ['2 users', '5 workflows active', 'Local LLM only', 'Up to 500 documents', 'No voice calls', 'Email support'],
+  { name: 'Starter',     price: '₹1,499',   period: '/month',   featured: false,
+    desc: 'For solo operators with a small list and modest WhatsApp volume.',
+    items: ['2 users', '5 AI agents', '500 documents', '100 WhatsApp/mo', '30 voice mins/mo', 'Email support'],
     cta: 'Subscribe',          plan: 'starter' },
-  { name: 'Pro',         price: '₹5,499',  period: '/month',    featured: true,
-    desc: 'All 8 workflows for a small team, with cloud LLM as an option.',
-    items: ['Up to 5 users', 'All 8 workflows', 'Up to 1,000 documents', 'Cloud LLM opt-in', '50 voice min/mo included', 'Email support'],
+  { name: 'Pro',         price: '₹5,999',   period: '/month',   featured: true,
+    desc: 'All 8 agents + cloud LLM for a 5-person team — the obvious one.',
+    items: ['Up to 5 users', 'All 8 AI agents', '2,000 documents', '500 WhatsApp/mo',
+            '100 voice mins/mo', 'Cloud LLM (Claude / Bedrock)', 'AI proposals + Calendar + Email'],
     cta: 'Subscribe',          plan: 'pro' },
-  { name: 'Business',    price: '₹17,999', period: '/month',    featured: false,
-    desc: 'For teams that need more users, SSO, and direct onboarding help.',
-    items: ['Up to 20 users', 'Unlimited documents', 'SSO (Google / Microsoft)', 'WhatsApp integration', '200 voice min/mo included', 'Onboarding call included'],
+  { name: 'Privacy',     price: '₹14,999',  period: '/month',   featured: false,
+    desc: 'Sensitive prompts run on YOUR laptop via the Privacy Bridge.',
+    items: ['Up to 10 users', '10,000 documents', '2,000 WhatsApp/mo', '300 voice mins/mo',
+            'Privacy Bridge (data on your laptop)', 'Cloud LLM with PII redaction', 'Priority 24h support'],
+    cta: 'Subscribe',          plan: 'privacy' },
+  { name: 'Business',    price: '₹29,999',  period: '/month',   featured: false,
+    desc: 'For teams that need SSO, more seats, and a dedicated onboarding lead.',
+    items: ['Up to 25 users', 'Unlimited documents', 'SSO (Google / Microsoft)',
+            '10,000 WhatsApp + 1,000 voice mins/mo', 'Privacy Bridge included',
+            'Onboarding call + dedicated Slack channel'],
     cta: 'Talk to us',         href: `mailto:${MAIL}` },
-  { name: 'Self-hosted', price: '₹34,999', period: 'one-time',  featured: false,
-    desc: 'Deploy on your own server. One-time payment, no recurring fees.',
-    items: ['Unlimited users', 'Docker deploy', 'Source code access', '12 months of updates', 'Setup support via email'],
-    cta: 'Contact us',         href: `mailto:${MAIL}` },
+  { name: 'Self-hosted', price: '₹49,999',  period: 'one-time', featured: false,
+    desc: 'Deploy on your own infra. One-time license, you bring your own API keys.',
+    items: ['Unlimited users', 'Docker + Helm deploy', 'Source code access',
+            '12 months of updates', 'Bring-your-own API keys (no usage fees from us)',
+            'Setup support via email'],
+    cta: 'Buy license',        href: `mailto:${MAIL}` },
 ];
 
 const FAQS = [

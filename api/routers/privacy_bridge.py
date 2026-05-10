@@ -26,9 +26,17 @@ def state(ctx: dict = Depends(get_current_context)):
 def issue_token(ctx: dict = Depends(get_current_context)):
     """Issue a fresh registration token. Owner/admin only — bridge token
     grants the holder permission to route this business's sensitive prompts
-    through their Ollama, so it has to be tightly scoped."""
+    through their Ollama, so it has to be tightly scoped.
+
+    Plan gate: Privacy Bridge is the killer feature of the Privacy tier and
+    higher. Free / Starter / Pro can't use it (or Self-hosted is fine via
+    its own deployment). Returns 402 below Privacy."""
     if ctx.get("business_role") not in ("owner", "admin"):
         raise HTTPException(403, "Only owner/admin can issue a Privacy Bridge token")
+    # require_plan raises 402 if business < privacy tier; frontend turns that
+    # into a "Upgrade to Privacy" CTA.
+    from api.plan_gate import require_plan
+    require_plan(ctx["business_id"], "privacy")
     token = _pb.issue_token(ctx["business_id"], ctx["user"]["id"])
     return {
         "ok":         True,

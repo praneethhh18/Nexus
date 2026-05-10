@@ -18,13 +18,14 @@ import {
 import { getCurrentBusiness, getUser } from '../services/auth';
 import { openRazorpayCheckout } from '../services/billing';
 
-// Map of in-app tier id → backend plan key. Only tiers in this map get a
-// Razorpay button; the rest fall back to mailto (license sales, custom quotes).
-// Backend plan catalogue lives in api/routers/billing.py PLANS dict.
+// Map of in-app tier id → backend plan key. Tiers in this map open
+// Razorpay; tiers without a mapping fall back to mailto (license sales,
+// custom-quote conversations). Source of truth for plan keys + prices is
+// api/routers/billing.py PLANS dict.
 const RZP_PLAN_FOR_TIER = {
-  pro: 'pro',
-  // 'business' could map to backend 'privacy' once the privacy bridge tier
-  // becomes self-serve. For now leave it on the "talk to us" mailto path.
+  starter: 'starter',
+  pro:     'pro',
+  privacy: 'privacy',
 };
 
 // Reverse map — backend plan key → in-app tier id. Used by the
@@ -35,6 +36,9 @@ const TIER_FOR_RZP_PLAN = Object.fromEntries(
 );
 
 // ── Tiers ────────────────────────────────────────────────────────────────────
+// Source of truth for prices: api/routers/billing.py PLANS dict.
+// Touch both files in the same PR so the marketing copy and the actual
+// Razorpay charge stay aligned.
 const TIERS = [
   {
     id: 'free',
@@ -44,7 +48,7 @@ const TIERS = [
     desc: 'For solo operators trying the local-first stack.',
     items: [
       '1 user · 1 business',
-      '2 agents (you pick which)',
+      '2 AI agents (you pick which)',
       '100 documents in RAG',
       'Local LLM only',
       'Community support',
@@ -53,34 +57,70 @@ const TIERS = [
     icon: Zap,
   },
   {
+    id: 'starter',
+    name: 'Starter',
+    price: '₹1,499',
+    cadence: '/ month',
+    desc: 'Solo + a teammate, a small list, modest WhatsApp volume.',
+    items: [
+      '2 users',
+      '5 AI agents',
+      '500 documents',
+      '100 WhatsApp/mo · 30 voice mins/mo',
+      'Local LLM only',
+      'Email support',
+    ],
+    cta: 'Subscribe',
+    icon: Zap,
+  },
+  {
     id: 'pro',
     name: 'Pro',
-    price: '₹3,999',
+    price: '₹5,999',
     cadence: '/ month',
-    desc: 'For small teams that want the whole agent team working.',
+    desc: 'All 8 agents + cloud LLM for a 5-person team — the obvious one.',
     items: [
       'Up to 5 users',
-      'All 6 agents + custom builder',
-      '1,000 documents',
-      'Cloud LLM toggle (Claude / Bedrock)',
-      'Priority email support',
+      'All 8 AI agents',
+      '2,000 documents',
+      '500 WhatsApp/mo · 100 voice mins/mo',
+      'Cloud LLM (Claude / Bedrock)',
+      'AI proposals + Calendar + Email',
     ],
-    cta: 'Upgrade to Pro',
+    cta: 'Subscribe',
     featured: true,
     icon: Sparkles,
   },
   {
+    id: 'privacy',
+    name: 'Privacy',
+    price: '₹14,999',
+    cadence: '/ month',
+    desc: 'Sensitive prompts run on YOUR laptop via the Privacy Bridge.',
+    items: [
+      'Up to 10 users',
+      '10,000 documents',
+      '2,000 WhatsApp/mo · 300 voice mins/mo',
+      'Privacy Bridge (data stays on your laptop)',
+      'Cloud LLM with PII redaction',
+      'Priority 24h support',
+    ],
+    cta: 'Subscribe',
+    icon: ShieldCheck,
+  },
+  {
     id: 'business',
     name: 'Business',
-    price: '₹12,999',
+    price: '₹29,999',
     cadence: '/ month',
-    desc: 'For growing teams that need SSO + onboarding.',
+    desc: 'For 25-seat teams that need SSO + onboarding.',
     items: [
-      'Up to 20 users',
+      'Up to 25 users',
       'Unlimited documents',
       'SSO (Google / Microsoft)',
-      'Per-integration permissions',
-      'SLA + onboarding call',
+      '10K WhatsApp · 1K voice mins/mo',
+      'Privacy Bridge included',
+      'Onboarding call + dedicated Slack',
     ],
     cta: 'Talk to us',
     icon: UsersIcon,
@@ -88,15 +128,15 @@ const TIERS = [
   {
     id: 'self_hosted',
     name: 'Self-hosted',
-    price: '₹24,999',
+    price: '₹49,999',
     cadence: 'one-time',
     desc: 'Run the whole stack on your own server. Yours forever.',
     items: [
-      'Unlimited everything',
+      'Unlimited users on your server',
       'Docker + Helm deploy',
-      'Source access',
+      'Source code access',
       '12 months of updates',
-      'Community support',
+      'Bring-your-own API keys',
     ],
     cta: 'Buy license',
     icon: Server,
