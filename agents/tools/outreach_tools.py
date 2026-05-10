@@ -182,31 +182,25 @@ def _send_whatsapp(to_phone: str, body: str) -> None:
 
 
 def _send_email(to_addr: str, body: str) -> None:
-    """Sends via the same Gmail SMTP path used by the existing send_email tool."""
-    from config.settings import EMAIL_ENABLED, GMAIL_USER, GMAIL_APP_PASSWORD
-    if not EMAIL_ENABLED:
-        raise RuntimeError("Email is not configured (set GMAIL_USER + GMAIL_APP_PASSWORD)")
+    """Outreach campaign delivery — uses api.email_provider so we get
+    Resend transparency + tracking when available, Gmail SMTP otherwise."""
+    from api import email_provider as _ep
+    if not _ep.is_configured():
+        raise RuntimeError(
+            "Email is not configured. Set RESEND_API_KEY (recommended) or "
+            "GMAIL_USER + GMAIL_APP_PASSWORD in .env."
+        )
 
-    # The body may contain a "Subject: foo" first line we generated above
-    subject = "Hello from " + (GMAIL_USER.split("@")[0] if GMAIL_USER else "us")
+    # The body may contain a "Subject: foo" first line the LLM generated.
+    sender_local = _ep.default_from().split("@")[0] or "us"
+    subject = f"Hello from {sender_local}"
     msg_body = body
     first_line, _, rest = body.partition("\n")
     if first_line.lower().startswith("subject:"):
         subject = first_line.split(":", 1)[1].strip() or subject
         msg_body = rest.lstrip()
 
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    msg = MIMEMultipart()
-    msg["From"] = GMAIL_USER
-    msg["To"] = to_addr
-    msg["Subject"] = subject
-    msg.attach(MIMEText(msg_body, "plain"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        server.send_message(msg)
+    _ep.send_email(to=to_addr, subject=subject, body=msg_body)
 
 
 # ── The tool ───────────────────────────────────────────────────────────────

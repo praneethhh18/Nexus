@@ -66,10 +66,14 @@ register_tool(
 
 
 def _send_email(ctx, args):
-    """Send a plain email. Always requires approval (external-facing)."""
-    from config.settings import EMAIL_ENABLED, GMAIL_USER, GMAIL_APP_PASSWORD
-    if not EMAIL_ENABLED:
-        raise ValueError("Email not configured. Set GMAIL_USER and GMAIL_APP_PASSWORD.")
+    """Send a plain email. Always requires approval (external-facing).
+    Uses api.email_provider — picks Resend if configured, else Gmail SMTP."""
+    from api import email_provider as _ep
+    if not _ep.is_configured():
+        raise ValueError(
+            "Email not configured. Set RESEND_API_KEY (recommended) or "
+            "GMAIL_USER + GMAIL_APP_PASSWORD in .env."
+        )
 
     to = (args.get("to") or "").strip()
     subject = (args.get("subject") or "").strip()
@@ -77,18 +81,7 @@ def _send_email(ctx, args):
     if not to or not subject or not body:
         raise ValueError("to, subject, and body are all required")
 
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    msg = MIMEMultipart()
-    msg["From"] = GMAIL_USER
-    msg["To"] = to
-    msg["Subject"] = subject
-    msg.attach(MIMEText(body, "plain"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        server.send_message(msg)
+    result = _ep.send_email(to=to, subject=subject, body=body)
 
     # Auto-log as a CRM interaction if we can find a matching contact
     try:
@@ -107,7 +100,8 @@ def _send_email(ctx, args):
         # Email already sent — failing to log it as a CRM interaction shouldn't block.
         logger.warning(f"[NotificationTools] CRM interaction log failed for {to}: {e}")
 
-    return {"sent": True, "to": to, "subject": subject}
+    return {"sent": True, "to": to, "subject": subject,
+            "provider": result.get("provider"), "id": result.get("id", "")}
 
 
 register_tool(

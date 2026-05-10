@@ -121,12 +121,15 @@ register_tool(
 )
 
 
-# ── Send (real send via existing Gmail SMTP) ───────────────────────────────
+# ── Send (real send via api.email_provider — Resend or Gmail SMTP) ────────
 def _send_from_template(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
     from api import email_templates as _et
-    from config.settings import EMAIL_ENABLED, GMAIL_USER, GMAIL_APP_PASSWORD
-    if not EMAIL_ENABLED:
-        raise RuntimeError("Email is not configured (set GMAIL_USER + GMAIL_APP_PASSWORD)")
+    from api import email_provider as _ep
+    if not _ep.is_configured():
+        raise RuntimeError(
+            "Email is not configured. Set RESEND_API_KEY (recommended) or "
+            "GMAIL_USER + GMAIL_APP_PASSWORD in .env."
+        )
 
     template_id = (args.get("template_id") or "").strip()
     to          = (args.get("to") or "").strip()
@@ -136,20 +139,7 @@ def _send_from_template(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, 
     rendered = _et.render_template(ctx["business_id"], template_id,
                                     args.get("variables") or {})
 
-    # Send via Gmail SMTP (same path as the existing send_email tool — keeps
-    # one auth/config surface, not two).
-    import smtplib
-    from email.mime.text import MIMEText
-    from email.mime.multipart import MIMEMultipart
-    msg = MIMEMultipart()
-    msg["From"]    = GMAIL_USER
-    msg["To"]      = to
-    msg["Subject"] = rendered["subject"]
-    msg.attach(MIMEText(rendered["body"], "plain"))
-    with smtplib.SMTP("smtp.gmail.com", 587) as server:
-        server.starttls()
-        server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
-        server.send_message(msg)
+    _ep.send_email(to=to, subject=rendered["subject"], body=rendered["body"])
 
     # Mirror as a CRM interaction if there's a contact at this address — same
     # pattern as the regular send_email tool, so the contact's timeline lights up.
