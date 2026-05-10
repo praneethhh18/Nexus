@@ -34,6 +34,7 @@ from fastapi import HTTPException
 from loguru import logger
 
 from config.db import get_conn, is_postgres
+from config.settings import DB_PATH
 from utils.timez import now_iso, now_utc_naive
 
 ACCOUNTS_TABLE = "nexus_whatsapp_accounts"

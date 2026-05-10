@@ -16,13 +16,14 @@ import os
 import platform
 import shutil
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import requests
 from loguru import logger
 
 from config.db import get_conn
-from config.settings import OLLAMA_BASE_URL
+from config.settings import DB_PATH, OLLAMA_BASE_URL
 from utils.timez import now_iso
 
 

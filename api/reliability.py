@@ -23,6 +23,7 @@ from fastapi import HTTPException, Request
 from loguru import logger
 
 from config.db import get_conn, list_tables
+from config.settings import DB_PATH
 
 
 # ── Rate limiter ────────────────────────────────────────────────────────────

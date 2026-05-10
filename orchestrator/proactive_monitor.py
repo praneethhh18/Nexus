@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional
 import pandas as pd
 from loguru import logger
 
-from config.settings import ANOMALY_THRESHOLD, MONITOR_INTERVAL_MINUTES
+from config.settings import ANOMALY_THRESHOLD, DB_PATH, MONITOR_INTERVAL_MINUTES
 
 _scheduler = None
 _last_check_result: Dict[str, Any] = {}

@@ -38,15 +38,43 @@ export function clearSession() {
   localStorage.removeItem('nexus_business_id');
 }
 
+async function readAuthError(res) {
+  const text = await res.text().catch(() => '');
+  if (!text) return `HTTP ${res.status}`;
+
+  try {
+    const data = JSON.parse(text);
+    if (typeof data.detail === 'string') return data.detail;
+    if (typeof data.message === 'string') return data.message;
+    return JSON.stringify(data);
+  } catch {
+    return text;
+  }
+}
+
 async function authRequest(path, body) {
-  const res = await fetch(`${BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 15000);
+
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('API did not respond. Restart the backend on port 8000 and try again.');
+    }
+    throw new Error('Cannot reach the API. Make sure the backend is running on port 8000.');
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: 'Request failed' }));
-    throw new Error(err.detail || `HTTP ${res.status}`);
+    throw new Error(await readAuthError(res));
   }
   return res.json();
 }
