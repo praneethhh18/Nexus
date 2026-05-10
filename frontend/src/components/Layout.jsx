@@ -173,11 +173,31 @@ export default function Layout() {
     <>
       {/* Sidebar */}
       <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
-        <div className="sidebar-logo">
-          <div className="sidebar-logo-icon">N</div>
+        <div
+          className="sidebar-logo"
+          style={collapsed ? { padding: '12px 8px', justifyContent: 'center' } : undefined}
+        >
+          {/* Collapsed sidebar = 60px wide. The logo "N" + label + chevron
+              don't fit; we hide the icon when collapsed and let the chevron
+              be the full visible affordance, since clicking it is the only
+              way back to the expanded view. */}
+          {!collapsed && <div className="sidebar-logo-icon">N</div>}
           {!collapsed && <span>NexusAgent</span>}
-          <button onClick={() => setCollapsed(!collapsed)} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}>
-            {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand' : 'Collapse'}
+            style={{
+              marginLeft: collapsed ? 0 : 'auto',
+              background: 'none', border: 'none',
+              color: 'var(--color-text-dim)',
+              cursor: 'pointer',
+              padding: 6,
+              borderRadius: 'var(--r-md)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={16} />}
           </button>
         </div>
 

@@ -238,7 +238,12 @@ export default function Pricing() {
   }, []);
 
   return (
-    <div className="page-body" style={{ maxWidth: 1180, margin: '0 auto' }}>
+    // Outer page-body fills the main-content area; inner wrapper handles
+    // max-width + horizontal centering. Using both inline-styles on the
+    // page-body itself fights `flex: 1` from index.css and produces a
+    // left-pinned content with a right-side gap.
+    <div className="page-body">
+      <div style={{ maxWidth: 1180, margin: '0 auto', width: '100%' }}>
       <Header currentTier={currentTier} />
 
       {(payMsg || payErr) && (
@@ -267,6 +272,7 @@ export default function Pricing() {
       <PrivacyAssurance />
       <FAQ />
       <ContactStrip />
+      </div>
     </div>
   );
 }
