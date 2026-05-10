@@ -1,0 +1,77 @@
+{
+  "name": "nexusagent-privacy-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "NexusAgent Privacy Bridge — runs Ollama on the customer's laptop, exposes it via Cloudflare Tunnel, registers the endpoint with NexusAgent so sensitive AI prompts compute locally instead of in the cloud.",
+  "main": "main.js",
+  "author": "NexusAgent",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev":   "cross-env BRIDGE_DEV=1 electron .",
+    "dist":      "electron-builder",
+    "dist:win":  "electron-builder --win --x64",
+    "dist:mac":  "electron-builder --mac",
+    "dist:linux":"electron-builder --linux AppImage deb"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "cross-env": "^10.1.0",
+    "electron": "^36.0.0",
+    "electron-builder": "^26.8.1"
+  },
+  "build": {
+    "appId": "in.nexusagent.privacy-bridge",
+    "productName": "NexusAgent Privacy Bridge",
+    "copyright": "Copyright © NexusAgent",
+    "directories": {
+      "buildResources": "assets",
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "tray.js",
+      "ollama.js",
+      "tunnel.js",
+      "setup.js",
+      "settings.js",
+      "setup.html",
+      "assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "bin/${os}/${arch}/",
+        "to":   "bin/",
+        "filter": ["**/*"]
+      }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.utilities",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "LSUIElement": true
+      }
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "assets/icon.png",
+      "category": "Network"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true
+    }
+  }
+}

@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; style-src 'unsafe-inline' 'self'; script-src 'self';" />
+  <title>NexusAgent Privacy Bridge — Setup</title>
+  <style>
+    :root {
+      --bg:        #0F172A;
+      --panel:     #1E293B;
+      --panel-2:   #334155;
+      --text:      #F8FAFC;
+      --muted:     #94A3B8;
+      --accent:    #6366F1;
+      --accent-2:  #8B5CF6;
+      --good:      #10B981;
+      --warn:      #F59E0B;
+      --bad:       #EF4444;
+      --border:    rgba(148, 163, 184, 0.18);
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: radial-gradient(1200px 600px at -10% -20%, rgba(99,102,241,0.18), transparent 60%),
+                  radial-gradient(900px 500px at 110% 110%, rgba(139,92,246,0.15), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      padding: 28px;
+      user-select: none;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; letter-spacing: -0.01em; }
+    .sub { color: var(--muted); margin: 0 0 22px; font-size: 13px; }
+
+    .step {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+    .step h2 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .badge {
+      display: inline-block;
+      width: 22px; height: 22px;
+      line-height: 22px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--panel-2);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .badge.ok   { background: var(--good); color: #fff; }
+    .badge.warn { background: var(--warn); color: #fff; }
+    .badge.bad  { background: var(--bad);  color: #fff; }
+
+    .row {
+      display: flex; gap: 8px; align-items: center;
+      font-size: 13px; color: var(--muted);
+    }
+    .row + .row { margin-top: 6px; }
+    .row .pill {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      font-size: 11px;
+      color: var(--text);
+    }
+    .row .pill.ok   { background: rgba(16,185,129,0.18); color: var(--good); }
+    .row .pill.warn { background: rgba(245,158,11,0.18); color: var(--warn); }
+    .row .pill.bad  { background: rgba(239,68,68,0.18);  color: var(--bad);  }
+
+    label { display: block; font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+    input[type="text"], input[type="url"] {
+      width: 100%;
+      background: #0B1220;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+      user-select: text;
+    }
+    input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+
+    .actions {
+      display: flex; gap: 8px; margin-top: 18px;
+    }
+    button {
+      flex: 1;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      padding: 11px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform .12s ease, opacity .15s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+    button.secondary {
+      background: var(--panel-2);
+      color: var(--text);
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .small { font-size: 11px; color: var(--muted); margin-top: 8px; }
+    .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  </style>
+</head>
+<body>
+  <h1>NexusAgent Privacy Bridge</h1>
+  <p class="sub">Connects this laptop to your NexusAgent business so sensitive AI prompts compute locally.</p>
+
+  <!-- Step 1 — Ollama -->
+  <div class="step" id="step-ollama">
+    <h2><span class="badge" id="b-ollama">1</span> Local AI engine (Ollama)</h2>
+    <div class="row">
+      <span>Status:</span>
+      <span class="pill" id="ollama-status">checking…</span>
+      <span style="flex:1"></span>
+      <a href="https://ollama.com/download" id="ollama-download">Get Ollama</a>
+    </div>
+    <div class="row" id="ollama-models-row" style="display:none">
+      <span>Models:</span>
+      <span class="pill" id="ollama-models">—</span>
+    </div>
+    <div class="hint">If Ollama isn't installed yet, install it from ollama.com and we'll detect it automatically.</div>
+  </div>
+
+  <!-- Step 2 — Token -->
+  <div class="step" id="step-token">
+    <h2><span class="badge" id="b-token">2</span> Connect to your NexusAgent business</h2>
+    <label>Server URL</label>
+    <input type="url" id="base" placeholder="https://app.nexusagent.in" />
+
+    <label>Bridge token</label>
+    <input type="text" id="token" placeholder="pb_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+    <div class="hint">
+      Get this from <a href="#" id="get-token-link">Settings → Privacy Mode</a> in NexusAgent.
+    </div>
+  </div>
+
+  <div class="actions">
+    <button id="save" disabled>Connect & start bridge</button>
+  </div>
+  <p class="small" id="status-line">Tip: This window closes after setup. The bridge keeps running quietly in your system tray.</p>
+
+  <script src="setup.js"></script>
+</body>
+</html>

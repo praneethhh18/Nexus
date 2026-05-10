@@ -130,7 +130,50 @@ sudo systemctl enable --now nexusagent-privacy-bridge
 ### Windows — Task Scheduler
 Create a basic task: trigger "At log on", action `node bridge.js --token ...`.
 
-## Coming soon
+## Polished installer (Electron tray app)
 
-A polished tray-icon installer (Electron) for one-click setup. Until then,
-this CLI does the same job.
+The same code now ships as a one-click installer that lives in your system
+tray — no terminal needed.
+
+### Build
+
+```
+cd privacy_bridge_installer
+npm install
+npm run dist        # current OS only
+npm run dist:win    # Windows .exe (NSIS one-click)
+npm run dist:mac    # macOS .dmg (universal binary)
+npm run dist:linux  # AppImage + .deb
+```
+
+Output lands in `dist/`. Copy the artifact onto your laptop, double-click,
+done — the app installs itself, lives in the tray, runs at login.
+
+### Bundling cloudflared (optional but recommended)
+
+To make the installer truly zero-dependency, drop the cloudflared binary
+into `bin/<os>/<arch>/` before building:
+
+```
+bin/win32/x64/cloudflared.exe
+bin/darwin/x64/cloudflared
+bin/darwin/arm64/cloudflared
+bin/linux/x64/cloudflared
+```
+
+`electron-builder` ships the right binary for the target platform via
+`extraResources`. If absent, the app falls back to `cloudflared` on PATH and
+opens the download page in the user's browser if missing.
+
+### What the user sees
+
+1. Double-click the installer.
+2. App installs silently, opens a tiny setup window asking for the bridge
+   token.
+3. They paste the token from `app.nexusagent.in → Settings → Privacy Mode`.
+4. Window closes. A coloured dot appears in the system tray:
+   - 🟢 green — registered + healthy
+   - 🔵 blue — tunnel up, registering
+   - 🟡 yellow — starting / waiting on Ollama
+   - 🔴 red — needs setup or bridge down
+5. App auto-starts at login. They never see a terminal.

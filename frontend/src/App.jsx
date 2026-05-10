@@ -44,6 +44,7 @@ const Database      = lazy(() => import('./pages/Database'));
 const SQLEditor     = lazy(() => import('./pages/SQLEditor'));
 const WhatIf        = lazy(() => import('./pages/WhatIf'));
 const EmailTemplates = lazy(() => import('./pages/EmailTemplates'));
+const PrivacyMode   = lazy(() => import('./pages/PrivacyMode'));
 const NotFound      = lazy(() => import('./pages/NotFound'));
 
 
@@ -126,6 +127,7 @@ export default function App() {
             <Route path="/sql"           element={L(SQLEditor)} />
             <Route path="/whatif"        element={L(WhatIf)} />
             <Route path="/email-templates" element={L(EmailTemplates)} />
+            <Route path="/settings/privacy-mode" element={L(PrivacyMode)} />
             <Route path="*"              element={L(NotFound)} />
           </Route>
         </Routes>

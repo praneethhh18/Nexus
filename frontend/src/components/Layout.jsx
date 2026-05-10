@@ -25,6 +25,7 @@ const NAV_MAIN = [
   { to: '/team', icon: Users, label: 'Team' },
   { to: '/memory', icon: Brain, label: 'Memory' },
   { to: '/security', icon: Shield, label: 'Security' },
+  { to: '/settings/privacy-mode', icon: ShieldCheck, label: 'Privacy Mode' },
   { to: '/audit', icon: Activity, label: 'Audit log' },
   { to: '/admin/metrics', icon: BarChart3, label: 'Metrics' },
   { to: '/history', icon: Clock, label: 'History' },
