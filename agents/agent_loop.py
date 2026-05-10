@@ -194,7 +194,6 @@ def run_agent(
 
         # Execute each tool call and append results
         tool_results_block = []
-        any_error = False
         for tc in tc_list:
             tool_name = tc["name"]
             args = tc.get("arguments", {}) or {}
@@ -243,7 +242,6 @@ def run_agent(
                     tool_calls_record.append(record)
                 consecutive_errors = 0
             except Exception as e:
-                any_error = True
                 consecutive_errors += 1
                 logger.warning(f"[AgentLoop] Tool {tool_name} failed: {e}")
                 result_for_llm = {"error": str(e)[:300]}

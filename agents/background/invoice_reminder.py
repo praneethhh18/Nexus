@@ -106,7 +106,6 @@ def run_for_business(business_id: str) -> dict:
             logger.warning(f"[InvoiceReminder] queue failed for {inv['id']}: {e}")
 
     # Also mark invoices that are past due but still 'sent' as 'overdue' for UI clarity
-    now = now_iso()
     for inv in candidates:
         try:
             _inv.update_invoice(business_id, inv["id"], {"status": "overdue"})

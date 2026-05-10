@@ -1,0 +1,36 @@
+# Ruff configuration — single source of truth for lint rules.
+#
+# Philosophy:
+#   - Real bug catches stay loud (unused imports, unused variables, undefined
+#     names, etc. — these are silent footguns).
+#   - Stylistic opinions get muted unless the team agrees on them. We don't
+#     run Black, so multi-statement-on-one-line warnings (E701/E702) just
+#     create noise around our intentional compact try/except patterns like
+#     `try: d['x'] = json.loads(...)\nexcept: d['x'] = {}`.
+#
+# To revisit: when the team grows past 1 dev, run `ruff check` without
+# extending these ignores and have the resulting style discussion.
+
+target-version = "py312"
+line-length = 100
+
+[lint]
+# We start from ruff's default rule set ("E", "F") and selectively quiet
+# the rules that our codebase deliberately violates.
+extend-select = []
+
+ignore = [
+  # Multiple statements on one line — intentional in compact error-handling
+  # blocks throughout briefing.py et al. Splitting them would hurt readability
+  # for one-liner try/except shells we use to swallow optional JSON parses.
+  "E701",
+  "E702",
+]
+
+# Per-file overrides — keep loud for real bugs, quiet for known false positives.
+[lint.per-file-ignores]
+# Tests routinely import fixtures they don't directly call.
+"tests/*"             = ["F401"]
+# Smoke + repro scripts are intentionally side-effect heavy and
+# import for monkey-patching, not direct use.
+"scripts/*"           = ["F401"]

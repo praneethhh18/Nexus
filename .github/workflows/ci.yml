@@ -298,6 +298,10 @@ jobs:
           # Need full history so gitleaks can scan the diff range on PRs.
           fetch-depth: 0
       - name: Gitleaks
+        # gitleaks-action @v2 currently runs on Node 20 (GitHub now warns
+        # about Node 20 deprecation). Watching for a v3 release that bumps
+        # to Node 22 — until then the warning is unavoidable upstream.
+        # Tracking: https://github.com/gitleaks/gitleaks-action/issues
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
