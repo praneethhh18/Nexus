@@ -1,0 +1,169 @@
+                  NEXUSAGENT PROPRIETARY LICENSE
+
+                       Copyright (c) 2026 Praneeth P K
+                            All Rights Reserved
+
+This software ("NexusAgent") and all associated source code, design,
+documentation, marketing assets, brand identity, trade dress, and trade
+secrets contained in this repository (collectively, the "Software") are
+the exclusive property of Praneeth P K ("Licensor"), domiciled in
+Mangalore, Karnataka, India.
+
+The Software is made available in this repository for the purposes of
+transparency, evaluation, and collaboration with explicitly authorised
+contributors. The fact that the source code is publicly viewable does
+NOT grant any license to use, copy, modify, redistribute, sublicense,
+sell, or commercially exploit the Software in whole or in part.
+
+
+==============================================================================
+                                1. GRANT OF RIGHTS
+==============================================================================
+
+Subject to the terms below, the Licensor grants you a NON-TRANSFERABLE,
+NON-EXCLUSIVE, REVOCABLE permission, limited solely to:
+
+  (a) Reading the source code for personal study and evaluation.
+
+  (b) Filing bug reports, security advisories, and feature requests via
+      the project's issue tracker.
+
+  (c) Submitting pull requests, provided that you sign a Contributor
+      License Agreement (CLA) acknowledging that all submitted
+      contributions become the property of the Licensor.
+
+NO OTHER RIGHTS, EXPRESS OR IMPLIED, ARE GRANTED.
+
+
+==============================================================================
+                                  2. RESTRICTIONS
+==============================================================================
+
+You may NOT, without the prior written consent of the Licensor:
+
+  (a) USE the Software, in source or compiled form, in any production,
+      commercial, internal-business, hosted, or revenue-generating
+      capacity.
+
+  (b) COPY any portion of the Software (including but not limited to
+      source code, prompts, schemas, datasets, UI designs, agent
+      behaviour, marketing copy, and brand assets) into any other
+      project, repository, fork, or derivative work.
+
+  (c) MODIFY or create derivative works of the Software, except for
+      contributions submitted back to this repository under a CLA.
+
+  (d) DISTRIBUTE, sublicense, sell, lease, rent, or otherwise transfer
+      the Software, or any portion thereof, to any third party.
+
+  (e) HOST the Software for the benefit of any third party (including
+      Software-as-a-Service offerings, white-labeled deployments, or
+      managed-service arrangements).
+
+  (f) REVERSE ENGINEER, decompile, or disassemble any compiled binary,
+      installer, container image, or distribution artifact produced
+      from the Software.
+
+  (g) REMOVE, ALTER, or OBSCURE any copyright notice, license notice,
+      author attribution, or trademark contained in the Software.
+
+  (h) USE the names "NexusAgent", "Nexus Agent", "Vox", or any
+      confusingly similar mark in connection with any competing or
+      related product, service, or domain name.
+
+  (i) TRAIN any machine learning model, large language model, or
+      generative AI system on the Software, in whole or in part,
+      without prior written consent.
+
+
+==============================================================================
+                          3. EVALUATION & TRIAL USE
+==============================================================================
+
+A separate, time-limited evaluation grant is permitted IF you:
+
+  (a) Are evaluating the Software solely to decide whether to enter into
+      a paid commercial licensing agreement with the Licensor.
+
+  (b) Use it for a maximum of thirty (30) calendar days from the date
+      of first download or clone.
+
+  (c) Do not deploy it to any environment that serves real end-users
+      or processes real customer data.
+
+  (d) Notify the Licensor at hi@nexusagent.in of your evaluation upon
+      starting it, and again at conclusion.
+
+After thirty (30) days, all rights granted under this section
+automatically terminate, and you must delete all copies of the
+Software in your possession.
+
+
+==============================================================================
+                            4. COMMERCIAL LICENSING
+==============================================================================
+
+To USE, DEPLOY, RESELL, OR HOST this Software in any way not expressly
+permitted above, you must obtain a separate written commercial license.
+
+Pricing tiers and terms are documented at: https://nexusagent.in/pricing
+
+To request commercial licensing, contact: hi@nexusagent.in
+
+
+==============================================================================
+                              5. TERMINATION
+==============================================================================
+
+The Licensor reserves the right to revoke any permission granted under
+this license at any time, for any reason or for no reason, with or
+without notice. Upon revocation:
+
+  (a) You must immediately cease all use of the Software.
+  (b) You must delete all copies, in any form, in your possession or
+      under your control.
+  (c) You must, upon written request, certify in writing that the
+      foregoing has been completed.
+
+Termination of this license does NOT extinguish any liability accrued
+prior to termination.
+
+
+==============================================================================
+                                  6. WARRANTY
+==============================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE LICENSOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
+==============================================================================
+                          7. GOVERNING LAW & JURISDICTION
+==============================================================================
+
+This license is governed by the laws of the Republic of India. Any
+dispute arising hereunder shall be subject to the exclusive jurisdiction
+of the courts at Mangalore, Karnataka, India.
+
+
+==============================================================================
+                                  8. CONTACT
+==============================================================================
+
+Praneeth P K
+Email:    hi@nexusagent.in
+Website:  https://nexusagent.in
+
+For questions about this license, commercial licensing, or to report
+violations: hi@nexusagent.in
+
+==============================================================================
+
+By accessing, downloading, cloning, viewing, or otherwise interacting
+with this repository, you acknowledge that you have read this license
+in its entirety and agree to be bound by its terms.

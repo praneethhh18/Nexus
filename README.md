@@ -11,10 +11,18 @@
 runs local-first for everything sensitive, uses the cloud only on aggregates
 you explicitly allow, and now ships a CRM-integrated outbound voice agent.**
 
-![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License](https://img.shields.io/badge/license-Proprietary-red)
+![Source](https://img.shields.io/badge/source-Available%2C%20NOT%20open--source-orange)
+
+> **⚠️ Proprietary software.** NexusAgent is source-available for transparency
+> and security review — NOT open source. You may NOT copy, modify, redistribute,
+> sell, or commercially use the code without a written license. See
+> [LICENSE](LICENSE) and [NOTICE](NOTICE).
+>
+> Commercial licensing inquiries: **hi@nexusagent.in**
 
 ---
 

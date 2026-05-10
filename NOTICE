@@ -1,0 +1,56 @@
+NexusAgent
+Copyright (c) 2026 Praneeth P K
+All Rights Reserved.
+
+This product includes software developed by Praneeth P K
+(https://nexusagent.in).
+
+Licensed under the NexusAgent Proprietary License (see LICENSE file).
+This is NOT open source. You may NOT copy, modify, redistribute, or use
+this software commercially without explicit written permission from the
+Licensor.
+
+For licensing inquiries: hi@nexusagent.in
+
+------------------------------------------------------------------------
+
+Third-party components used by this software retain their original
+licenses. Notable dependencies and their licenses:
+
+  Python ecosystem:
+    - FastAPI               MIT
+    - Pydantic              MIT
+    - LangChain             MIT
+    - Loguru                MIT
+    - APScheduler           MIT
+    - psycopg               LGPL-3.0
+    - razorpay              MIT
+    - sentry-sdk            MIT
+    - reportlab             BSD-3-Clause + CommercialLicense
+    - PyMuPDF               AGPL-3.0  ← see note below
+
+  JavaScript ecosystem:
+    - React                 MIT
+    - Vite                  MIT
+    - Electron              MIT
+    - @sentry/react         MIT
+    - @whiskeysockets/baileys  MIT
+    - cloudflared           Apache-2.0
+
+  AI / ML providers (commercial APIs, no embedded code):
+    - Anthropic Claude      Commercial Terms
+    - AWS Bedrock           Commercial Terms
+    - Cartesia              Commercial Terms
+    - Deepgram              Commercial Terms
+    - LiveKit               Apache-2.0 (server) + Commercial Cloud
+    - Razorpay              Commercial Terms
+
+  AGPL note: PyMuPDF is AGPL-3.0. NexusAgent uses it for document
+  parsing only and does not modify or redistribute the library itself.
+  AGPL terms therefore apply only to PyMuPDF, not to NexusAgent's own
+  code, which remains proprietary.
+
+The presence of these third-party MIT/BSD/Apache-licensed dependencies
+in NexusAgent does NOT make NexusAgent itself open source or subject to
+those licenses. NexusAgent's own source code is governed exclusively by
+the terms in the LICENSE file at the root of this repository.
