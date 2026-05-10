@@ -144,6 +144,9 @@ const COMPARE_ROWS = [
   { feature: 'Starting price',             nexus: 'Free',     zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
 ];
 
+// `plan` field maps to backend PLANS dict in api/routers/billing.py.
+// Tiers with a `plan` send the visitor through signup → /pricing?plan=X
+// where Razorpay checkout auto-opens for that plan after auth.
 const TIERS = [
   { name: 'Free',        price: '₹0',      period: 'forever',   featured: false,
     desc: 'Try NexusAgent with a couple of workflows on your own machine.',
@@ -152,11 +155,11 @@ const TIERS = [
   { name: 'Starter',     price: '₹1,499',  period: '/month',    featured: false,
     desc: 'More workflows for solo users who want to run everything locally.',
     items: ['2 users', '5 workflows active', 'Local LLM only', 'Up to 500 documents', 'No voice calls', 'Email support'],
-    cta: 'Get early access',   href: `mailto:${MAIL}` },
-  { name: 'Pro',         price: '₹5,499',  period: '/month',    featured: false,
+    cta: 'Subscribe',          plan: 'starter' },
+  { name: 'Pro',         price: '₹5,499',  period: '/month',    featured: true,
     desc: 'All 8 workflows for a small team, with cloud LLM as an option.',
     items: ['Up to 5 users', 'All 8 workflows', 'Up to 1,000 documents', 'Cloud LLM opt-in', '50 voice min/mo included', 'Email support'],
-    cta: 'Get early access',   href: `mailto:${MAIL}` },
+    cta: 'Subscribe',          plan: 'pro' },
   { name: 'Business',    price: '₹17,999', period: '/month',    featured: false,
     desc: 'For teams that need more users, SSO, and direct onboarding help.',
     items: ['Up to 20 users', 'Unlimited documents', 'SSO (Google / Microsoft)', 'WhatsApp integration', '200 voice min/mo included', 'Onboarding call included'],
@@ -1347,11 +1350,24 @@ function Pricing() {
   const tier = TIERS.find(t => t.name === active);
 
   const handleCta = t => {
-    if (t.name === 'Free') {
-      window.location.href = `${APP_URL}/setup`;
-    } else {
-      setModal(t.name);
+    // Razorpay-eligible tiers: hand off to the in-app pricing page with
+    // ?plan=X. The /login redirect chain ensures the visitor is auth'd
+    // before the Razorpay modal can open (we need a business_id on the
+    // backend to attach the order to).
+    if (t.plan) {
+      window.location.href = `${APP_URL}/login?next=${encodeURIComponent('/pricing?plan=' + t.plan)}`;
+      return;
     }
+    if (t.href && t.href.startsWith('mailto:')) {
+      window.location.href = t.href;
+      return;
+    }
+    if (t.name === 'Free' || (t.href && t.href.includes('/setup'))) {
+      window.location.href = t.href || `${APP_URL}/setup`;
+      return;
+    }
+    // Fallback: legacy "early access" waitlist modal.
+    setModal(t.name);
   };
 
   return (

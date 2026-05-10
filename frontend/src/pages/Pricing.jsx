@@ -10,7 +10,7 @@
  * deliberately — the landing site is a separate Vite app and we don't want
  * to share a build dependency for one constant.
  */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Mail,
   ExternalLink, Server, Users as UsersIcon, Zap, Cloud, Loader2,
@@ -26,6 +26,13 @@ const RZP_PLAN_FOR_TIER = {
   // 'business' could map to backend 'privacy' once the privacy bridge tier
   // becomes self-serve. For now leave it on the "talk to us" mailto path.
 };
+
+// Reverse map — backend plan key → in-app tier id. Used by the
+// `?plan=X` deeplink path (visitor came from the public landing page
+// pricing section). Lets us auto-trigger checkout for the right tier.
+const TIER_FOR_RZP_PLAN = Object.fromEntries(
+  Object.entries(RZP_PLAN_FOR_TIER).map(([tierId, planKey]) => [planKey, tierId])
+);
 
 // ── Tiers ────────────────────────────────────────────────────────────────────
 const TIERS = [
@@ -130,6 +137,8 @@ export default function Pricing() {
   const [paying, setPaying]     = useState(null);
   const [payMsg, setPayMsg]     = useState('');
   const [payErr, setPayErr]     = useState('');
+  // Guard against the auto-checkout effect firing twice in StrictMode.
+  const autoCheckoutFired       = useRef(false);
 
   const subjectFor = (tier) => encodeURIComponent(
     `[NexusAgent] Upgrade to ${tier.name} — ${business?.name || 'my workspace'}`,
@@ -177,9 +186,32 @@ export default function Pricing() {
       };
     }
 
-    // All other paid tiers fall back to mailto (license sales / quotes).
+    // intentional fall-through: mailto for license / quote tiers below.
     return mailtoFor(tier);
   };
+
+  // Deeplink: visitor clicked "Subscribe to Pro" on the public landing page,
+  // got bounced through /login, landed here with ?plan=pro. Auto-open the
+  // Razorpay modal so they don't have to hunt for the upgrade button.
+  // We only fire ONCE per page load (StrictMode would run effects twice).
+  useEffect(() => {
+    if (autoCheckoutFired.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const planFromUrl = params.get('plan');
+    if (!planFromUrl) return;
+    const tierId = TIER_FOR_RZP_PLAN[planFromUrl];
+    if (!tierId) return;
+    if (tierId === currentTier) return;        // already subscribed; nothing to do
+    autoCheckoutFired.current = true;
+    const tier = TIERS.find(t => t.id === tierId);
+    if (tier) {
+      const handler = ctaFor(tier);
+      if (typeof handler === 'function') handler();
+    }
+    // Strip ?plan= from the URL so a refresh doesn't re-open the modal.
+    window.history.replaceState({}, '', window.location.pathname);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="page-body" style={{ maxWidth: 1180, margin: '0 auto' }}>

@@ -198,9 +198,19 @@ export default function Login() {
     if (pendingInvite) {
       sessionStorage.removeItem('nexus_pending_invite');
       navigate(`/accept-invite?token=${pendingInvite}`);
-    } else {
-      navigate('/');
+      return;
     }
+    // ?next=/some/path support — used by the public landing page to deeplink
+    // visitors into a specific in-app destination after auth (e.g. the pricing
+    // page with a chosen plan). Only allow same-origin paths so the URL can't
+    // be weaponised into an open redirect to phishing pages.
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    if (next && next.startsWith('/') && !next.startsWith('//')) {
+      navigate(next);
+      return;
+    }
+    navigate('/');
   };
 
   const switchView = (v) => { setView(v); setError(''); setNeeds2fa(false); };
