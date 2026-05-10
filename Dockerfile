@@ -7,7 +7,10 @@ COPY frontend/ .
 RUN npm run build
 
 # ── Stage 2: Python backend + serve frontend ─────────────────────────────────
-FROM python:3.11-slim
+# Python 3.12 — pinned to match CI + Ubuntu 24 LTS default. Bumping the
+# pinned version is a deliberate change: bump CI, Dockerfile, and docs in
+# the same PR so dev / CI / prod never drift.
+FROM python:3.12-slim
 WORKDIR /app
 
 # System dependencies

@@ -30,19 +30,21 @@ jobs:
   # routine commits get a ~30s install instead of a 6-minute one.
   # ─────────────────────────────────────────────────────────────────────────
   backend:
-    name: Backend (Python ${{ matrix.python-version }})
+    # Python 3.12 — pinned to match Dockerfile (python:3.12-slim) and the
+    # Ubuntu 24 LTS default. Bumping it is a deliberate change: update here,
+    # the Dockerfile, and the import-smoke job below in the same PR so dev,
+    # CI, and prod never drift apart.
+    name: Backend (Python 3.12)
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12", "3.13"]
+    env:
+      PY_VERSION: "3.12"
     steps:
       - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PY_VERSION }}
           cache: pip
           cache-dependency-path: |
             requirements.txt
@@ -76,11 +78,20 @@ jobs:
           # readable failures, --timeout=60 so a hang doesn't burn 10min.
           python -m pytest tests/ -q --tb=short --timeout=60
 
+      - name: Privacy Bridge smoke test
+        env:
+          DB_PATH: /tmp/nexus_pb_smoke.db
+        run: |
+          # Self-contained smoke for the Privacy Bridge wiring. Spins up a
+          # FakeOllama HTTP server in-process and exercises invoke + stream
+          # forwarders, model auto-pick, and graceful fall-through on down.
+          python -m scripts.smoke_privacy_bridge
+
       - name: Upload pytest output on failure
         if: failure()
         uses: actions/upload-artifact@v5
         with:
-          name: pytest-${{ matrix.python-version }}-logs
+          name: pytest-py${{ env.PY_VERSION }}-logs
           path: |
             .pytest_cache
           retention-days: 7
@@ -202,6 +213,40 @@ jobs:
         run: npm ci || npm install --no-audit --no-fund
       - name: Syntax check
         run: node --check server.js
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Privacy Bridge installer (Electron) — install + parse-check every JS
+  # file we ship inside the installer. Catches typos / missing braces before
+  # they reach a customer's laptop, where a parse error means a tray app
+  # that silently does nothing.
+  # ─────────────────────────────────────────────────────────────────────────
+  privacy-bridge-installer:
+    name: Privacy Bridge installer (syntax)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: privacy_bridge_installer
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: privacy_bridge_installer/package-lock.json
+      - name: Install (lockfile only — no Electron runtime needed for syntax)
+        # `--ignore-scripts` skips electron's postinstall (~150MB download)
+        # and any native rebuilds. Pure metadata install is enough for the
+        # parse check below.
+        run: npm ci --ignore-scripts || npm install --no-audit --no-fund --ignore-scripts
+      - name: Syntax check
+        run: |
+          # node --check on every shipped file. Skips bin/ (cloudflared
+          # binary), node_modules/, dist/.
+          for f in main.js preload.js tray.js tunnel.js ollama.js \
+                   settings.js setup.js bridge.js; do
+            echo "Checking $f"
+            node --check "$f"
+          done
 
   # ─────────────────────────────────────────────────────────────────────────
   # E2E — Playwright against the Vite dev server. Heavier, runs only if

@@ -41,6 +41,11 @@ updates:
     schedule: { interval: weekly }
     open-pull-requests-limit: 0
 
+  - package-ecosystem: npm
+    directory: "/privacy_bridge_installer"
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 0
+
   - package-ecosystem: github-actions
     directory: "/"
     schedule: { interval: weekly }

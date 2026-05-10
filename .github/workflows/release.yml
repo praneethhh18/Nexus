@@ -106,14 +106,81 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Privacy Bridge Windows installer — builds the NSIS .exe with cloudflared
+  # bundled, then uploads it as a release asset. Once published, the
+  # /settings/privacy-mode download button (which points at
+  # github.com/.../releases/latest/download/...) just works for customers
+  # without any manual upload step.
+  # ─────────────────────────────────────────────────────────────────────────
+  windows-installer:
+    name: Build Windows installer
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: privacy_bridge_installer
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: privacy_bridge_installer/package-lock.json
+
+      - name: Install npm deps
+        run: npm ci || npm install --no-audit --no-fund
+
+      - name: Download cloudflared.exe to bundle
+        run: |
+          # electron-builder copies bin/${os}/${arch}/* into the installer's
+          # resources/bin/ at package time. ${os} = "win" (electron-builder's
+          # name), NOT Node's "win32".
+          mkdir -p bin/win/x64
+          curl -L --fail -o bin/win/x64/cloudflared.exe \
+            https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+          ls -la bin/win/x64/cloudflared.exe
+
+      - name: Build NSIS installer
+        run: npm run dist:win
+        env:
+          # electron-builder reads this when uploading; we don't actually
+          # publish here (handled by github-release job below), so disable.
+          GH_TOKEN: ""
+
+      - name: Rename artifact for stable download URL
+        # The default filename includes the version (e.g. "...Setup 0.1.0.exe").
+        # We also produce a version-less alias so the Settings page can link to
+        # /releases/latest/download/NexusAgent-Privacy-Bridge-Setup.exe forever.
+        run: |
+          src=$(ls dist/*Setup*.exe | head -1)
+          cp "$src" "dist/NexusAgent-Privacy-Bridge-Setup.exe"
+          ls -la dist/
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v5
+        with:
+          name: privacy-bridge-windows-installer
+          path: |
+            privacy_bridge_installer/dist/*.exe
+            privacy_bridge_installer/dist/*.exe.blockmap
+          retention-days: 30
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Draft a GitHub release with auto-generated notes from the commit history
   # since the previous tag. Marked as a draft so the maintainer reviews
   # before publishing — releases trigger downstream notifications.
+  #
+  # Pulls the Windows installer artifact from the windows-installer job and
+  # attaches it to the release so the Settings page download URL works.
   # ─────────────────────────────────────────────────────────────────────────
   github-release:
     name: Draft GitHub release
     runs-on: ubuntu-latest
-    needs: [docker]
+    needs: [docker, windows-installer]
     permissions:
       contents: write
     if: startsWith(github.ref, 'refs/tags/')
@@ -122,12 +189,21 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Pull Windows installer artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: privacy-bridge-windows-installer
+          path: release-assets/
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
           draft: true
           prerelease: ${{ contains(github.ref_name, '-rc') || contains(github.ref_name, '-beta') }}
+          files: |
+            release-assets/*.exe
+            release-assets/*.exe.blockmap
 
   deploy:
     name: Deploy to EC2
