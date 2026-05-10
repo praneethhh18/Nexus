@@ -19,7 +19,6 @@ A future v2 can switch to per-contact LLM personalization for premium tiers.
 """
 from __future__ import annotations
 
-import re
 import sqlite3  # sqlite3.Row sentinel
 import time
 import uuid

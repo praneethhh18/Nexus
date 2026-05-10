@@ -18,9 +18,7 @@ That matches the privacy layer's posture: metrics are a count, not a copy.
 """
 from __future__ import annotations
 
-import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from loguru import logger

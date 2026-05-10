@@ -13,7 +13,6 @@ prefix to keep the auth tables safe.
 from __future__ import annotations
 
 import re
-import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import tempfile
 import time
 from pathlib import Path

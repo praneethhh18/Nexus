@@ -14,7 +14,6 @@ _lock = threading.Lock()
 
 # ── Persistent run history (SQLite) ──────────────────────────────────────────
 def _history_conn():
-    import sqlite3
     from config.db import get_conn
     conn = get_conn()
     conn.execute("""CREATE TABLE IF NOT EXISTS nexus_workflow_runs (

@@ -23,7 +23,6 @@ import json
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Any, Dict, List
 
 from loguru import logger

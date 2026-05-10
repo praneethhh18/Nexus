@@ -26,7 +26,6 @@ import secrets
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from typing import Optional, Dict, Any, List
 
 from fastapi import HTTPException

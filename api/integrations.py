@@ -27,7 +27,6 @@ import hmac
 import json
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
 

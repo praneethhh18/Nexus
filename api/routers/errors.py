@@ -11,7 +11,6 @@ layer just like every other endpoint.
 from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
-from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException

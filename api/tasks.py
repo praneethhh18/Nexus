@@ -10,7 +10,6 @@ from __future__ import annotations
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import datetime, date, timedelta
-from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from fastapi import HTTPException

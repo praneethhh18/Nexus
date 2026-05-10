@@ -301,3 +301,117 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Build summary — final fan-in. Always runs, depends on every other job,
+  # writes a Mermaid flowchart to the run summary so the GitHub UI shows a
+  # node graph of which jobs ran and their result instead of a flat list.
+  #
+  # Also acts as a single "all-green" gate: branch protection can require
+  # just this one job's status instead of nine separate checks.
+  # ─────────────────────────────────────────────────────────────────────────
+  summary:
+    name: CI summary
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - backend
+      - import-smoke
+      - frontend
+      - landing
+      - whatsapp-bridge
+      - privacy-bridge-installer
+      - e2e
+      - secrets-scan
+    steps:
+      - name: Render Mermaid flowchart to job summary
+        env:
+          R_BACKEND:    ${{ needs.backend.result }}
+          R_IMPORT:     ${{ needs.import-smoke.result }}
+          R_FRONTEND:   ${{ needs.frontend.result }}
+          R_LANDING:    ${{ needs.landing.result }}
+          R_WA:         ${{ needs.whatsapp-bridge.result }}
+          R_PB:         ${{ needs.privacy-bridge-installer.result }}
+          R_E2E:        ${{ needs.e2e.result }}
+          R_SECRETS:    ${{ needs.secrets-scan.result }}
+        run: |
+          # Map job result -> Mermaid class (CSS-style colored nodes)
+          cls() {
+            case "$1" in
+              success)   echo "ok" ;;
+              failure)   echo "bad" ;;
+              cancelled) echo "skip" ;;
+              skipped)   echo "skip" ;;
+              *)         echo "unk" ;;
+            esac
+          }
+
+          {
+            echo "## CI run graph"
+            echo ""
+            echo "\`\`\`mermaid"
+            echo "flowchart LR"
+            echo "  classDef ok fill:#10B981,stroke:#065F46,color:#fff"
+            echo "  classDef bad fill:#EF4444,stroke:#7F1D1D,color:#fff"
+            echo "  classDef skip fill:#94A3B8,stroke:#475569,color:#fff"
+            echo "  classDef unk fill:#F59E0B,stroke:#92400E,color:#fff"
+            echo ""
+            echo "  src([Push / PR]) --> backend[Backend + smoke]"
+            echo "  src --> import[API import smoke]"
+            echo "  src --> frontend[Frontend]"
+            echo "  src --> landing[Landing]"
+            echo "  src --> wa[WhatsApp bridge]"
+            echo "  src --> pb[Privacy Bridge installer]"
+            echo "  src --> sec[Secrets scan]"
+            echo "  frontend --> e2e[E2E Playwright]"
+            echo "  backend --> done([CI summary])"
+            echo "  import --> done"
+            echo "  e2e --> done"
+            echo "  landing --> done"
+            echo "  wa --> done"
+            echo "  pb --> done"
+            echo "  sec --> done"
+            echo ""
+            echo "  class backend $(cls "$R_BACKEND")"
+            echo "  class import $(cls "$R_IMPORT")"
+            echo "  class frontend $(cls "$R_FRONTEND")"
+            echo "  class landing $(cls "$R_LANDING")"
+            echo "  class wa $(cls "$R_WA")"
+            echo "  class pb $(cls "$R_PB")"
+            echo "  class e2e $(cls "$R_E2E")"
+            echo "  class sec $(cls "$R_SECRETS")"
+            echo "\`\`\`"
+            echo ""
+            echo "| Job | Result |"
+            echo "|---|---|"
+            echo "| Backend (Python 3.12) + Privacy Bridge smoke | $R_BACKEND |"
+            echo "| API import smoke | $R_IMPORT |"
+            echo "| Frontend (build + lint) | $R_FRONTEND |"
+            echo "| Landing (build) | $R_LANDING |"
+            echo "| WhatsApp bridge (syntax) | $R_WA |"
+            echo "| Privacy Bridge installer (syntax) | $R_PB |"
+            echo "| E2E (Playwright) | $R_E2E |"
+            echo "| Secrets scan | $R_SECRETS |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Fail if any required job failed
+        run: |
+          # Single gate: if anything other than success/skipped, fail this job.
+          # Branch protection should require only "CI summary" instead of all 8.
+          for r in "$R_BACKEND" "$R_IMPORT" "$R_FRONTEND" "$R_LANDING" \
+                   "$R_WA" "$R_PB" "$R_E2E" "$R_SECRETS"; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "::error::A required job concluded as: $r"; exit 1 ;;
+            esac
+          done
+          echo "All required jobs passed."
+        env:
+          R_BACKEND:    ${{ needs.backend.result }}
+          R_IMPORT:     ${{ needs.import-smoke.result }}
+          R_FRONTEND:   ${{ needs.frontend.result }}
+          R_LANDING:    ${{ needs.landing.result }}
+          R_WA:         ${{ needs.whatsapp-bridge.result }}
+          R_PB:         ${{ needs.privacy-bridge-installer.result }}
+          R_E2E:        ${{ needs.e2e.result }}
+          R_SECRETS:    ${{ needs.secrets-scan.result }}

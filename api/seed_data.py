@@ -24,7 +24,6 @@ from __future__ import annotations
 import hashlib
 import json
 import secrets
-import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
 from datetime import date, datetime, timedelta, timezone
 from typing import Dict, List

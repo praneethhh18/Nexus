@@ -21,7 +21,6 @@ import uuid
 from typing import Any, Dict, List, Optional
 
 from fastapi import HTTPException
-from loguru import logger
 
 from config.db import get_conn
 from utils.timez import now_iso

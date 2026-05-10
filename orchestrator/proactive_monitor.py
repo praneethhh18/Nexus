@@ -38,7 +38,6 @@ def check_anomalies() -> Dict[str, Any]:
         return result
 
     try:
-        import sqlite3
         conn = get_conn()
         df = pd.read_sql_query(
             "SELECT date, region, revenue FROM sales_metrics WHERE metric_type='daily' ORDER BY date",
@@ -149,7 +148,6 @@ def _handle_anomalies(anomalies: List[Dict[str, Any]]) -> None:
 def _generate_anomaly_report(anomaly: Dict[str, Any]) -> Optional[str]:
     """Generate a PDF report for a single anomaly."""
     try:
-        import sqlite3
         import pandas as pd
         from config.db import get_conn
         from report_generator.chart_builder import build_chart

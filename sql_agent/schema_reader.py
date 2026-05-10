@@ -7,7 +7,6 @@ don't care which database is live.
 """
 from __future__ import annotations
 
-import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from pathlib import Path
 from loguru import logger
 

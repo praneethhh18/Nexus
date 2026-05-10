@@ -18,18 +18,15 @@ the user can fill blanks via Vox/Iris later.
 """
 from __future__ import annotations
 
-import os
 import re
 import sqlite3  # sqlite3.Row sentinel
-import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 import httpx
 from loguru import logger
 
 from agents.tool_registry import register_tool
 from config.db import get_conn
-from utils.timez import now_iso
 
 # Tag every Lead Hunter import with this so the user can filter the segment
 # in the CRM ("source = lead-hunter") for outreach campaigns.

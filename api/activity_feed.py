@@ -24,7 +24,6 @@ Callers: `/api/activity/{entity_type}/{entity_id}` — server.py.
 from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
-from pathlib import Path
 from typing import Dict, List
 
 from loguru import logger

@@ -10,7 +10,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import random
-import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timedelta
 
 from faker import Faker

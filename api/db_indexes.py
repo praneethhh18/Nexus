@@ -14,7 +14,6 @@ Indexes are keyed by the common query patterns:
 from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
-from pathlib import Path
 from typing import List, Tuple
 
 from loguru import logger

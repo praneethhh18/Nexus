@@ -11,7 +11,6 @@ server.py to keep behaviour identical during the refactor.
 """
 from __future__ import annotations
 
-import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 
 from fastapi import APIRouter, Depends
 

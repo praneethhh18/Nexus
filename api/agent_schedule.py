@@ -16,7 +16,6 @@ the server calls `rebuild_custom_jobs()` in `agents.background.scheduler`.
 from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
-from pathlib import Path
 from typing import Dict, List
 
 from config.db import get_conn

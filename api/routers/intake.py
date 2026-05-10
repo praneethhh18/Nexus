@@ -37,7 +37,6 @@ import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import time
 import uuid
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request

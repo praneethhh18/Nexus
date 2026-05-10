@@ -19,7 +19,6 @@ in the result list so the agent can re-rank in subsequent calls.
 """
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, List
 
 from loguru import logger

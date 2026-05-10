@@ -30,7 +30,6 @@ from api import voice_calls
 from api.auth import get_current_context
 from api.crm import CONTACTS_TABLE
 from config.db import get_conn
-from utils.timez import now_iso
 
 
 router = APIRouter(tags=["voice_calls"])

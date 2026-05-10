@@ -9,7 +9,6 @@ shipped defaults" — safe for existing accounts.
 from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
-from pathlib import Path
 from typing import Dict
 
 from config.db import get_conn

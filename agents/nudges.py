@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import date, timedelta
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from loguru import logger

@@ -17,7 +17,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import HTTPException
 from loguru import logger
 
-from config.settings import DB_PATH, OUTPUTS_DIR
+from config.settings import OUTPUTS_DIR
 from config.db import get_conn, list_columns
 
 INVOICES_TABLE = "nexus_invoices"

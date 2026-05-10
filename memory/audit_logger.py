@@ -14,7 +14,7 @@ from typing import Dict, Any, List, Optional
 
 from loguru import logger
 
-from config.settings import AUDIT_LOG_PATH, DB_PATH, OUTPUTS_DIR
+from config.settings import AUDIT_LOG_PATH, OUTPUTS_DIR
 from config.db import get_conn
 
 AUDIT_TABLE = "nexus_audit_log"

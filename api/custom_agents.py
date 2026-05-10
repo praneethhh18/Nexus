@@ -30,7 +30,6 @@ from __future__ import annotations
 import json
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from fastapi import HTTPException

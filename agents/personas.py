@@ -19,7 +19,6 @@ behavior. Actual agent work lives in `agents/briefing.py`,
 from __future__ import annotations
 
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
-from pathlib import Path
 from typing import Dict, List
 
 from loguru import logger

@@ -30,7 +30,6 @@ import json
 import re
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Dict, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
