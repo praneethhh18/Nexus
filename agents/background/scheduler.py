@@ -294,6 +294,86 @@ def start_agent_scheduler():
             logger.warning(f"[AgentScheduler] privacy_bridge health loop failed: {e}")
     _register("privacy-bridge-health", IntervalTrigger(minutes=5), _privacy_bridge_health)
 
+    # ── Subscription reaper + renewal reminders ─────────────────────────
+    # Once per day at 09:00 IST: send 3-day and 1-day renewal reminders,
+    # then move expired subscriptions to past_due → free per the rules
+    # in api/subscriptions.reap_expired().
+    def _subscription_daily():
+        try:
+            from api import subscriptions as _subs
+            from api.routers.billing import PLANS
+            from api.billing_emails import send_renewal_reminder
+            from datetime import datetime, timezone, timedelta
+            from config.db import get_conn
+
+            now = datetime.now(timezone.utc)
+            three_days = (now + timedelta(days=3)).date()
+            one_day    = (now + timedelta(days=1)).date()
+
+            conn = get_conn()
+            try:
+                rows = conn.execute(
+                    "SELECT business_id, plan, current_period_end "
+                    "FROM nexus_subscriptions WHERE status = 'active' "
+                    "AND current_period_end IS NOT NULL"
+                ).fetchall()
+            finally:
+                conn.close()
+
+            sent = 0
+            for r in rows:
+                biz_id = r[0] if not hasattr(r, "keys") else r["business_id"]
+                plan_key = r[1] if not hasattr(r, "keys") else r["plan"]
+                period_end_str = r[2] if not hasattr(r, "keys") else r["current_period_end"]
+                try:
+                    end = datetime.fromisoformat(period_end_str)
+                except Exception:
+                    continue
+
+                # Window: only send on the EXACT day matching 3-or-1-days-out
+                # so we don't spam (job runs every 24h anyway).
+                end_date = end.date()
+                if end_date not in (three_days, one_day):
+                    continue
+                days_left = (end_date - now.date()).days
+                if days_left not in (1, 3):
+                    continue
+
+                plan_meta = PLANS.get(plan_key) or {}
+                # Resolve customer email — best-effort.
+                try:
+                    from api.businesses import get_business
+                    from api.auth import get_user_by_id
+                    biz = get_business(biz_id) or {}
+                    user = get_user_by_id(biz.get("owner_id") or "") or {}
+                    email = user.get("email") or biz.get("email") or ""
+                    name  = user.get("name", "")
+                    bname = biz.get("name", "your workspace")
+                except Exception:
+                    email, name, bname = "", "", "your workspace"
+
+                if email and send_renewal_reminder(
+                    to_email=email,
+                    customer_name=name,
+                    business_name=bname,
+                    plan_label=plan_meta.get("label", plan_key),
+                    amount_inr=float(plan_meta.get("price_inr", 0)),
+                    days_until_renewal=days_left,
+                ):
+                    sent += 1
+
+            if sent:
+                logger.info(f"[AgentScheduler] sent {sent} renewal reminder(s)")
+
+            # Then run the expiry reaper.
+            reaped = _subs.reap_expired()
+            if reaped:
+                logger.info(f"[AgentScheduler] subscription reaper moved {reaped} row(s)")
+        except Exception as e:
+            logger.warning(f"[AgentScheduler] subscription_daily failed: {e}")
+
+    _register("subscription-daily", _cron(hour=9, minute=0), _subscription_daily)
+
     # Register user-defined custom agents from the DB
     try:
         rebuild_custom_jobs()

@@ -51,8 +51,16 @@ def default_from() -> str:
 
 def send_email(*, to: str, subject: str, body: str,
                 from_addr: Optional[str] = None,
-                reply_to: Optional[str] = None) -> dict:
+                reply_to: Optional[str] = None,
+                html_body: Optional[str] = None,
+                attachments: Optional[list] = None) -> dict:
     """Send one transactional email. Returns {'ok': True, 'id': str, 'provider': str}.
+
+    Optional kwargs:
+      html_body   — HTML alternative (Resend uses both; SMTP path ignores).
+      attachments — [{'filename': 'invoice.pdf', 'content': bytes}], passed
+                    through to Resend as base64. SMTP path drops them with a
+                    warning so callers don't silently lose attachments.
 
     Raises RuntimeError on any failure — callers should catch + show the user.
     """
@@ -72,8 +80,14 @@ def send_email(*, to: str, subject: str, body: str,
     provider = _provider()
     if provider == "resend":
         return _send_via_resend(sender=sender, to=to, subject=subject,
-                                 body=body, reply_to=reply_to)
+                                 body=body, reply_to=reply_to,
+                                 html_body=html_body, attachments=attachments)
     if provider == "gmail_smtp":
+        if attachments:
+            logger.warning(
+                "[email] Gmail SMTP path doesn't ship attachments — "
+                f"dropping {len(attachments)} attachment(s). Use Resend in prod."
+            )
         return _send_via_gmail_smtp(sender=sender, to=to, subject=subject,
                                      body=body, reply_to=reply_to)
     raise RuntimeError(
@@ -84,9 +98,12 @@ def send_email(*, to: str, subject: str, body: str,
 
 # ── Resend backend ─────────────────────────────────────────────────────────
 def _send_via_resend(*, sender: str, to: str, subject: str, body: str,
-                      reply_to: Optional[str]) -> dict:
+                      reply_to: Optional[str],
+                      html_body: Optional[str] = None,
+                      attachments: Optional[list] = None) -> dict:
     """Call Resend's REST API directly via httpx. Avoids needing the resend
     SDK — keeps the dep surface tight."""
+    import base64
     import httpx
 
     api_key = os.getenv("RESEND_API_KEY", "").strip()
@@ -99,8 +116,19 @@ def _send_via_resend(*, sender: str, to: str, subject: str, body: str,
         "subject": subject,
         "text":    body,
     }
+    if html_body:
+        payload["html"] = html_body
     if reply_to:
         payload["reply_to"] = reply_to
+    if attachments:
+        # Resend wants base64 strings. Each item: {filename, content (bytes)}.
+        payload["attachments"] = [
+            {
+                "filename": a["filename"],
+                "content":  base64.b64encode(a["content"]).decode("ascii"),
+            }
+            for a in attachments if a.get("content")
+        ]
 
     try:
         with httpx.Client(timeout=15.0) as client:

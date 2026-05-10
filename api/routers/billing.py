@@ -460,6 +460,45 @@ async def razorpay_webhook(request: Request):
                 payload={"reason": payment_entity.get("error_description", ""),
                          "webhook": True},
             )
+            # Recovery email: count prior failures for this business in the
+            # last 7 days to pick attempt #1 / #2 / #3 copy. Manual decay
+            # because we don't have a renewal-state machine yet.
+            try:
+                from datetime import datetime, timedelta, timezone
+                from api.billing_emails import send_renewal_failed
+                from config.db import get_conn, is_postgres
+                from api.businesses import get_business
+                from api.auth import get_user_by_id
+
+                cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+                ph = "%s" if is_postgres() else "?"
+                conn = get_conn()
+                try:
+                    cnt = conn.execute(
+                        f"SELECT COUNT(*) FROM nexus_subscription_events "
+                        f"WHERE business_id = {ph} AND event_type = 'payment_failed' "
+                        f"AND created_at > {ph}",
+                        (biz_id, cutoff),
+                    ).fetchone()
+                    attempt = int(cnt[0]) if cnt else 1
+                finally:
+                    conn.close()
+
+                biz = get_business(biz_id) or {}
+                user = get_user_by_id(biz.get("owner_id") or "") or {}
+                email = user.get("email") or biz.get("email") or ""
+                if email:
+                    plan_meta = PLANS.get(plan) or {}
+                    send_renewal_failed(
+                        to_email=email,
+                        customer_name=user.get("name", ""),
+                        business_name=biz.get("name", "your workspace"),
+                        plan_label=plan_meta.get("label", plan),
+                        amount_inr=float(plan_meta.get("price_inr", 0)),
+                        attempt=min(attempt, 3),
+                    )
+            except Exception as e:
+                logger.warning(f"[billing] renewal-failed email skipped: {e}")
         elif event_type == "refund.created" and biz_id:
             # Refund — log only. Manual review decides whether to revert
             # the plan or keep it; we don't auto-downgrade on a refund

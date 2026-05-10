@@ -193,9 +193,12 @@ export default function Pricing() {
             contact: user?.phone || '',
           });
           setPayMsg(`Payment verified. Welcome to ${tier.name}!`);
-          // Light reload after a beat so the "current plan" badge updates
-          // once the backend persists the subscription change.
-          setTimeout(() => window.location.reload(), 1500);
+          // Redirect to the dashboard with `?welcome=<plan>` so the success
+          // modal fires there instead of leaving the user on /pricing.
+          // Slight delay so they SEE the green confirmation banner first.
+          setTimeout(() => {
+            window.location.assign(`/?welcome=${rzpPlan}`);
+          }, 1200);
           return result;
         } catch (e) {
           // Cancelled by user is not an error — silent dismiss.

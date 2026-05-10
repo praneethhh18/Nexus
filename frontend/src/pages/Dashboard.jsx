@@ -13,6 +13,7 @@ import { listPersonas } from '../services/agents';
 import ReactMarkdown from 'react-markdown';
 import { Sparkles, Loader2, Sun, Moon, Lock } from 'lucide-react';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import PlanWelcomeModal from '../components/PlanWelcomeModal';
 import Analytics from './Analytics';
 
 const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
@@ -237,6 +238,10 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Fires only when /?welcome=<plan> is in the URL — set by /pricing
+          after a verified Razorpay payment. Self-managed: closes itself
+          and strips the query param. */}
+      <PlanWelcomeModal />
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>

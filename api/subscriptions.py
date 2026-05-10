@@ -164,7 +164,115 @@ def record_payment(
         f"[subscriptions] biz={business_id} -> {plan} "
         f"period_end={period_end} payment={razorpay_payment_id}"
     )
+
+    # 3. Side-effects: welcome email + GST invoice + founder ping. Each
+    #    wrapped in try/except so a Resend hiccup never breaks the payment
+    #    flow — money + DB state are already safe at this point.
+    try:
+        _send_billing_side_effects(
+            business_id=business_id,
+            plan=plan,
+            amount_paise=amount_paise,
+            razorpay_order_id=razorpay_order_id,
+            razorpay_payment_id=razorpay_payment_id,
+            extra_payload=extra_payload,
+        )
+    except Exception as e:
+        logger.warning(f"[subscriptions] post-payment side-effects failed: {e}")
+
     return get_subscription(business_id)
+
+
+def _send_billing_side_effects(
+    *,
+    business_id: str,
+    plan: str,
+    amount_paise: int,
+    razorpay_order_id: str,
+    razorpay_payment_id: str,
+    extra_payload: Optional[Dict[str, Any]],
+) -> None:
+    """Welcome email + GST invoice + founder ping. Best-effort — every step
+    swallows its own exceptions and logs."""
+    from api.routers.billing import PLANS
+    from api.billing_emails import send_welcome_email, notify_founder_new_payment
+
+    plan_meta = PLANS.get(plan) or {}
+    amount_inr = amount_paise / 100.0
+
+    # Look up customer details — graceful fallbacks if anything missing.
+    try:
+        from api.businesses import get_business
+        biz = get_business(business_id) or {}
+        business_name = biz.get("name", "your workspace")
+    except Exception:
+        biz = {}
+        business_name = "your workspace"
+
+    user_id = (extra_payload or {}).get("user_id") or biz.get("owner_id") or ""
+    customer_email = ""
+    customer_name  = ""
+    customer_state = ""
+    customer_gstin = ""
+    if user_id:
+        try:
+            from api.auth import get_user_by_id
+            u = get_user_by_id(user_id) or {}
+            customer_email = u.get("email", "")
+            customer_name  = u.get("name", "")
+        except Exception:
+            pass
+    customer_email = customer_email or biz.get("email", "")
+
+    # Invoice PDF — best-effort.
+    invoice_bytes = None
+    try:
+        from report_generator.gst_invoice import render_invoice_pdf
+        invoice_bytes = render_invoice_pdf(
+            payment_id=razorpay_payment_id,
+            order_id=razorpay_order_id,
+            plan_label=plan_meta.get("label", plan),
+            plan_period=plan_meta.get("period", "monthly"),
+            amount_inr=amount_inr,
+            customer_name=customer_name or business_name,
+            customer_email=customer_email,
+            customer_gstin=customer_gstin,
+            customer_state_code=customer_state,
+        )
+    except Exception as e:
+        logger.warning(f"[subscriptions] invoice render failed: {e}")
+
+    # Welcome email to the customer.
+    if customer_email:
+        try:
+            send_welcome_email(
+                to_email=customer_email,
+                customer_name=customer_name or business_name,
+                business_name=business_name,
+                plan_label=plan_meta.get("label", plan),
+                plan_period=plan_meta.get("period", "monthly"),
+                amount_inr=amount_inr,
+                payment_id=razorpay_payment_id,
+                order_id=razorpay_order_id,
+                invoice_pdf=invoice_bytes,
+                plan_features=plan_meta.get("features", []),
+            )
+        except Exception as e:
+            logger.warning(f"[subscriptions] welcome email failed: {e}")
+
+    # Founder ping (you).
+    try:
+        notify_founder_new_payment(
+            business_name=business_name,
+            business_id=business_id,
+            customer_name=customer_name or "—",
+            customer_email=customer_email or "—",
+            plan_label=plan_meta.get("label", plan),
+            amount_inr=amount_inr,
+            payment_id=razorpay_payment_id,
+        )
+    except Exception as e:
+        logger.warning(f"[subscriptions] founder ping failed: {e}")
 
 
 def record_event(
