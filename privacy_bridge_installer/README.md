@@ -152,18 +152,27 @@ done — the app installs itself, lives in the tray, runs at login.
 ### Bundling cloudflared (optional but recommended)
 
 To make the installer truly zero-dependency, drop the cloudflared binary
-into `bin/<os>/<arch>/` before building:
+into `bin/<os>/<arch>/` before building. **Note:** `${os}` here is
+electron-builder's name (`win`/`mac`/`linux`), not Node's `process.platform`:
 
 ```
-bin/win32/x64/cloudflared.exe
-bin/darwin/x64/cloudflared
-bin/darwin/arm64/cloudflared
+bin/win/x64/cloudflared.exe
+bin/mac/x64/cloudflared
+bin/mac/arm64/cloudflared
 bin/linux/x64/cloudflared
 ```
 
+Quickest way to fetch the latest Windows binary:
+```bash
+mkdir -p bin/win/x64
+curl -L -o bin/win/x64/cloudflared.exe \
+  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe
+```
+
 `electron-builder` ships the right binary for the target platform via
-`extraResources`. If absent, the app falls back to `cloudflared` on PATH and
-opens the download page in the user's browser if missing.
+`extraResources` (lands in `<install>/resources/bin/cloudflared.exe`). If
+absent, the app falls back to `cloudflared` on PATH and opens the download
+page in the user's browser if missing.
 
 ### What the user sees
 

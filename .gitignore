@@ -23,6 +23,9 @@ workflows/api_keys.json
 whatsapp_bridge/auth/
 whatsapp_bridge/node_modules/
 whatsapp_bridge/.env
+privacy_bridge_installer/node_modules/
+privacy_bridge_installer/dist/
+privacy_bridge_installer/bin/
 chroma_db/
 *.egg-info/
 dist/
