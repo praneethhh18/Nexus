@@ -109,23 +109,6 @@ const TIERS = [
     icon: ShieldCheck,
   },
   {
-    id: 'business',
-    name: 'Business',
-    price: '₹29,999',
-    cadence: '/ month',
-    desc: 'For 25-seat teams that need SSO + onboarding.',
-    items: [
-      'Up to 25 users',
-      'Unlimited documents',
-      'SSO (Google / Microsoft)',
-      '10K WhatsApp · 1K voice mins/mo',
-      'Privacy Bridge included',
-      'Onboarding call + dedicated Slack',
-    ],
-    cta: 'Talk to us',
-    icon: UsersIcon,
-  },
-  {
     id: 'self_hosted',
     name: 'Self-hosted',
     price: '₹49,999',

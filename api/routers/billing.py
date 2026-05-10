@@ -151,37 +151,11 @@ PLANS = {
         ],
         "purchasable": True,
     },
-    "business": {
-        "label":      "Business",
-        "price_inr":  29999,
-        "period":     "monthly",
-        "rank":       4,
-        "limits": {
-            "users":         25,
-            "agents":        8,
-            "documents":     -1,             # unlimited
-            "whatsapp_mo":   10000,
-            "voice_min_mo":  1000,
-            "cloud_llm":     True,
-            "privacy_bridge": True,
-        },
-        "features": [
-            "Up to 25 users",
-            "All 8 AI agents",
-            "Unlimited documents",
-            "SSO (Google / Microsoft)",
-            "Per-integration permissions",
-            "10,000 WhatsApp + 1,000 voice minutes/month",
-            "Privacy Bridge included",
-            "Onboarding call + dedicated Slack channel",
-        ],
-        "purchasable": False,  # bookable via mailto for sales conversation first
-    },
     "self_hosted": {
         "label":      "Self-hosted",
         "price_inr":  49999,                 # one-time license fee
         "period":     "one-time",
-        "rank":       5,
+        "rank":       4,
         "limits": {
             "users":         -1,
             "agents":        8,
