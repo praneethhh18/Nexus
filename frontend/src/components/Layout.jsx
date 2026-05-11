@@ -10,6 +10,7 @@ import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import TrialBanner from './TrialBanner';
 import { prefetchRoute, prefetchAllRoutesIdle } from '../services/routePrefetch';
+import { prefetchData, prefetchAllDataIdle } from '../services/dataPrefetch';
 
 const NAV_MAIN = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -68,11 +69,16 @@ export default function Layout() {
     approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
   }, []);
 
-  // Warm all route chunks in the background after the dashboard mounts.
-  // Cuts the sidebar-click → page-paint lag from 1-3s (Vite compile + chunk
-  // download on first click) down to ~50ms (cache hit). Idle-scheduled so
-  // it never competes with the initial render.
-  useEffect(() => { prefetchAllRoutesIdle(); }, []);
+  // Warm BOTH the route chunks (JS) and the page data (API) in the
+  // background after Layout mounts. This kills the cold-cache feel: by the
+  // time the user clicks any sidebar item, both the code and the data are
+  // ready and the page renders in <100ms instead of waiting on a sequential
+  // chunk-load → API-fetch chain.
+  // Idle-scheduled so neither competes with the dashboard's initial paint.
+  useEffect(() => {
+    prefetchAllRoutesIdle();
+    prefetchAllDataIdle();
+  }, []);
 
   useEffect(() => {
     reloadAll();
@@ -274,8 +280,8 @@ export default function Layout() {
             return (
               <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
-                onMouseEnter={() => prefetchRoute(to)}
-                onFocus={() => prefetchRoute(to)}>
+                onMouseEnter={() => { prefetchRoute(to); prefetchData(to); }}
+                onFocus={() => { prefetchRoute(to); prefetchData(to); }}>
                 <Icon size={18} />
                 {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
                 {count > 0 && !collapsed && (
@@ -295,8 +301,8 @@ export default function Layout() {
               {NAV_DEV.map(({ to, icon: Icon, label }) => (
                 <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                   style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
-                  onMouseEnter={() => prefetchRoute(to)}
-                  onFocus={() => prefetchRoute(to)}>
+                  onMouseEnter={() => { prefetchRoute(to); prefetchData(to); }}
+                  onFocus={() => { prefetchRoute(to); prefetchData(to); }}>
                   <Icon size={18} />
                   {!collapsed && <span>{label}</span>}
                 </NavLink>

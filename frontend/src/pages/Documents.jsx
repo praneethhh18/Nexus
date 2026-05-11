@@ -5,6 +5,7 @@ import {
   extractDocFromText, extractDocFromUpload,
 } from '../services/documents';
 import EmptyState from '../components/EmptyState';
+import { getCached, setCached, keyFor } from '../services/dataCache';
 
 function Modal({ title, onClose, children }) {
   return (
@@ -230,9 +231,15 @@ function GenerateForm({ template, onSubmit, onCancel }) {
   );
 }
 
+// Stale-while-revalidate so navigating back to /documents renders the last
+// list instantly. Wired into dataPrefetch.js so the data is also fetched in
+// the background after Layout mounts → first click is also instant.
+const DOCS_CACHE_KEY = 'documents:page';
+
 export default function Documents() {
-  const [templates, setTemplates] = useState([]);
-  const [documents, setDocuments] = useState([]);
+  const _cached = getCached(keyFor(DOCS_CACHE_KEY)) || {};
+  const [templates, setTemplates] = useState(_cached.templates ?? []);
+  const [documents, setDocuments] = useState(_cached.documents ?? []);
   const [modal, setModal] = useState(null);
   const [msg, setMsg] = useState('');
   // Extract modal state — null when closed.
@@ -242,8 +249,10 @@ export default function Documents() {
   const reload = useCallback(async () => {
     try {
       const [t, d] = await Promise.all([listDocTemplates(), listDocuments()]);
-      setTemplates(t.map((x) => ({ ...x })));
+      const tmpls = t.map((x) => ({ ...x }));
+      setTemplates(tmpls);
       setDocuments(d);
+      setCached(keyFor(DOCS_CACHE_KEY), { templates: tmpls, documents: d });
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, []);
 
