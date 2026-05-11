@@ -74,14 +74,16 @@ function renderWhatIfMarkdown(scenarioText, r) {
   }
 
   // Currency comes from the simulator (most-common currency on this
-  // workspace's invoices, or 'USD' for the sample-data fallback).
-  const currency = r.currency || 'USD';
-  const sym = currency === 'USD' ? '$'
+  // workspace's invoices). Defaults to INR — NexusAgent is built for
+  // Indian SMBs; USD/EUR/GBP only surface when a row explicitly carries them.
+  const currency = r.currency || 'INR';
+  const sym = currency === 'INR' ? '₹'
+            : currency === 'USD' ? '$'
             : currency === 'EUR' ? '€'
             : currency === 'GBP' ? '£'
-            : currency === 'INR' ? '₹'
             : `${currency} `;
-  const fmt = (n) => Number.isFinite(n) ? `${sym}${Math.round(n).toLocaleString()}` : '—';
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US';
+  const fmt = (n) => Number.isFinite(n) ? `${sym}${Math.round(n).toLocaleString(locale)}` : '—';
   const before = r.before_total_revenue;
   const after  = r.after_total_revenue;
   const pct    = r.net_impact_pct;

@@ -680,7 +680,7 @@ export default function ContactDetail() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{inv.number}</div>
                       <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'capitalize' }}>
-                        {inv.status} · {inv.currency || 'USD'} {Number(inv.total).toLocaleString()}
+                        {inv.status} · {inv.currency || 'INR'} {Number(inv.total).toLocaleString('en-IN')}
                       </div>
                     </div>
                   </Link>
@@ -1232,7 +1232,7 @@ function TimelineFeed({ interactions = [], deals = [], invoices = [] }) {
         kind: 'invoice', subkind: inv.status,
         when: inv.issue_date || inv.created_at || '',
         title: `Invoice ${inv.number}`,
-        body: `${inv.status} · ${inv.currency || 'USD'} ${Number(inv.total || 0).toLocaleString()}`,
+        body: `${inv.status} · ${inv.currency || 'INR'} ${Number(inv.total || 0).toLocaleString('en-IN')}`,
       });
     }
     out.sort((a, b) => (b.when || '').localeCompare(a.when || ''));

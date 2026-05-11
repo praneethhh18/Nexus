@@ -28,7 +28,9 @@ const STAGE_COLORS = {
   negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
-const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
+// INR + en-IN by default — NexusAgent is built for Indian SMBs. `cur` arg
+// kept for forward-compat if a deal explicitly carries USD/EUR/etc.
+const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0 }).format(v || 0);
 
 // ── Quick-action buttons on a contact row (Vox call · WhatsApp · Email) ────
 const waLink = (phone) => phone ? `https://wa.me/${phone.replace(/\D/g, '')}` : null;
@@ -181,7 +183,7 @@ function CompanyForm({ initial, onSubmit, onCancel }) {
 // ── Deal form ────────────────────────────────────────────────────────────────
 function DealForm({ initial, contacts, companies, onSubmit, onCancel }) {
   const [f, setF] = useState({
-    name: '', value: 0, currency: 'USD', stage: 'lead', probability_pct: 20,
+    name: '', value: 0, currency: 'INR', stage: 'lead', probability_pct: 20,
     contact_id: '', company_id: '', notes: '', expected_close: '', ...(initial || {}),
   });
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));

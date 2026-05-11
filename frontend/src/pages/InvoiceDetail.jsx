@@ -47,8 +47,8 @@ function formatWhen(iso) {
 }
 
 function moneyOf(currency) {
-  return (n) => new Intl.NumberFormat('en-US', {
-    style: 'currency', currency: currency || 'USD',
+  return (n) => new Intl.NumberFormat('en-IN', {
+    style: 'currency', currency: currency || 'INR',
   }).format(n || 0);
 }
 
@@ -90,7 +90,7 @@ export default function InvoiceDetail() {
   useEffect(() => { reload(); }, [reload]);
 
   const money = useMemo(
-    () => moneyOf(invoice?.currency || 'USD'),
+    () => moneyOf(invoice?.currency || 'INR'),
     [invoice],
   );
 

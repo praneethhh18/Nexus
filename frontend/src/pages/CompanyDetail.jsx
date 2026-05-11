@@ -274,7 +274,7 @@ export default function CompanyDetail() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{inv.number}</div>
                       <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'capitalize' }}>
-                        {inv.status} · {inv.currency || 'USD'} {Number(inv.total).toLocaleString()}
+                        {inv.status} · {inv.currency || 'INR'} {Number(inv.total).toLocaleString('en-IN')}
                       </div>
                     </div>
                   </Link>

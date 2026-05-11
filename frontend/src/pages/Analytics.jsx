@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, Zap, AlertTriangle, Activity, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { pipelineVelocity, revenueForecast, agentImpact, churnRisk } from '../services/analytics';
 
-const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', {
-  style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0,
+// INR + en-IN — NexusAgent is built for Indian SMBs. `cur` arg respected
+// when the row carries a different currency.
+const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', {
+  style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0,
 }).format(v || 0);
 
 const STAGE_COLORS = {

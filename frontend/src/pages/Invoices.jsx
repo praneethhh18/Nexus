@@ -17,7 +17,9 @@ const STATUS_COLORS = {
   overdue: 'var(--color-err)', cancelled: 'var(--color-text-dim)',
 };
 
-const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD' }).format(v || 0);
+// INR + en-IN default — `cur` is respected when an invoice row carries
+// its own currency (e.g. a USD export invoice for an overseas customer).
+const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR' }).format(v || 0);
 
 function Modal({ title, onClose, children, wide = false }) {
   return (
@@ -54,7 +56,9 @@ function Field({ label, required, helper, children, span }) {
   );
 }
 
-const COMMON_CURRENCIES = ['USD', 'EUR', 'GBP', 'INR', 'AED', 'SGD', 'AUD', 'CAD'];
+// INR first — most invoices on this workspace are Indian. Other currencies
+// remain available for export customers.
+const COMMON_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD'];
 
 // ── Invoice form ────────────────────────────────────────────────────────────
 function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
@@ -63,7 +67,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
   const [f, setF] = useState({
     customer_name: '', customer_email: '', customer_address: '',
     customer_company_id: '', customer_contact_id: '',
-    currency: 'USD', issue_date: today,
+    currency: 'INR', issue_date: today,
     due_date: defaultDue, notes: '', tax_pct: 0,
     line_items: [{ description: '', quantity: 1, unit_price: 0 }],
     status: 'draft',
