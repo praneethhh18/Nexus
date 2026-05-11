@@ -9,6 +9,7 @@ import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
 import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import TrialBanner from './TrialBanner';
+import { prefetchRoute, prefetchAllRoutesIdle } from '../services/routePrefetch';
 
 const NAV_MAIN = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -66,6 +67,12 @@ export default function Layout() {
     getHealth().then(setHealth).catch(() => {});
     approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
   }, []);
+
+  // Warm all route chunks in the background after the dashboard mounts.
+  // Cuts the sidebar-click → page-paint lag from 1-3s (Vite compile + chunk
+  // download on first click) down to ~50ms (cache hit). Idle-scheduled so
+  // it never competes with the initial render.
+  useEffect(() => { prefetchAllRoutesIdle(); }, []);
 
   useEffect(() => {
     reloadAll();
@@ -266,7 +273,9 @@ export default function Layout() {
             const count = badge === 'approvals' ? pendingApprovals : 0;
             return (
               <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}>
+                style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
+                onMouseEnter={() => prefetchRoute(to)}
+                onFocus={() => prefetchRoute(to)}>
                 <Icon size={18} />
                 {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
                 {count > 0 && !collapsed && (
@@ -285,7 +294,9 @@ export default function Layout() {
               )}
               {NAV_DEV.map(({ to, icon: Icon, label }) => (
                 <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                  style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}>
+                  style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
+                  onMouseEnter={() => prefetchRoute(to)}
+                  onFocus={() => prefetchRoute(to)}>
                   <Icon size={18} />
                   {!collapsed && <span>{label}</span>}
                 </NavLink>
