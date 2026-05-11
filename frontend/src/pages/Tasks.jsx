@@ -7,6 +7,7 @@ import EmptyState from '../components/EmptyState';
 import SuggestionPanel from '../components/SuggestionPanel';
 import { TagPicker, TagChips } from '../components/TagChips';
 import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
+import { getCached, setCached, keyFor } from '../services/dataCache';
 
 const RECURRENCES = ['none', 'daily', 'weekly', 'monthly'];
 
@@ -176,9 +177,15 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
   );
 }
 
+// Stale-while-revalidate cache key for the default (active / no due-window)
+// view. Filtered views are not cached — the next visit may want the default
+// view back so we don't pollute the cache with whatever filter was last set.
+const TASKS_CACHE_KEY = 'tasks:page';
+
 export default function Tasks() {
-  const [tasks, setTasks] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const _cached = getCached(keyFor(TASKS_CACHE_KEY)) || {};
+  const [tasks, setTasks] = useState(_cached.tasks ?? []);
+  const [summary, setSummary] = useState(_cached.summary ?? null);
   const [filter, setFilter] = useState('active');
   const [dueWindow, setDueWindow] = useState('');
   const [modal, setModal] = useState(null); // { record: task | null }
@@ -201,6 +208,10 @@ export default function Tasks() {
       const [list, s] = await Promise.all([listTasks(opts), taskSummary(false)]);
       setTasks(list);
       setSummary(s);
+      // Cache only the default view so the next mount renders instantly.
+      if (filter === 'active' && !dueWindow) {
+        setCached(keyFor(TASKS_CACHE_KEY), { tasks: list, summary: s });
+      }
       // Fetch tag chips for all visible tasks in one batch
       if (list.length > 0) {
         try {

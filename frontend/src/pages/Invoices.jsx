@@ -10,6 +10,7 @@ import {
   INVOICE_STATUSES,
 } from '../services/invoices';
 import { listContacts, listCompanies } from '../services/crm';
+import { getCached, setCached, keyFor } from '../services/dataCache';
 
 const STATUS_COLORS = {
   draft: 'var(--color-text-dim)', sent: 'var(--color-info)', paid: 'var(--color-ok)',
@@ -282,13 +283,20 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
 }
 
 // ── Main page ───────────────────────────────────────────────────────────────
+// Stale-while-revalidate: pre-seed state from the module cache so navigating
+// back to /invoices renders the existing list instantly instead of flashing
+// an empty table for 1-3s while listInvoices() round-trips. The reload()
+// below always re-fetches and replaces the cached value.
+const INV_CACHE_KEY = 'invoices:page';
+
 export default function Invoices() {
   const navigate = useNavigate();
-  const [invoices, setInvoices] = useState([]);
-  const [summary, setSummary] = useState(null);
+  const _cached = getCached(keyFor(INV_CACHE_KEY)) || {};
+  const [invoices, setInvoices] = useState(_cached.invoices ?? []);
+  const [summary, setSummary] = useState(_cached.summary ?? null);
   const [filter, setFilter] = useState('');
-  const [contacts, setContacts] = useState([]);
-  const [companies, setCompanies] = useState([]);
+  const [contacts, setContacts] = useState(_cached.contacts ?? []);
+  const [companies, setCompanies] = useState(_cached.companies ?? []);
   const [modal, setModal] = useState(null); // { record: invoice | null }
   const [msg, setMsg] = useState('');
 
@@ -300,6 +308,13 @@ export default function Invoices() {
         listInvoices(opts), invoiceSummary(), listContacts(), listCompanies(),
       ]);
       setInvoices(list); setSummary(s); setContacts(cts); setCompanies(cos);
+      // Only cache the unfiltered view — filtered lists are user-specific and
+      // would pollute the cache with views the next mount probably won't want.
+      if (!filter) {
+        setCached(keyFor(INV_CACHE_KEY), {
+          invoices: list, summary: s, contacts: cts, companies: cos,
+        });
+      }
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [filter]);
 

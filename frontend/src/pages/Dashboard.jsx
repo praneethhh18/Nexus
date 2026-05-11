@@ -16,6 +16,12 @@ import OnboardingChecklist from '../components/OnboardingChecklist';
 import PlanWelcomeModal from '../components/PlanWelcomeModal';
 import Skeleton from '../components/Skeleton';
 import Analytics from './Analytics';
+import { getCached, setCached, keyFor } from '../services/dataCache';
+
+// Cache key for the full dashboard payload (namespaced by current business
+// id inside keyFor()). 60s TTL — quick enough to feel fresh, long enough to
+// kill the "skeleton flash on every back-navigation" problem.
+const DASH_CACHE_KEY = 'dashboard:overview';
 
 // Default to INR + en-IN — NexusAgent is built for Indian SMBs and the
 // pipeline / invoice totals stored in the DB are already in rupees. The
@@ -52,31 +58,39 @@ function KpiCard({ icon: Icon, label, value, sub, color, tone, onClick }) {
 }
 
 export default function Dashboard() {
-  const [health, setHealth] = useState(null);
-  const [notifs, setNotifs] = useState([]);
-  const [activeWf, setActiveWf] = useState(0);
-  const [crm, setCrm] = useState(null);
-  const [pipe, setPipe] = useState(null);
-  const [tasks, setTasks] = useState(null);
-  const [invoices, setInvoices] = useState(null);
-  const [todayTasks, setTodayTasks] = useState([]);
-  const [stats, setStats] = useState(null);
-  const [calConn, setCalConn] = useState(null);
-  const [events, setEvents] = useState([]);
+  // Stale-while-revalidate: pull the last-known dashboard payload from the
+  // module-level cache so navigating BACK to the dashboard renders the real
+  // numbers instantly instead of flashing skeleton → ₹0 KPIs → real data.
+  // The background reload() below still fires and replaces anything stale.
+  const _cached = getCached(keyFor(DASH_CACHE_KEY)) || {};
+
+  const [health, setHealth] = useState(_cached.health ?? null);
+  const [notifs, setNotifs] = useState(_cached.notifs ?? []);
+  const [activeWf, setActiveWf] = useState(_cached.activeWf ?? 0);
+  const [crm, setCrm] = useState(_cached.crm ?? null);
+  const [pipe, setPipe] = useState(_cached.pipe ?? null);
+  const [tasks, setTasks] = useState(_cached.tasks ?? null);
+  const [invoices, setInvoices] = useState(_cached.invoices ?? null);
+  const [todayTasks, setTodayTasks] = useState(_cached.todayTasks ?? []);
+  const [stats, setStats] = useState(_cached.stats ?? null);
+  const [calConn, setCalConn] = useState(_cached.calConn ?? null);
+  const [events, setEvents] = useState(_cached.events ?? []);
   const [seeding, setSeeding] = useState(false);
   const [seedError, setSeedError] = useState('');
-  const [briefing, setBriefing] = useState(null);
+  const [briefing, setBriefing] = useState(_cached.briefing ?? null);
   const [briefingBusy, setBriefingBusy] = useState(false);
   const [briefingError, setBriefingError] = useState('');
-  const [briefingAgent, setBriefingAgent] = useState(null);
-  const [evening, setEvening] = useState(null);
+  const [briefingAgent, setBriefingAgent] = useState(_cached.briefingAgent ?? null);
+  const [evening, setEvening] = useState(_cached.evening ?? null);
   const [eveningBusy, setEveningBusy] = useState(false);
   const [eveningError, setEveningError] = useState('');
   // First-load flag — until the initial reload() completes, we treat zero
   // counts as "unknown" not "clean". Without this, the dashboard flashes a
   // misleading "Inbox clean, no overdue invoices" green banner for ~2s
   // before the real overdue / approval data arrives.
-  const [loaded, setLoaded] = useState(false);
+  // We start `loaded=true` when we have cached data, so no skeleton flashes
+  // on a return visit; only first-ever mount sees the shimmer.
+  const [loaded, setLoaded] = useState(Object.keys(_cached).length > 0);
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -133,7 +147,34 @@ export default function Dashboard() {
     // forever-shimmer.
     try { await Promise.allSettled([criticalPromise, secondaryPromise]); }
     finally { setLoaded(true); }
+
+    // Snapshot the dashboard state into the cache so the next mount of this
+    // page (back-navigation, sidebar click → return) renders the real numbers
+    // synchronously instead of flashing skeleton/zero-state. Pull fresh values
+    // off the setters' closures via a microtask so we capture the post-update
+    // state rather than the stale values at start-of-reload.
+    queueMicrotask(() => {
+      // We re-read state values from refs via getters that were set above —
+      // but React state isn't reflected in closures, so we read from the
+      // most-recent fetched results we captured locally. The setX(...) calls
+      // happened above, so the cache write below uses those resolved values.
+    });
   }, []);
+
+  // Whenever ANY of the dashboard data slices change, persist them as a
+  // single snapshot. Cheaper than threading the values through reload(),
+  // and naturally picks up the briefing/evening loaders too.
+  useEffect(() => {
+    if (!loaded) return;
+    setCached(keyFor(DASH_CACHE_KEY), {
+      health, notifs, activeWf, crm, pipe, tasks, invoices,
+      todayTasks, stats, calConn, events,
+      briefing, briefingAgent, evening,
+    });
+  }, [
+    loaded, health, notifs, activeWf, crm, pipe, tasks, invoices,
+    todayTasks, stats, calConn, events, briefing, briefingAgent, evening,
+  ]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { reload(); }, [reload]);

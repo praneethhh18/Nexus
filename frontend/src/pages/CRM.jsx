@@ -18,6 +18,7 @@ import { prepareDialForContact } from '../services/voice_calls';
 import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
 import { TagChips, TagPicker } from '../components/TagChips';
 import TagFilterBar, { filterItems } from '../components/TagFilterBar';
+import { getCached, setCached, keyFor } from '../services/dataCache';
 import EntityImportWizard from '../components/EntityImportWizard';
 import ActivityTimeline from '../components/ActivityTimeline';
 import SuggestionPanel from '../components/SuggestionPanel';
@@ -290,13 +291,19 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove, onOpen }) {
 }
 
 // ── Main CRM page ───────────────────────────────────────────────────────────
+// Stale-while-revalidate cache so navigating back to /crm renders the last
+// snapshot instantly instead of flashing an empty contacts/companies/deals
+// table. Filtered/searched views aren't cached — only the unfiltered base.
+const CRM_CACHE_KEY = 'crm:page';
+
 export default function CRM() {
   const navigate = useNavigate();
+  const _cached = getCached(keyFor(CRM_CACHE_KEY)) || {};
   const [tab, setTab] = useState('contacts');
-  const [overview, setOverview] = useState(null);
-  const [contacts, setContacts] = useState([]);
-  const [companies, setCompanies] = useState([]);
-  const [deals, setDeals] = useState([]);
+  const [overview, setOverview] = useState(_cached.overview ?? null);
+  const [contacts, setContacts] = useState(_cached.contacts ?? []);
+  const [companies, setCompanies] = useState(_cached.companies ?? []);
+  const [deals, setDeals] = useState(_cached.deals ?? []);
   const [searchStr, setSearchStr] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -327,6 +334,12 @@ export default function CRM() {
         listDeals({ search: searchStr }),
       ]);
       setOverview(ov); setContacts(cts); setCompanies(cos); setDeals(dls);
+      // Cache only the unfiltered base view so the next mount paints fast.
+      if (!searchStr) {
+        setCached(keyFor(CRM_CACHE_KEY), {
+          overview: ov, contacts: cts, companies: cos, deals: dls,
+        });
+      }
       // Batch tag lookup per entity type
       const [ct, co, dt] = await Promise.all([
         cts.length ? bulkTagsFor('contact', cts.map(x => x.id)) : Promise.resolve({}),
