@@ -28,16 +28,27 @@ def _support_email() -> str:
 def send_verification_email(*, to_email: str, name: str, token: str) -> bool:
     """Send the one-time verify link. Returns True on success.
 
-    In dev (no SMTP wired), we log the link prominently so you can copy it
-    out of the terminal instead of getting blocked by missing infrastructure.
+    The verify URL is ALWAYS logged to the terminal (loud banner) regardless
+    of whether the actual email send succeeds. This is the escape hatch for:
+      - Dev environments with no SMTP wired
+      - Resend configured but domain not yet DNS-verified (send returns 4xx)
+      - Customer's mail server rejected the message (greylisting etc.)
+    Without this banner the user would be stuck — account created, no way in.
     """
     verify_url = f"{_app_url()}/verify-email?token={token}"
 
+    # Always log first so you can copy from terminal even if send fails below.
+    logger.info(
+        "\n"
+        "================================================================\n"
+        f"  VERIFY-EMAIL link for {to_email}\n"
+        f"  {verify_url}\n"
+        f"  Valid 48h. Paste into your browser if the email doesn't arrive.\n"
+        "================================================================"
+    )
+
     if not is_configured():
-        logger.warning(
-            "[verification] Email not sent (no SMTP) — copy this link:\n"
-            f"    {verify_url}"
-        )
+        logger.warning("[verification] No SMTP configured — only the terminal link is available.")
         return False
 
     first_name = (name or "").split(" ")[0] or "there"
