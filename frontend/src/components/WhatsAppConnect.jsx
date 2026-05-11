@@ -25,6 +25,35 @@ import {
 const POLL_MS = 2000;
 const MAX_POLL_TIME_MS = 5 * 60 * 1000;   // give up after 5 min
 
+// Status pill — declared at module scope (not inside the parent component)
+// so React's static-components rule passes and we don't recreate the
+// component on every render. Stateless, takes `status` as a prop.
+const STATUS_MAP = {
+  idle:         { color: 'var(--color-text-dim)',    label: 'Not connected',        Icon: MessageSquare },
+  connecting:   { color: '#3B82F6',                  label: 'Connecting…',           Icon: Loader2,        spin: true },
+  qr_pending:   { color: '#F59E0B',                  label: 'Waiting for scan',      Icon: Smartphone },
+  connected:    { color: '#10B981',                  label: 'Connected',             Icon: CheckCircle2 },
+  disconnected: { color: '#EF4444',                  label: 'Disconnected',          Icon: XCircle },
+  logged_out:   { color: '#EF4444',                  label: 'Logged out',            Icon: AlertTriangle },
+};
+
+function StatusChip({ status }) {
+  const s = STATUS_MAP[status] || STATUS_MAP.idle;
+  const Icon = s.Icon;
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 5,
+      padding: '3px 9px', borderRadius: 999,
+      fontSize: 11, fontWeight: 600,
+      background: 'color-mix(in srgb, ' + s.color + ' 18%, transparent)',
+      color: s.color,
+    }}>
+      <Icon size={12} style={s.spin ? { animation: 'spin 1s linear infinite' } : undefined} />
+      {s.label}
+    </span>
+  );
+}
+
 export default function WhatsAppConnect() {
   const [status, setStatus] = useState('idle');
   const [qr, setQr] = useState(null);
@@ -73,10 +102,9 @@ export default function WhatsAppConnect() {
       try {
         const snap = await getWhatsAppStatus();
         applySnapshot(snap);
-      } catch (e) {
-        // Network blip — keep polling, only show error on multiple failures.
-        // eslint-disable-next-line no-console
-        console.debug('[wa-tenant] poll error:', e?.message);
+      } catch {
+        // Network blip — keep polling silently. The next successful poll
+        // will refresh the UI; flashing transient errors is just noise.
       }
     }, POLL_MS);
   }, [applySnapshot, stopPolling]);
@@ -89,11 +117,9 @@ export default function WhatsAppConnect() {
       try {
         const snap = await getWhatsAppStatus();
         if (!cancelled) applySnapshot(snap);
-      } catch (e) {
-        // Bridge not running, plan-gated, etc. — silent; user can click Connect.
-        if (!cancelled) {
-          // 503 = bridge down; 402 = plan-gated; just leave status=idle
-        }
+      } catch {
+        // Bridge not running, plan-gated, etc. — silent; user can click
+        // Connect and we'll surface the real error then.
       }
     })();
     return () => { cancelled = true; stopPolling(); };
@@ -140,29 +166,6 @@ export default function WhatsAppConnect() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────
-  const StatusChip = () => {
-    const map = {
-      idle:         { color: 'var(--color-text-dim)',    label: 'Not connected',        icon: <MessageSquare size={12} /> },
-      connecting:   { color: '#3B82F6',                  label: 'Connecting…',           icon: <Loader2 size={12} style={{ animation: 'spin 1s linear infinite' }} /> },
-      qr_pending:   { color: '#F59E0B',                  label: 'Waiting for scan',      icon: <Smartphone size={12} /> },
-      connected:    { color: '#10B981',                  label: 'Connected',             icon: <CheckCircle2 size={12} /> },
-      disconnected: { color: '#EF4444',                  label: 'Disconnected',          icon: <XCircle size={12} /> },
-      logged_out:   { color: '#EF4444',                  label: 'Logged out',            icon: <AlertTriangle size={12} /> },
-    };
-    const s = map[status] || map.idle;
-    return (
-      <span style={{
-        display: 'inline-flex', alignItems: 'center', gap: 5,
-        padding: '3px 9px', borderRadius: 999,
-        fontSize: 11, fontWeight: 600,
-        background: 'color-mix(in srgb, ' + s.color + ' 18%, transparent)',
-        color: s.color,
-      }}>
-        {s.icon} {s.label}
-      </span>
-    );
-  };
-
   return (
     <div style={{
       padding: 18, borderRadius: 'var(--r-lg, 12px)',
@@ -181,7 +184,7 @@ export default function WhatsAppConnect() {
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <strong style={{ fontSize: 14 }}>WhatsApp Business</strong>
-            <StatusChip />
+            <StatusChip status={status} />
           </div>
           <div style={{ fontSize: 12, color: 'var(--color-text-dim)', marginTop: 2 }}>
             Connect your WhatsApp number so leads can message you and agents auto-reply.
