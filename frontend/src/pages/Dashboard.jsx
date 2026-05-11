@@ -82,37 +82,57 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const reload = useCallback(async () => {
-    try {
-      const [h, st, ns, wfs, c, p, ts, inv, todayList, cal] = await Promise.all([
+    // Two-tier fetch:
+    //   1. CRITICAL = what TodaysFocus needs to decide "all clean" vs "act now"
+    //      (notifications + today's tasks + invoice outstanding). We flip
+    //      `loaded` as SOON as these three resolve so the skeleton doesn't
+    //      block the strip on slow secondary calls (CRM pipeline, calendar,
+    //      etc. were extending the skeleton to 6-7s).
+    //   2. SECONDARY = everything else (KPI cards, pipeline, calendar). These
+    //      fire in parallel but their results paint independently — each KPI
+    //      can sit at "0" until its own data lands without misleading anyone.
+    // Each call has its own .catch so a single slow/dead endpoint can't take
+    // the whole dashboard hostage.
+    const criticalPromise = Promise.all([
+      getNotifications().catch(() => ({ notifications: [] })),
+      listTasks({ due_window: 'today', status: 'active', limit: 5 }).catch(() => []),
+      invoiceSummary().catch(() => null),
+    ]).then(([ns, todayList, inv]) => {
+      setNotifs((ns.notifications || []).slice(0, 5));
+      setTodayTasks(todayList);
+      setInvoices(inv);
+      setLoaded(true);
+    });
+
+    const secondaryPromise = (async () => {
+      const [h, st, wfs, c, p, ts, cal] = await Promise.all([
         getHealth().catch(() => null),
         getStats().catch(() => null),
-        getNotifications().catch(() => ({ notifications: [] })),
         getWorkflows().catch(() => []),
         crmOverview().catch(() => null),
         pipeline().catch(() => null),
         taskSummary(false).catch(() => null),
-        invoiceSummary().catch(() => null),
-        listTasks({ due_window: 'today', status: 'active', limit: 5 }).catch(() => []),
         calendarStatus().catch(() => null),
       ]);
       setHealth(h); setStats(st);
-      setNotifs((ns.notifications || []).slice(0, 5));
-      setActiveWf(wfs.filter((w) => w.enabled).length);
-      setCrm(c); setPipe(p); setTasks(ts); setInvoices(inv);
-      setTodayTasks(todayList);
+      setActiveWf((wfs || []).filter((w) => w.enabled).length);
+      setCrm(c); setPipe(p); setTasks(ts);
       setCalConn(cal);
       if (cal?.connected) {
         try {
           const ev = await calendarEvents(14, 8);
           setEvents(ev);
-        } catch {}
+        } catch { /* calendar is non-critical, swallow */ }
       } else {
         setEvents([]);
       }
-    } catch {}
-    finally {
-      setLoaded(true);
-    }
+    })();
+
+    // Defensive: if for any reason both promises throw (network down), still
+    // unblock the skeleton so the user sees the empty state instead of a
+    // forever-shimmer.
+    try { await Promise.allSettled([criticalPromise, secondaryPromise]); }
+    finally { setLoaded(true); }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
