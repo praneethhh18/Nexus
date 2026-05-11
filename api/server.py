@@ -184,6 +184,17 @@ app = FastAPI(
     description="Multi-tenant, multi-agent AI business assistant — runs locally on Ollama.",
 )
 
+
+@app.on_event("shutdown")
+def _close_db_pool_on_shutdown():
+    """Drain the Postgres connection pool cleanly so we don't leak server-side
+    connections on hot reload or graceful shutdown."""
+    try:
+        from config.db import close_pg_pool
+        close_pg_pool()
+    except Exception:
+        pass
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[

@@ -159,11 +159,18 @@ class _PgCursor:
 
 
 class _PgConn:
-    """Wraps psycopg connection to mimic the sqlite3.Connection API."""
-    __slots__ = ("_c", "row_factory")
+    """Wraps psycopg connection to mimic the sqlite3.Connection API.
 
-    def __init__(self, c):
+    Pool-aware: if `_pool` is set, close() returns the underlying connection
+    to the pool instead of actually closing it. Without pooling every request
+    paid the Postgres TCP+SSL+auth handshake cost (~100-200ms per query) —
+    callers commonly run 4-5 queries per request, so this matters a lot.
+    """
+    __slots__ = ("_c", "_pool", "row_factory")
+
+    def __init__(self, c, pool=None):
         self._c = c
+        self._pool = pool
         # Set to truthy (e.g. sqlite3.Row) to get dict-indexable rows.
         # We don't compare against the literal sqlite3.Row class so callers
         # don't need to import sqlite3 in a Postgres-only deployment.
@@ -184,7 +191,23 @@ class _PgConn:
         self._c.rollback()
 
     def close(self):
-        self._c.close()
+        if self._pool is not None:
+            # Discard any pending transaction state before returning to pool —
+            # otherwise the next checkout would inherit our half-finished tx.
+            try:
+                self._c.rollback()
+            except Exception:
+                pass
+            try:
+                self._pool.putconn(self._c)
+            except Exception:
+                # Pool rejected (broken connection) — fall back to a real close
+                # so we don't leak the fd.
+                try: self._c.close()
+                except Exception: pass
+            self._pool = None  # idempotent close
+        else:
+            self._c.close()
 
     def __enter__(self):
         return self
@@ -262,6 +285,91 @@ def _translate_sql(sql: str) -> str:
     return out
 
 
+# ── Connection pool (Postgres only) ──────────────────────────────────────
+# Lazily initialised on first request. Reuses connections across requests
+# instead of paying the ~150ms TCP+SSL+auth handshake on every query.
+#
+# Sizing: min_size keeps a small warm pool ready for the next request;
+# max_size caps concurrent DB connections so a traffic spike doesn't blow
+# past the Postgres server's connection limit (managed Postgres tiers
+# usually allow 25-100). Tunable via POSTGRES_POOL_MIN/MAX env vars.
+#
+# Set POSTGRES_POOL_DISABLED=1 to fall back to per-call psycopg.connect()
+# behaviour (useful for debugging or constrained envs).
+_PG_POOL = None
+_PG_POOL_LOCK = None  # threading.Lock — imported lazily to avoid top-level cost
+
+
+def _pool_enabled() -> bool:
+    raw = (os.getenv("POSTGRES_POOL_DISABLED") or "").strip().lower()
+    return raw not in ("1", "true", "yes", "on")
+
+
+def _get_pg_pool():
+    """Lazy-init the Postgres connection pool. Returns None if pooling
+    is disabled (POSTGRES_POOL_DISABLED=1) or psycopg_pool isn't installed
+    — callers fall back to per-call psycopg.connect()."""
+    global _PG_POOL, _PG_POOL_LOCK
+    if not _pool_enabled():
+        return None
+    if _PG_POOL is not None:
+        return _PG_POOL
+    # Double-checked locking — avoid creating two pools under a race.
+    if _PG_POOL_LOCK is None:
+        import threading
+        _PG_POOL_LOCK = threading.Lock()
+    with _PG_POOL_LOCK:
+        if _PG_POOL is not None:
+            return _PG_POOL
+        try:
+            from psycopg_pool import ConnectionPool
+        except ImportError:
+            # Pool package not installed — gracefully fall back to one-shot
+            # connects so the app still boots. Log so the operator knows.
+            try:
+                from loguru import logger
+                logger.warning(
+                    "[db] psycopg_pool not installed — falling back to "
+                    "per-request connects (slower). Install with: "
+                    "pip install 'psycopg_pool>=3.2'"
+                )
+            except Exception:
+                pass
+            return None
+        min_size = int(os.getenv("POSTGRES_POOL_MIN", "2"))
+        max_size = int(os.getenv("POSTGRES_POOL_MAX", "10"))
+        _PG_POOL = ConnectionPool(
+            conninfo=_database_url(),
+            min_size=min_size,
+            max_size=max_size,
+            kwargs={"autocommit": False},
+            # Lazy open: don't block startup waiting for min_size conns to
+            # come up. Initial connect cost is paid by the first request,
+            # not by `import config.db`. Stops a flaky DB from breaking
+            # backend boot, and avoids racing with an already-running
+            # uvicorn worker that holds the same conn-limit budget.
+            open=False,
+            max_lifetime=60 * 30,    # 30 min — recycle long-lived conns
+            max_idle=60 * 5,         # 5 min idle → close
+            timeout=10.0,            # getconn() blocks up to 10s
+            name="nexusagent",
+        )
+        _PG_POOL.open(wait=False)    # fill min_size in background
+        return _PG_POOL
+
+
+def close_pg_pool() -> None:
+    """Shutdown hook — called from FastAPI's lifespan on app stop so we
+    don't leak connections on hot reload / graceful shutdown."""
+    global _PG_POOL
+    if _PG_POOL is not None:
+        try:
+            _PG_POOL.close()
+        except Exception:
+            pass
+        _PG_POOL = None
+
+
 def _pg_conn() -> _PgConn:
     try:
         import psycopg
@@ -270,6 +378,10 @@ def _pg_conn() -> _PgConn:
             "DATABASE_URL points at Postgres but 'psycopg' is not installed. "
             "Run: pip install 'psycopg[binary]>=3.1'"
         )
+    pool = _get_pg_pool()
+    if pool is not None:
+        raw = pool.getconn()
+        return _PgConn(raw, pool=pool)
     raw = psycopg.connect(_database_url(), autocommit=False)
     return _PgConn(raw)
 
