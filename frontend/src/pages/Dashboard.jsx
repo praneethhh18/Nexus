@@ -33,10 +33,12 @@ const STAGE_COLORS = {
   negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
-function KpiCard({ icon: Icon, label, value, sub, color, tone, onClick }) {
+function KpiCard({ icon: Icon, label, value, sub, color, tone, onClick, loading }) {
   // tone selects the icon background palette; default emerald-accent matches
   // the rest of the design system. `color` is kept for back-compat: if
   // passed, it overrides the palette via inline style.
+  // `loading=true` swaps the value + sub for shimmer bars instead of "₹0",
+  // so the first-paint state reads "loading data" not "data is zero".
   const iconStyle = color
     ? { background: `color-mix(in srgb, ${color} 16%, transparent)`, color }
     : undefined;
@@ -50,8 +52,14 @@ function KpiCard({ icon: Icon, label, value, sub, color, tone, onClick }) {
       </div>
       <div className="kpi-body">
         <div className="kpi-label">{label}</div>
-        <div className="kpi-value">{value}</div>
-        {sub && <div className="kpi-sub">{sub}</div>}
+        {loading ? (
+          <Skeleton width={90} height={22} radius={6} style={{ display: 'block', marginTop: 2, marginBottom: 4 }} />
+        ) : (
+          <div className="kpi-value">{value}</div>
+        )}
+        {loading
+          ? <Skeleton width={60} height={11} radius={4} style={{ display: 'block', marginTop: 2 }} />
+          : (sub && <div className="kpi-sub">{sub}</div>)}
       </div>
     </div>
   );
@@ -192,20 +200,14 @@ export default function Dashboard() {
       if (b?.id && isToday) {
         setBriefing(b);
       } else {
-        // No briefing for today yet — generate one silently so the user
-        // never lands on a stale dashboard. We mark the previous briefing
-        // as stale so it stays visible while the new one is being built.
+        // Show the last known briefing (marked stale) so something is on the
+        // page. Auto-generation moved BEHIND a user click — the LLM call
+        // takes 5-10s and was pinning the dashboard mid-load on every visit.
+        // The backend scheduler still produces a fresh briefing at 8 AM IST
+        // (agents/background/scheduler.py), so most days users land on a
+        // today-fresh one without us calling briefingRun() here.
         if (b?.id) setBriefing({ ...b, _stale: true });
         else setBriefing(null);
-        setBriefingBusy(true);
-        try {
-          const fresh = await briefingRun();
-          if (fresh?.id) setBriefing(fresh);
-        } catch {
-          // Auto-generation failures stay silent — manual "Run now" still works
-        } finally {
-          setBriefingBusy(false);
-        }
       }
     } catch { /* ignore — non-critical */ }
     try {
@@ -558,24 +560,28 @@ export default function Dashboard() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
           <KpiCard
             icon={Briefcase} label="Open pipeline" color="var(--color-warn)"
+            loading={!pipe}
             value={money(pipelineTotal)}
             sub={`${(pipe?.by_stage?.lead?.count || 0) + (pipe?.by_stage?.qualified?.count || 0) + (pipe?.by_stage?.proposal?.count || 0) + (pipe?.by_stage?.negotiation?.count || 0)} deals`}
             onClick={() => navigate('/crm')}
           />
           <KpiCard
             icon={TrendingUp} label="Won this month" color="var(--color-ok)"
+            loading={!crm && !pipe}
             value={money(crm?.won_this_month || 0)}
             sub={`${pipe?.by_stage?.won?.count || 0} closed`}
             onClick={() => navigate('/crm')}
           />
           <KpiCard
             icon={Receipt} label="Outstanding invoices" color="var(--color-info)"
+            loading={!invoices}
             value={money(invoices?.outstanding?.total || 0)}
             sub={`${invoices?.outstanding?.count || 0} unpaid`}
             onClick={() => navigate('/invoices')}
           />
           <KpiCard
             icon={AlertTriangle} label="Overdue" color="var(--color-err)"
+            loading={!tasks && !invoices}
             value={(tasks?.overdue || 0) + (invoices?.overdue?.count || 0)}
             sub={`${tasks?.overdue || 0} tasks · ${invoices?.overdue?.count || 0} invoices`}
             onClick={() => navigate('/tasks')}
@@ -715,16 +721,21 @@ export default function Dashboard() {
               </h3>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
                 {[
-                  { label: 'Contacts', value: crm?.contacts ?? 0 },
-                  { label: 'Companies', value: crm?.companies ?? 0 },
-                  { label: 'Open tasks', value: tasks?.open_total ?? 0 },
-                  { label: 'Active workflows', value: activeWf },
-                  { label: 'Done today', value: tasks?.done_today ?? 0 },
-                  { label: 'Draft invoices', value: invoices?.draft?.count ?? 0 },
+                  // `pending` flag: when true, render a shimmer bar instead
+                  // of a zero so the user knows we're still fetching, not
+                  // that they have zero contacts.
+                  { label: 'Contacts',         value: crm?.contacts ?? 0,                   pending: !crm },
+                  { label: 'Companies',        value: crm?.companies ?? 0,                  pending: !crm },
+                  { label: 'Open tasks',       value: tasks?.open_total ?? 0,               pending: !tasks },
+                  { label: 'Active workflows', value: activeWf,                             pending: !loaded },
+                  { label: 'Done today',       value: tasks?.done_today ?? 0,               pending: !tasks },
+                  { label: 'Draft invoices',   value: invoices?.draft?.count ?? 0,          pending: !invoices },
                 ].map((row, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-surface-1)', borderRadius: 6 }}>
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{row.label}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>{row.value}</span>
+                    {row.pending
+                      ? <Skeleton width={22} height={11} radius={4} />
+                      : <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>{row.value}</span>}
                   </div>
                 ))}
               </div>
@@ -735,15 +746,25 @@ export default function Dashboard() {
                 <Activity size={15} color="var(--color-ok)" /> System
               </h3>
               {[
-                { label: 'LLM', ok: health?.ollama?.online, detail: health?.model || 'offline' },
-                { label: 'Knowledge base', ok: (stats?.knowledge_base?.document_count || 0) > 0, detail: `${stats?.knowledge_base?.document_count || 0} docs` },
-                { label: 'Email', ok: health?.features?.email, detail: health?.features?.email ? 'configured' : 'disabled' },
-                { label: 'Discord', ok: health?.features?.discord, detail: health?.features?.discord ? 'configured' : 'disabled' },
+                // pending=true → shimmer the dot + detail. Without this the
+                // row shows a grey-out "offline" while we're still waiting
+                // on /api/health → reads as broken, not loading.
+                { label: 'LLM',            ok: health?.ollama?.online,                                detail: health?.model || 'offline',                                                       pending: !health },
+                { label: 'Knowledge base', ok: (stats?.knowledge_base?.document_count || 0) > 0,      detail: `${stats?.knowledge_base?.document_count || 0} docs`,                              pending: !stats },
+                { label: 'Email',          ok: health?.features?.email,                              detail: health?.features?.email ? 'configured' : 'disabled',                                pending: !health },
+                { label: 'Discord',        ok: health?.features?.discord,                            detail: health?.features?.discord ? 'configured' : 'disabled',                              pending: !health },
               ].map((r, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: r.ok ? 'var(--color-ok)' : 'var(--color-text-dim)' }} />
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: r.pending ? 'var(--color-warn)' : (r.ok ? 'var(--color-ok)' : 'var(--color-text-dim)'),
+                    opacity: r.pending ? 0.5 : 1,
+                    animation: r.pending ? 'nexus-skeleton-shimmer 1.4s linear infinite' : 'none',
+                  }} />
                   <span style={{ fontSize: 11, color: 'var(--color-text)', flex: 1 }}>{r.label}</span>
-                  <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{r.detail}</span>
+                  {r.pending
+                    ? <Skeleton width={56} height={10} radius={4} />
+                    : <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{r.detail}</span>}
                 </div>
               ))}
             </div>
