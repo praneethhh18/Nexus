@@ -27,7 +27,7 @@ from fastapi import HTTPException, Request, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from loguru import logger
 
-from config.db import get_conn
+from config.db import get_conn, list_columns
 from config.settings import DB_PATH  # used for the co-located .jwt_secret file
 from utils.timez import now_iso, now_utc_naive
 
@@ -99,7 +99,9 @@ def _get_conn():
     # marked verified=1 so admin / test accounts don't suddenly lose access.
     # New signups land with email_verified=0 and get a token row in
     # nexus_email_verifications until they click the link.
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(nexus_users)").fetchall()}
+    # Uses list_columns() which is backend-aware (SQLite PRAGMA vs Postgres
+    # information_schema). The earlier raw PRAGMA call exploded on Postgres.
+    cols = set(list_columns(conn, "nexus_users"))
     if "email_verified" not in cols:
         conn.execute("ALTER TABLE nexus_users ADD COLUMN email_verified INTEGER DEFAULT 0")
         # Grandfather: existing users keep their access. New users get 0 via
