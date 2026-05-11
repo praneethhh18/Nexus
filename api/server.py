@@ -476,9 +476,25 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
     app.include_router(_r.router)
 
 
+# In-process /api/health cache. provider_health() pings Bedrock/Claude/Ollama
+# and was costing ~3s per call. The dashboard hits this on every page load.
+# 60s TTL is short enough that a provider outage surfaces quickly, long enough
+# to amortise the round-trip across a typical user session.
+_HEALTH_CACHE: dict = {"payload": None, "expires_at": 0.0}
+_HEALTH_TTL_SEC = 60.0
+
+
 @app.get("/api/health")
 def health():
-    """Public health check. Does not leak tenant data."""
+    """Public health check. Does not leak tenant data.
+    Cached for 60s — the underlying LLM provider check is a 2-3s network ping
+    that we don't want to repeat on every dashboard render."""
+    import time
+    now = time.time()
+    cached = _HEALTH_CACHE.get("payload")
+    if cached is not None and _HEALTH_CACHE.get("expires_at", 0) > now:
+        return cached
+
     from config.llm_provider import health_check as provider_health, get_provider, CLAUDE_MODEL
     from config.settings import OLLAMA_MODEL, EMAIL_ENABLED, DISCORD_ENABLED
     ph = provider_health()
@@ -492,7 +508,7 @@ def health():
     else:
         online = ph.get("ollama", {}).get("online", False)
         model = OLLAMA_MODEL
-    return {
+    payload = {
         "status": "ok" if online else "degraded",
         "provider": provider,
         "ollama": ph.get("ollama", {}),
@@ -502,6 +518,9 @@ def health():
         "features": {"email": EMAIL_ENABLED, "discord": DISCORD_ENABLED},
         "version": VERSION,
     }
+    _HEALTH_CACHE["payload"] = payload
+    _HEALTH_CACHE["expires_at"] = now + _HEALTH_TTL_SEC
+    return payload
 
 
 @app.get("/api/stats")
