@@ -14,9 +14,13 @@ import ReactMarkdown from 'react-markdown';
 import { Sparkles, Loader2, Sun, Moon, Lock } from 'lucide-react';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import PlanWelcomeModal from '../components/PlanWelcomeModal';
+import Skeleton from '../components/Skeleton';
 import Analytics from './Analytics';
 
-const money = (v, cur = 'USD') => new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v || 0);
+// Default to INR + en-IN — NexusAgent is built for Indian SMBs and the
+// pipeline / invoice totals stored in the DB are already in rupees. The
+// `cur` arg is kept for forward-compat if a workspace ever switches to USD.
+const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0 }).format(v || 0);
 
 const STAGE_COLORS = {
   lead: 'var(--color-info)', qualified: '#a78bfa', proposal: 'var(--color-warn)',
@@ -68,6 +72,11 @@ export default function Dashboard() {
   const [evening, setEvening] = useState(null);
   const [eveningBusy, setEveningBusy] = useState(false);
   const [eveningError, setEveningError] = useState('');
+  // First-load flag — until the initial reload() completes, we treat zero
+  // counts as "unknown" not "clean". Without this, the dashboard flashes a
+  // misleading "Inbox clean, no overdue invoices" green banner for ~2s
+  // before the real overdue / approval data arrives.
+  const [loaded, setLoaded] = useState(false);
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -101,6 +110,9 @@ export default function Dashboard() {
         setEvents([]);
       }
     } catch {}
+    finally {
+      setLoaded(true);
+    }
   }, []);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -294,9 +306,12 @@ export default function Dashboard() {
           <OnboardingChecklist />
         </div>
 
-        {/* Today's focus — first-look value strip */}
+        {/* Today's focus — first-look value strip. We pass `loaded` so the
+            component can show a skeleton instead of the misleading clean-desk
+            banner while the API calls are still in flight. */}
         {!isEmptyBusiness && (
           <TodaysFocus
+            loaded={loaded}
             pendingApprovals={notifs.filter(n => n.type === 'approval').length}
             todayTasksCount={todayTasks.length}
             overdueInvoiceCount={invoices?.outstanding?.count || 0}
@@ -706,7 +721,21 @@ export default function Dashboard() {
 // ── Today's focus — first-look value strip ─────────────────────────────────
 // Renders only when there's actual focus to surface. Each tile self-hides
 // when its count is zero, so the strip never shows a sea of "0"s.
-function TodaysFocus({ pendingApprovals, todayTasksCount, overdueInvoiceCount, overdueInvoiceTotal, navigate }) {
+function TodaysFocus({ loaded, pendingApprovals, todayTasksCount, overdueInvoiceCount, overdueInvoiceTotal, navigate }) {
+  // While the parent's first reload() is still in flight, render a skeleton
+  // strip. Without this gate the component sees zero counts and renders the
+  // misleading "Inbox clean, no overdue invoices" banner — then flips to
+  // "₹4.5L overdue" two seconds later. Looks like the data was fabricated.
+  if (!loaded) {
+    return (
+      <Skeleton
+        height={64}
+        radius={10}
+        style={{ display: 'block', marginBottom: 14 }}
+      />
+    );
+  }
+
   const tiles = [];
   if (pendingApprovals > 0) {
     tiles.push({
@@ -735,7 +764,7 @@ function TodaysFocus({ pendingApprovals, todayTasksCount, overdueInvoiceCount, o
       label: 'Overdue invoices',
       value: overdueInvoiceCount,
       sub: overdueInvoiceTotal
-        ? `$${Number(overdueInvoiceTotal).toLocaleString()} outstanding`
+        ? `₹${Number(overdueInvoiceTotal).toLocaleString('en-IN')} outstanding`
         : 'Kira can draft chasers.',
       href: '/invoices',
     });
