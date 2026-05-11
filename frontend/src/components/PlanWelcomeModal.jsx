@@ -17,15 +17,61 @@
  * from the post-purchase plan in one place — no separate components needed
  * for the first version.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, X, ArrowRight, Users, Zap, CheckCircle2 } from 'lucide-react';
+import { Sparkles, X, ArrowRight, Users, Zap, CheckCircle2, Gift } from 'lucide-react';
 import { getPlans } from '../services/billing';
+
+// CSS-only confetti — 60 particles, deterministic placement per session so
+// React doesn't re-randomise on every render and cause jitter.
+function ConfettiBurst() {
+  const pieces = useMemo(() => {
+    const colors = ['#6366F1', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#06B6D4'];
+    return Array.from({ length: 60 }, (_, i) => ({
+      left: Math.random() * 100,
+      delay: Math.random() * 0.6,
+      duration: 1.6 + Math.random() * 1.6,
+      color: colors[i % colors.length],
+      size: 6 + Math.random() * 6,
+      rotate: Math.random() * 360,
+      drift: (Math.random() - 0.5) * 80,
+    }));
+  }, []);
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
+    }} aria-hidden>
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          style={{
+            position: 'absolute',
+            top: -20,
+            left: `${p.left}%`,
+            width: p.size, height: p.size * 0.45,
+            background: p.color,
+            transform: `rotate(${p.rotate}deg)`,
+            animation: `nexus-confetti-fall ${p.duration}s ${p.delay}s ease-in forwards`,
+            ['--drift']: `${p.drift}px`,
+          }}
+        />
+      ))}
+      <style>{`
+        @keyframes nexus-confetti-fall {
+          0%   { transform: translate(0, -20px) rotate(0deg); opacity: 1; }
+          80%  { opacity: 1; }
+          100% { transform: translate(var(--drift), 520px) rotate(720deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
 
 export default function PlanWelcomeModal() {
   const navigate = useNavigate();
   const [planKey, setPlanKey] = useState(null);
   const [planMeta, setPlanMeta] = useState(null);
+  const isTrial = planKey === 'trial';
 
   useEffect(() => {
     // Read ?welcome=<key> exactly once on mount.
@@ -33,10 +79,12 @@ export default function PlanWelcomeModal() {
     const k = params.get('welcome');
     if (!k) return;
     setPlanKey(k);
-    // Fetch live catalogue so prices/features can't drift between the
-    // hardcoded TIERS list and the actual paid plan. /plans is public.
+    // For the trial flow we always show the Pro feature set — the trial
+    // unlocks Pro. For paid plans, fetch the live catalogue so prices /
+    // features can't drift from the actual Razorpay charge.
+    const fetchKey = k === 'trial' ? 'pro' : k;
     getPlans()
-      .then(({ plans }) => setPlanMeta(plans?.[k] || null))
+      .then(({ plans }) => setPlanMeta(plans?.[fetchKey] || null))
       .catch(() => setPlanMeta(null));
   }, []);
 
@@ -80,13 +128,15 @@ export default function PlanWelcomeModal() {
           animation: 'fade-up 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2)',
         }}
       >
-        {/* Header — gradient hero with the "welcome" copy */}
+        {/* Header — gradient hero with the "welcome" copy + confetti on trial */}
         <div style={{
           background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
           padding: '32px 28px 26px',
           color: '#fff',
           position: 'relative',
+          overflow: 'hidden',
         }}>
+          {isTrial && <ConfettiBurst />}
           <button
             onClick={close}
             aria-label="Close"
@@ -97,27 +147,36 @@ export default function PlanWelcomeModal() {
               width: 28, height: 28, borderRadius: 8,
               cursor: 'pointer',
               display: 'grid', placeItems: 'center',
+              zIndex: 2,
             }}
           >
             <X size={14} />
           </button>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: 'rgba(255,255,255,0.18)',
-            padding: '4px 10px', borderRadius: 999,
-            fontSize: 11, fontWeight: 600, letterSpacing: 0.6,
-            textTransform: 'uppercase', marginBottom: 10,
-          }}>
-            <Sparkles size={12} /> Payment received
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.18)',
+              padding: '4px 10px', borderRadius: 999,
+              fontSize: 11, fontWeight: 600, letterSpacing: 0.6,
+              textTransform: 'uppercase', marginBottom: 10,
+            }}>
+              {isTrial
+                ? <><Gift size={12} /> Trial activated</>
+                : <><Sparkles size={12} /> Payment received</>}
+            </div>
+            <h2 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>
+              {isTrial ? '🎉 You\'re on Pro — 14 days, on us' : `Welcome to ${label}`}
+            </h2>
+            {isTrial ? (
+              <p style={{ margin: '6px 0 0', opacity: 0.95, fontSize: 14 }}>
+                Full access to all 8 AI agents · no card required · cancel anytime.
+              </p>
+            ) : (price !== null && price > 0 && (
+              <p style={{ margin: '6px 0 0', opacity: 0.9, fontSize: 14 }}>
+                ₹{price.toLocaleString('en-IN')} {period} — your account is now active.
+              </p>
+            ))}
           </div>
-          <h2 style={{ margin: 0, fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>
-            Welcome to {label}
-          </h2>
-          {price !== null && price > 0 && (
-            <p style={{ margin: '6px 0 0', opacity: 0.9, fontSize: 14 }}>
-              ₹{price.toLocaleString('en-IN')} {period} — your account is now active.
-            </p>
-          )}
         </div>
 
         {/* Body */}
@@ -129,7 +188,7 @@ export default function PlanWelcomeModal() {
                 textTransform: 'uppercase', color: 'var(--color-text-dim)',
                 marginBottom: 12,
               }}>
-                What's now unlocked
+                {isTrial ? 'What you get for the next 14 days' : 'What\'s now unlocked'}
               </div>
               <ul style={{
                 listStyle: 'none', padding: 0, margin: '0 0 22px',
@@ -202,8 +261,17 @@ export default function PlanWelcomeModal() {
             fontSize: 11.5, color: 'var(--color-text-dim)',
             margin: 0, textAlign: 'center', lineHeight: 1.5,
           }}>
-            Receipt + GST invoice on its way to your email.<br/>
-            Need anything? Reply to that email — we read every one.
+            {isTrial ? (
+              <>
+                We'll email you on day 11 and day 13 — no surprise charges, ever.<br/>
+                Cancel anytime from Settings → Billing. Questions? Just reply to any email.
+              </>
+            ) : (
+              <>
+                Receipt + GST invoice on its way to your email.<br/>
+                Need anything? Reply to that email — we read every one.
+              </>
+            )}
           </p>
         </div>
       </div>

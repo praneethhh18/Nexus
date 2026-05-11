@@ -103,12 +103,19 @@ def create_business(
 
     logger.info(f"[Business] Created {bid} '{name}' owner={owner_id}")
 
-    # Auto-grant a 14-day Pro trial. Idempotent — won't override if a
-    # trial already exists. Best-effort: any failure here mustn't block
-    # business creation (the customer can still use the Free tier).
+    # Auto-grant a 14-day Pro trial — but ONLY for owners whose email is
+    # already verified (grandfathered users + signups in dev with
+    # REQUIRE_EMAIL_VERIFICATION=0). New verified-required signups get
+    # their trial when they click the email link (routers/auth.py verify).
+    # Idempotent: start_trial won't override if a trial already exists.
+    # Best-effort: any failure here mustn't block business creation.
     try:
+        from api.auth import is_email_verified, require_email_verification
         from api.subscriptions import start_trial
-        start_trial(bid, user_id=owner_id)
+        if (not require_email_verification()) or is_email_verified(owner_id):
+            start_trial(bid, user_id=owner_id)
+        else:
+            logger.info(f"[Business] trial deferred for {bid} — email not yet verified")
     except Exception as e:
         logger.warning(f"[Business] trial auto-start failed for {bid}: {e}")
 

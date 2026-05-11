@@ -81,8 +81,21 @@ async function authRequest(path, body) {
 
 export async function signup(email, name, password) {
   const data = await authRequest('/signup', { email, name, password });
-  setSession(data);
+  // verification_required=true → no access token returned. Caller (Login.jsx)
+  // shows the "check your inbox" screen instead of redirecting to dashboard.
+  // verification_required=false / undefined → legacy auto-login flow (dev).
+  if (!data.verification_required) setSession(data);
   return data;
+}
+
+export async function verifyEmail(token) {
+  const data = await authRequest('/verify-email', { token });
+  setSession(data);   // verify returns full tokens — log the user straight in
+  return data;
+}
+
+export async function resendVerification(email) {
+  return authRequest('/resend-verification', { email });
 }
 
 export async function login(email, password, totpCode = null) {

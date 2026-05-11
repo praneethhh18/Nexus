@@ -93,6 +93,27 @@ def _get_conn():
         used_at TEXT
     )""")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_pw_reset_user ON nexus_password_resets(user_id)")
+
+    # Email verification — gates the 14-day Pro trial. Added 2026-05-11.
+    # Grandfather: any existing user (created before this migration ran) is
+    # marked verified=1 so admin / test accounts don't suddenly lose access.
+    # New signups land with email_verified=0 and get a token row in
+    # nexus_email_verifications until they click the link.
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(nexus_users)").fetchall()}
+    if "email_verified" not in cols:
+        conn.execute("ALTER TABLE nexus_users ADD COLUMN email_verified INTEGER DEFAULT 0")
+        # Grandfather: existing users keep their access. New users get 0 via
+        # an explicit INSERT in create_user.
+        conn.execute("UPDATE nexus_users SET email_verified = 1 WHERE email_verified IS NULL OR email_verified = 0")
+    conn.execute("""CREATE TABLE IF NOT EXISTS nexus_email_verifications (
+        token_hash TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        email TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        verified_at TEXT
+    )""")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_verif_user ON nexus_email_verifications(user_id)")
     conn.commit()
     return conn
 
@@ -210,6 +231,17 @@ def create_user(email: str, name: str, password: str, role: str = "user") -> dic
     name = _validate_name(name)
     _validate_password(password)
 
+    # Disposable email gate — cheapest anti-abuse for the 14-day trial.
+    # Bypassed by DISPOSABLE_EMAIL_ALLOW=domain1,domain2 if a real customer
+    # gets falsely caught.
+    from api.disposable_email import is_disposable
+    if is_disposable(email):
+        raise HTTPException(
+            400,
+            "This email provider is not allowed. Please use your work or "
+            "personal email so we can deliver verification + receipts.",
+        )
+
     conn = _get_conn()
     try:
         existing = conn.execute("SELECT id FROM nexus_users WHERE email = ?", (email,)).fetchone()
@@ -220,8 +252,11 @@ def create_user(email: str, name: str, password: str, role: str = "user") -> dic
         pw_hash = hash_password(password)
         now = datetime.now().isoformat()
 
+        # email_verified=0 — new signups must click the verify link before
+        # the 14-day Pro trial activates (gated in routers/auth.py:verify).
         conn.execute(
-            "INSERT INTO nexus_users (id, email, name, password_hash, role, created_at) VALUES (?,?,?,?,?,?)",
+            "INSERT INTO nexus_users (id, email, name, password_hash, role, created_at, email_verified) "
+            "VALUES (?,?,?,?,?,?,0)",
             (user_id, email, name, pw_hash, role, now),
         )
         conn.commit()
@@ -229,7 +264,109 @@ def create_user(email: str, name: str, password: str, role: str = "user") -> dic
         conn.close()
 
     logger.info(f"[Auth] User created: {email} ({role})")
-    return {"id": user_id, "email": email, "name": name, "role": role}
+    return {"id": user_id, "email": email, "name": name, "role": role, "email_verified": False}
+
+
+# ── Email verification ─────────────────────────────────────────────────────
+EMAIL_VERIFICATION_TOKEN_TTL_HOURS = 48
+
+
+def create_email_verification_token(user_id: str, email: str) -> str:
+    """Generate a one-time email verification token. Returns the RAW token
+    to embed in the email link — we only persist the SHA-256 hash, never
+    the raw token (same pattern as password resets)."""
+    conn = _get_conn()
+    try:
+        # Invalidate any prior outstanding tokens for this user so a stale
+        # "resend" link can't be replayed after the user got a newer one.
+        conn.execute(
+            "DELETE FROM nexus_email_verifications WHERE user_id = ? AND verified_at IS NULL",
+            (user_id,),
+        )
+        token = secrets.token_urlsafe(32)
+        token_hash = _hash_token(token)
+        now = datetime.now()
+        expires = (now + timedelta(hours=EMAIL_VERIFICATION_TOKEN_TTL_HOURS)).isoformat()
+        conn.execute(
+            "INSERT INTO nexus_email_verifications (token_hash, user_id, email, created_at, expires_at) "
+            "VALUES (?,?,?,?,?)",
+            (token_hash, user_id, email, now.isoformat(), expires),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+    return token
+
+
+def consume_email_verification_token(token: str) -> Optional[dict]:
+    """Validate and consume a verification token. Returns the user dict on
+    success, None on bad/expired token. Marks the user verified + the token
+    consumed atomically."""
+    if not token:
+        return None
+    token_hash = _hash_token(token)
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT * FROM nexus_email_verifications WHERE token_hash = ?",
+            (token_hash,),
+        ).fetchone()
+        if not row:
+            return None
+        if row["verified_at"]:
+            return None  # already used — no replay
+        try:
+            expires = datetime.fromisoformat(row["expires_at"])
+        except Exception:
+            return None
+        if expires < datetime.now():
+            return None  # expired
+
+        user = conn.execute(
+            "SELECT id, email, name, role FROM nexus_users WHERE id = ?",
+            (row["user_id"],),
+        ).fetchone()
+        if not user:
+            return None
+
+        now_str = datetime.now().isoformat()
+        conn.execute(
+            "UPDATE nexus_email_verifications SET verified_at = ? WHERE token_hash = ?",
+            (now_str, token_hash),
+        )
+        conn.execute(
+            "UPDATE nexus_users SET email_verified = 1 WHERE id = ?",
+            (user["id"],),
+        )
+        conn.commit()
+        logger.info(f"[Auth] Email verified: {user['email']}")
+        return {
+            "id": user["id"], "email": user["email"],
+            "name": user["name"], "role": user["role"],
+            "email_verified": True,
+        }
+    finally:
+        conn.close()
+
+
+def is_email_verified(user_id: str) -> bool:
+    """Cheap check used by trial gating + protected routes."""
+    conn = _get_conn()
+    try:
+        row = conn.execute(
+            "SELECT email_verified FROM nexus_users WHERE id = ?", (user_id,),
+        ).fetchone()
+        return bool(row and row[0])
+    finally:
+        conn.close()
+
+
+def require_email_verification() -> bool:
+    """Env flag — defaults to True in prod. Set REQUIRE_EMAIL_VERIFICATION=0
+    in local dev so the E2E test checklist isn't blocked by SMTP setup."""
+    raw = (os.getenv("REQUIRE_EMAIL_VERIFICATION") or "1").strip().lower()
+    return raw not in ("0", "false", "no", "off", "")
 
 
 def authenticate_user(email: str, password: str, request: Optional[Request] = None) -> Optional[dict]:
@@ -375,6 +512,24 @@ def get_user_by_id(user_id: str) -> Optional[dict]:
         row = conn.execute(
             "SELECT id, email, name, role, created_at, last_login FROM nexus_users WHERE id = ? AND is_active = 1",
             (user_id,),
+        ).fetchone()
+    finally:
+        conn.close()
+    return dict(row) if row else None
+
+
+def get_user_by_email(email: str) -> Optional[dict]:
+    """Case-insensitive lookup. Used by resend-verification (and any future
+    flow that has the email but not the user_id)."""
+    if not email:
+        return None
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT id, email, name, role, created_at, last_login FROM nexus_users "
+            "WHERE email = ? AND is_active = 1",
+            (email.strip().lower(),),
         ).fetchone()
     finally:
         conn.close()

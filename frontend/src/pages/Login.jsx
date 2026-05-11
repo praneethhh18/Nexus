@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login, signup, forgotPassword } from '../services/auth';
+import { login, signup, forgotPassword, resendVerification } from '../services/auth';
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 const EyeOn = () => (
@@ -182,7 +182,17 @@ const baseInput = {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function Login() {
-  const [view, setView] = useState('login'); // 'login' | 'signup' | 'forgot' | 'sent'
+  // Respect ?view=signup on the URL — landing-page Subscribe/Trial buttons
+  // deeplink here with view=signup so new visitors don't have to click the
+  // tab themselves. Default to 'login' for direct /login visits.
+  const initialView = (() => {
+    if (typeof window === 'undefined') return 'login';
+    const v = new URLSearchParams(window.location.search).get('view');
+    return v === 'signup' ? 'signup' : 'login';
+  })();
+  const [view, setView] = useState(initialView); // 'login' | 'signup' | 'forgot' | 'sent' | 'check_inbox'
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMsg, setResendMsg] = useState('');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -220,7 +230,22 @@ export default function Login() {
     setError(''); setLoading(true);
     try {
       if (view === 'signup') {
-        await signup(email, name, password);
+        const res = await signup(email, name, password);
+        // Production: email verification required — show the "check your
+        // inbox" screen. The trial activates only when they click the link.
+        if (res.verification_required) {
+          setView('check_inbox');
+          return;
+        }
+        // Dev (REQUIRE_EMAIL_VERIFICATION=0): legacy auto-login. If the
+        // visitor came from a Pro Subscribe deeplink, skip the /pricing
+        // detour and drop them on the dashboard with the welcome banner.
+        const params = new URLSearchParams(window.location.search);
+        const next = params.get('next') || '';
+        if (/[?&]plan=pro\b/.test(next) || next === '/pricing?plan=pro') {
+          navigate('/?welcome=trial');
+          return;
+        }
         afterLogin();
       } else {
         const res = await login(email, password, needs2fa ? totpCode : null);
@@ -294,6 +319,103 @@ export default function Login() {
                 {loading ? 'Sending…' : 'Resend email'}
               </button>
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── View: post-signup check inbox ─────────────────────────────────────────
+  // Shown after a successful signup when REQUIRE_EMAIL_VERIFICATION is on.
+  // The user has an account but no auth tokens yet — the verify-email page
+  // is what hands out the tokens (and activates the 14-day Pro trial).
+  if (view === 'check_inbox') {
+    const onResend = async () => {
+      setResendBusy(true); setResendMsg('');
+      try {
+        await resendVerification(email);
+        setResendMsg('Sent! Check your inbox in a few seconds.');
+      } catch (err) {
+        setResendMsg(err?.message || 'Could not resend. Try again in a minute.');
+      }
+      setResendBusy(false);
+    };
+    return (
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+        <LeftPanel />
+        <div style={{
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '32px 40px', background: 'var(--color-bg)',
+        }}>
+          <div style={{ width: '100%', maxWidth: 440, textAlign: 'center' }}>
+            <div style={{
+              width: 68, height: 68, borderRadius: '50%', margin: '0 auto 22px',
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.18))',
+              border: '1px solid rgba(99,102,241,0.25)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: '#6366F1',
+            }}>
+              <MailIcon />
+            </div>
+            <div style={{
+              display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+              textTransform: 'uppercase', color: '#6366F1',
+              background: 'rgba(99,102,241,0.08)', padding: '4px 10px', borderRadius: 999,
+              marginBottom: 12,
+            }}>One last step</div>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)', marginBottom: 10 }}>
+              Verify your email to unlock your trial
+            </h2>
+            <p style={{ fontSize: 14, color: 'var(--color-text-muted)', lineHeight: 1.65, marginBottom: 8 }}>
+              We sent a verification link to{' '}
+              <strong style={{ color: 'var(--color-text)' }}>{email}</strong>.
+            </p>
+            <p style={{ fontSize: 13, color: 'var(--color-text-dim)', lineHeight: 1.65, marginBottom: 26 }}>
+              Click the link in that email to activate your <strong>14-day Pro trial</strong>{' '}
+              — all 8 AI agents, no credit card.<br/>
+              The link is valid for 48 hours.
+            </p>
+
+            <div style={{
+              background: 'var(--color-surface-2)', borderRadius: 10,
+              padding: '12px 14px', marginBottom: 22,
+              fontSize: 12.5, color: 'var(--color-text-dim)', textAlign: 'left',
+              lineHeight: 1.6,
+            }}>
+              <div style={{ fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
+                Don't see it?
+              </div>
+              • Check your spam / promotions folder<br/>
+              • Make sure {email} is correct<br/>
+              • Wait 30 seconds, sometimes mail servers are slow
+            </div>
+
+            {resendMsg && (
+              <div style={{
+                fontSize: 12.5, marginBottom: 14,
+                color: resendMsg.startsWith('Sent') ? '#10b981' : '#ef4444',
+              }}>{resendMsg}</div>
+            )}
+
+            <button
+              type="button"
+              onClick={onResend}
+              disabled={resendBusy}
+              className="btn-primary"
+              style={{ width: '100%', justifyContent: 'center', padding: '11px 0', fontSize: 14, marginBottom: 10 }}
+            >
+              {resendBusy ? 'Sending…' : 'Resend verification email'}
+            </button>
+            <button
+              type="button"
+              onClick={() => switchView('login')}
+              style={{
+                background: 'none', border: 'none', color: 'var(--color-text-dim)',
+                cursor: 'pointer', fontSize: 12.5, padding: 6,
+              }}
+            >
+              ← Use a different email
+            </button>
           </div>
         </div>
       </div>

@@ -21,6 +21,8 @@ from api.auth import (
     create_user, authenticate_user,
     create_access_token, create_refresh_token, decode_token,
     get_current_user, get_user_by_id, list_users,
+    create_email_verification_token, consume_email_verification_token,
+    require_email_verification, is_email_verified,
 )
 from api.businesses import (
     ensure_business_for_user, list_user_businesses,
@@ -65,8 +67,68 @@ class ResetPasswordRequest(BaseModel):
 # ── Public auth ─────────────────────────────────────────────────────────────
 @router.post("/api/auth/signup")
 def signup(req: SignupRequest):
+    """Create the account. If REQUIRE_EMAIL_VERIFICATION is on (default in prod),
+    no tokens are returned and no trial is activated yet — the frontend shows
+    a "check your inbox" screen until the user clicks the verify link.
+
+    In dev (REQUIRE_EMAIL_VERIFICATION=0), the legacy auto-login + auto-trial
+    behaviour is preserved so the E2E checklist doesn't break.
+    """
     user = create_user(req.email, req.name, req.password)
     biz_id = ensure_business_for_user(user["id"], user["name"])
+
+    # Dev / opt-out path: same as the old flow — auto-login, trial already
+    # started by ensure_business_for_user above.
+    if not require_email_verification():
+        access = create_access_token(user["id"], user["email"], user["role"])
+        refresh = create_refresh_token(user["id"])
+        return {
+            "user": user,
+            "access_token": access,
+            "refresh_token": refresh,
+            "businesses": list_user_businesses(user["id"]),
+            "current_business_id": biz_id,
+            "verification_required": False,
+        }
+
+    # Production path: send the verify link, hold tokens until verified.
+    # Email failures don't block — the user can resend from the inbox screen.
+    token = create_email_verification_token(user["id"], user["email"])
+    try:
+        from api.verification_emails import send_verification_email
+        send_verification_email(to_email=user["email"], name=user["name"], token=token)
+    except Exception as e:
+        logger.warning(f"[Auth] verification email failed for {user['email']}: {e}")
+
+    return {
+        "user": {"id": user["id"], "email": user["email"], "name": user["name"]},
+        "verification_required": True,
+        "message": f"We sent a verification link to {user['email']}. "
+                   f"Click it to activate your 14-day Pro trial.",
+    }
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+@router.post("/api/auth/verify-email")
+def verify_email(req: VerifyEmailRequest):
+    """Consume the verification token. On success: marks the user verified,
+    activates their 14-day Pro trial (idempotently), and returns auth tokens
+    so the frontend can drop the user straight into the dashboard with the
+    confetti welcome modal."""
+    user = consume_email_verification_token(req.token)
+    if not user:
+        raise HTTPException(400, "This verification link is invalid or has expired. "
+                                 "Sign in and click 'Resend verification email'.")
+
+    # Activate the trial now that email is verified. ensure_business_for_user
+    # is idempotent — if a business already exists for this user, it just
+    # returns the id. The trial-start inside it will now succeed because
+    # is_email_verified() returns True.
+    biz_id = ensure_business_for_user(user["id"], user["name"])
+
     access = create_access_token(user["id"], user["email"], user["role"])
     refresh = create_refresh_token(user["id"])
     return {
@@ -75,7 +137,37 @@ def signup(req: SignupRequest):
         "refresh_token": refresh,
         "businesses": list_user_businesses(user["id"]),
         "current_business_id": biz_id,
+        "trial_activated": True,
     }
+
+
+class ResendVerificationRequest(BaseModel):
+    email: str
+
+
+@router.post("/api/auth/resend-verification")
+def resend_verification(req: ResendVerificationRequest):
+    """Send a fresh verification link. Throttled per-email indirectly via the
+    token TTL (a new token invalidates the old one in create_email_verification_token).
+
+    Privacy-preserving: returns the same response whether the email exists
+    or not, so this can't be used to enumerate accounts.
+    """
+    from api.auth import get_user_by_email
+    user = get_user_by_email(req.email)
+    generic = {"ok": True, "message": "If that email is registered and unverified, "
+                                       "a new link is on its way."}
+    if not user:
+        return generic
+    if is_email_verified(user["id"]):
+        return generic  # don't reveal verified state either
+    token = create_email_verification_token(user["id"], user["email"])
+    try:
+        from api.verification_emails import send_verification_email
+        send_verification_email(to_email=user["email"], name=user["name"], token=token)
+    except Exception as e:
+        logger.warning(f"[Auth] resend-verification failed for {user['email']}: {e}")
+    return generic
 
 
 @router.post("/api/auth/login")

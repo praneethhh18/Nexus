@@ -18,6 +18,7 @@ const InvoiceDetail = lazy(() => import('./pages/InvoiceDetail'));
 const Setup         = lazy(() => import('./pages/Setup'));
 const ResetPassword = lazy(() => import('./pages/ResetPassword'));
 const AcceptInvite  = lazy(() => import('./pages/AcceptInvite'));
+const VerifyEmail   = lazy(() => import('./pages/VerifyEmail'));
 
 const Dashboard     = lazy(() => import('./pages/Dashboard'));
 const Chat          = lazy(() => import('./pages/Chat'));
@@ -94,6 +95,7 @@ export default function App() {
           <Route path="/login"          element={L(Login)} />
           <Route path="/reset-password" element={L(ResetPassword)} />
           <Route path="/accept-invite"  element={L(AcceptInvite)} />
+          <Route path="/verify-email"   element={L(VerifyEmail)} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/"              element={L(Dashboard)} />
             <Route path="/chat"          element={L(Chat)} />

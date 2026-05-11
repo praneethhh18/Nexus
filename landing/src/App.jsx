@@ -3,6 +3,7 @@ import {
   ShieldCheck, ArrowRight, CheckCircle2, X,
   Mail, Phone, Moon, Brain, Sun, Target, Clock, Lock,
   TrendingUp, ChevronDown, Menu, Check, Loader2,
+  Gift, Calendar, Sparkles, CreditCard, Zap, Users,
 } from 'lucide-react';
 import Aurora, { AuroraErrorBoundary } from './components/Aurora';
 
@@ -159,9 +160,10 @@ const TIERS = [
     cta: 'Subscribe',          plan: 'starter' },
   { name: 'Pro',         price: '₹5,999',   period: '/month',   featured: true,
     desc: 'All 8 agents + cloud LLM for a 5-person team — the obvious one.',
-    items: ['Up to 5 users', 'All 8 AI agents', '2,000 documents', '500 WhatsApp/mo',
-            '100 voice mins/mo', 'Cloud LLM (Claude / Bedrock)', 'AI proposals + Calendar + Email'],
-    cta: 'Subscribe',          plan: 'pro' },
+    items: ['14-day free trial · no card required', 'Up to 5 users', 'All 8 AI agents',
+            '2,000 documents', '500 WhatsApp/mo', '100 voice mins/mo',
+            'Cloud LLM (Claude / Bedrock)', 'AI proposals + Calendar + Email'],
+    cta: 'Start 14-day free trial',  plan: 'pro' },
   { name: 'Privacy',     price: '₹14,999',  period: '/month',   featured: false,
     desc: 'Sensitive prompts run on YOUR laptop via the Privacy Bridge.',
     items: ['Up to 10 users', '10,000 documents', '2,000 WhatsApp/mo', '300 voice mins/mo',
@@ -194,6 +196,28 @@ const FAQS = [
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  // No react-router here on purpose — the landing site is one page plus a
+  // small trial info detour. A pathname switch keeps the bundle lean and
+  // lets us avoid adding a runtime dependency just for two routes.
+  const [path, setPath] = useState(() =>
+    typeof window === 'undefined' ? '/' : window.location.pathname,
+  );
+  useEffect(() => {
+    const onPop = () => setPath(window.location.pathname);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+
+  if (path === '/trial' || path === '/trial/') {
+    return (
+      <>
+        <Nav />
+        <main><TrialPage /></main>
+        <Footer />
+      </>
+    );
+  }
+
   return (
     <>
       <Nav />
@@ -410,12 +434,15 @@ function Hero() {
         </p>
 
         <div className="hero-actions">
-          <a href={`${APP_URL}/setup`} className="btn btn-primary btn-lg">
-            Start free <ArrowRight size={14} />
+          <a href="/trial" className="btn btn-primary btn-lg">
+            Start 14-day free trial <ArrowRight size={14} />
           </a>
           <a href="#agents" className="btn btn-outline btn-lg">
             Meet the team
           </a>
+        </div>
+        <div className="hero-trial-note">
+          No credit card required · cancel anytime · Pro plan ₹5,999/mo after trial
         </div>
 
         <div className="hero-trust">
@@ -1360,7 +1387,16 @@ function Pricing() {
     // before the Razorpay modal can open (we need a business_id on the
     // backend to attach the order to).
     if (t.plan) {
-      window.location.href = `${APP_URL}/login?next=${encodeURIComponent('/pricing?plan=' + t.plan)}`;
+      // Pro routes through the dedicated /trial info page (guidance + FAQ
+      // + day-by-day timeline) before signup. Starter / Privacy are paid
+      // immediately so they continue straight to the Sign Up tab + Razorpay
+      // auto-checkout on the in-app /pricing page.
+      if (t.plan === 'pro') {
+        window.location.href = '/trial';
+        return;
+      }
+      const next = encodeURIComponent('/pricing?plan=' + t.plan);
+      window.location.href = `${APP_URL}/login?view=signup&next=${next}`;
       return;
     }
     if (t.href && t.href.startsWith('mailto:')) {
@@ -1383,7 +1419,7 @@ function Pricing() {
           <span className="eyebrow">Pricing</span>
           <h2 className="section-h2">Free to start. Simple to scale.</h2>
           <p className="section-sub">
-            Prices in ₹. USD available at checkout. GST as applicable.
+            <strong>14-day free trial on Pro — no card required.</strong> Prices in ₹. USD available at checkout. GST as applicable.
           </p>
         </div>
 
@@ -1431,6 +1467,171 @@ function Pricing() {
         <p className="price-fine">Prices in ₹ · GST as applicable · USD available at checkout</p>
       </div>
     </section>
+  );
+}
+
+// ── Trial info page (/trial) ──────────────────────────────────────────────────
+// The "guidance" detour between Subscribe and Sign Up. Goal: set proper
+// expectations (what's included, what happens day 15, no card) so the user
+// is informed BEFORE they hand over an email — and so it's clear we're not
+// running an auto-charge gotcha.
+
+const TRIAL_TIMELINE = [
+  { range: 'Day 1',       icon: Sparkles,  title: 'Pair your channels',
+    text: 'Connect WhatsApp, Gmail, calendar in 5 minutes. Your CRM pre-fills from the last 30 days of activity.' },
+  { range: 'Day 2–4',     icon: Brain,     title: 'Let the agents work',
+    text: 'Atlas drafts follow-ups, Vox handles outbound calls, Inbox triages your email overnight. You approve actions, the agents learn your tone.' },
+  { range: 'Day 5–10',    icon: TrendingUp,title: 'See the lift',
+    text: 'Overdue invoices chased on their own. Meeting briefs in your inbox 30 min before each call. WhatsApp leads replied to within seconds.' },
+  { range: 'Day 11',      icon: Mail,      title: 'Gentle email',
+    text: '"Day 11 of 14" reminder. We tell you what your agents did this week so you can decide if it earned a spot in your stack.' },
+  { range: 'Day 14',      icon: Calendar,  title: 'Decide',
+    text: 'Keep going? Pick a plan from ₹1,499/mo. Not for you? Account drops to Free — your data stays put, nothing is auto-charged.' },
+];
+
+const TRIAL_FAQS = [
+  { q: 'Will my card be charged after 14 days?',
+    a: 'No. We don\'t collect a card to start the trial. On day 14 your account simply drops to the Free tier unless you choose a paid plan yourself.' },
+  { q: 'Can I cancel anytime?',
+    a: 'Yes — Settings → Billing → "End trial" closes it instantly. No emails to chase, no retention dance.' },
+  { q: 'What email address can I use?',
+    a: 'Your work or personal email. We block disposable / temp-mail providers and require email verification so trials can\'t be cycled — fair to genuine customers.' },
+  { q: 'What if I need more time?',
+    a: 'Reply to any email from us before day 14 and we\'ll extend by a week. We\'d rather you make the right call than rush.' },
+];
+
+function TrialPage() {
+  const ctaHref = `${APP_URL}/login?view=signup&next=${encodeURIComponent('/pricing?plan=pro')}`;
+  return (
+    <>
+      <section className="hero-section" style={{ paddingBottom: 40 }}>
+        <div className="container hero-inner">
+          <div className="hero-eyebrow">
+            <Gift size={12} />
+            14 days · full Pro · no card
+          </div>
+          <h1 className="hero-h1">
+            <span className="hero-h1-line">Try every agent.</span>
+            <span className="hero-h1-line">Pay if it earns its keep.</span>
+          </h1>
+          <p className="hero-sub">
+            All 8 AI agents, Cloud LLM, 500 WhatsApp messages, 100 voice minutes —
+            unlocked for 14 days. We don't ask for a credit card to start, and we
+            won't sneak one in on day 15.
+          </p>
+          <div className="hero-actions">
+            <a href={ctaHref} className="btn btn-primary btn-lg">
+              Continue to sign up <ArrowRight size={14} />
+            </a>
+            <a href="/" className="btn btn-outline btn-lg">
+              ← Back to home
+            </a>
+          </div>
+          <div className="hero-trial-note">
+            Verified by email · No credit card · Cancel anytime from Settings
+          </div>
+        </div>
+      </section>
+
+      {/* Day-by-day timeline */}
+      <section className="section" style={{ paddingTop: 40 }}>
+        <div className="container">
+          <div className="section-header section-header-c">
+            <span className="eyebrow">How the 14 days work</span>
+            <h2 className="section-h2">A two-week test drive, end to end.</h2>
+            <p className="section-sub">
+              Most teams know by day 7 whether NexusAgent fits. The next 7 are for
+              proving it on your numbers, not ours.
+            </p>
+          </div>
+          <ol className="trial-timeline">
+            {TRIAL_TIMELINE.map((step, i) => (
+              <li key={i} className="trial-timeline-item">
+                <div className="trial-timeline-rail">
+                  <div className="trial-timeline-dot">
+                    <step.icon size={14} />
+                  </div>
+                  {i < TRIAL_TIMELINE.length - 1 && <div className="trial-timeline-line" />}
+                </div>
+                <div className="trial-timeline-body">
+                  <div className="trial-timeline-day">{step.range}</div>
+                  <div className="trial-timeline-title">{step.title}</div>
+                  <p className="trial-timeline-text">{step.text}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* What's included + day-15 promise */}
+      <section className="section" style={{ paddingTop: 0 }}>
+        <div className="container trial-grid">
+          <div className="trial-card">
+            <div className="trial-card-head">
+              <Zap size={16} style={{ color: '#7C3AED' }} />
+              <h3>What's unlocked for 14 days</h3>
+            </div>
+            <ul className="trial-feature-list">
+              <li><CheckCircle2 size={14} className="icon-ok" /> All 8 AI agents (Atlas, Vox, Inbox, etc.)</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Up to 5 team members</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> 2,000 documents in RAG</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> 500 WhatsApp messages / month</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> 100 voice call minutes / month</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Cloud LLM (Claude / Bedrock)</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> AI proposals + Calendar + Email triage</li>
+            </ul>
+          </div>
+          <div className="trial-card trial-card-soft">
+            <div className="trial-card-head">
+              <CreditCard size={16} style={{ color: '#10B981' }} />
+              <h3>What happens on day 15</h3>
+            </div>
+            <ul className="trial-feature-list">
+              <li><CheckCircle2 size={14} className="icon-ok" /> No auto-charge — we don't have a card.</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Your data stays. Logins still work.</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Account drops to Free (2 agents, local LLM).</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Upgrade anytime from Settings → Billing.</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Export everything to CSV if you leave.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Trial FAQ */}
+      <section className="section" style={{ paddingTop: 20 }}>
+        <div className="container" style={{ maxWidth: 760 }}>
+          <div className="section-header section-header-c">
+            <span className="eyebrow">Trial FAQ</span>
+            <h2 className="section-h2">The fine print, plain English.</h2>
+          </div>
+          <div className="trial-faq-list">
+            {TRIAL_FAQS.map((f, i) => (
+              <details key={i} className="trial-faq-item">
+                <summary>{f.q}</summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section className="section trial-cta-section">
+        <div className="container" style={{ textAlign: 'center' }}>
+          <h2 className="section-h2" style={{ marginBottom: 10 }}>Ready to start?</h2>
+          <p className="section-sub" style={{ marginBottom: 24 }}>
+            Sign up takes 30 seconds. One verification email and you're in.
+          </p>
+          <a href={ctaHref} className="btn btn-primary btn-lg">
+            Start my 14-day trial <ArrowRight size={14} />
+          </a>
+          <div className="hero-trial-note" style={{ marginTop: 18 }}>
+            No credit card required · Pro plan ₹5,999/mo only if you stay
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
