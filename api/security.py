@@ -346,7 +346,40 @@ def record_session(
         conn.close()
 
 
+# In-memory throttle: skip the UPDATE if we wrote last_seen_at for this jti
+# within the last TOUCH_THROTTLE_SEC. Without this, every authed request
+# hit nexus_sessions — on a remote Postgres that's ~150ms per request
+# just to maintain a stat we display with minute-level granularity anyway.
+_TOUCH_THROTTLE_SEC = 60.0
+_TOUCH_LAST: dict[str, float] = {}
+_TOUCH_LOCK = None  # lazy threading.Lock
+
+
 def touch_session(jti: str) -> None:
+    """Mark a session as recently active. Throttled to one DB write per
+    minute per jti — the UI shows 'last active Xm ago' so we don't need
+    sub-minute accuracy and a write-per-request is wasteful."""
+    if not jti:
+        return
+    import time
+    global _TOUCH_LOCK
+    if _TOUCH_LOCK is None:
+        import threading
+        _TOUCH_LOCK = threading.Lock()
+    now = time.time()
+    with _TOUCH_LOCK:
+        last = _TOUCH_LAST.get(jti, 0.0)
+        if now - last < _TOUCH_THROTTLE_SEC:
+            return
+        _TOUCH_LAST[jti] = now
+        # Opportunistic prune so the dict doesn't grow forever — drop entries
+        # we haven't seen in 10× the throttle window. If they come back,
+        # they'll just re-cache on the next request.
+        cutoff = now - _TOUCH_THROTTLE_SEC * 10
+        stale = [k for k, v in _TOUCH_LAST.items() if v < cutoff]
+        for k in stale:
+            _TOUCH_LAST.pop(k, None)
+
     conn = _get_conn()
     try:
         conn.execute(
