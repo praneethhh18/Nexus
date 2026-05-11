@@ -301,8 +301,14 @@ _PG_POOL_LOCK = None  # threading.Lock — imported lazily to avoid top-level co
 
 
 def _pool_enabled() -> bool:
-    raw = (os.getenv("POSTGRES_POOL_DISABLED") or "").strip().lower()
-    return raw not in ("1", "true", "yes", "on")
+    """Pool is OPT-IN via POSTGRES_POOL_ENABLED=1.
+    Defaulted off because under uvicorn --reload the worker process spawns
+    children that fight for the same pool — symptoms include the backend
+    hanging on first request after a hot-reload. In a stable prod deploy
+    (gunicorn, single uvicorn worker, no --reload) it's safe to enable.
+    """
+    raw = (os.getenv("POSTGRES_POOL_ENABLED") or "").strip().lower()
+    return raw in ("1", "true", "yes", "on")
 
 
 def _get_pg_pool():
