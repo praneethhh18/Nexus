@@ -31,6 +31,9 @@ import makeWASocket, {
   fetchLatestBaileysVersion,
   downloadMediaMessage,
 } from '@whiskeysockets/baileys';
+// Multi-tenant per-business connection handler. Additive — legacy
+// single-tenant flow below stays as the default.
+import { handleMultiTenantRequest, resumeAllSessions } from './multitenant.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,9 +46,13 @@ const WA_HTTP_PORT = parseInt(process.env.WA_HTTP_PORT || '3001', 10);
 let _activeSock = null;
 
 // ── Outbound HTTP server ─────────────────────────────────────────────────────
-// POST /send  { to: "91XXXXXXXXXX", text: "..." }  → sends a WA message
-// GET  /health                                     → { ok, connected }
-const outboundServer = http.createServer((req, res) => {
+// POST /send                        — legacy single-tenant send (deprecated)
+// GET  /health                      — { ok, connected }
+// POST /tenant/:id/connect          — multi-tenant: start a business session
+// GET  /tenant/:id/status           — multi-tenant: QR + connection state
+// POST /tenant/:id/disconnect       — multi-tenant: logout + wipe auth
+// POST /tenant/:id/send             — multi-tenant: send msg via business
+const outboundServer = http.createServer(async (req, res) => {
   const secret = req.headers['x-nexus-secret'] || '';
   if (NEXUS_WEBHOOK_SECRET && secret !== NEXUS_WEBHOOK_SECRET) {
     res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -58,6 +65,10 @@ const outboundServer = http.createServer((req, res) => {
     res.end(JSON.stringify({ ok: true, connected: !!_activeSock }));
     return;
   }
+
+  // Multi-tenant routes — checked BEFORE legacy /send so per-tenant takes
+  // priority. Returns true if matched + handled; otherwise falls through.
+  if (await handleMultiTenantRequest(req, res)) return;
 
   if (req.method === 'POST' && req.url === '/send') {
     let body = '';
@@ -367,4 +378,11 @@ async function startBridge() {
 startBridge().catch((e) => {
   console.error('[nexus-whatsapp] fatal:', e);
   process.exit(1);
+});
+
+// After the legacy single-tenant bridge boots, resume any per-business
+// sessions left over from a previous run. Non-fatal: tenants with cached
+// creds get their bridge back automatically without re-scanning QR.
+resumeAllSessions().catch((e) => {
+  console.warn('[wa-mt] resumeAllSessions failed:', e.message);
 });

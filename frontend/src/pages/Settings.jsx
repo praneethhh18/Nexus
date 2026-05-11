@@ -9,6 +9,7 @@ import { Download } from 'lucide-react';
 import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services/auth';
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
 import { getToken as getTok, getBusinessId as getBiz } from '../services/auth';
+import WhatsAppConnect from '../components/WhatsAppConnect';
 
 function etFetch(path, init = {}) {
   const h = { 'Content-Type': 'application/json', ...(init.headers || {}) };
@@ -211,15 +212,21 @@ export default function Settings() {
           </div>
         )}
 
-        {/* WhatsApp */}
-        <div className="panel">
+        {/* WhatsApp — multi-tenant: connect THIS business's own number via QR.
+            This is the customer-facing flow. The legacy "text 6-char code"
+            block below is for personal phone linking on the founder's shared
+            bridge (dev/single-tenant deployments). */}
+        <WhatsAppConnect />
+
+        {/* WhatsApp — legacy single-tenant link flow (kept for dev) */}
+        <div className="panel" style={{ marginTop: 16 }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <MessageCircle size={16} color="#25D366" /> WhatsApp
+            <MessageCircle size={16} color="#25D366" /> WhatsApp (legacy single-tenant)
           </h3>
           <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 10 }}>
-            Text the agent on WhatsApp to get tasks, reports, and updates on the go.
-            Open-source bridge using Baileys — no Twilio, no Meta business verification.
-            See <code>whatsapp_bridge/README.md</code> for bridge setup.
+            Link a personal phone to a shared bridge (single-tenant dev mode).
+            For production, use the "Connect WhatsApp" flow above to pair each
+            business's own number via QR.
           </p>
 
           {waAccount?.phone ? (

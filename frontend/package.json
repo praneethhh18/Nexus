@@ -16,6 +16,7 @@
     "@sentry/react": "^10.52.0",
     "@xyflow/react": "^12.10.2",
     "lucide-react": "^1.14.0",
+    "qrcode.react": "^4.2.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-markdown": "^10.1.0",
