@@ -10,7 +10,7 @@ import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import TrialBanner from './TrialBanner';
 import { prefetchRoute, prefetchAllRoutesIdle } from '../services/routePrefetch';
-import { prefetchData, prefetchAllDataIdle } from '../services/dataPrefetch';
+import { prefetchData } from '../services/dataPrefetch';
 
 const NAV_MAIN = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -59,9 +59,28 @@ export default function Layout() {
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding());
   const [pendingApprovals, setPendingApprovals] = useState(0);
   const bizRef = useRef(null);
+  // Hover-intent debounce for sidebar prefetch — a 250ms threshold filters
+  // out "brushing past" the sidebar while still firing ahead of a real click
+  // (humans take 300-500ms between hover and click). Prevents firing 20
+  // route+data prefetches as the cursor drags over the nav column.
+  const hoverTimerRef = useRef(null);
   const user = getUser();
   const navigate = useNavigate();
   const current = getCurrentBusiness();
+
+  const onNavHover = useCallback((to) => {
+    // Route chunks fire immediately — they're idempotent + de-duped and the
+    // Vite compile is the slow part, so earlier is better.
+    prefetchRoute(to);
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(() => prefetchData(to), 250);
+  }, []);
+  const onNavLeave = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+  }, []);
 
   const reloadAll = useCallback(() => {
     getNotifications().then(setNotifData).catch(() => {});
@@ -69,16 +88,17 @@ export default function Layout() {
     approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
   }, []);
 
-  // Warm BOTH the route chunks (JS) and the page data (API) in the
-  // background after Layout mounts. This kills the cold-cache feel: by the
-  // time the user clicks any sidebar item, both the code and the data are
-  // ready and the page renders in <100ms instead of waiting on a sequential
-  // chunk-load → API-fetch chain.
-  // Idle-scheduled so neither competes with the dashboard's initial paint.
-  useEffect(() => {
-    prefetchAllRoutesIdle();
-    prefetchAllDataIdle();
-  }, []);
+  // Warm the route JS chunks (Vite compile + transfer) in the background
+  // after Layout mounts. This is local CPU + network work; doesn't touch
+  // the API, so it's safe to fire eagerly.
+  //
+  // DATA prefetching is deliberately *not* eagerly scheduled here — firing
+  // ~11 extra API calls right when the dashboard is making its own 10 calls
+  // overloaded a backend with no connection pool (each request opened a
+  // fresh PG connection ~150ms; the pool saturated, tier-2 endpoints sat in
+  // queue for minutes). Data prefetch now fires on hover intent only — that
+  // way it never overlaps with the cold-start API storm.
+  useEffect(() => { prefetchAllRoutesIdle(); }, []);
 
   useEffect(() => {
     reloadAll();
@@ -280,8 +300,10 @@ export default function Layout() {
             return (
               <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                 style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
-                onMouseEnter={() => { prefetchRoute(to); prefetchData(to); }}
-                onFocus={() => { prefetchRoute(to); prefetchData(to); }}>
+                onMouseEnter={() => onNavHover(to)}
+                onMouseLeave={onNavLeave}
+                onFocus={() => onNavHover(to)}
+                onBlur={onNavLeave}>
                 <Icon size={18} />
                 {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
                 {count > 0 && !collapsed && (
@@ -301,8 +323,10 @@ export default function Layout() {
               {NAV_DEV.map(({ to, icon: Icon, label }) => (
                 <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                   style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
-                  onMouseEnter={() => { prefetchRoute(to); prefetchData(to); }}
-                  onFocus={() => { prefetchRoute(to); prefetchData(to); }}>
+                  onMouseEnter={() => onNavHover(to)}
+                  onMouseLeave={onNavLeave}
+                  onFocus={() => onNavHover(to)}
+                  onBlur={onNavLeave}>
                   <Icon size={18} />
                   {!collapsed && <span>{label}</span>}
                 </NavLink>
