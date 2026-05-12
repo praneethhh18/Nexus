@@ -186,9 +186,29 @@ app = FastAPI(
 
 
 @app.on_event("shutdown")
-def _close_db_pool_on_shutdown():
-    """Drain the Postgres connection pool cleanly so we don't leak server-side
-    connections on hot reload or graceful shutdown."""
+def _shutdown_clean():
+    """Drain Postgres pool + stop APScheduler cleanly on hot reload / Ctrl+C.
+
+    Without explicitly stopping APScheduler, its non-daemon threads keep the
+    Python process alive after uvicorn's main loop exits — symptom is
+    "Ctrl+C hangs the terminal" on Windows. Calling shutdown(wait=False)
+    asks the scheduler to interrupt pending jobs and exit immediately
+    instead of waiting for in-flight LLM calls to finish.
+    """
+    try:
+        # Read the module-level singleton directly so we don't accidentally
+        # CREATE a scheduler during teardown just to shut it down.
+        from agents.background import scheduler as _sched_mod
+        sch = getattr(_sched_mod, "_scheduler", None)
+        if sch is not None and getattr(sch, "running", False):
+            sch.shutdown(wait=False)
+    except Exception:
+        pass
+    try:
+        from orchestrator.proactive_monitor import stop_scheduler as _stop_monitor
+        _stop_monitor()
+    except Exception:
+        pass
     try:
         from config.db import close_pg_pool
         close_pg_pool()
