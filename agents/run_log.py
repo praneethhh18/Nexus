@@ -77,19 +77,35 @@ def finish(
     if status not in ("success", "skipped", "error"):
         status = "error"
     err = (error or "")[:_MAX_ERROR_CHARS] if error else None
-    try:
-        conn = _conn()
+    # Retry on Postgres deadlock — two concurrent background agents both
+    # finishing close together can lock each other on this table. Postgres
+    # auto-kills the loser, but the right behaviour for us is to retry
+    # rather than silently lose the status update. Exponential backoff: 50ms,
+    # 200ms, 800ms — total worst case ~1s before we give up and log.
+    import time
+    last_err = None
+    for attempt, delay in enumerate([0.05, 0.20, 0.80, 0]):
         try:
-            conn.execute(
-                f"UPDATE {TABLE} SET finished_at = ?, status = ?, "
-                f"items_produced = ?, error = ? WHERE id = ?",
-                (now_iso(), status, int(items_produced or 0), err, run_id),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-    except Exception as e:
-        logger.warning(f"[RunLog] finish({run_id}) failed: {e}")
+            conn = _conn()
+            try:
+                conn.execute(
+                    f"UPDATE {TABLE} SET finished_at = ?, status = ?, "
+                    f"items_produced = ?, error = ? WHERE id = ?",
+                    (now_iso(), status, int(items_produced or 0), err, run_id),
+                )
+                conn.commit()
+                return
+            finally:
+                conn.close()
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            if "deadlock" in msg and delay > 0:
+                time.sleep(delay)
+                continue
+            # Non-deadlock error or out of retries — fall through to log
+            break
+    logger.warning(f"[RunLog] finish({run_id}) failed after retries: {last_err}")
 
 
 def list_runs(

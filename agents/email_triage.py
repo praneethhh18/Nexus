@@ -427,11 +427,18 @@ def run_for_business(business_id: str) -> Dict[str, Any]:
                 except Exception as e:
                     logger.warning(f"[EmailTriage] Could not queue reply: {e}")
 
+            # ON CONFLICT — the (business_id, message_uid) unique index will
+            # reject re-INSERTs when the triage job runs a second time on the
+            # same email (e.g. after a scheduler retry). Without this clause
+            # the duplicate-key error bubbles up as a hard exception, even
+            # though the right behaviour is to silently skip — we already
+            # have a log row for this message.
             conn.execute(
                 f"INSERT INTO {LOG_TABLE} "
                 f"(id, business_id, message_uid, sender, subject, classification, urgency, "
                 f"summary, suggested_action, interaction_id, approval_id, processed_at) "
-                f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+                f"ON CONFLICT (business_id, message_uid) DO NOTHING",
                 (
                     f"et-{_uuid.uuid4().hex[:10]}", business_id, uid,
                     sender[:200], subject[:300],

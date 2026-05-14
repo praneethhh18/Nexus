@@ -145,6 +145,26 @@ class _PgCursor:
     def description(self):
         return self._c.description
 
+    def close(self):
+        """psycopg cursors expose close(); pandas.read_sql_query and other
+        DB-API-2 consumers call this when they're done iterating. The wrapper
+        was missing it — proactive_monitor.check_anomalies was erroring once
+        an hour with '_PgCursor object has no attribute close'."""
+        try:
+            self._c.close()
+        except Exception:
+            pass
+
+    @property
+    def rowcount(self):
+        return self._c.rowcount
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_a):
+        self.close()
+
     @property
     def rowcount(self):
         return self._c.rowcount

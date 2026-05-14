@@ -203,7 +203,15 @@ def start_agent_scheduler():
     def _register(job_id: str, trigger, runner_fn: Callable[[], None]):
         if job_id in existing_ids:
             return
-        sched.add_job(runner_fn, trigger, id=job_id, replace_existing=True)
+        # coalesce=True — if multiple fires missed (laptop slept, scheduler
+        # paused), run ONCE on resume instead of replaying every missed
+        # interval. max_instances=1 — refuse to start a fresh run while the
+        # previous one is still going. Together these kill the "max
+        # instances reached" / "missed by X" spam in the boot logs.
+        sched.add_job(
+            runner_fn, trigger, id=job_id, replace_existing=True,
+            coalesce=True, max_instances=1, misfire_grace_time=300,
+        )
 
     # Stale-deal watcher — per business, daily 08:30
     def _stale_all():
