@@ -304,7 +304,202 @@ PRESETS: Dict[str, Dict] = {
             },
         ],
     },
+
+    # ── Tutoring / coaching ───────────────────────────────────────────────
+    # The most common Indian SMB segment. Different from "Education" — these
+    # are 1-on-1 tutors, JEE/NEET coaches, IELTS centres, music/dance teachers.
+    "Tutoring / coaching": {
+        "tools": ["Inquiry intake", "Trial-class scheduler", "Fee reminders", "Parent WhatsApp"],
+        "priority_agents": ["email_triage", "outbound_caller", "invoice_reminder", "morning_briefing"],
+        "schedules": {"email_triage": 15, "invoice_reminder": 1440, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Trial-class invitation",
+                "subject": "{{student_first_name}} — free trial class details",
+                "body": "Dear {{salutation}} {{last_name}},\n\nThanks for the interest in our {{program_name}} for {{student_first_name}}.\n\nWe offer one free trial class — most parents take it before deciding:\n\n📅 {{trial_date}} at {{trial_time}}\n📍 {{venue_or_online_link}}\n📚 Topic: {{trial_topic}}\n👨‍🏫 Teacher: {{teacher_name}}\n\nPlease confirm by replying — we'll keep the slot.\n\nAfter the class, we can discuss schedule + fees over a 10-minute parent meeting.\n\n{{sender_name}}",
+            },
+            {
+                "name": "Fee installment reminder",
+                "subject": "{{student_first_name}}'s {{month_name}} fees — small reminder",
+                "body": "Dear {{salutation}} {{last_name}},\n\nGentle reminder — {{student_first_name}}'s {{month_name}} fees of ₹{{amount}} were due on {{due_date}}.\n\nUPI: {{upi_id}}\nOr drop a cheque/cash at the centre between {{office_hours}}.\n\nIf there is any concern with the timing, please call me directly on {{owner_phone}} — we have helped many parents with adjusted plans.\n\nThanks,\n{{sender_name}}",
+            },
+        ],
+    },
+
+    # ── Restaurant / cafe ─────────────────────────────────────────────────
+    "Restaurant / cafe": {
+        "tools": ["Reservation desk", "Catering inquiries", "Reviews + reputation", "Daily-special broadcast"],
+        "priority_agents": ["email_triage", "morning_briefing", "evening_digest", "outbound_caller"],
+        "schedules": {"email_triage": 15, "morning_briefing": 1440, "evening_digest": 1440},
+        "templates": [
+            {
+                "name": "Reservation confirmation",
+                "subject": "Table booked at {{business_name}} on {{reservation_date}}",
+                "body": "Hi {{first_name}},\n\nWe've kept your table at {{business_name}} for:\n\n📅 {{reservation_date}} at {{reservation_time}}\n👥 {{pax_count}} guests\n🍽 Table: {{table_id}}\n\nAny special occasion (birthday, anniversary)? Reply and we'll plan a little surprise.\n\nDietary preferences or allergies? Share now — our chef plans ahead.\n\nDirections: {{maps_link}}\nCall the host: {{host_phone}}\n\nSee you soon,\n{{business_name}}",
+            },
+            {
+                "name": "Catering inquiry response",
+                "subject": "{{business_name}} catering — quote for {{event_date}}",
+                "body": "Hi {{first_name}},\n\nThanks for considering us for {{event_name}} on {{event_date}}.\n\nQuick estimate for {{pax_count}} guests:\n\n• Veg menu: ₹{{veg_per_plate}} per plate\n• Non-veg menu: ₹{{nv_per_plate}} per plate\n• Live counter add-on: ₹{{live_counter_addon}}\n• Service staff: included (1 staff per 25 guests)\n\nWe usually finalise menu 7 days before the event. A 30% advance books the date.\n\nWant me to send our most-requested menu PDF? Just reply yes.\n\n{{sender_name}}\n{{business_name}}",
+            },
+        ],
+    },
+
+    # ── Beauty / salon / wellness ─────────────────────────────────────────
+    "Beauty / salon / wellness": {
+        "tools": ["Appointment desk", "Loyalty + rebooking", "WhatsApp reminders", "Stylist preferences"],
+        "priority_agents": ["email_triage", "outbound_caller", "morning_briefing", "invoice_reminder"],
+        "schedules": {"email_triage": 15, "outbound_caller": 60, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Appointment reminder (WhatsApp)",
+                "subject": "Your {{service_name}} appointment tomorrow",
+                "body": "Hi {{first_name}}!\n\nThis is a friendly reminder — your {{service_name}} with {{stylist_name}} is tomorrow at {{appointment_time}}.\n\nPrice: ₹{{service_price}}\nDuration: {{duration}} mins\nAddress: {{address}}\n\nIf you need to reschedule, just reply — we have a 4-hour cancellation policy.\n\nP.S. Want to add {{addon_suggestion}}? Mention it tomorrow and we'll fit it in.\n\nSee you,\n{{business_name}}",
+            },
+            {
+                "name": "Rebook nudge",
+                "subject": "Time for your next visit, {{first_name}}?",
+                "body": "Hi {{first_name}},\n\nIt's been {{weeks_since}} weeks since your last {{last_service}} — usually about time for a touch-up.\n\nYour preferred stylist {{stylist_name}} has these slots open this week:\n\n• {{slot_1}}\n• {{slot_2}}\n• {{slot_3}}\n\nReply with the one that works.\n\nSmall thank-you: book in the next 3 days and get 10% off any add-on service (eyebrows, head massage, hair spa).\n\n{{business_name}}",
+            },
+        ],
+    },
+
+    # ── Garment / textile retail ──────────────────────────────────────────
+    "Garment / textile retail": {
+        "tools": ["Inventory tracking", "Wholesale buyer CRM", "WhatsApp catalog broadcast", "GST invoicing"],
+        "priority_agents": ["email_triage", "invoice_reminder", "morning_briefing", "stale_deal_watcher"],
+        "schedules": {"email_triage": 30, "invoice_reminder": 1440, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Wholesale buyer follow-up",
+                "subject": "New stock just arrived at {{business_name}}",
+                "body": "Dear {{salutation}} {{last_name}},\n\nThe new {{collection_name}} has landed — sharing what we have:\n\n• {{item_1}}: ₹{{price_1}} per piece (MOQ {{moq_1}})\n• {{item_2}}: ₹{{price_2}} per piece (MOQ {{moq_2}})\n• {{item_3}}: ₹{{price_3}} per piece (MOQ {{moq_3}})\n\nVolume pricing available beyond 500 pieces.\n\nCatalog PDF + sample sizes attached. Reply with your order and we'll send the proforma invoice + dispatch ETA.\n\nLast time you ordered the {{prev_order_item}} — those are also restocked.\n\nRegards,\n{{sender_name}}\n{{business_name}}",
+            },
+            {
+                "name": "Outstanding payment reminder",
+                "subject": "Invoice {{invoice_number}} — payment pending",
+                "body": "Dear {{salutation}} {{last_name}},\n\nReminder regarding invoice {{invoice_number}} dated {{invoice_date}}:\n\n• Amount: ₹{{amount}}\n• Due date: {{due_date}}\n• Days overdue: {{days_overdue}}\n\nPayment options:\n• NEFT: {{bank_details}}\n• UPI: {{upi_id}}\n• Cheque favouring \"{{business_name}}\"\n\nKindly arrange at the earliest. Once paid, please share UTR for our records.\n\nFor next dispatch on {{pending_order_id}}, payment of the current invoice needs to clear first.\n\nRegards,\n{{sender_name}}",
+            },
+        ],
+    },
+
+    # ── Logistics / transport ─────────────────────────────────────────────
+    "Logistics / transport": {
+        "tools": ["Booking + dispatch", "LR tracking", "Driver coordination", "Invoice reminders"],
+        "priority_agents": ["email_triage", "morning_briefing", "invoice_reminder", "outbound_caller"],
+        "schedules": {"email_triage": 15, "invoice_reminder": 1440, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Booking acknowledgement",
+                "subject": "Booking {{booking_id}} confirmed — {{origin}} to {{destination}}",
+                "body": "Dear {{salutation}} {{last_name}},\n\nBooking confirmed.\n\n📍 Pickup: {{origin}} ({{pickup_date}})\n📍 Drop: {{destination}}\n📦 Consignment: {{consignment_details}}\n🚚 Vehicle: {{vehicle_type}}\n💰 Freight: ₹{{freight_amount}} ({{payment_terms}})\n📑 LR No: {{lr_number}}\n\nDriver details will be shared 2 hours before pickup. Track LR live at: {{tracking_link}}\n\nFor any change in pickup time, call ops on {{ops_phone}}.\n\nRegards,\n{{business_name}}",
+            },
+            {
+                "name": "Delivery confirmation + POD",
+                "subject": "Delivered: {{booking_id}} at {{destination}}",
+                "body": "Dear {{salutation}} {{last_name}},\n\nThe consignment under {{booking_id}} has been delivered.\n\n• Delivered on: {{delivery_date}} at {{delivery_time}}\n• Received by: {{receiver_name}}\n• Condition: {{condition_remarks}}\n• POD attached\n\nIf there are any short-delivery / damage claims, kindly raise them within 48 hours via {{claims_email}}.\n\nFreight invoice attached — kindly process within {{payment_days}} days as per terms.\n\nRegards,\n{{business_name}}",
+            },
+        ],
+    },
+
+    # ── Construction / contracting ────────────────────────────────────────
+    "Construction / contracting": {
+        "tools": ["Site inquiries", "Quote builder", "Project milestones", "Subcontractor tracking"],
+        "priority_agents": ["meeting_prep", "email_triage", "morning_briefing", "stale_deal_watcher"],
+        "schedules": {"email_triage": 30, "meeting_prep": 10, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Site visit + quote follow-up",
+                "subject": "Site visit recap + estimate — {{project_name}}",
+                "body": "Dear {{salutation}} {{last_name}},\n\nThanks for the site visit on {{visit_date}}. Quick recap of what we discussed at {{site_address}}:\n\n• Scope: {{scope_summary}}\n• Total area: {{area_sqft}} sq ft\n• Preferred timeline: {{client_timeline}}\n• Special requirements: {{special_reqs}}\n\nRough estimate (detailed quote separately attached):\n• Civil + finishing: ₹{{civil_cost}}\n• MEP (electrical / plumbing): ₹{{mep_cost}}\n• Total ballpark: ₹{{total_ballpark}}\n\nWe normally start within {{start_window}} days of advance. Want to do a second walk-through with our engineer next week?\n\nRegards,\n{{sender_name}}\n{{business_name}}",
+            },
+            {
+                "name": "Milestone payment request",
+                "subject": "{{project_name}} — {{milestone_label}} milestone reached",
+                "body": "Dear {{salutation}} {{last_name}},\n\nUpdate on {{project_name}}:\n\n• Milestone reached: {{milestone_label}}\n• Date completed: {{completion_date}}\n• Photos / proof: {{photos_link}}\n• As per contract, this triggers: {{milestone_payment}} ({{percent_of_contract}}% of total)\n• Amount due: ₹{{amount}}\n• Due by: {{due_date}}\n\nUTR / cheque favouring \"{{business_name}}\".\n\nNext milestone target: {{next_milestone}} by {{next_milestone_date}} — provided this payment clears as scheduled to keep procurement on track.\n\nRegards,\n{{sender_name}}",
+            },
+        ],
+    },
+
+    # ── Auto repair / garage ──────────────────────────────────────────────
+    "Auto repair / garage": {
+        "tools": ["Service desk", "Parts orders", "Pickup + drop coordination", "Service reminders"],
+        "priority_agents": ["email_triage", "outbound_caller", "invoice_reminder", "morning_briefing"],
+        "schedules": {"email_triage": 15, "outbound_caller": 60, "invoice_reminder": 1440},
+        "templates": [
+            {
+                "name": "Service estimate + approval ask",
+                "subject": "Estimate for your {{vehicle_make}} {{vehicle_model}}",
+                "body": "Hi {{first_name}},\n\nWe've inspected your {{vehicle_make}} {{vehicle_model}} ({{registration}}). Here's what we found:\n\n• Critical: {{critical_issues}}\n• Recommended: {{recommended_issues}}\n• Optional: {{optional_issues}}\n\nEstimate breakdown:\n• Labour: ₹{{labour}}\n• Parts: ₹{{parts}}\n• Taxes: ₹{{taxes}}\n• Total: ₹{{total}}\n\nETA if approved today: {{eta_hours}} hours.\n\nReply \"go ahead\" to confirm, or call {{mechanic_phone}} if you want to discuss any item. Optional ones can be skipped without affecting safety.\n\n{{sender_name}}",
+            },
+            {
+                "name": "Service due reminder",
+                "subject": "Your {{vehicle_model}} is due for service",
+                "body": "Hi {{first_name}},\n\nYour {{vehicle_make}} {{vehicle_model}} ({{registration}}) is due for service:\n\n• Last service: {{last_service_date}}\n• Last odometer: {{last_odometer}} km\n• Recommended service: {{service_type}}\n• Estimated cost: ₹{{estimate}}\n• Time needed: {{duration}}\n\nWant us to pick up and drop the vehicle? We do free pickup within {{free_pickup_radius}} km.\n\nReply with a preferred date or just call {{garage_phone}}.\n\n{{business_name}}",
+            },
+        ],
+    },
+
+    # ── Photography / event services ──────────────────────────────────────
+    "Photography / event services": {
+        "tools": ["Inquiry intake", "Package builder", "Booking calendar", "Delivery + gallery"],
+        "priority_agents": ["email_triage", "meeting_prep", "morning_briefing", "stale_deal_watcher"],
+        "schedules": {"email_triage": 30, "meeting_prep": 10, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Wedding inquiry response",
+                "subject": "Your {{event_date}} wedding — package + availability",
+                "body": "Hi {{first_name}},\n\nCongratulations on the upcoming wedding! Here's what we put together based on your inquiry:\n\n**Available on {{event_date}}**: Yes ✓\n\n**Package recommended**\n• Pre-wedding shoot (4 hrs): ₹{{pre_wedding}}\n• Wedding day full coverage: ₹{{wedding_day}}\n• Reception coverage: ₹{{reception}}\n• Cinematic film (3-5 min): ₹{{cinematic}}\n• Photo album (40 sheets): ₹{{album}}\n• **Bundle price**: ₹{{bundle_price}} (save ₹{{savings}})\n\n**Includes**\n• Lead photographer + assistant\n• Drone shots (weather permitting)\n• Online gallery within 30 days\n• 200+ edited photos + 1000 raw\n\nPortfolio: {{portfolio_link}}\nWant to do a 30-min video call to discuss vision? {{slot_options}}\n\n{{sender_name}}",
+            },
+            {
+                "name": "Photo gallery delivery",
+                "subject": "Your photos are ready! 📸",
+                "body": "Hi {{first_name}}!\n\nYour {{event_name}} photos are edited and ready:\n\n📁 Full gallery: {{gallery_link}}\n🔐 Password: {{gallery_password}}\n📅 Available until: {{expiry_date}}\n📥 Download as ZIP: button on the gallery page\n\nQuick numbers:\n• Total photos delivered: {{photo_count}}\n• Highlights album: {{highlights_count}}\n• Drone shots: {{drone_count}}\n\nIf you want any photo individually edited or printed, just reply with the photo number.\n\nWe loved being part of your day — would mean the world if you could review us on Google: {{review_link}}\n\n{{sender_name}}\n{{business_name}}",
+            },
+        ],
+    },
+
+    # ── Travel / tour operator ────────────────────────────────────────────
+    "Travel / tour operator": {
+        "tools": ["Itinerary builder", "Booking + payment tracking", "Traveler WhatsApp", "Reviews + repeat travel"],
+        "priority_agents": ["email_triage", "meeting_prep", "outbound_caller", "morning_briefing"],
+        "schedules": {"email_triage": 15, "meeting_prep": 10, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Itinerary proposal",
+                "subject": "Your {{destination}} trip — itinerary v1",
+                "body": "Hi {{first_name}},\n\nHere is the first draft of your {{destination}} trip for {{traveller_count}} travellers from {{start_date}} to {{end_date}}:\n\n**Day-by-day** (attached as PDF)\nQuick highlights:\n• Day {{day_1}}: {{day_1_highlight}}\n• Day {{day_2}}: {{day_2_highlight}}\n• Day {{day_3}}: {{day_3_highlight}}\n\n**Stays**: {{accommodation_tier}}\n**Transport**: {{transport_summary}}\n**Inclusions**: {{inclusions}}\n**Not included**: {{exclusions}}\n\n**Total package**: ₹{{package_price}} per person (₹{{total_for_group}} for the group)\n\nWe usually iterate v1 → v2 with your inputs. What would you like to change — pace, accommodation tier, any specific add-ons (paragliding, candlelight dinner, etc.)?\n\n30-minute call this week? {{slot_options}}\n\n{{sender_name}}",
+            },
+            {
+                "name": "Pre-departure checklist",
+                "subject": "All set for {{destination}} — quick pre-departure checklist",
+                "body": "Hi {{first_name}}!\n\nYour {{destination}} trip starts in 3 days — exciting! Quick checklist before you fly:\n\n**Documents to carry**\n• Photo IDs (original) for all travellers\n• Confirmed itinerary printout (attached)\n• Travel insurance copy (if booked)\n• Booking vouchers (also in PDF)\n\n**Cash + cards**\n• Recommend ₹{{cash_recommendation}} cash for tips, local snacks\n• Inform your bank about travel — so cards aren't blocked\n• {{forex_recommendation}}\n\n**Local contact**\n• Our on-ground partner: {{ground_contact_name}}, {{ground_contact_phone}}\n• 24/7 emergency: {{emergency_phone}}\n\n**Weather + packing**\n{{weather_summary}}\n\nAnything missing? Reply or WhatsApp me on {{sender_phone}}.\n\nHave a fantastic trip,\n{{sender_name}}\n{{business_name}}",
+            },
+        ],
+    },
+
+    # ── Real estate broker ────────────────────────────────────────────────
+    # Distinct from "Real estate" (which is developer-facing). Brokers
+    # juggle rentals + resales + buyers + sellers.
+    "Real estate broker": {
+        "tools": ["Rental + resale inquiries", "Owner + tenant CRM", "Site visit scheduler", "Commission tracking"],
+        "priority_agents": ["outbound_caller", "stale_deal_watcher", "email_triage", "morning_briefing"],
+        "schedules": {"email_triage": 15, "stale_deal_watcher": 1440, "morning_briefing": 1440},
+        "templates": [
+            {
+                "name": "Rental shortlist",
+                "subject": "Found {{count}} options in {{location}} for your budget",
+                "body": "Hi {{first_name}},\n\nBased on your budget of ₹{{budget}} for a {{bhk}} in {{location}}, here are my top picks:\n\n1. **{{property_1}}** — {{rent_1}}/month, {{detail_1}}\n2. **{{property_2}}** — {{rent_2}}/month, {{detail_2}}\n3. **{{property_3}}** — {{rent_3}}/month, {{detail_3}}\n\nAll photos + floor plans: {{drive_link}}\n\nWhich 2-3 do you want to visit this {{visit_window}}? I can club them in one trip — about 90 mins total.\n\nMost owners want token of ₹{{token_amount}} on the day if you decide; standard brokerage is one month's rent + GST.\n\n{{sender_name}}",
+            },
+            {
+                "name": "Owner — tenant verification update",
+                "subject": "Verification done for {{tenant_name}} — {{property_address}}",
+                "body": "Dear {{salutation}} {{last_name}},\n\nUpdate on the prospective tenant for {{property_address}}:\n\n**{{tenant_name}}** — {{tenant_profile}}\n\n• Employment: {{employment}} ({{years_employed}})\n• Family: {{family_status}}\n• Police verification: {{police_verification_status}}\n• Reference 1: {{ref_1_status}}\n• Reference 2: {{ref_2_status}}\n• Last rental: {{last_rental_status}}\n\nThey are ready to move in by {{move_in_date}}. Deposit: ₹{{deposit_amount}}, rent: ₹{{rent_amount}}/month, 11-month lease.\n\nIf this works, I will draft the rental agreement on Monday. Reply with your okay.\n\nRegards,\n{{sender_name}}",
+            },
+        ],
+    },
 }
+
 
 DEFAULT_PRESET = {
     "tools": ["Business knowledge base", "CRM pipeline", "Task automation", "Reports"],

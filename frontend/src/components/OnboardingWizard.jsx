@@ -20,6 +20,7 @@ import { uploadDocument } from '../services/api';
 import { getCurrentBusiness } from '../services/auth';
 
 const INDUSTRIES = [
+  // Global categories
   'Healthcare',
   'Real estate',
   'Education',
@@ -31,6 +32,18 @@ const INDUSTRIES = [
   'Hospitality',
   'Local services',
   'Consulting',
+  // Indian SMB additions — common business types we encountered
+  // most often in early customer conversations
+  'Tutoring / coaching',
+  'Restaurant / cafe',
+  'Beauty / salon / wellness',
+  'Garment / textile retail',
+  'Logistics / transport',
+  'Construction / contracting',
+  'Auto repair / garage',
+  'Photography / event services',
+  'Travel / tour operator',
+  'Real estate broker',
   'Other',
 ];
 
@@ -55,18 +68,29 @@ const GOALS = [
 ];
 
 const FALLBACK_INDUSTRY_TOOLS = {
-  Healthcare: ['Patient intake', 'Policy knowledge base', 'Appointment follow-ups', 'Privacy review'],
-  'Real estate': ['Lead capture', 'Property documents', 'Buyer follow-ups', 'Deal pipeline'],
-  Education: ['Admissions support', 'Course FAQ', 'Student follow-ups', 'Reports'],
-  Legal: ['Client intake', 'Document Q&A', 'Case task tracking', 'Secure audit trail'],
-  Ecommerce: ['Product catalog', 'Returns support', 'Order follow-ups', 'Customer inbox'],
-  Finance: ['Client onboarding', 'Invoice reminders', 'Compliance docs', 'Secure reporting'],
-  SaaS: ['Pipeline CRM', 'Support triage', 'Churn signals', 'Product knowledge base'],
-  Manufacturing: ['Vendor docs', 'Order follow-ups', 'Operations tasks', 'Reports'],
-  Hospitality: ['Booking support', 'Guest FAQs', 'Review follow-ups', 'Shift tasks'],
-  'Local services': ['Lead intake', 'Job scheduling', 'Quote follow-ups', 'Invoice reminders'],
-  Consulting: ['Client briefs', 'Proposal docs', 'Meeting prep', 'Project tasks'],
-  Other: ['Business knowledge base', 'CRM pipeline', 'Task automation', 'Reports'],
+  Healthcare:                    ['Patient intake', 'Policy knowledge base', 'Appointment follow-ups', 'Privacy review'],
+  'Real estate':                 ['Lead capture', 'Property documents', 'Buyer follow-ups', 'Deal pipeline'],
+  Education:                     ['Admissions support', 'Course FAQ', 'Student follow-ups', 'Reports'],
+  Legal:                         ['Client intake', 'Document Q&A', 'Case task tracking', 'Secure audit trail'],
+  Ecommerce:                     ['Product catalog', 'Returns support', 'Order follow-ups', 'Customer inbox'],
+  Finance:                       ['Client onboarding', 'Invoice reminders', 'Compliance docs', 'Secure reporting'],
+  SaaS:                          ['Pipeline CRM', 'Support triage', 'Churn signals', 'Product knowledge base'],
+  Manufacturing:                 ['Vendor docs', 'Order follow-ups', 'Operations tasks', 'Reports'],
+  Hospitality:                   ['Booking support', 'Guest FAQs', 'Review follow-ups', 'Shift tasks'],
+  'Local services':              ['Lead intake', 'Job scheduling', 'Quote follow-ups', 'Invoice reminders'],
+  Consulting:                    ['Client briefs', 'Proposal docs', 'Meeting prep', 'Project tasks'],
+  // Indian SMB additions
+  'Tutoring / coaching':         ['Inquiry intake', 'Trial-class scheduler', 'Fee reminders', 'Parent WhatsApp'],
+  'Restaurant / cafe':           ['Reservation desk', 'Catering inquiries', 'Reviews + reputation', 'Daily-special broadcast'],
+  'Beauty / salon / wellness':   ['Appointment desk', 'Loyalty + rebooking', 'WhatsApp reminders', 'Stylist preferences'],
+  'Garment / textile retail':    ['Inventory tracking', 'Wholesale buyer CRM', 'WhatsApp catalog broadcast', 'GST invoicing'],
+  'Logistics / transport':       ['Booking + dispatch', 'LR tracking', 'Driver coordination', 'Invoice reminders'],
+  'Construction / contracting':  ['Site inquiries', 'Quote builder', 'Project milestones', 'Subcontractor tracking'],
+  'Auto repair / garage':        ['Service desk', 'Parts orders', 'Pickup + drop coordination', 'Service reminders'],
+  'Photography / event services':['Inquiry intake', 'Package builder', 'Booking calendar', 'Delivery + gallery'],
+  'Travel / tour operator':      ['Itinerary builder', 'Booking + payment tracking', 'Traveler WhatsApp', 'Reviews + repeat travel'],
+  'Real estate broker':          ['Rental + resale inquiries', 'Owner + tenant CRM', 'Site visit scheduler', 'Commission tracking'],
+  Other:                         ['Business knowledge base', 'CRM pipeline', 'Task automation', 'Reports'],
 };
 
 const STEP_ICONS = {

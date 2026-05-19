@@ -488,6 +488,386 @@ INDUSTRY_DATA: Dict[str, Dict[str, Any]] = {
         ],
     },
 
+    # ── Tutoring / coaching ───────────────────────────────────────────────
+    "Tutoring / coaching": {
+        "icp": "Independent tutors, coaching centres, JEE/NEET/IELTS prep, music/dance classes (1-15 staff). 50-500 students. Strong parent WhatsApp comms.",
+        "companies": [
+            {"name": "BrightFutures JEE Coaching", "industry": "Tutoring", "size": "10-50", "website": ""},
+            {"name": "ScholarHub Tutorials",       "industry": "Tutoring", "size": "1-10",  "website": ""},
+            {"name": "Saraswati Music School",     "industry": "Tutoring", "size": "1-10",  "website": ""},
+            {"name": "IELTS Edge Academy",         "industry": "Tutoring", "size": "10-50", "website": ""},
+        ],
+        "contacts": [
+            ("BrightFutures JEE Coaching", {"first_name": "Mrs.", "last_name": "Lakshmi Iyer",   "title": "Parent — Aarush (12th)",   "email": "lakshmi.i@example.com", "phone": "+91 94800 11001"}),
+            ("BrightFutures JEE Coaching", {"first_name": "Aarush","last_name": "Iyer",          "title": "JEE Main 2025",            "email": "aarush.i@example.com",  "phone": "+91 94800 11002"}),
+            ("ScholarHub Tutorials",       {"first_name": "Mr.",  "last_name": "Suresh Babu",   "title": "Parent — Diya (CBSE 10th)","email": "suresh.b@example.com",  "phone": "+91 94800 22001"}),
+            ("Saraswati Music School",     {"first_name": "Mrs.", "last_name": "Anita Reddy",   "title": "Parent — Rhea (vocal)",    "email": "anita.r@example.com",   "phone": "+91 94800 33001"}),
+            ("IELTS Edge Academy",         {"first_name": "Karan","last_name": "Mehta",          "title": "IELTS aspirant (UK)",      "email": "karan.m@example.com",   "phone": "+91 94800 44001"}),
+        ],
+        "deals": [
+            ("BrightFutures JEE Coaching", "JEE 2-year programme — Aarush Iyer",   "proposal",   145000, 70),
+            ("ScholarHub Tutorials",       "CBSE 10th tuition (term 1) — Diya",    "negotiation", 24000, 80),
+            ("Saraswati Music School",     "Vocal trimester — Rhea",                "qualified",   18000, 40),
+            ("IELTS Edge Academy",         "IELTS 8-week intensive — Karan",        "lead",        32000, 25),
+            ("BrightFutures JEE Coaching", "JEE foundation Q4 batch (closed)",      "won",        110000, 100),
+        ],
+        "tasks": [
+            {"title": "Schedule Aarush's parent meeting — Sat 5 PM",       "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Follow up — Karan's IELTS payment (3 days idle)",   "priority": "high",   "status": "open",        "due_offset": -3},
+            {"title": "Send recordings of last 3 vocal classes to Rhea",   "priority": "normal", "status": "in_progress", "due_offset": 1},
+            {"title": "Prep weekly mock test — JEE batch",                  "priority": "normal", "status": "open",        "due_offset": 3},
+            {"title": "Update brochure with new IELTS pass-rate stats",    "priority": "low",    "status": "open",        "due_offset": 7},
+        ],
+        "invoices": [
+            {"customer": "BrightFutures JEE Coaching", "issue_offset": -10, "due_offset": +20, "status": "sent",  "line_items": [{"description": "JEE — instalment 2 (Aarush Iyer)", "quantity": 1, "unit_price": 35000}], "tax_pct": 18},
+            {"customer": "ScholarHub Tutorials",       "issue_offset": -45, "due_offset": -15, "status": "sent",  "line_items": [{"description": "CBSE 10th tuition (term 1)", "quantity": 1, "unit_price": 12000}], "tax_pct": 18},
+            {"customer": "Saraswati Music School",     "issue_offset": -60, "due_offset": -30, "status": "paid",  "line_items": [{"description": "Vocal trimester — Rhea (paid)", "quantity": 1, "unit_price": 18000}], "tax_pct": 18},
+            {"customer": "IELTS Edge Academy",         "issue_offset":  0,  "due_offset":  30, "status": "draft", "line_items": [{"description": "IELTS 8-week — Karan (estimate)", "quantity": 1, "unit_price": 32000}], "tax_pct": 18},
+        ],
+    },
+
+    # ── Restaurant / cafe ─────────────────────────────────────────────────
+    "Restaurant / cafe": {
+        "icp": "Boutique restaurants, cafes, dhaabas (5-50 staff). 50-300 covers. Active on WhatsApp + Zomato.",
+        "companies": [
+            {"name": "Aroma Hyderabadi Biryani",  "industry": "Restaurant", "size": "10-50", "website": ""},
+            {"name": "Cafe Mocha (Indiranagar)",  "industry": "Restaurant", "size": "10-50", "website": ""},
+            {"name": "Spice Junction Multi-cuisine","industry": "Restaurant","size": "10-50","website": ""},
+            {"name": "Sweet Bites Bakery + Cafe", "industry": "Restaurant", "size": "1-10",  "website": ""},
+        ],
+        "contacts": [
+            ("Aroma Hyderabadi Biryani", {"first_name": "Mr.",  "last_name": "Naveen Kumar",   "title": "Birthday party booking — 40 pax", "email": "naveen.k@example.com",  "phone": "+91 94670 11001"}),
+            ("Cafe Mocha (Indiranagar)", {"first_name": "Ms.",  "last_name": "Priya Shetty",   "title": "Anniversary table — 2",          "email": "priya.s@example.com",   "phone": "+91 94670 22001"}),
+            ("Spice Junction Multi-cuisine", {"first_name": "Mr.", "last_name": "Raghav Bose", "title": "Corporate lunch — 60 pax",       "email": "raghav.b@example.com",  "phone": "+91 94670 33001"}),
+            ("Sweet Bites Bakery + Cafe", {"first_name": "Mrs.","last_name": "Anjali Joshi",  "title": "Wedding cake order (5 kg)",       "email": "anjali.j@example.com",  "phone": "+91 94670 44001"}),
+            ("Aroma Hyderabadi Biryani",  {"first_name": "Mr.","last_name": "Arvind Pillai",   "title": "Bulk Diwali catering — 200 pax",  "email": "arvind.p@example.com",  "phone": "+91 94670 11002"}),
+        ],
+        "deals": [
+            ("Aroma Hyderabadi Biryani",      "Diwali catering — 200 pax (Arvind P.)",     "negotiation", 180000, 75),
+            ("Spice Junction Multi-cuisine",  "Corporate lunch — 60 pax (Raghav B.)",      "proposal",     45000, 60),
+            ("Aroma Hyderabadi Biryani",      "Birthday party — 40 pax (Naveen K.)",       "qualified",    32000, 50),
+            ("Sweet Bites Bakery + Cafe",     "5-kg wedding cake — Anjali J.",             "lead",         12000, 30),
+            ("Cafe Mocha (Indiranagar)",      "Valentines Day live music event (closed)",  "won",          45000, 100),
+        ],
+        "tasks": [
+            {"title": "Confirm menu with Arvind for Diwali catering (200 pax)",   "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Send anniversary table layout to Priya (window seat)",      "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Follow up — Anjali's wedding cake design approval",          "priority": "normal", "status": "open",        "due_offset": -1},
+            {"title": "Prep corporate lunch spec — Raghav (jain + vegan options)", "priority": "normal", "status": "in_progress", "due_offset": 2},
+            {"title": "Review Zomato + Google reviews from last weekend",          "priority": "low",    "status": "open",        "due_offset": 5},
+        ],
+        "invoices": [
+            {"customer": "Aroma Hyderabadi Biryani",  "issue_offset": -7,  "due_offset": +13, "status": "sent",  "line_items": [{"description": "Birthday party advance — 50% of 32k", "quantity": 1, "unit_price": 16000}], "tax_pct": 5},
+            {"customer": "Spice Junction Multi-cuisine", "issue_offset": -30, "due_offset": -5, "status": "sent", "line_items": [{"description": "Corporate lunch — 50 pax", "quantity": 50, "unit_price": 850}], "tax_pct": 5},
+            {"customer": "Cafe Mocha (Indiranagar)",  "issue_offset": -60, "due_offset": -30, "status": "paid", "line_items": [{"description": "Valentines Day live music event", "quantity": 1, "unit_price": 45000}], "tax_pct": 18},
+            {"customer": "Sweet Bites Bakery + Cafe", "issue_offset":  0,  "due_offset":  10, "status": "draft","line_items": [{"description": "5-kg wedding cake (custom design)", "quantity": 1, "unit_price": 12000}], "tax_pct": 5},
+        ],
+    },
+
+    # ── Beauty / salon / wellness ─────────────────────────────────────────
+    "Beauty / salon / wellness": {
+        "icp": "Hair salons, beauty parlours, spa + wellness centres (3-25 staff). 50-300 regular customers. WhatsApp + Instagram driven.",
+        "companies": [
+            {"name": "GlowUp Salon (Koramangala)", "industry": "Beauty", "size": "1-10",  "website": ""},
+            {"name": "Serenity Spa & Wellness",    "industry": "Beauty", "size": "10-50", "website": ""},
+            {"name": "Mehndi Studio by Pooja",     "industry": "Beauty", "size": "1-10",  "website": ""},
+            {"name": "Mirror Mirror Hair Lounge",  "industry": "Beauty", "size": "10-50", "website": ""},
+        ],
+        "contacts": [
+            ("GlowUp Salon (Koramangala)", {"first_name": "Ms.",  "last_name": "Sneha Kapoor",  "title": "Regular — colour + cut",        "email": "sneha.k@example.com",  "phone": "+91 94290 11001"}),
+            ("Serenity Spa & Wellness",    {"first_name": "Mrs.", "last_name": "Anika Reddy",   "title": "Couples spa — anniv.",          "email": "anika.r@example.com",  "phone": "+91 94290 22001"}),
+            ("Mehndi Studio by Pooja",     {"first_name": "Ms.",  "last_name": "Riya Sharma",   "title": "Bridal mehndi — wedding",       "email": "riya.s@example.com",   "phone": "+91 94290 33001"}),
+            ("Mirror Mirror Hair Lounge",  {"first_name": "Mr.",  "last_name": "Aditya Iyer",   "title": "Bridegroom trial — Nov",        "email": "aditya.i@example.com", "phone": "+91 94290 44001"}),
+            ("GlowUp Salon (Koramangala)", {"first_name": "Ms.",  "last_name": "Divya Pillai",  "title": "First-time customer",           "email": "divya.p@example.com",  "phone": "+91 94290 11002"}),
+        ],
+        "deals": [
+            ("Mehndi Studio by Pooja",     "Bridal mehndi package (Riya S.)",              "negotiation", 28000, 80),
+            ("Serenity Spa & Wellness",    "Couples anniversary spa — Anika",              "proposal",    12000, 70),
+            ("Mirror Mirror Hair Lounge",  "Bridegroom hair + grooming trial — Aditya",    "qualified",   8500,  50),
+            ("GlowUp Salon (Koramangala)", "Annual hair-care subscription — Divya",        "lead",        18000, 25),
+            ("Mehndi Studio by Pooja",     "Reception mehndi (closed)",                     "won",         15000, 100),
+        ],
+        "tasks": [
+            {"title": "Confirm Riya's bridal mehndi date (15 Nov) + advance",  "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Send couples spa package details to Anika",              "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Follow up — Aditya hasn't booked trial slot yet",        "priority": "normal", "status": "open",        "due_offset": -2},
+            {"title": "Restock hair colour kit — running low on shade 4N",      "priority": "normal", "status": "in_progress", "due_offset": 2},
+            {"title": "Post before/after pics from last weekend on Instagram", "priority": "low",    "status": "open",        "due_offset": 1},
+        ],
+        "invoices": [
+            {"customer": "Mehndi Studio by Pooja",     "issue_offset": -5,  "due_offset": +15, "status": "sent",  "line_items": [{"description": "Bridal mehndi advance (50%)", "quantity": 1, "unit_price": 14000}], "tax_pct": 18},
+            {"customer": "Serenity Spa & Wellness",    "issue_offset": -35, "due_offset": -5,  "status": "sent",  "line_items": [{"description": "Couples spa package (90 min)", "quantity": 1, "unit_price": 8500}], "tax_pct": 18},
+            {"customer": "GlowUp Salon (Koramangala)", "issue_offset": -60, "due_offset": -30, "status": "paid",  "line_items": [{"description": "Hair colour + cut + treatment", "quantity": 1, "unit_price": 3800}], "tax_pct": 18},
+            {"customer": "Mirror Mirror Hair Lounge",  "issue_offset":  0,  "due_offset":  10, "status": "draft", "line_items": [{"description": "Bridegroom grooming trial pack", "quantity": 1, "unit_price": 8500}], "tax_pct": 18},
+        ],
+    },
+
+    # ── Garment / textile retail ──────────────────────────────────────────
+    "Garment / textile retail": {
+        "icp": "Garment retailers + wholesalers (5-50 staff). 100-3000 SKUs. Mix of walk-in + WhatsApp catalog + B2B wholesale.",
+        "companies": [
+            {"name": "Rajwadi Sarees",           "industry": "Textile", "size": "10-50", "website": ""},
+            {"name": "Urban Threads (kurtis)",   "industry": "Textile", "size": "10-50", "website": ""},
+            {"name": "Maharani Bridal Couture",  "industry": "Textile", "size": "1-10",  "website": ""},
+            {"name": "Cotton King Wholesale",    "industry": "Textile", "size": "50-200","website": ""},
+        ],
+        "contacts": [
+            ("Rajwadi Sarees",          {"first_name": "Mrs.", "last_name": "Smita Mehra",   "title": "Wedding shopping",       "email": "smita.m@example.com", "phone": "+91 93470 11001"}),
+            ("Urban Threads (kurtis)",  {"first_name": "Ms.",  "last_name": "Aanya Kapoor",  "title": "Bulk corporate order",   "email": "aanya.k@example.com", "phone": "+91 93470 22001"}),
+            ("Maharani Bridal Couture", {"first_name": "Ms.",  "last_name": "Pooja Iyer",    "title": "Bridal lehenga (Dec)",   "email": "pooja.i@example.com", "phone": "+91 93470 33001"}),
+            ("Cotton King Wholesale",   {"first_name": "Mr.",  "last_name": "Rajesh Joshi",  "title": "Retailer buyer",         "email": "rajesh.j@example.com","phone": "+91 93470 44001"}),
+            ("Rajwadi Sarees",          {"first_name": "Mrs.", "last_name": "Lakshmi Bhat",  "title": "Loyalty regular",        "email": "lakshmi.b@example.com","phone": "+91 93470 11002"}),
+        ],
+        "deals": [
+            ("Maharani Bridal Couture", "Bridal lehenga custom-stitched — Pooja",      "negotiation", 85000, 75),
+            ("Cotton King Wholesale",   "Bulk retailer order — Rajesh (500 pieces)",   "proposal",   285000, 60),
+            ("Urban Threads (kurtis)",  "Corporate kurta order — 80 pieces (Aanya)",   "qualified",   72000, 40),
+            ("Rajwadi Sarees",          "Wedding trousseau shopping — Smita",          "lead",        45000, 25),
+            ("Rajwadi Sarees",          "Diwali collection sale — Lakshmi (closed)",   "won",         28000, 100),
+        ],
+        "tasks": [
+            {"title": "Send measurement appointment options to Pooja (bridal)",    "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Confirm wholesale dispatch date with Rajesh (500-piece)",   "priority": "high",   "status": "open",        "due_offset": 1},
+            {"title": "Follow up on overdue retailer payment — Cotton King (₹1.2L)", "priority": "normal", "status": "open",      "due_offset": -4},
+            {"title": "Send Aanya's corporate kurta design samples (3 colours)",   "priority": "normal", "status": "in_progress", "due_offset": 2},
+            {"title": "Restock Banarasi silk sarees (top sellers running low)",    "priority": "low",    "status": "open",        "due_offset": 5},
+        ],
+        "invoices": [
+            {"customer": "Maharani Bridal Couture", "issue_offset": -10, "due_offset": +20, "status": "sent",  "line_items": [{"description": "Bridal lehenga advance (50%)", "quantity": 1, "unit_price": 42500}], "tax_pct": 5},
+            {"customer": "Cotton King Wholesale",   "issue_offset": -45, "due_offset": -15, "status": "sent",  "line_items": [{"description": "Cotton kurtas — wholesale 200 pcs", "quantity": 200, "unit_price": 450}], "tax_pct": 5},
+            {"customer": "Urban Threads (kurtis)",  "issue_offset": -75, "due_offset": -45, "status": "paid",  "line_items": [{"description": "Corporate kurta order (60 pcs)", "quantity": 60, "unit_price": 950}], "tax_pct": 5},
+            {"customer": "Rajwadi Sarees",          "issue_offset":  0,  "due_offset":  15, "status": "draft", "line_items": [{"description": "Wedding trousseau estimate (Smita M.)", "quantity": 1, "unit_price": 45000}], "tax_pct": 5},
+        ],
+    },
+
+    # ── Logistics / transport ─────────────────────────────────────────────
+    "Logistics / transport": {
+        "icp": "Small fleet operators + freight agents (5-100 staff). 5-50 trucks. Multi-city routes, GST e-way compliance.",
+        "companies": [
+            {"name": "Speed Cargo Movers",       "industry": "Logistics", "size": "50-200", "website": ""},
+            {"name": "Bharath Roadlines",        "industry": "Logistics", "size": "50-200", "website": ""},
+            {"name": "QuickShip Express",        "industry": "Logistics", "size": "10-50",  "website": ""},
+            {"name": "Steel Transport Co.",      "industry": "Logistics", "size": "10-50",  "website": ""},
+        ],
+        "contacts": [
+            ("Speed Cargo Movers", {"first_name": "Mr.", "last_name": "Vinod Patel",   "title": "Plant manager (auto parts shipper)", "email": "vinod.p@example.com",  "phone": "+91 93330 11001"}),
+            ("Bharath Roadlines",  {"first_name": "Mr.", "last_name": "Sunil Iyer",    "title": "Purchase head (textile mill)",       "email": "sunil.i@example.com",  "phone": "+91 93330 22001"}),
+            ("QuickShip Express",  {"first_name": "Mr.", "last_name": "Anil Bose",     "title": "Owner (e-comm seller)",              "email": "anil.b@example.com",   "phone": "+91 93330 33001"}),
+            ("Steel Transport Co.",{"first_name": "Mr.", "last_name": "Prakash Babu",  "title": "Logistics manager (steel plant)",    "email": "prakash.b@example.com","phone": "+91 93330 44001"}),
+            ("Speed Cargo Movers", {"first_name": "Mr.", "last_name": "Karan Shah",    "title": "Buyer (new account)",                "email": "karan.s@example.com",  "phone": "+91 93330 11002"}),
+        ],
+        "deals": [
+            ("Speed Cargo Movers", "Annual contract — Hosur to Pune (auto parts)",  "proposal",    875000, 60),
+            ("Bharath Roadlines",  "Cotton bales — Coimbatore to Mumbai (6 mo)",    "negotiation", 540000, 75),
+            ("QuickShip Express",  "Daily local pickup — e-comm (12 mo)",            "qualified",   320000, 40),
+            ("Steel Transport Co.","TMT bars dispatch — Bellary to Bangalore",       "lead",        185000, 25),
+            ("Speed Cargo Movers", "Q1 dispatch contract (closed)",                  "won",         420000, 100),
+        ],
+        "tasks": [
+            {"title": "Send revised freight quote — Vinod (Hosur-Pune annual)",     "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Driver allocation for tomorrow's TMT bar dispatch",          "priority": "high",   "status": "open",        "due_offset": 1},
+            {"title": "Follow up on overdue payment — Bharath Roadlines (₹3L)",     "priority": "normal", "status": "open",        "due_offset": -5},
+            {"title": "Renew vehicle fitness for KA-01-MZ-1234",                    "priority": "normal", "status": "in_progress", "due_offset": 6},
+            {"title": "Update GST e-way bills for last week's dispatches",          "priority": "low",    "status": "open",        "due_offset": 3},
+        ],
+        "invoices": [
+            {"customer": "Speed Cargo Movers",  "issue_offset": -15, "due_offset": +15, "status": "sent",  "line_items": [{"description": "Hosur-Pune Q1 freight — 15 trips", "quantity": 15, "unit_price": 18500}], "tax_pct": 12},
+            {"customer": "Bharath Roadlines",   "issue_offset": -45, "due_offset": -15, "status": "sent",  "line_items": [{"description": "Cotton bales freight — 8 trips", "quantity": 8, "unit_price": 22500}], "tax_pct": 12},
+            {"customer": "QuickShip Express",   "issue_offset": -75, "due_offset": -45, "status": "paid",  "line_items": [{"description": "Daily pickup — month 3 (200 deliveries)", "quantity": 200, "unit_price": 180}], "tax_pct": 12},
+            {"customer": "Steel Transport Co.", "issue_offset":  0,  "due_offset":  30, "status": "draft", "line_items": [{"description": "TMT bars Bellary-Bangalore (5 trips est.)", "quantity": 5, "unit_price": 24000}], "tax_pct": 12},
+        ],
+    },
+
+    # ── Construction / contracting ────────────────────────────────────────
+    "Construction / contracting": {
+        "icp": "Civil contractors, interior designers, home renovators (5-50 staff). Project-based ₹5L-₹2Cr.",
+        "companies": [
+            {"name": "BuildRight Contractors",      "industry": "Construction", "size": "10-50", "website": ""},
+            {"name": "Saffron Interiors",           "industry": "Construction", "size": "10-50", "website": ""},
+            {"name": "GreenSpace Renovations",      "industry": "Construction", "size": "1-10",  "website": ""},
+            {"name": "Concrete Co. Civil",          "industry": "Construction", "size": "50-200","website": ""},
+        ],
+        "contacts": [
+            ("BuildRight Contractors",  {"first_name": "Mr.", "last_name": "Rajiv Krishnan", "title": "Homeowner — 3BHK reno",  "email": "rajiv.k@example.com", "phone": "+91 92840 11001"}),
+            ("Saffron Interiors",       {"first_name": "Mrs.","last_name": "Neha Verma",     "title": "Home owner — full interior", "email": "neha.v@example.com",   "phone": "+91 92840 22001"}),
+            ("GreenSpace Renovations",  {"first_name": "Mr.", "last_name": "Sanjay Iyer",    "title": "Office renovation — 1500 sqft", "email": "sanjay.i@example.com","phone": "+91 92840 33001"}),
+            ("Concrete Co. Civil",      {"first_name": "Mr.", "last_name": "Bharat Patel",   "title": "Builder — 4-floor apt project", "email": "bharat.p@example.com","phone": "+91 92840 44001"}),
+            ("BuildRight Contractors",  {"first_name": "Mrs.","last_name": "Priya Reddy",    "title": "Kitchen + 2 bathroom upgrade",  "email": "priya.r@example.com", "phone": "+91 92840 11002"}),
+        ],
+        "deals": [
+            ("Concrete Co. Civil",     "4-floor apartment civil work — Bharat",      "proposal",    8500000, 60),
+            ("Saffron Interiors",      "Full home interiors — Neha (3BHK)",          "negotiation", 1450000, 75),
+            ("BuildRight Contractors", "3BHK renovation — Rajiv Krishnan",            "qualified",    650000, 40),
+            ("GreenSpace Renovations", "Office renovation 1500 sqft — Sanjay",        "lead",         425000, 25),
+            ("BuildRight Contractors", "Kitchen + bath upgrade — Priya (closed)",     "won",          385000, 100),
+        ],
+        "tasks": [
+            {"title": "Site visit + measurement — Neha's apartment (Sat 10 AM)",   "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Send detailed BOQ + timeline to Bharat (Concrete Co.)",      "priority": "high",   "status": "open",        "due_offset": 1},
+            {"title": "Follow up on milestone-2 payment — Rajiv (overdue 4 days)",  "priority": "normal", "status": "open",        "due_offset": -4},
+            {"title": "Coordinate plumber + electrician for Priya's kitchen Mon",   "priority": "normal", "status": "in_progress", "due_offset": 3},
+            {"title": "Procure tiles for GreenSpace office (need 2000 sq ft)",      "priority": "low",    "status": "open",        "due_offset": 7},
+        ],
+        "invoices": [
+            {"customer": "BuildRight Contractors", "issue_offset": -12, "due_offset": +18, "status": "sent",  "line_items": [{"description": "3BHK renovation — milestone 2 (40%)", "quantity": 1, "unit_price": 260000}], "tax_pct": 18},
+            {"customer": "Saffron Interiors",      "issue_offset": -45, "due_offset": -15, "status": "sent",  "line_items": [{"description": "Interior project advance (35%)", "quantity": 1, "unit_price": 507500}], "tax_pct": 18},
+            {"customer": "Concrete Co. Civil",     "issue_offset": -75, "due_offset": -45, "status": "paid",  "line_items": [{"description": "Civil work — milestone 1 (20% advance)", "quantity": 1, "unit_price": 1700000}], "tax_pct": 18},
+            {"customer": "GreenSpace Renovations", "issue_offset":  0,  "due_offset":  30, "status": "draft", "line_items": [{"description": "Office renovation estimate — 1500 sq ft", "quantity": 1, "unit_price": 425000}], "tax_pct": 18},
+        ],
+    },
+
+    # ── Auto repair / garage ──────────────────────────────────────────────
+    "Auto repair / garage": {
+        "icp": "Independent garages, multi-brand service centres (2-15 staff). 30-200 cars/month. Local + repeat customers.",
+        "companies": [
+            {"name": "Speedo Auto Service",       "industry": "Automotive", "size": "1-10",  "website": ""},
+            {"name": "PitStop Multi-brand Garage","industry": "Automotive", "size": "10-50", "website": ""},
+            {"name": "BikeHub 2-wheeler Service", "industry": "Automotive", "size": "1-10",  "website": ""},
+            {"name": "Premium Car Detailing Co.", "industry": "Automotive", "size": "1-10",  "website": ""},
+        ],
+        "contacts": [
+            ("Speedo Auto Service",        {"first_name": "Mr.", "last_name": "Vivek Sharma",  "title": "Honda City owner (KA-01)",      "email": "vivek.s@example.com",  "phone": "+91 91610 11001"}),
+            ("PitStop Multi-brand Garage", {"first_name": "Mrs.","last_name": "Anita Krishnan","title": "Hyundai i20 (KA-05)",            "email": "anita.k@example.com",  "phone": "+91 91610 22001"}),
+            ("BikeHub 2-wheeler Service",  {"first_name": "Mr.", "last_name": "Karthik Reddy", "title": "Royal Enfield owner",            "email": "karthik.r@example.com","phone": "+91 91610 33001"}),
+            ("Premium Car Detailing Co.",  {"first_name": "Mr.", "last_name": "Aditya Pillai", "title": "BMW 3-series detailing client",  "email": "aditya.p@example.com", "phone": "+91 91610 44001"}),
+            ("Speedo Auto Service",        {"first_name": "Mr.", "last_name": "Sunil Babu",    "title": "Maruti Swift — regular",         "email": "sunil.b@example.com",  "phone": "+91 91610 11002"}),
+        ],
+        "deals": [
+            ("PitStop Multi-brand Garage", "Engine overhaul — Anita's i20",            "proposal",    32000, 70),
+            ("Premium Car Detailing Co.",  "Annual detailing package — Aditya BMW",    "negotiation", 18000, 80),
+            ("Speedo Auto Service",        "Major service + tyres — Vivek Honda City", "qualified",   8500,  40),
+            ("BikeHub 2-wheeler Service",  "Royal Enfield restoration — Karthik",      "lead",        12000, 25),
+            ("Speedo Auto Service",        "Regular service — Sunil Swift (closed)",   "won",         3500,  100),
+        ],
+        "tasks": [
+            {"title": "Call Vivek with engine diagnostic results (Honda City)",  "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Send detailing schedule to Aditya (3 sessions over Nov)",  "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Order spare parts for Anita's engine overhaul (i20)",      "priority": "normal", "status": "in_progress", "due_offset": 1},
+            {"title": "Follow up — Karthik's Royal Enfield restoration approval", "priority": "normal", "status": "open",        "due_offset": -2},
+            {"title": "Maintenance reminder broadcast to monthly regulars",       "priority": "low",    "status": "open",        "due_offset": 5},
+        ],
+        "invoices": [
+            {"customer": "PitStop Multi-brand Garage", "issue_offset": -5,  "due_offset": +5,  "status": "sent",  "line_items": [{"description": "Engine diagnostic + advance (i20)", "quantity": 1, "unit_price": 6500}], "tax_pct": 18},
+            {"customer": "Premium Car Detailing Co.",  "issue_offset": -30, "due_offset": -5,  "status": "sent",  "line_items": [{"description": "Premium detailing session 1 (BMW)", "quantity": 1, "unit_price": 6500}], "tax_pct": 18},
+            {"customer": "Speedo Auto Service",        "issue_offset": -55, "due_offset": -25, "status": "paid",  "line_items": [{"description": "Major service — Swift (Sunil B.)", "quantity": 1, "unit_price": 3500}], "tax_pct": 18},
+            {"customer": "BikeHub 2-wheeler Service",  "issue_offset":  0,  "due_offset":  7,  "status": "draft", "line_items": [{"description": "Royal Enfield restoration estimate", "quantity": 1, "unit_price": 12000}], "tax_pct": 18},
+        ],
+    },
+
+    # ── Photography / event services ──────────────────────────────────────
+    "Photography / event services": {
+        "icp": "Wedding photographers, event planners, freelance videographers (1-10 staff). 30-200 events/year.",
+        "companies": [
+            {"name": "FrameStory Photography",   "industry": "Photography", "size": "1-10", "website": ""},
+            {"name": "Eternal Moments Studio",   "industry": "Photography", "size": "1-10", "website": ""},
+            {"name": "Lens Republic Films",      "industry": "Photography", "size": "1-10", "website": ""},
+            {"name": "Confetti Event Planners",  "industry": "Photography", "size": "10-50","website": ""},
+        ],
+        "contacts": [
+            ("FrameStory Photography",  {"first_name": "Mr.",  "last_name": "Rohit Iyer",      "title": "Wedding — Dec 2025",          "email": "rohit.i@example.com",  "phone": "+91 91290 11001"}),
+            ("Eternal Moments Studio",  {"first_name": "Mrs.", "last_name": "Anjali Sharma",   "title": "Pre-wedding + wedding",       "email": "anjali.s@example.com", "phone": "+91 91290 22001"}),
+            ("Lens Republic Films",     {"first_name": "Mr.",  "last_name": "Karan Pillai",    "title": "Corporate film inquiry",      "email": "karan.p@example.com",  "phone": "+91 91290 33001"}),
+            ("Confetti Event Planners", {"first_name": "Mrs.", "last_name": "Pooja Kapoor",    "title": "Daughter's first birthday",   "email": "pooja.k@example.com",  "phone": "+91 91290 44001"}),
+            ("FrameStory Photography",  {"first_name": "Mr.",  "last_name": "Aditya Reddy",    "title": "Maternity shoot inquiry",     "email": "aditya.r@example.com", "phone": "+91 91290 11002"}),
+        ],
+        "deals": [
+            ("Eternal Moments Studio",  "Wedding + pre-wedding bundle — Anjali",        "negotiation", 285000, 75),
+            ("FrameStory Photography",  "Wedding 3-day bundle — Rohit Iyer",            "proposal",    175000, 60),
+            ("Confetti Event Planners", "First-birthday — Pooja's daughter (Sat)",      "qualified",    85000, 50),
+            ("Lens Republic Films",     "Corporate brand film — Karan (3 min)",         "lead",        125000, 25),
+            ("FrameStory Photography",  "Maternity shoot — Aditya's wife (closed)",     "won",          22000, 100),
+        ],
+        "tasks": [
+            {"title": "Send Anjali's wedding contract + advance link (₹85k)",        "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Prep equipment + run-through for Pooja's birthday Sat",        "priority": "high",   "status": "open",        "due_offset": 2},
+            {"title": "Follow up — Karan's corporate film brief (5 days idle)",       "priority": "normal", "status": "open",        "due_offset": -3},
+            {"title": "Deliver Rohit's pre-wedding photos (gallery + 3 prints)",       "priority": "normal", "status": "in_progress", "due_offset": 4},
+            {"title": "Update Instagram with last weekend's wedding highlights",      "priority": "low",    "status": "open",        "due_offset": 1},
+        ],
+        "invoices": [
+            {"customer": "Eternal Moments Studio",  "issue_offset": -8,  "due_offset": +22, "status": "sent",  "line_items": [{"description": "Wedding bundle advance (30%)", "quantity": 1, "unit_price": 85500}], "tax_pct": 18},
+            {"customer": "FrameStory Photography",  "issue_offset": -30, "due_offset": -5,  "status": "sent",  "line_items": [{"description": "Pre-wedding shoot — Rohit Iyer", "quantity": 1, "unit_price": 45000}], "tax_pct": 18},
+            {"customer": "Confetti Event Planners", "issue_offset": -60, "due_offset": -30, "status": "paid",  "line_items": [{"description": "Family portrait session (paid)", "quantity": 1, "unit_price": 18000}], "tax_pct": 18},
+            {"customer": "Lens Republic Films",     "issue_offset":  0,  "due_offset":  30, "status": "draft", "line_items": [{"description": "Corporate brand film estimate (3 min)", "quantity": 1, "unit_price": 125000}], "tax_pct": 18},
+        ],
+    },
+
+    # ── Travel / tour operator ────────────────────────────────────────────
+    "Travel / tour operator": {
+        "icp": "Tour operators, travel agencies, destination management cos (3-30 staff). Domestic + outbound, group + custom.",
+        "companies": [
+            {"name": "Wanderlust Holidays",         "industry": "Travel", "size": "10-50", "website": ""},
+            {"name": "Himalayan Trail Adventures",  "industry": "Travel", "size": "1-10",  "website": ""},
+            {"name": "DreamScape Honeymoons",       "industry": "Travel", "size": "1-10",  "website": ""},
+            {"name": "Bharat Heritage Tours",       "industry": "Travel", "size": "10-50", "website": ""},
+        ],
+        "contacts": [
+            ("Wanderlust Holidays",        {"first_name": "Mrs.","last_name": "Sneha Iyer",     "title": "Family trip — Bali (4 pax)",       "email": "sneha.i@example.com",  "phone": "+91 90840 11001"}),
+            ("Himalayan Trail Adventures", {"first_name": "Mr.", "last_name": "Aditya Verma",   "title": "Trek to EBC — solo",                "email": "aditya.v@example.com", "phone": "+91 90840 22001"}),
+            ("DreamScape Honeymoons",      {"first_name": "Mr.", "last_name": "Karan Mehta",    "title": "Honeymoon — Maldives 6N",           "email": "karan.m@example.com",  "phone": "+91 90840 33001"}),
+            ("Bharat Heritage Tours",      {"first_name": "Mrs.","last_name": "Priya Bhat",     "title": "Senior parents — Rajasthan 8 days", "email": "priya.b@example.com",  "phone": "+91 90840 44001"}),
+            ("Wanderlust Holidays",        {"first_name": "Mr.", "last_name": "Vikram Joshi",   "title": "Corporate offsite — 50 pax",        "email": "vikram.j@example.com", "phone": "+91 90840 11002"}),
+        ],
+        "deals": [
+            ("DreamScape Honeymoons",      "Maldives 6N honeymoon — Karan + spouse",         "negotiation", 285000, 80),
+            ("Bharat Heritage Tours",      "Rajasthan 8-day — Priya's parents",              "proposal",    145000, 60),
+            ("Wanderlust Holidays",        "Bali family trip — Sneha (4 pax)",               "qualified",   220000, 50),
+            ("Himalayan Trail Adventures", "EBC trek — Aditya (solo)",                       "lead",         95000, 25),
+            ("Wanderlust Holidays",        "Corporate offsite — 50 pax Goa (closed)",        "won",         450000, 100),
+        ],
+        "tasks": [
+            {"title": "Send Karan honeymoon v2 itinerary (Maldives + Bora extension)", "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Confirm hotel block for Priya's parents Rajasthan trip",          "priority": "high",   "status": "open",        "due_offset": 1},
+            {"title": "Follow up on Aditya EBC permit + insurance documents",            "priority": "normal", "status": "open",        "due_offset": -2},
+            {"title": "Pre-departure check-in with Sneha (Bali family trip, dep Mon)",   "priority": "normal", "status": "in_progress", "due_offset": 4},
+            {"title": "Update website with new domestic destinations for Q4",            "priority": "low",    "status": "open",        "due_offset": 7},
+        ],
+        "invoices": [
+            {"customer": "DreamScape Honeymoons",      "issue_offset": -10, "due_offset": +20, "status": "sent",  "line_items": [{"description": "Maldives honeymoon advance (50%)", "quantity": 1, "unit_price": 142500}], "tax_pct": 5},
+            {"customer": "Bharat Heritage Tours",      "issue_offset": -35, "due_offset": -5,  "status": "sent",  "line_items": [{"description": "Rajasthan 8-day — full payment", "quantity": 1, "unit_price": 145000}], "tax_pct": 5},
+            {"customer": "Wanderlust Holidays",        "issue_offset": -65, "due_offset": -35, "status": "paid",  "line_items": [{"description": "Corporate Goa offsite — 50 pax (paid)", "quantity": 1, "unit_price": 450000}], "tax_pct": 5},
+            {"customer": "Himalayan Trail Adventures", "issue_offset":  0,  "due_offset":  30, "status": "draft", "line_items": [{"description": "EBC trek estimate — solo (Aditya V.)", "quantity": 1, "unit_price": 95000}], "tax_pct": 5},
+        ],
+    },
+
+    # ── Real estate broker ────────────────────────────────────────────────
+    "Real estate broker": {
+        "icp": "Independent property brokers + small agencies (1-10 staff). Rental + resale mix. Hyperlocal expertise.",
+        "companies": [
+            {"name": "Prestige Lakeside Habitat",  "industry": "Real estate", "size": "200-1000", "website": ""},
+            {"name": "Sobha Indraprastha Towers",  "industry": "Real estate", "size": "200-1000", "website": ""},
+            {"name": "Brigade Cosmopolis",         "industry": "Real estate", "size": "200-1000", "website": ""},
+            {"name": "Independent villa (Whitefield)","industry": "Real estate","size": "1-10",   "website": ""},
+        ],
+        "contacts": [
+            ("Prestige Lakeside Habitat",      {"first_name": "Mr.",  "last_name": "Anand Sharma",   "title": "Buyer — 3BHK ₹1.6Cr budget",     "email": "anand.s@example.com",  "phone": "+91 90160 11001"}),
+            ("Sobha Indraprastha Towers",      {"first_name": "Mrs.", "last_name": "Sneha Iyer",     "title": "Buyer — 2BHK rental seeker",      "email": "sneha.i@example.com",  "phone": "+91 90160 22001"}),
+            ("Brigade Cosmopolis",             {"first_name": "Mr.",  "last_name": "Rajesh Pillai",  "title": "NRI — investment property",       "email": "rajesh.p@example.com", "phone": "+91 90160 33001"}),
+            ("Independent villa (Whitefield)", {"first_name": "Mr.",  "last_name": "Vinod Kapoor",   "title": "Seller — owner (4BHK villa)",     "email": "vinod.k@example.com",  "phone": "+91 90160 44001"}),
+            ("Prestige Lakeside Habitat",      {"first_name": "Ms.",  "last_name": "Divya Krishnan", "title": "Tenant — found via property site","email": "divya.k@example.com",  "phone": "+91 90160 11002"}),
+        ],
+        "deals": [
+            ("Prestige Lakeside Habitat", "3BHK purchase ₹1.6Cr — Anand Sharma",       "negotiation", 16000000, 70),
+            ("Sobha Indraprastha Towers", "2BHK rental — Sneha Iyer",                  "proposal",      48000, 75),
+            ("Brigade Cosmopolis",        "Investment 2BHK — Rajesh (NRI)",            "qualified",  12500000, 40),
+            ("Independent villa (Whitefield)","4BHK villa sale — Vinod (owner)",       "lead",       28000000, 20),
+            ("Prestige Lakeside Habitat", "2BHK rental — Divya (closed)",              "won",           45000, 100),
+        ],
+        "tasks": [
+            {"title": "Schedule Anand's 3BHK final site visit + token decision",      "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Send 3 rental shortlist options to Sneha (₹45-50k budget)",     "priority": "high",   "status": "open",        "due_offset": 0},
+            {"title": "Follow up — Rajesh hasn't responded to investment shortlist",   "priority": "normal", "status": "open",        "due_offset": -3},
+            {"title": "Get verified property documents from Vinod (villa seller)",     "priority": "normal", "status": "in_progress", "due_offset": 2},
+            {"title": "Renew RERA registration for portfolio (annual)",                "priority": "low",    "status": "open",        "due_offset": 30},
+        ],
+        "invoices": [
+            {"customer": "Prestige Lakeside Habitat", "issue_offset": -5,  "due_offset": +25, "status": "sent",  "line_items": [{"description": "Rental brokerage — Divya K. (1 month)", "quantity": 1, "unit_price": 45000}], "tax_pct": 18},
+            {"customer": "Sobha Indraprastha Towers", "issue_offset": -40, "due_offset": -10, "status": "sent",  "line_items": [{"description": "Rental brokerage advance — Sneha I.", "quantity": 1, "unit_price": 24000}], "tax_pct": 18},
+            {"customer": "Brigade Cosmopolis",        "issue_offset": -75, "due_offset": -45, "status": "paid",  "line_items": [{"description": "2BHK resale brokerage (Q4 closing)", "quantity": 1, "unit_price": 125000}], "tax_pct": 18},
+            {"customer": "Independent villa (Whitefield)", "issue_offset": 0, "due_offset": 30, "status": "draft", "line_items": [{"description": "Villa sale brokerage estimate (1% of ₹2.8Cr)", "quantity": 1, "unit_price": 280000}], "tax_pct": 18},
+        ],
+    },
+
     # ── Consulting ────────────────────────────────────────────────────────
     "Consulting": {
         "icp": (
