@@ -292,9 +292,48 @@ Return exactly one JSON object with these fields:
 Be concise and accurate. Return ONLY the JSON object, no fences."""
 
 
-def _classify(sender: str, subject: str, body: str) -> Dict[str, Any]:
+def _list_reply_templates(business_id: str) -> list:
+    """Return template names + short body excerpts for any 'reply-shaped'
+    templates in the workspace's library. Injected into the classify prompt
+    so the LLM can prefer reusing the workspace's industry-authentic copy
+    over generating a fresh reply from scratch.
+
+    We deliberately send just the name + first 200 chars of body — full
+    bodies would explode the prompt and templates can use {{vars}} the
+    classifier shouldn't pretend to fill (those get resolved at send time)."""
+    try:
+        from api import email_templates as _tpl
+        templates = _tpl.list_templates(business_id) or []
+    except Exception:
+        return []
+    out = []
+    for t in templates:
+        body = (t.get("body") or "")[:200].replace("\n", " ").strip()
+        out.append({"name": t.get("name") or "", "starts_with": body})
+    return out[:6]   # cap so prompt stays bounded
+
+
+def _classify(sender: str, subject: str, body: str, business_id: str = "") -> Dict[str, Any]:
     from config.llm_provider import invoke as llm_invoke
-    prompt = _CLASSIFY_PROMPT.format(sender=sender[:200], subject=subject[:200], body=body[:MAX_BODY_CHARS])
+    # Build the template hint section. Only included when the workspace
+    # has at least one reply-shaped template — otherwise the prompt stays
+    # unchanged from before.
+    template_hint = ""
+    if business_id:
+        templates = _list_reply_templates(business_id)
+        if templates:
+            template_hint = (
+                "\n\nThis workspace already has the following email templates "
+                "available — if any matches the situation, prefer adapting that "
+                "tone/copy over writing fresh:\n"
+                + "\n".join(
+                    f'- "{t["name"]}" — starts with: {t["starts_with"]}'
+                    for t in templates
+                )
+                + "\n\nIf you reuse a template, lightly personalise — keep its voice."
+            )
+
+    prompt = _CLASSIFY_PROMPT.format(sender=sender[:200], subject=subject[:200], body=body[:MAX_BODY_CHARS]) + template_hint
     try:
         # Email bodies contain sender PII and confidential content — stay local.
         raw = llm_invoke(prompt, system="You classify business emails.",
@@ -379,7 +418,9 @@ def run_for_business(business_id: str) -> Dict[str, Any]:
             body = m.get("body", "")
             sender_email = _sender_email(sender)
 
-            classification = _classify(sender, subject, body)
+            # Pass business_id so the classifier can offer the workspace's
+            # industry-authentic templates as preferred starting points.
+            classification = _classify(sender, subject, body, business_id=business_id)
 
             # Find CRM contact by email (business-scoped)
             interaction_id = None
