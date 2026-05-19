@@ -29,6 +29,16 @@ export const completeOnboardingStep = (stepKey) =>
 export const skipOnboarding = () => req('/api/onboarding/skip', { method: 'POST' });
 export const reopenOnboarding = () => req('/api/onboarding/reopen', { method: 'POST' });
 
+// Structured profile fields (size, business_type, primary_goal). The wizard
+// previously stuffed these into the description text; now they live in
+// settings.profile as queryable keys other features can branch on.
+export const saveProfileExtras = (extras) =>
+  req('/api/onboarding/profile-extras', {
+    method: 'POST',
+    body: JSON.stringify(extras),
+  });
+export const getProfileExtras = () => req('/api/onboarding/profile-extras');
+
 // Notification preferences
 export const getNotificationPrefs = () => req('/api/notifications/prefs');
 export const setNotificationPrefs = (updates) =>

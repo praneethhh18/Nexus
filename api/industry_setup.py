@@ -292,11 +292,25 @@ def _ensure_templates(business_id: str, user_id: str, templates: List[Dict]) -> 
     return created
 
 
-def apply_industry_setup(business_id: str, user_id: str, industry: str | None = None) -> Dict:
-    """Apply agent schedules, feature focus, and starter templates.
+def apply_industry_setup(
+    business_id: str,
+    user_id: str,
+    industry: str | None = None,
+    *,
+    seed_sample_data: bool = True,
+) -> Dict:
+    """Apply agent schedules, feature focus, starter templates, AND drop
+    industry-flavoured seed data into the workspace if it's empty.
 
-    Idempotent: applying a preset again updates schedules/settings and creates
-    only missing template names.
+    Idempotent on every layer:
+      - personas/schedules: re-applying tunes the same rows
+      - templates: only missing names are created
+      - seed data: skipped entirely if the business already has CRM rows
+
+    Args:
+        seed_sample_data: set False when the caller already has real data
+            and just wants to re-tune the preset (e.g. an industry change
+            on an existing workspace).
     """
     business = _read_business(business_id)
     preset = get_preset(industry or business["industry"])
@@ -318,12 +332,27 @@ def apply_industry_setup(business_id: str, user_id: str, industry: str | None = 
 
     created_templates = _ensure_templates(business_id, user_id, preset["templates"])
 
+    # Drop industry-flavoured CRM data so the dashboard isn't empty on Day 1.
+    # The seeder has its own existence check — won't pollute real data.
+    # Failure here MUST NOT block onboarding (e.g. if the industry isn't in
+    # INDUSTRY_DATA we just skip silently and the user gets a clean workspace).
+    seed_result: Dict[str, object] = {"seeded": False, "reason": "skipped"}
+    if seed_sample_data:
+        try:
+            from api.industry_seed import seed_industry_sample
+            seed_result = seed_industry_sample(business_id, user_id, preset["industry"])
+        except Exception as e:
+            from loguru import logger
+            logger.warning(f"[IndustrySetup] seed step failed (non-fatal): {e}")
+            seed_result = {"seeded": False, "reason": f"error: {e!s}"[:200]}
+
     settings = business["settings"]
     settings["industry_setup"] = {
         "industry": preset["industry"],
         "recommended_tools": preset["tools"],
         "priority_agents": preset["priority_agents"],
         "schedules": schedules,
+        "seed": seed_result,
         "applied_at": now_iso(),
     }
     _write_settings(business_id, settings)
@@ -335,4 +364,5 @@ def apply_industry_setup(business_id: str, user_id: str, industry: str | None = 
         "enabled_agents": enabled,
         "schedules": schedules,
         "created_templates": created_templates,
+        "seed": seed_result,
     }

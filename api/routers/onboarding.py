@@ -5,10 +5,17 @@ it resumes across logins / devices.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 
 from api.auth import get_current_context
 
 router = APIRouter(tags=["onboarding"])
+
+
+class ProfileExtras(BaseModel):
+    business_type: str = ""
+    company_size:  str = ""
+    primary_goal:  str = ""
 
 
 @router.get("/api/onboarding")
@@ -70,3 +77,27 @@ def onboarding_reopen(ctx: dict = Depends(get_current_context)):
     """Bring the wizard back — useful if the user accidentally clicked Skip."""
     from api import onboarding
     return onboarding.reopen(ctx["business_id"], ctx["user"]["id"])
+
+
+@router.post("/api/onboarding/profile-extras")
+def onboarding_profile_extras(req: ProfileExtras, ctx: dict = Depends(get_current_context)):
+    """Persist business_type / company_size / primary_goal into the active
+    business's settings.profile. Called by the wizard alongside the existing
+    update_business call so these structured fields become first-class
+    workspace metadata instead of free-text inside the description."""
+    from api import onboarding
+    profile = onboarding.set_profile_extras(
+        ctx["business_id"],
+        business_type=req.business_type,
+        company_size=req.company_size,
+        primary_goal=req.primary_goal,
+    )
+    return {"profile": profile}
+
+
+@router.get("/api/onboarding/profile-extras")
+def onboarding_get_profile_extras(ctx: dict = Depends(get_current_context)):
+    """Read what's already saved — used by the wizard to pre-fill form
+    fields on re-entry and by the dashboard to tune KPI selection."""
+    from api import onboarding
+    return {"profile": onboarding.get_profile_extras(ctx["business_id"])}

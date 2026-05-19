@@ -13,7 +13,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import {
   getOnboardingState, completeOnboardingStep, skipOnboarding, applyIndustrySetup,
-  getIndustryPreset,
+  getIndustryPreset, saveProfileExtras,
 } from '../services/onboarding';
 import { updateBusiness } from '../services/businesses';
 import { uploadDocument } from '../services/api';
@@ -172,6 +172,9 @@ export default function OnboardingWizard({ onClose }) {
     setBusy(true);
     setErr('');
     try {
+      // Keep the legacy human-readable description for back-compat with
+      // anywhere in the product that already parses it. The structured
+      // version lives in settings.profile via saveProfileExtras below.
       const description = [
         `Business type: ${profile.businessType}`,
         `Company size: ${profile.companySize}`,
@@ -182,6 +185,18 @@ export default function OnboardingWizard({ onClose }) {
         industry: profile.industry.trim(),
         description,
       });
+      // Write the structured fields. Failure here MUST NOT block the
+      // wizard — they're enrichment, not load-bearing for first-run.
+      try {
+        await saveProfileExtras({
+          business_type: profile.businessType,
+          company_size:  profile.companySize,
+          primary_goal:  profile.primaryGoal,
+        });
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.warn('[Onboarding] profile-extras save failed (non-fatal):', e?.message);
+      }
       window.dispatchEvent(new CustomEvent('nexus-business-changed', { detail: current.id }));
       await completeOnboardingStep('profile');
       setIndustryPreset(null);

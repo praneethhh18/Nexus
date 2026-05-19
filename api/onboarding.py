@@ -277,3 +277,69 @@ def reopen(business_id: str, user_id: str) -> Dict:
     _row(business_id, user_id)
     _write(business_id, user_id, {"skipped": 0, "step_celebrated": 0})
     return get_state(business_id, user_id)
+
+
+# ── Profile extras (business_type / company_size / primary_goal) ─────────
+# Persisted to business.settings.profile so other features can read them.
+# The wizard ALSO embeds them in the description text for human readability,
+# but settings.profile is the structured source of truth for code paths:
+#   - apply_industry_setup reads primary_goal to tune which agents are featured
+#   - team-invite UI hides itself when company_size = "1-5"
+#   - dashboard KPI strip swaps based on primary_goal
+import json as _json
+from api.businesses import BUSINESSES_TABLE as _BIZ_TABLE
+
+
+def set_profile_extras(business_id: str, *, business_type: str = "",
+                       company_size: str = "", primary_goal: str = "") -> Dict[str, str]:
+    """Merge profile extras into the business's settings JSON.
+
+    Safe to call repeatedly — only non-empty values overwrite. Returns the
+    final stored profile so the frontend can echo back what was saved.
+    """
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            f"SELECT settings FROM {_BIZ_TABLE} WHERE id = ?",
+            (business_id,),
+        ).fetchone()
+        if not row:
+            logger.warning(f"[Onboarding] set_profile_extras: business {business_id} not found")
+            return {}
+        try:
+            settings = _json.loads(row[0] or "{}")
+        except Exception:
+            settings = {}
+        profile = settings.get("profile") or {}
+        if business_type:  profile["business_type"] = business_type.strip()
+        if company_size:   profile["company_size"]  = company_size.strip()
+        if primary_goal:   profile["primary_goal"]  = primary_goal.strip()
+        settings["profile"] = profile
+        conn.execute(
+            f"UPDATE {_BIZ_TABLE} SET settings = ?, updated_at = ? WHERE id = ?",
+            (_json.dumps(settings), now_iso(), business_id),
+        )
+        conn.commit()
+        return profile
+    finally:
+        conn.close()
+
+
+def get_profile_extras(business_id: str) -> Dict[str, str]:
+    """Read the structured profile extras. Returns an empty dict if the
+    business has nothing recorded yet."""
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            f"SELECT settings FROM {_BIZ_TABLE} WHERE id = ?",
+            (business_id,),
+        ).fetchone()
+        if not row:
+            return {}
+        try:
+            settings = _json.loads(row[0] or "{}")
+        except Exception:
+            return {}
+        return settings.get("profile") or {}
+    finally:
+        conn.close()
