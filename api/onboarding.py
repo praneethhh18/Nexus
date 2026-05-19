@@ -37,15 +37,15 @@ STEPS: List[Dict[str, str]] = [
     {
         "key": "profile",
         "title": "Business profile",
-        "description": "Name, industry, size, timezone, currency",
-        "cta": "Open profile",
+        "description": "Business name, type, industry, size, and first goal",
+        "cta": "Save profile",
         "route": "/settings",
     },
     {
         "key": "agents",
-        "title": "Choose your team",
-        "description": "Pick which of the six agents to enable first",
-        "cta": "Configure agents",
+        "title": "Industry workspace",
+        "description": "Review the recommended tools for this industry",
+        "cta": "Use recommendations",
         "route": "/agents",
     },
     {
@@ -57,8 +57,8 @@ STEPS: List[Dict[str, str]] = [
     },
     {
         "key": "document",
-        "title": "Upload your first document",
-        "description": "A PDF or DOCX into the knowledge base so you can ask questions about it",
+        "title": "Upload company documents",
+        "description": "Add policies, catalogs, FAQs, or service docs so the workspace starts with your context",
         "cta": "Upload document",
         "route": "/documents",
     },
@@ -153,10 +153,16 @@ def _autodetect(business_id: str) -> Dict[str, bool]:
             try:
                 from api.businesses import BUSINESSES_TABLE
                 row = conn.execute(
-                    f"SELECT name, industry FROM {BUSINESSES_TABLE} WHERE id = ?",
+                    f"SELECT name, industry, description FROM {BUSINESSES_TABLE} WHERE id = ?",
                     (business_id,),
                 ).fetchone()
-                if row and (row["name"] or "").strip():
+                desc = row["description"] or "" if row else ""
+                has_full_profile = (
+                    "Business type:" in desc
+                    and "Company size:" in desc
+                    and "Primary goal:" in desc
+                )
+                if row and (row["name"] or "").strip() and (row["industry"] or "").strip() and has_full_profile:
                     auto["profile"] = True
             except Exception:
                 pass

@@ -60,6 +60,9 @@ export const rejectDial = (actionId, reason = '') =>
     body: JSON.stringify({ reason }),
   });
 
-// ── On-demand dial (queues OR direct-dials per VOX_BYPASS_APPROVAL_FOR) ───
-export const dialContact = (contactId) =>
-  req(`/api/vox/dial?contact_id=${encodeURIComponent(contactId)}`, { method: 'POST' });
+// ── On-demand dial request (queued for approval by backend) ────────────────
+export const dialContact = (contactId, purpose = '') =>
+  req('/api/vox/dial', {
+    method: 'POST',
+    body: JSON.stringify({ contact_id: contactId, purpose }),
+  });

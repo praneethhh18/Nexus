@@ -14,6 +14,7 @@ import sys
 import json
 import time
 import asyncio
+import threading
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
@@ -58,9 +59,23 @@ except Exception as _migr_err:
     logger.error(f"[Boot] Migration runner failed: {_migr_err}")
     raise
 
-# Auto-load sample docs
-from utils.sample_docs_generator import ensure_documents_loaded
-ensure_documents_loaded()
+def _start_sample_docs_loader() -> None:
+    """Warm the demo knowledge base without blocking API startup."""
+    if (os.getenv("NEXUS_SKIP_SAMPLE_DOCS") or "").strip().lower() in ("1", "true", "yes", "on"):
+        logger.info("[Boot] Sample document loading skipped by NEXUS_SKIP_SAMPLE_DOCS")
+        return
+
+    def _load() -> None:
+        try:
+            from utils.sample_docs_generator import ensure_documents_loaded
+            ensure_documents_loaded()
+        except Exception as e:
+            logger.warning(f"[Boot] Sample document loading failed: {e}")
+
+    threading.Thread(target=_load, name="nexus-sample-docs-loader", daemon=True).start()
+
+
+_start_sample_docs_loader()
 
 # Start monitor
 try:
@@ -136,16 +151,18 @@ except Exception as e:
     logger.warning(f"Workspace SMTP auto-seed failed: {e}")
 
 # Apply pending schema migrations (idempotent, no-op on already-applied).
-try:
-    from db.migrate import apply_pending
-    _new_migrations = apply_pending()
-    if _new_migrations:
-        logger.info(
-            f"[Boot] applied {len(_new_migrations)} migration(s): "
-            + ", ".join(f"{m['version']:04d}_{m['name']}" for m in _new_migrations)
-        )
-except Exception as e:
-    logger.warning(f"Migration pass failed: {e}")
+# (First migration run happens above at ~line 53, skipping duplicate here to avoid
+# running the migration runner twice at boot time.)
+# try:
+#     from db.migrate import apply_pending
+#     _new_migrations = apply_pending()
+#     if _new_migrations:
+#         logger.info(
+#             f"[Boot] applied {len(_new_migrations)} migration(s): "
+#             + ", ".join(f"{m['version']:04d}_{m['name']}" for m in _new_migrations)
+#         )
+# except Exception as e:
+#     logger.warning(f"Migration pass failed: {e}")
 
 # ── Sentry — production error reporting ──────────────────────────────────────
 # Only fires when SENTRY_DSN is set (set in production .env, unset in dev).
@@ -183,6 +200,11 @@ app = FastAPI(
     version=VERSION,
     description="Multi-tenant, multi-agent AI business assistant — runs locally on Ollama.",
 )
+
+
+@app.get("/api/ready")
+def ready():
+    return {"status": "ready", "version": VERSION}
 
 
 @app.on_event("shutdown")
@@ -484,6 +506,7 @@ from api.routers import (
     smtp               as _r_smtp,
     voice_calls        as _r_voice_calls,
     voice_agent_tools  as _r_voice_agent_tools,
+    vox                as _r_vox,
     waitlist           as _r_waitlist,
     email_templates    as _r_email_templates,
     voice_inbound      as _r_voice_inbound,
@@ -502,7 +525,7 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_workflows, _r_voice, _r_settings, _r_search, _r_backup, _r_intake,
            _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply, _r_forge,
            _r_meeting_notes, _r_doc_intake, _r_smtp, _r_voice_calls,
-           _r_voice_agent_tools, _r_waitlist, _r_email_templates,
+           _r_voice_agent_tools, _r_vox, _r_waitlist, _r_email_templates,
            _r_voice_inbound, _r_privacy_bridge, _r_billing, _r_whatsapp_tenant):
     app.include_router(_r.router)
 

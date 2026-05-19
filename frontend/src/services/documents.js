@@ -57,7 +57,9 @@ export const extractDocFromUpload = async (file) => {
 };
 
 export const downloadDocument = async (id, filename) => {
-  const res = await fetch(`${BASE}/${id}/download`, { headers: headers({ 'Content-Type': undefined }) });
+  const h = headers();
+  delete h['Content-Type'];
+  const res = await fetch(`${BASE}/${id}/download`, { headers: h });
   if (!res.ok) throw new Error(await res.text());
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);

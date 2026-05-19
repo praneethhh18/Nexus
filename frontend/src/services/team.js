@@ -33,7 +33,7 @@ export const listInvites = (includeAccepted = false) =>
 export const createInvite = (email, role = 'member') =>
   req('/api/team/invites', { method: 'POST', body: JSON.stringify({ email, role }) });
 export const revokeInvite = (token) =>
-  req(`/api/team/invites/${token}`, { method: 'DELETE' });
+  req(`/api/team/invites/${encodeURIComponent(token)}`, { method: 'DELETE' });
 export const previewInvite = (token) =>
   req(`/api/team/invites/preview?token=${encodeURIComponent(token)}`);
 export const acceptInvite = (token) =>

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
-import { markNotificationRead, deleteNotification } from '../services/onboarding';
+import { markNotificationRead, deleteNotification, getOnboardingState } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
 import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
@@ -103,6 +103,12 @@ export default function Layout() {
   useEffect(() => {
     reloadAll();
     listBusinesses().then(setBusinessesState).catch(() => {});
+    getOnboardingState().then((s) => {
+      const profileDone = (s.steps || []).find(x => x.key === 'profile')?.done;
+      if (!profileDone || (!s.skipped && !(s.all_done && s.celebrated))) {
+        setShowOnboarding(true);
+      }
+    }).catch(() => {});
     const iv = setInterval(() => {
       getNotifications().then(setNotifData).catch(() => {});
       approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
@@ -111,6 +117,10 @@ export default function Layout() {
       setCurrentBizId(e.detail);
       setBusinessesState(getBusinesses());
       reloadAll();
+      getOnboardingState().then((s) => {
+        const profileDone = (s.steps || []).find(x => x.key === 'profile')?.done;
+        setShowOnboarding(!profileDone || (!s.skipped && !(s.all_done && s.celebrated)));
+      }).catch(() => {});
     };
     const onDevModeChange = () => {
       setDevMode(localStorage.getItem('nexus_dev_mode') === '1');

@@ -10,7 +10,7 @@
 > ```bash
 > # Terminal 1 — backend
 > cd c:\Users\Praneeth p\OneDrive\Desktop\NexusAgent
-> python -m uvicorn api.server:app --port 8000 --reload
+> `
 >
 > # Terminal 2 — frontend
 > cd frontend && npm run dev    # http://localhost:5173

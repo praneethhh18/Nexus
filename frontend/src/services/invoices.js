@@ -39,7 +39,9 @@ export const invoiceSummary = () => req('/summary');
 export const invoicePdfUrl = (id) => {
   // Must download via fetch (auth headers needed), not as a direct link
   return (async () => {
-    const res = await fetch(`${BASE}/${id}/pdf`, { headers: headers({ 'Content-Type': undefined }) });
+    const h = headers();
+    delete h['Content-Type'];
+    const res = await fetch(`${BASE}/${id}/pdf`, { headers: h });
     if (!res.ok) throw new Error(await res.text());
     return res.blob();
   })();

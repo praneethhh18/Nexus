@@ -16,6 +16,9 @@ outputs/workflow_outputs/
 data/nexusagent.db
 data/.jwt_secret
 data/.whatsapp_secret
+data/.nexus_smtp_secret
+# Local scratch / temp notes — never committed
+ztest.md
 data/certbot/
 backups/
 workflows/saved/

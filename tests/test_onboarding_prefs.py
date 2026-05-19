@@ -41,6 +41,59 @@ def test_onboarding_complete_step_persists():
         assert by_key["agents"]["done"] is False
 
 
+def test_onboarding_profile_autodetect_requires_industry():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = os.path.join(tmp, "nexus.db")
+        onb, _ = _fresh(db)
+
+        from api.businesses import create_business, update_business
+
+        biz = create_business("Acme", owner_id="owner-1")
+        state = onb.get_state(biz["id"], "owner-1")
+        by_key = {s["key"]: s for s in state["steps"]}
+        assert by_key["profile"]["done"] is False
+
+        update_business(biz["id"], "owner-1", {"industry": "SaaS"})
+        state = onb.get_state(biz["id"], "owner-1")
+        by_key = {s["key"]: s for s in state["steps"]}
+        assert by_key["profile"]["done"] is False
+
+        update_business(biz["id"], "owner-1", {
+            "description": "Business type: Startup\nCompany size: 6-20\nPrimary goal: Sales and CRM",
+        })
+        state = onb.get_state(biz["id"], "owner-1")
+        by_key = {s["key"]: s for s in state["steps"]}
+        assert by_key["profile"]["done"] is True
+
+
+def test_industry_setup_applies_workspace_defaults_idempotently():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = os.path.join(tmp, "nexus.db")
+        _fresh(db)
+
+        from api.businesses import create_business
+        from api.industry_setup import apply_industry_setup
+        from agents.personas import list_personas
+        from api.agent_schedule import get_overrides
+        from api.email_templates import list_templates
+
+        biz = create_business("Acme SaaS", owner_id="owner-1", industry="SaaS")
+        first = apply_industry_setup(biz["id"], "owner-1")
+        second = apply_industry_setup(biz["id"], "owner-1")
+
+        assert first["industry"] == "SaaS"
+        assert "stale_deal_watcher" in first["priority_agents"]
+        assert first["schedules"]["email_triage"] == 15
+        assert get_overrides(biz["id"])["email_triage"] == 15
+        assert all(p["enabled"] is True for p in list_personas(biz["id"]))
+
+        names = [t["name"] for t in list_templates(biz["id"])]
+        assert "Demo follow-up" in names
+        assert "Renewal check-in" in names
+        assert second["created_templates"] == []
+        assert names.count("Demo follow-up") == 1
+
+
 def test_onboarding_all_done_sets_completed_at():
     with tempfile.TemporaryDirectory() as tmp:
         db = os.path.join(tmp, "nexus.db")

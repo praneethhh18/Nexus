@@ -21,6 +21,9 @@ async function req(path, opts = {}) {
 }
 
 export const getOnboardingState = () => req('/api/onboarding');
+export const getIndustryPreset = () => req('/api/onboarding/industry-preset');
+export const applyIndustrySetup = () =>
+  req('/api/onboarding/industry-setup', { method: 'POST' });
 export const completeOnboardingStep = (stepKey) =>
   req(`/api/onboarding/complete/${encodeURIComponent(stepKey)}`, { method: 'POST' });
 export const skipOnboarding = () => req('/api/onboarding/skip', { method: 'POST' });
