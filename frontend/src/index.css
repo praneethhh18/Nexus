@@ -983,3 +983,17 @@ body {
   color: #06281e;
 }
 .round-check.is-done:hover { background: var(--color-accent-hover); border-color: var(--color-accent-hover); transform: scale(1); }
+
+/* ── Onboarding wizard — responsive grid ───────────────────────────────
+   ProfileStep uses .onb-grid-2col so we can collapse to a single column
+   on phones without rewriting the inline grid template per field. */
+.onb-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 520px) {
+  .onb-grid-2col {
+    grid-template-columns: 1fr;
+  }
+}

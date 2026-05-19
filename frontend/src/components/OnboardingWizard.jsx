@@ -109,6 +109,10 @@ export default function OnboardingWizard({ onClose }) {
   const [err, setErr] = useState('');
   const [uploadedName, setUploadedName] = useState('');
   const [industryPreset, setIndustryPreset] = useState(null);
+  // Per-field validation messages for the profile step. Keyed by the
+  // field name in `profile` (name / businessType / industry / companySize /
+  // primaryGoal). Cleared field-by-field as the user fixes each.
+  const [fieldErrors, setFieldErrors] = useState({});
   const current = getCurrentBusiness();
   const [profile, setProfile] = useState(() => ({
     name: current?.name || '',
@@ -189,10 +193,19 @@ export default function OnboardingWizard({ onClose }) {
       setErr('No active business found. Sign in again and retry.');
       return;
     }
-    if (!profile.name.trim() || !profile.industry.trim() || !profile.businessType || !profile.companySize || !profile.primaryGoal) {
-      setErr('Complete the business profile fields before continuing.');
+    // Inline validation — show per-field error, not a single banner.
+    const validation = {};
+    if (!profile.name.trim())     validation.name         = 'Enter the business name your customers know.';
+    if (!profile.businessType)    validation.businessType = 'Pick the closest match.';
+    if (!profile.industry.trim()) validation.industry     = 'Industry tunes terminology + sample data.';
+    if (!profile.companySize)     validation.companySize  = 'Choose a size band.';
+    if (!profile.primaryGoal)     validation.primaryGoal  = "Tell us what to focus on first.";
+    if (Object.keys(validation).length) {
+      setFieldErrors(validation);
+      setErr('A few fields still need answers.');
       return;
     }
+    setFieldErrors({});
     setBusy(true);
     setErr('');
     try {
@@ -359,11 +372,16 @@ export default function OnboardingWizard({ onClose }) {
       )}
 
       {currentKey === 'profile' && (
-        <ProfileStep profile={profile} setProfile={setProfile} />
+        <ProfileStep profile={profile} setProfile={setProfile} errors={fieldErrors} />
       )}
 
       {currentKey === 'agents' && (
-        <IndustryStep industry={industryPreset?.industry || selectedIndustry} preset={presetTools} />
+        <IndustryStep
+          industry={industryPreset?.industry || selectedIndustry}
+          preset={presetTools}
+          primaryGoal={profile.primaryGoal}
+          companySize={profile.companySize}
+        />
       )}
 
       {currentKey === 'document' && (
@@ -448,34 +466,105 @@ export default function OnboardingWizard({ onClose }) {
   );
 }
 
-function ProfileStep({ profile, setProfile }) {
+// ── Industry auto-detection from the business name ───────────────────────
+// Lightweight heuristic. Doesn't replace the user's choice — only suggests
+// when the dropdown is still on "Choose industry". Keywords were picked
+// from common business-name patterns in the seed data.
+const INDUSTRY_HINTS = [
+  { match: /hospital|clinic|dental|diagnostic|pharma|medic|wellness/i,   industry: 'Healthcare' },
+  { match: /school|coaching|tutor|academy|institute|class(es)?|kg|prep/i, industry: 'Tutoring / coaching' },
+  { match: /restaurant|cafe|kitchen|bistro|biryani|dhab(a|ha)|bake/i,    industry: 'Restaurant / cafe' },
+  { match: /salon|spa|beauty|parlou?r|hair|nail|mehndi/i,                industry: 'Beauty / salon / wellness' },
+  { match: /saree|kurt|textile|fashion|garment|fabric|boutique/i,        industry: 'Garment / textile retail' },
+  { match: /cargo|roadlines|transport|movers|logistic|freight|shipping/i,industry: 'Logistics / transport' },
+  { match: /construct|builders|civil|contractor|interior|reno|architect/i,industry: 'Construction / contracting' },
+  { match: /garage|auto|motors|car care|service centre|repair/i,         industry: 'Auto repair / garage' },
+  { match: /photo|studio|films|frames|capture|moments/i,                  industry: 'Photography / event services' },
+  { match: /tour|travel|holiday|trip|adventures|wanderlust/i,             industry: 'Travel / tour operator' },
+  { match: /realty|estate|properties|broker|housing/i,                    industry: 'Real estate broker' },
+  { match: /tech|labs|ai|software|cloud|analytics|saas|app/i,             industry: 'SaaS' },
+  { match: /\b(college|university|edu)\b/i,                               industry: 'Education' },
+  { match: /law|legal|advoc|attorney|chambers/i,                          industry: 'Legal' },
+  { match: /tax|chartered|accountant|wealth|advisor|insurance/i,          industry: 'Finance' },
+  { match: /hotel|stays|resort|villa|inn|lodge|rooms/i,                   industry: 'Hospitality' },
+  { match: /mart|store|shop|wholesale|trading|retail/i,                   industry: 'Ecommerce' },
+  { match: /electric|plumb|paint|carpent|pest|clean(ing)?/i,              industry: 'Local services' },
+  { match: /factory|industries|works|engineering|metal|steel|food proc/i, industry: 'Manufacturing' },
+];
+
+function detectIndustryFromName(name) {
+  if (!name) return null;
+  for (const rule of INDUSTRY_HINTS) {
+    if (rule.match.test(name)) return rule.industry;
+  }
+  return null;
+}
+
+
+function ProfileStep({ profile, setProfile, errors }) {
   const update = (key, value) => setProfile((p) => ({ ...p, [key]: value }));
+  // Industry hint based on what the user typed. Only shown when the
+  // industry dropdown hasn't been chosen yet — never overrides the user.
+  const detected = detectIndustryFromName(profile.name);
+  const showHint = !!detected && !profile.industry;
+
+  const applyHint = () => update('industry', detected);
+
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Field label="Business name">
-          <input className="field-input" value={profile.name} onChange={(e) => update('name', e.target.value)} placeholder="Acme Services" maxLength={120} autoFocus />
+      {/* Responsive grid — 2 cols on tablet+, 1 col on phones */}
+      <div className="onb-grid-2col">
+        <Field label="Business name" hint="The trading name your customers know you by." error={errors?.name}>
+          <input
+            className="field-input"
+            value={profile.name}
+            onChange={(e) => update('name', e.target.value)}
+            placeholder="e.g. Apollo Family Clinic"
+            maxLength={120}
+            autoFocus
+          />
+          {showHint && (
+            <div style={{
+              marginTop: 6, padding: '6px 10px', fontSize: 11.5,
+              background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+              border: '1px solid color-mix(in srgb, var(--color-accent) 22%, var(--color-border))',
+              borderRadius: 6, color: 'var(--color-text)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+            }}>
+              <span>Looks like a <strong>{detected}</strong> business?</span>
+              <button
+                type="button"
+                onClick={applyHint}
+                style={{
+                  fontSize: 11, padding: '3px 8px', borderRadius: 4,
+                  border: '1px solid var(--color-accent)',
+                  background: 'transparent', color: 'var(--color-accent)',
+                  cursor: 'pointer', fontWeight: 600,
+                }}
+              >Use this</button>
+            </div>
+          )}
         </Field>
-        <Field label="Business type">
+        <Field label="Business type" hint="Single founder, agency, enterprise team — used to tune feature defaults." error={errors?.businessType}>
           <select className="field-select" value={profile.businessType} onChange={(e) => update('businessType', e.target.value)}>
             <option value="">Choose type</option>
             {BUSINESS_TYPES.map(x => <option key={x} value={x}>{x}</option>)}
           </select>
         </Field>
-        <Field label="Industry">
+        <Field label="Industry" hint="Drives terminology + sample data. You can change this later." error={errors?.industry}>
           <select className="field-select" value={profile.industry} onChange={(e) => update('industry', e.target.value)}>
             <option value="">Choose industry</option>
             {INDUSTRIES.map(x => <option key={x} value={x}>{x}</option>)}
           </select>
         </Field>
-        <Field label="Company size">
+        <Field label="Company size" hint="We hide team-invite prompts for solo founders + emphasise SSO/roles for 50+." error={errors?.companySize}>
           <select className="field-select" value={profile.companySize} onChange={(e) => update('companySize', e.target.value)}>
             <option value="">Choose size</option>
             {COMPANY_SIZES.map(x => <option key={x} value={x}>{x}</option>)}
           </select>
         </Field>
       </div>
-      <Field label="Main goal">
+      <Field label="Main goal" hint="What you want NexusAgent to focus on first — we'll pin those agents to the top of your sidebar." error={errors?.primaryGoal}>
         <select className="field-select" value={profile.primaryGoal} onChange={(e) => update('primaryGoal', e.target.value)}>
           <option value="">What should NexusAgent help with first?</option>
           {GOALS.map(x => <option key={x} value={x}>{x}</option>)}
@@ -493,7 +582,29 @@ function ProfileStep({ profile, setProfile }) {
   );
 }
 
-function IndustryStep({ industry, preset }) {
+// Goal → agent emphasis. Used to call out which agents the user's chosen
+// goal will surface in the first-run experience. Keeps the wizard
+// honest — the inputs collected on the profile step actually shape the
+// step that follows.
+const GOAL_AGENT_HIGHLIGHTS = {
+  'Sales and CRM':              { focus: 'Atlas + Vox + Stale-deal watcher', why: 'so leads never go cold and outbound calls go out daily' },
+  'Customer support':           { focus: 'Inbox + WhatsApp',                  why: 'so every customer message gets a draft reply within minutes' },
+  'Operations automation':      { focus: 'Workflows + Morning briefing',      why: 'so recurring ops run on autopilot and you wake up to a plan' },
+  'Document intelligence':      { focus: 'Documents + Forge',                 why: 'so company docs become a queryable knowledge base' },
+  'Finance and invoices':       { focus: 'Kira + Invoice reminders',          why: 'so overdue invoices get chased without you remembering' },
+  'Team productivity':          { focus: 'Tasks + Meeting prep',              why: 'so the team starts each day with prepped briefs + a clean to-do' },
+};
+
+function IndustryStep({ industry, preset, primaryGoal, companySize }) {
+  const goalHighlight = GOAL_AGENT_HIGHLIGHTS[primaryGoal];
+  // For very small teams (1-5) we don't want to overpromise enterprise
+  // features. For larger teams (51+) we explicitly call out SSO + roles.
+  const sizeBand = companySize === '1-5'
+    ? "Single-founder workspace — team-invite prompts hidden until you grow."
+    : companySize && ['51-200','201-500','500+'].includes(companySize)
+      ? "Team workspace — SSO, roles, and audit log surfaced for compliance."
+      : null;
+
   return (
     <div style={{ display: 'grid', gap: 12 }}>
       <div style={{
@@ -507,7 +618,7 @@ function IndustryStep({ industry, preset }) {
           <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>These tools stay available, but the first experience is focused.</div>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+      <div className="onb-grid-2col" style={{ gap: 8 }}>
         {preset.map((item) => (
           <div key={item} style={{
             padding: 10, borderRadius: 'var(--r-sm)',
@@ -520,6 +631,32 @@ function IndustryStep({ industry, preset }) {
           </div>
         ))}
       </div>
+
+      {goalHighlight && (
+        <div style={{
+          padding: 12, borderRadius: 'var(--r-sm)',
+          background: 'color-mix(in srgb, var(--color-info) 7%, var(--color-surface-1))',
+          border: '1px solid color-mix(in srgb, var(--color-info) 25%, var(--color-border))',
+          fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-info)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 }}>
+            Because your goal is {primaryGoal}
+          </div>
+          We'll pin <strong>{goalHighlight.focus}</strong> {goalHighlight.why}.
+        </div>
+      )}
+
+      {sizeBand && (
+        <div style={{
+          padding: 10, borderRadius: 'var(--r-sm)',
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.5,
+        }}>
+          {sizeBand}
+        </div>
+      )}
+
       <div style={{
         padding: 10,
         borderRadius: 'var(--r-sm)',
@@ -566,11 +703,25 @@ function DocumentStep({ busy, uploadedName, onUpload }) {
   );
 }
 
-function Field({ label, children }) {
+function Field({ label, children, hint, error }) {
+  // Label + tooltip helper. `hint` is the explanatory text shown muted
+  // below the label; appears whenever the user is looking at this field.
+  // `error` is the inline validation message — shown ONLY when set, in
+  // red, replacing the hint. Keeps the form chrome stable as the user
+  // types (the row height doesn't jump between hint and error).
   return (
     <label style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <span style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 600 }}>{label}</span>
       {children}
+      {error ? (
+        <span style={{ fontSize: 11, color: 'var(--color-err)', marginTop: 2 }}>
+          {error}
+        </span>
+      ) : hint ? (
+        <span style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2, lineHeight: 1.4 }}>
+          {hint}
+        </span>
+      ) : null}
     </label>
   );
 }
