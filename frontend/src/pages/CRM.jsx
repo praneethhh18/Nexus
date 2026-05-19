@@ -19,6 +19,7 @@ import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../com
 import { TagChips, TagPicker } from '../components/TagChips';
 import TagFilterBar, { filterItems } from '../components/TagFilterBar';
 import { getCached, setCached, keyFor } from '../services/dataCache';
+import { useTerm } from '../services/industryTerms';
 import EntityImportWizard from '../components/EntityImportWizard';
 import ActivityTimeline from '../components/ActivityTimeline';
 import SuggestionPanel from '../components/SuggestionPanel';
@@ -300,6 +301,10 @@ const CRM_CACHE_KEY = 'crm:page';
 
 export default function CRM() {
   const navigate = useNavigate();
+  // Industry-aware vocabulary — same product, the user sees "Patients"
+  // (Healthcare), "Listings" (Real estate), "Students" (Education), etc.
+  // Fallback for businesses with no industry: generic CRM terms.
+  const t = useTerm();
   const _cached = getCached(keyFor(CRM_CACHE_KEY)) || {};
   const [tab, setTab] = useState('contacts');
   const [overview, setOverview] = useState(_cached.overview ?? null);
@@ -411,15 +416,15 @@ export default function CRM() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>CRM</h1>
-          <p>Contacts, companies, and your deal pipeline</p>
+          <p>{t('contacts')}, {t('companies').toLowerCase()}, and your {t('deal_pipeline').toLowerCase()}</p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn-ghost" onClick={() => setShowImport(true)} title="Import CSV / Excel">
             <Upload size={13} /> Import
           </button>
-          {tab === 'contacts' && <button className="btn-primary" onClick={() => setModal({ kind: 'contact', record: null })}><Plus size={13} /> Add contact</button>}
-          {tab === 'companies' && <button className="btn-primary" onClick={() => setModal({ kind: 'company', record: null })}><Plus size={13} /> Add company</button>}
-          {tab === 'deals' && <button className="btn-primary" onClick={() => setModal({ kind: 'deal', record: null })}><Plus size={13} /> Add deal</button>}
+          {tab === 'contacts' && <button className="btn-primary" onClick={() => setModal({ kind: 'contact', record: null })}><Plus size={13} /> {t('contact_add')}</button>}
+          {tab === 'companies' && <button className="btn-primary" onClick={() => setModal({ kind: 'company', record: null })}><Plus size={13} /> Add {t('company').toLowerCase()}</button>}
+          {tab === 'deals' && <button className="btn-primary" onClick={() => setModal({ kind: 'deal', record: null })}><Plus size={13} /> Add {t('deal').toLowerCase()}</button>}
         </div>
       </div>
 
@@ -433,10 +438,10 @@ export default function CRM() {
       {overview && (
         <div style={{ padding: '0 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 8 }}>
           {[
-            { label: 'Contacts', value: overview.contacts, icon: Users, color: 'var(--color-info)' },
-            { label: 'Companies', value: overview.companies, icon: Building2, color: '#a78bfa' },
-            { label: 'Open deals', value: `${overview.open_deals_count} · ${money(overview.open_deals_value)}`, icon: Briefcase, color: 'var(--color-warn)' },
-            { label: 'Won this month', value: money(overview.won_this_month), icon: TrendingUp, color: 'var(--color-ok)' },
+            { label: t('contacts'),     value: overview.contacts, icon: Users, color: 'var(--color-info)' },
+            { label: t('companies'),    value: overview.companies, icon: Building2, color: '#a78bfa' },
+            { label: `Open ${t('deals').toLowerCase()}`, value: `${overview.open_deals_count} · ${money(overview.open_deals_value)}`, icon: Briefcase, color: 'var(--color-warn)' },
+            { label: t('kpi_won'),      value: money(overview.won_this_month), icon: TrendingUp, color: 'var(--color-ok)' },
           ].map(({ label, value, icon: Icon, color }, i) => (
             <div key={i} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}22`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -454,10 +459,10 @@ export default function CRM() {
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)' }}>
         {[
-          ['leads', 'Leads', Inbox],
-          ['contacts', 'Contacts', Users],
-          ['companies', 'Companies', Building2],
-          ['deals', 'Deals Pipeline', Briefcase],
+          ['leads',     t('leads'),         Inbox],
+          ['contacts',  t('contacts'),      Users],
+          ['companies', t('companies'),     Building2],
+          ['deals',     t('deal_pipeline'), Briefcase],
         ].map(([k, lbl, Icon]) => (
           <button key={k} onClick={() => setTab(k)} className={tab === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>
             <Icon size={12} /> {lbl}
@@ -479,11 +484,11 @@ export default function CRM() {
           visibleContacts.length === 0 ? (
             <EmptyState
               icon={Users}
-              title={contacts.length === 0 ? "No contacts yet" : "No contacts match this filter"}
+              title={contacts.length === 0 ? `No ${t('contacts').toLowerCase()} yet` : `No ${t('contacts').toLowerCase()} match this filter`}
               description={contacts.length === 0
-                ? "Add your first lead manually or import a CSV of contacts to let Arjun track your pipeline and Sage prep meetings."
+                ? `Add your first ${t('primary_record')} manually or import a CSV — Arjun will start tracking your pipeline and Sage will prep meetings.`
                 : "Try clearing the tag filter or search to see everyone."}
-              primaryLabel={contacts.length === 0 ? "Add contact" : undefined}
+              primaryLabel={contacts.length === 0 ? t('contact_add') : undefined}
               onPrimary={contacts.length === 0 ? () => setModal({ kind: 'contact', record: null }) : undefined}
               secondaryLabel={contacts.length === 0 ? "Import CSV" : undefined}
               onSecondary={contacts.length === 0 ? () => setShowImport(true) : undefined}
@@ -570,11 +575,11 @@ export default function CRM() {
           visibleCompanies.length === 0 ? (
             <EmptyState
               icon={Building2}
-              title={companies.length === 0 ? "No companies yet" : "No companies match this filter"}
+              title={companies.length === 0 ? `No ${t('companies').toLowerCase()} yet` : `No ${t('companies').toLowerCase()} match this filter`}
               description={companies.length === 0
-                ? "Add the companies you sell to or work with — deals and contacts hang off them."
+                ? `Add the ${t('companies').toLowerCase()} you work with — ${t('deals').toLowerCase()} and ${t('contacts').toLowerCase()} hang off them.`
                 : "Try clearing the tag filter or search."}
-              primaryLabel={companies.length === 0 ? "Add company" : undefined}
+              primaryLabel={companies.length === 0 ? `Add ${t('company').toLowerCase()}` : undefined}
               onPrimary={companies.length === 0 ? () => setModal({ kind: 'company', record: null }) : undefined}
             />
           ) : (
@@ -614,9 +619,9 @@ export default function CRM() {
           deals.length === 0 ? (
             <EmptyState
               icon={Briefcase}
-              title="No deals in the pipeline"
-              description="Create your first deal — Arjun will flag it as stale if it hasn't moved in 2+ weeks, so the pipeline stays alive."
-              primaryLabel="Add deal"
+              title={`No ${t('deals').toLowerCase()} in the pipeline`}
+              description={`Create your first ${t('deal').toLowerCase()} — Arjun will flag it as stale if it hasn't moved in 2+ weeks, so the pipeline stays alive.`}
+              primaryLabel={`Add ${t('deal').toLowerCase()}`}
               onPrimary={() => setModal({ kind: 'deal', record: null })}
             />
           ) : (
@@ -638,19 +643,19 @@ export default function CRM() {
       </div>
 
       {modal?.kind === 'contact' && (
-        <Modal title={modal.record ? 'Edit contact' : 'Add contact'} onClose={() => setModal(null)} wide>
+        <Modal title={modal.record ? `Edit ${t('contact').toLowerCase()}` : t('contact_add')} onClose={() => setModal(null)} wide>
           <ContactForm initial={modal.record} companies={companies}
             onSubmit={(d) => handleSubmit('contact', d)} onCancel={() => setModal(null)} />
         </Modal>
       )}
       {modal?.kind === 'company' && (
-        <Modal title={modal.record ? 'Edit company' : 'Add company'} onClose={() => setModal(null)} wide>
+        <Modal title={modal.record ? `Edit ${t('company').toLowerCase()}` : `Add ${t('company').toLowerCase()}`} onClose={() => setModal(null)} wide>
           <CompanyForm initial={modal.record}
             onSubmit={(d) => handleSubmit('company', d)} onCancel={() => setModal(null)} />
         </Modal>
       )}
       {modal?.kind === 'deal' && (
-        <Modal title={modal.record ? 'Edit deal' : 'Add deal'} onClose={() => setModal(null)} wide>
+        <Modal title={modal.record ? `Edit ${t('deal').toLowerCase()}` : `Add ${t('deal').toLowerCase()}`} onClose={() => setModal(null)} wide>
           <DealForm initial={modal.record} contacts={contacts} companies={companies}
             onSubmit={(d) => handleSubmit('deal', d)} onCancel={() => setModal(null)} />
         </Modal>

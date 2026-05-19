@@ -17,6 +17,7 @@ import PlanWelcomeModal from '../components/PlanWelcomeModal';
 import Skeleton from '../components/Skeleton';
 import Analytics from './Analytics';
 import { getCached, setCached, keyFor } from '../services/dataCache';
+import { useTerm } from '../services/industryTerms';
 
 // Cache key for the full dashboard payload (namespaced by current business
 // id inside keyFor()). 60s TTL — quick enough to feel fresh, long enough to
@@ -70,6 +71,10 @@ export default function Dashboard() {
   // module-level cache so navigating BACK to the dashboard renders the real
   // numbers instantly instead of flashing skeleton → ₹0 KPIs → real data.
   // The background reload() below still fires and replaces anything stale.
+  // Industry-aware KPI labels — Healthcare sees "Upcoming appointments",
+  // Real estate sees "Active listings", etc. Falls through to generic CRM
+  // labels for businesses without an industry set.
+  const t = useTerm();
   const _cached = getCached(keyFor(DASH_CACHE_KEY)) || {};
 
   const [health, setHealth] = useState(_cached.health ?? null);
@@ -559,31 +564,31 @@ export default function Dashboard() {
         {/* Top KPI row — the numbers that matter */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
           <KpiCard
-            icon={Briefcase} label="Open pipeline" color="var(--color-warn)"
+            icon={Briefcase} label={t('kpi_pipeline')} color="var(--color-warn)"
             loading={!pipe}
             value={money(pipelineTotal)}
-            sub={`${(pipe?.by_stage?.lead?.count || 0) + (pipe?.by_stage?.qualified?.count || 0) + (pipe?.by_stage?.proposal?.count || 0) + (pipe?.by_stage?.negotiation?.count || 0)} deals`}
+            sub={`${(pipe?.by_stage?.lead?.count || 0) + (pipe?.by_stage?.qualified?.count || 0) + (pipe?.by_stage?.proposal?.count || 0) + (pipe?.by_stage?.negotiation?.count || 0)} ${t('deals').toLowerCase()}`}
             onClick={() => navigate('/crm')}
           />
           <KpiCard
-            icon={TrendingUp} label="Won this month" color="var(--color-ok)"
+            icon={TrendingUp} label={t('kpi_won')} color="var(--color-ok)"
             loading={!crm && !pipe}
             value={money(crm?.won_this_month || 0)}
             sub={`${pipe?.by_stage?.won?.count || 0} closed`}
             onClick={() => navigate('/crm')}
           />
           <KpiCard
-            icon={Receipt} label="Outstanding invoices" color="var(--color-info)"
+            icon={Receipt} label={t('kpi_invoices')} color="var(--color-info)"
             loading={!invoices}
             value={money(invoices?.outstanding?.total || 0)}
             sub={`${invoices?.outstanding?.count || 0} unpaid`}
             onClick={() => navigate('/invoices')}
           />
           <KpiCard
-            icon={AlertTriangle} label="Overdue" color="var(--color-err)"
+            icon={AlertTriangle} label={t('kpi_overdue')} color="var(--color-err)"
             loading={!tasks && !invoices}
             value={(tasks?.overdue || 0) + (invoices?.overdue?.count || 0)}
-            sub={`${tasks?.overdue || 0} tasks · ${invoices?.overdue?.count || 0} invoices`}
+            sub={`${tasks?.overdue || 0} ${t('tasks').toLowerCase()} · ${invoices?.overdue?.count || 0} ${t('invoices').toLowerCase()}`}
             onClick={() => navigate('/tasks')}
           />
         </div>
@@ -724,12 +729,12 @@ export default function Dashboard() {
                   // `pending` flag: when true, render a shimmer bar instead
                   // of a zero so the user knows we're still fetching, not
                   // that they have zero contacts.
-                  { label: 'Contacts',         value: crm?.contacts ?? 0,                   pending: !crm },
-                  { label: 'Companies',        value: crm?.companies ?? 0,                  pending: !crm },
-                  { label: 'Open tasks',       value: tasks?.open_total ?? 0,               pending: !tasks },
-                  { label: 'Active workflows', value: activeWf,                             pending: !loaded },
-                  { label: 'Done today',       value: tasks?.done_today ?? 0,               pending: !tasks },
-                  { label: 'Draft invoices',   value: invoices?.draft?.count ?? 0,          pending: !invoices },
+                  { label: t('contacts'),                          value: crm?.contacts ?? 0,                  pending: !crm },
+                  { label: t('companies'),                         value: crm?.companies ?? 0,                 pending: !crm },
+                  { label: `Open ${t('tasks').toLowerCase()}`,     value: tasks?.open_total ?? 0,              pending: !tasks },
+                  { label: 'Active workflows',                     value: activeWf,                            pending: !loaded },
+                  { label: 'Done today',                           value: tasks?.done_today ?? 0,              pending: !tasks },
+                  { label: `Draft ${t('invoices').toLowerCase()}`, value: invoices?.draft?.count ?? 0,         pending: !invoices },
                 ].map((row, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 10px', background: 'var(--color-surface-1)', borderRadius: 6 }}>
                     <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{row.label}</span>
