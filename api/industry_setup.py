@@ -501,6 +501,118 @@ PRESETS: Dict[str, Dict] = {
 }
 
 
+# ── Greetings: WhatsApp auto-reply + Vox voice opener per industry ───────
+# Why a separate dict: keeps PRESETS readable and lets us tune greeting
+# tone without bloating each industry's tools/agents/templates section.
+# Used by:
+#   - WhatsApp bridge to send a default auto-reply when an unknown number
+#     messages a workspace for the first time
+#   - Vox voice agent (NexusCaller) to construct the first spoken line of
+#     an outbound call so it doesn't sound robotic-generic
+# Vars supported (interpolated by the consumer):
+#   {{business_name}}, {{contact_first_name}}, {{agent_name}}
+GREETINGS: Dict[str, Dict[str, str]] = {
+    "Healthcare": {
+        "whatsapp": "Namaste, you've reached {{business_name}}. We've noted your message and a team member will respond shortly. For urgent care please call us on the clinic number listed above.",
+        "voice_opener": "Hello, this is {{agent_name}} calling on behalf of {{business_name}}. Is this {{contact_first_name}}? I'm following up on your recent visit — do you have a quick moment?",
+    },
+    "Real estate": {
+        "whatsapp": "Hi! Thanks for reaching out to {{business_name}}. Send us your preferred location, budget, and BHK — we'll share matching options in a few hours. Reply with details, please.",
+        "voice_opener": "Hi {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. I'm calling about the property options you were exploring. Is now a good time for a quick 2-minute chat?",
+    },
+    "Education": {
+        "whatsapp": "Hello! Thanks for getting in touch with {{business_name}}. Please share the student's name, current class/grade, and what programme you're considering. Our counsellor will respond within working hours.",
+        "voice_opener": "Hello, this is {{agent_name}} from {{business_name}}. Is this {{contact_first_name}}? I'm calling regarding your admission inquiry — do you have a couple of minutes?",
+    },
+    "Legal": {
+        "whatsapp": "Greetings. You've reached {{business_name}}. Please note: messages are reviewed during office hours only. Briefly describe your matter and share contact details. We will respond on a privileged channel.",
+        "voice_opener": "Good {{time_of_day}}, this is {{agent_name}} from {{business_name}}. Am I speaking with {{contact_first_name}}? I am calling regarding your matter. Is this a convenient time to talk?",
+    },
+    "Ecommerce": {
+        "whatsapp": "Hi! 🛒 Thanks for shopping with {{business_name}}. For order updates, please share your order ID. For returns or product questions, just describe what you need — we'll reply within an hour during 10 AM – 8 PM.",
+        "voice_opener": "Hi {{contact_first_name}}! This is {{agent_name}} from {{business_name}} — calling about your recent order. Is now a good time?",
+    },
+    "Finance": {
+        "whatsapp": "Hello, this is {{business_name}}. For document requests, statements, or compliance queries, please write to us with the relevant client ID. Our team will revert within one business day.",
+        "voice_opener": "Hello, this is {{agent_name}} calling from {{business_name}}. Am I speaking with {{contact_first_name}}? It's regarding your {{service_name}} — is now okay to discuss?",
+    },
+    "SaaS": {
+        "whatsapp": "Hey! Thanks for reaching out to {{business_name}}. For demos, drop a 2-line description of what you're trying to solve. For support, share your workspace name. We respond inside 2 working hours.",
+        "voice_opener": "Hi {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. I'm following up on your interest in our product. Got 3 minutes to chat?",
+    },
+    "Manufacturing": {
+        "whatsapp": "Greetings from {{business_name}}. For order inquiries, please share product/SKU, quantity, and required delivery date. For dispatch tracking, send your PO number. Our team will respond during 10 AM – 6 PM IST.",
+        "voice_opener": "Hello, this is {{agent_name}} from {{business_name}}. Is this {{contact_first_name}}? I'm calling regarding your purchase order — is now a good time to confirm the dispatch details?",
+    },
+    "Hospitality": {
+        "whatsapp": "Hello and welcome! 🙏 Thanks for reaching out to {{business_name}}. For reservations, please share date, time, and number of guests. For events, share event date and expected pax. We'll respond shortly.",
+        "voice_opener": "Hello {{contact_first_name}}! This is {{agent_name}} from {{business_name}}. I'm reaching out to confirm your booking — got a quick minute?",
+    },
+    "Local services": {
+        "whatsapp": "Hi! Thanks for messaging {{business_name}}. Quickly: what service do you need, and your locality? We'll share a quote + available slot within 30 minutes.",
+        "voice_opener": "Hi {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. Calling about the service you asked about — got a quick minute?",
+    },
+    "Consulting": {
+        "whatsapp": "Hello, you've reached {{business_name}}. For new inquiries, please describe the engagement type and timeline. For existing clients, mention your project name. We respond within one working day.",
+        "voice_opener": "Hi {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. I'm following up on your inquiry about our {{service_name}} engagement. Is this a convenient time?",
+    },
+    "Tutoring / coaching": {
+        "whatsapp": "Namaste! Thanks for reaching out to {{business_name}}. Please share the student's name, current class/grade, and the subject or programme you're interested in. We'll get back to you with details.",
+        "voice_opener": "Hello, this is {{agent_name}} from {{business_name}}. Am I speaking with {{contact_first_name}}? I'm calling about the inquiry for your child — got 2 minutes?",
+    },
+    "Restaurant / cafe": {
+        "whatsapp": "Hello! 🍽 Welcome to {{business_name}}. For table bookings: share date, time, and number of guests. For catering or events: share the event date. We're online 11 AM – 11 PM.",
+        "voice_opener": "Hi {{contact_first_name}}! This is {{agent_name}} from {{business_name}}. Calling to confirm your reservation — quick check, do you have a minute?",
+    },
+    "Beauty / salon / wellness": {
+        "whatsapp": "Hi! 💅 Thanks for reaching out to {{business_name}}. Tell us what service you need (e.g. haircut, facial, hair colour) and your preferred date/time. We'll confirm the slot in 15 minutes.",
+        "voice_opener": "Hi {{contact_first_name}}! This is {{agent_name}} from {{business_name}}. I'm calling to confirm your appointment — got 30 seconds?",
+    },
+    "Garment / textile retail": {
+        "whatsapp": "Hi! Thanks for messaging {{business_name}}. For retail inquiries: tell us what you're looking for (saree, kurta, suit). For wholesale: share your shop name + GSTIN. Our team responds within an hour.",
+        "voice_opener": "Hello {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. I'm calling about the order/inquiry you placed. Is now a good time for a 2-minute call?",
+    },
+    "Logistics / transport": {
+        "whatsapp": "Greetings from {{business_name}}. For new bookings: share origin, destination, consignment details, and pickup date. For tracking: send your LR/booking number. We respond 10 AM – 7 PM.",
+        "voice_opener": "Hello, this is {{agent_name}} from {{business_name}}. Am I speaking with {{contact_first_name}}? I'm calling regarding your consignment booking — got a quick moment?",
+    },
+    "Construction / contracting": {
+        "whatsapp": "Hi! Thanks for reaching out to {{business_name}}. For site visits, share location and project scope (renovation / new build / interiors). We schedule a site visit within 2-3 days.",
+        "voice_opener": "Hello {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. Calling about the project inquiry you sent — got 5 minutes to discuss requirements?",
+    },
+    "Auto repair / garage": {
+        "whatsapp": "Hi! Welcome to {{business_name}}. Please tell us your vehicle make/model, registration number, and what issue you're facing. We'll share an estimate + available slot.",
+        "voice_opener": "Hi {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. Your {{vehicle_model}} is ready for pickup — calling to confirm a convenient time. Got a minute?",
+    },
+    "Photography / event services": {
+        "whatsapp": "Hi! 📸 Thanks for reaching out to {{business_name}}. Share event type (wedding/birthday/corporate), date, and city — we'll send package details and check our availability.",
+        "voice_opener": "Hi {{contact_first_name}}! This is {{agent_name}} from {{business_name}}. Calling about your event inquiry — got 5 minutes to discuss vision and package?",
+    },
+    "Travel / tour operator": {
+        "whatsapp": "Hello! ✈️ Thanks for reaching out to {{business_name}}. Tell us your travel dates, destination, traveller count, and preferred budget — we'll send a custom itinerary in 24 hours.",
+        "voice_opener": "Hi {{contact_first_name}}! This is {{agent_name}} from {{business_name}}. Calling about the {{destination}} trip you were planning — do you have a quick moment?",
+    },
+    "Real estate broker": {
+        "whatsapp": "Hi! Thanks for reaching out to {{business_name}}. Please share: rental or purchase, preferred area, budget range, and BHK. We'll share 2-3 matching options within the day.",
+        "voice_opener": "Hi {{contact_first_name}}, this is {{agent_name}} from {{business_name}}. I have a couple of properties that match your search — got 2 minutes to discuss?",
+    },
+}
+
+
+DEFAULT_GREETINGS = {
+    "whatsapp":     "Hi, you've reached {{business_name}}. We've received your message and will respond shortly.",
+    "voice_opener": "Hello, this is {{agent_name}} from {{business_name}}. Is this {{contact_first_name}}? Got a quick moment?",
+}
+
+
+def get_greetings(industry: str) -> Dict[str, str]:
+    """Resolve greetings for a given industry. Falls back to DEFAULT_GREETINGS
+    for unknown industries (e.g. 'Other' or businesses created via API
+    that never went through the wizard)."""
+    matched = normalize_industry(industry)
+    return dict(GREETINGS.get(matched) or DEFAULT_GREETINGS)
+
+
 DEFAULT_PRESET = {
     "tools": ["Business knowledge base", "CRM pipeline", "Task automation", "Reports"],
     "priority_agents": ["morning_briefing", "email_triage", "meeting_prep", "memory_consolidate"],
@@ -644,6 +756,12 @@ def apply_industry_setup(
             logger.warning(f"[IndustrySetup] seed step failed (non-fatal): {e}")
             seed_result = {"seeded": False, "reason": f"error: {e!s}"[:200]}
 
+    # Store industry greetings under settings.greetings so WhatsApp bridge
+    # + Vox voice agent can read them at message/call time. Stored on the
+    # business so they're tunable per workspace later — the seeded value
+    # is just a sensible default.
+    greetings = get_greetings(preset["industry"])
+
     settings = business["settings"]
     settings["industry_setup"] = {
         "industry": preset["industry"],
@@ -653,6 +771,15 @@ def apply_industry_setup(
         "seed": seed_result,
         "applied_at": now_iso(),
     }
+    # Only seed greetings if the workspace doesn't already have customised
+    # ones (so re-applying after a manual edit doesn't blow away the user's
+    # tone tuning). settings.greetings is the source of truth.
+    if not (settings.get("greetings") or {}).get("_customised"):
+        settings["greetings"] = {
+            "whatsapp":     greetings["whatsapp"],
+            "voice_opener": greetings["voice_opener"],
+            "_source":      "industry_preset",
+        }
     _write_settings(business_id, settings)
 
     return {

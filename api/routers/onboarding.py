@@ -101,3 +101,93 @@ def onboarding_get_profile_extras(ctx: dict = Depends(get_current_context)):
     fields on re-entry and by the dashboard to tune KPI selection."""
     from api import onboarding
     return {"profile": onboarding.get_profile_extras(ctx["business_id"])}
+
+
+# ── Greetings ────────────────────────────────────────────────────────────
+# WhatsApp bridge + Vox voice agent fetch these to construct the first
+# message/call line. Stored on settings.greetings — when industry is
+# applied we seed default copy; the workspace can override later.
+@router.get("/api/business/greetings")
+def get_business_greetings(ctx: dict = Depends(get_current_context)):
+    """Return the active workspace's WhatsApp auto-reply + Vox voice opener.
+
+    Resolution order:
+      1. business.settings.greetings (customised or industry-seeded)
+      2. GREETINGS for the business's industry
+      3. DEFAULT_GREETINGS (industry unknown)
+    """
+    import json as _json
+    from api.businesses import BUSINESSES_TABLE
+    from api.industry_setup import get_greetings as _get_greetings
+    from config.db import get_conn
+
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            f"SELECT industry, settings FROM {BUSINESSES_TABLE} WHERE id = ?",
+            (ctx["business_id"],),
+        ).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        raise HTTPException(404, "Business not found")
+
+    industry = row[0] or ""
+    try:
+        settings = _json.loads(row[1] or "{}")
+    except Exception:
+        settings = {}
+    stored = settings.get("greetings") or {}
+    fallback = _get_greetings(industry)
+    return {
+        "whatsapp":      stored.get("whatsapp")      or fallback["whatsapp"],
+        "voice_opener":  stored.get("voice_opener")  or fallback["voice_opener"],
+        "industry":      industry,
+        "_source":       stored.get("_source") or "fallback",
+    }
+
+
+class GreetingsUpdate(BaseModel):
+    whatsapp:     str | None = None
+    voice_opener: str | None = None
+
+
+@router.put("/api/business/greetings")
+def update_business_greetings(req: GreetingsUpdate, ctx: dict = Depends(get_current_context)):
+    """Customise the workspace's WhatsApp + voice opener copy. Marks the
+    record `_customised` so re-applying the industry preset doesn't
+    overwrite intentional tone tuning."""
+    import json as _json
+    from api.businesses import BUSINESSES_TABLE
+    from config.db import get_conn
+    from utils.timez import now_iso as _now_iso
+
+    if not (req.whatsapp or req.voice_opener):
+        raise HTTPException(400, "Provide at least one field to update")
+
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            f"SELECT settings FROM {BUSINESSES_TABLE} WHERE id = ?",
+            (ctx["business_id"],),
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "Business not found")
+        try:
+            settings = _json.loads(row[0] or "{}")
+        except Exception:
+            settings = {}
+        g = settings.get("greetings") or {}
+        if req.whatsapp is not None:     g["whatsapp"] = req.whatsapp.strip()
+        if req.voice_opener is not None: g["voice_opener"] = req.voice_opener.strip()
+        g["_customised"] = True
+        g["_source"] = "user_customised"
+        settings["greetings"] = g
+        conn.execute(
+            f"UPDATE {BUSINESSES_TABLE} SET settings = ?, updated_at = ? WHERE id = ?",
+            (_json.dumps(settings), _now_iso(), ctx["business_id"]),
+        )
+        conn.commit()
+        return {"greetings": g}
+    finally:
+        conn.close()
