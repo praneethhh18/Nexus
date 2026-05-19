@@ -16,11 +16,13 @@ import {
 import { listInvoices } from '../services/invoices';
 import { TagPicker, TagChips } from '../components/TagChips';
 import { tagsFor } from '../services/tags';
+import { useTerm } from '../services/industryTerms';
 
 
 export default function CompanyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const t = useTerm();
 
   const [company, setCompany] = useState(null);
   const [contacts, setContacts] = useState([]);
@@ -221,7 +223,7 @@ export default function CompanyDetail() {
           {deals.length > 0 && (
             <div className="panel">
               <div className="section-h" style={{ margin: '0 0 10px' }}>
-                <h2>Deals · {deals.length}</h2>
+                <h2>{t('deals')} · {deals.length}</h2>
                 <span className="meta">{openDealCount} open · won ${wonValue.toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -254,7 +256,7 @@ export default function CompanyDetail() {
           {invoices.length > 0 && (
             <div className="panel">
               <div className="section-h" style={{ margin: '0 0 10px' }}>
-                <h2>Invoices · {invoices.length}</h2>
+                <h2>{t('invoices')} · {invoices.length}</h2>
                 <span className="meta">paid: ${totalRevenue.toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

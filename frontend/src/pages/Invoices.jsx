@@ -11,6 +11,7 @@ import {
 } from '../services/invoices';
 import { listContacts, listCompanies } from '../services/crm';
 import { getCached, setCached, keyFor } from '../services/dataCache';
+import { useTerm } from '../services/industryTerms';
 
 const STATUS_COLORS = {
   draft: 'var(--color-text-dim)', sent: 'var(--color-info)', paid: 'var(--color-ok)',
@@ -295,6 +296,7 @@ const INV_CACHE_KEY = 'invoices:page';
 
 export default function Invoices() {
   const navigate = useNavigate();
+  const t = useTerm();
   const _cached = getCached(keyFor(INV_CACHE_KEY)) || {};
   const [invoices, setInvoices] = useState(_cached.invoices ?? []);
   const [summary, setSummary] = useState(_cached.summary ?? null);
@@ -367,10 +369,10 @@ export default function Invoices() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1>Invoices</h1>
-          <p>Create, track, and send invoices to your customers</p>
+          <h1>{t('invoices')}</h1>
+          <p>Create, track, and send {t('invoices').toLowerCase()} to your customers</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> New invoice</button>
+        <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> {t('invoice_new')}</button>
       </div>
 
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
@@ -411,9 +413,9 @@ export default function Invoices() {
         {invoices.length === 0 ? (
           <EmptyState
             icon={FileText}
-            title="No invoices yet"
-            description="Draft your first invoice in 30 seconds. Kira will then spot overdue ones and queue reminder emails for your approval."
-            primaryLabel="New invoice"
+            title={`No ${t('invoices').toLowerCase()} yet`}
+            description={`Draft your first ${t('invoice').toLowerCase()} in 30 seconds. Kira will then spot overdue ones and queue reminder emails for your approval.`}
+            primaryLabel={t('invoice_new')}
             onPrimary={() => setModal({ record: null })}
           />
         ) : (

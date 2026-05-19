@@ -18,6 +18,7 @@ import {
   getContact, getCompany, listInteractions, createInteraction,
 } from '../services/crm';
 import { createTask } from '../services/tasks';
+import { useTerm } from '../services/industryTerms';
 
 const STAGES = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
 
@@ -54,6 +55,7 @@ function formatDate(iso) {
 export default function DealDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const t = useTerm();
 
   const [deal, setDeal] = useState(null);
   const [contact, setContact] = useState(null);
@@ -258,7 +260,7 @@ export default function DealDetail() {
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
               }}>
                 <div style={{ fontSize: 12.5, color: 'var(--color-accent)' }}>
-                  <strong>Deal won.</strong> Ready to invoice the customer?
+                  <strong>{t('deal')} won.</strong> Ready to invoice the customer?
                 </div>
                 <button className="btn-primary btn-sm" onClick={handleInvoiceOnClose}>
                   <Receipt size={11} /> Draft invoice

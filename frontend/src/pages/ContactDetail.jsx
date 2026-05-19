@@ -28,6 +28,7 @@ import { tagsFor } from '../services/tags';
 import {
   dialContact, prepareDialForContact, listContactCalls, getCall as getVoiceCall,
 } from '../services/voice_calls';
+import { useTerm } from '../services/industryTerms';
 
 const INTERACTION_ICONS = {
   call:    Phone, email: Mail, meeting: Calendar, note: MessageSquare,
@@ -55,6 +56,7 @@ function formatWhen(iso) {
 export default function ContactDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const t = useTerm();
 
   const [contact, setContact] = useState(null);
   const [interactions, setInteractions] = useState([]);
@@ -407,7 +409,7 @@ export default function ContactDetail() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
             <AlertCircle size={18} color="var(--color-err)" style={{ marginTop: 2, flexShrink: 0 }} />
             <div>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>Contact not found</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('contact')} not found</div>
               <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)' }}>
                 {error || 'The contact may have been deleted.'}
               </div>
@@ -659,7 +661,7 @@ export default function ContactDetail() {
           {invoices.length > 0 && (
             <div className="panel">
               <div className="section-h" style={{ margin: '0 0 10px' }}>
-                <h2>Invoices · {invoices.length}</h2>
+                <h2>{t('invoices')} · {invoices.length}</h2>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {invoices.slice(0, 5).map(inv => (
