@@ -7,6 +7,7 @@ functions here trust the business_id they receive.
 """
 from __future__ import annotations
 
+import json
 import re
 import sqlite3  # sqlite3.Row sentinel — works on Postgres via config.db
 import uuid
@@ -102,6 +103,13 @@ def _get_conn():
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN is_callable INTEGER DEFAULT 0")
     if "consent_revoked_at" not in _contact_cols:
         conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN consent_revoked_at TEXT")
+    # Additive: industry-specific custom fields (DOB + blood group for
+    # Healthcare, grade + parent for Education, vehicle reg for Auto
+    # repair, etc.). Stored as JSON text so we don't grow the schema for
+    # every new industry. UI reads industryContactFields.js to know which
+    # fields to render. Empty string => no extras saved.
+    if "custom_fields" not in _contact_cols:
+        conn.execute(f"ALTER TABLE {CONTACTS_TABLE} ADD COLUMN custom_fields TEXT DEFAULT ''")
 
     conn.execute(f"""
     CREATE TABLE IF NOT EXISTS {DEALS_TABLE} (
@@ -289,6 +297,28 @@ def delete_company(business_id: str, company_id: str) -> None:
 # ═══════════════════════════════════════════════════════════════════════════════
 #  CONTACTS
 # ═══════════════════════════════════════════════════════════════════════════════
+def _normalize_custom_fields(raw) -> str:
+    """Accept either a dict or a JSON string; store as a stable JSON
+    string. Anything malformed becomes empty so we never persist garbage."""
+    if not raw:
+        return ""
+    if isinstance(raw, str):
+        try:
+            obj = json.loads(raw)
+        except Exception:
+            return ""
+    elif isinstance(raw, dict):
+        obj = raw
+    else:
+        return ""
+    # Cap to avoid abuse — 20 fields × 200 chars each is enough for any
+    # realistic per-industry contact form.
+    obj = {k: str(v)[:200] for k, v in obj.items() if v not in (None, "")}
+    if not obj:
+        return ""
+    return json.dumps(dict(list(obj.items())[:20]))
+
+
 def create_contact(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
     first = _validate_text(data.get("first_name", ""), "First name", 80)
     last = _validate_text(data.get("last_name", ""), "Last name", 80)
@@ -298,6 +328,7 @@ def create_contact(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
     company_id = data.get("company_id") or None
     if company_id:
         get_company(business_id, company_id)  # verify ownership
+    custom = _normalize_custom_fields(data.get("custom_fields"))
 
     cid = f"ct-{uuid.uuid4().hex[:10]}"
     row = (
@@ -307,14 +338,14 @@ def create_contact(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
         company_id,
         _validate_text(data.get("notes", ""), "Notes", 2000),
         _validate_text(data.get("tags", ""), "Tags", 300),
-        _now(), _now(), user_id,
+        _now(), _now(), user_id, custom,
     )
     conn = _get_conn()
     try:
         conn.execute(
             f"INSERT INTO {CONTACTS_TABLE} "
-            f"(id, business_id, first_name, last_name, email, phone, title, company_id, notes, tags, created_at, updated_at, created_by) "
-            f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", row,
+            f"(id, business_id, first_name, last_name, email, phone, title, company_id, notes, tags, created_at, updated_at, created_by, custom_fields) "
+            f"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", row,
         )
         conn.commit()
     finally:
@@ -368,7 +399,7 @@ def get_contact(business_id: str, contact_id: str) -> Dict:
 
 def update_contact(business_id: str, contact_id: str, updates: Dict[str, Any]) -> Dict:
     get_contact(business_id, contact_id)
-    allowed = {"first_name", "last_name", "email", "phone", "title", "company_id", "notes", "tags"}
+    allowed = {"first_name", "last_name", "email", "phone", "title", "company_id", "notes", "tags", "custom_fields"}
     fields = {k: v for k, v in updates.items() if k in allowed and v is not None}
     if not fields:
         raise HTTPException(400, "No editable fields provided")
@@ -376,6 +407,15 @@ def update_contact(business_id: str, contact_id: str, updates: Dict[str, Any]) -
         fields["email"] = _validate_email(fields["email"])
     if "company_id" in fields and fields["company_id"]:
         get_company(business_id, fields["company_id"])
+    if "custom_fields" in fields:
+        # Reject malformed payloads silently — _normalize returns "" when
+        # input doesn't parse, which would clear an existing record.
+        # Skip the write entirely in that case so callers don't lose data.
+        normalised = _normalize_custom_fields(fields["custom_fields"])
+        if normalised:
+            fields["custom_fields"] = normalised
+        else:
+            fields.pop("custom_fields", None)
     sets = ", ".join(f"{k} = ?" for k in fields)
     params = list(fields.values()) + [_now(), contact_id, business_id]
     conn = _get_conn()

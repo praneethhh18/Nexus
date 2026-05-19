@@ -20,6 +20,8 @@ import { TagChips, TagPicker } from '../components/TagChips';
 import TagFilterBar, { filterItems } from '../components/TagFilterBar';
 import { getCached, setCached, keyFor } from '../services/dataCache';
 import { useTerm } from '../services/industryTerms';
+import { getContactFieldsForIndustry } from '../services/industryContactFields';
+import { getCurrentBusiness } from '../services/auth';
 import EntityImportWizard from '../components/EntityImportWizard';
 import ActivityTimeline from '../components/ActivityTimeline';
 import SuggestionPanel from '../components/SuggestionPanel';
@@ -102,14 +104,42 @@ function Field({ label, children }) {
 }
 
 // ── Contact form ────────────────────────────────────────────────────────────
-function ContactForm({ initial, companies, onSubmit, onCancel }) {
+function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
+  // Industry-aware schema for extra fields below the standard CRM ones.
+  // Empty array for industries without a schema → only base fields show.
+  const extraFields = getContactFieldsForIndustry(industry);
+
+  // Parse incoming custom_fields (stored as JSON text in DB) into an object
+  // so the inputs can edit individual keys without touching the JSON string.
+  const initialExtras = (() => {
+    if (!initial?.custom_fields) return {};
+    if (typeof initial.custom_fields === 'object') return initial.custom_fields;
+    try { return JSON.parse(initial.custom_fields); } catch { return {}; }
+  })();
+
   const [f, setF] = useState({
     first_name: '', last_name: '', email: '', phone: '', title: '',
     company_id: '', notes: '', tags: '', ...(initial || {}),
   });
+  const [extras, setExtras] = useState(initialExtras);
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
+  const setExtra = (k, v) => setExtras((prev) => ({ ...prev, [k]: v }));
+
+  const submit = (e) => {
+    e.preventDefault();
+    // Send custom_fields as an object — backend handles JSON serialisation
+    // + normalisation. Skip empties so we don't write '{}' for everyone.
+    const cleanExtras = Object.fromEntries(
+      Object.entries(extras).filter(([, v]) => v !== '' && v != null)
+    );
+    onSubmit({
+      ...f,
+      ...(Object.keys(cleanExtras).length ? { custom_fields: cleanExtras } : {}),
+    });
+  };
+
   return (
-    <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
+    <form onSubmit={submit}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label="First name">
           <input className="field-input" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} maxLength={80} />
@@ -135,6 +165,57 @@ function ContactForm({ initial, companies, onSubmit, onCancel }) {
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </Field>
+
+      {/* Industry-specific extras — only renders when the workspace's
+          industry has a schema in industryContactFields.js. Falls through
+          silently for industries we haven't tuned. */}
+      {extraFields.length > 0 && (
+        <div style={{
+          marginTop: 4, padding: 12,
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--r-md)',
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+            color: 'var(--color-text-dim)', marginBottom: 10,
+          }}>
+            {industry} details
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {extraFields.map((spec) => (
+              <Field key={spec.key} label={spec.label}>
+                {spec.type === 'select' ? (
+                  <select
+                    className="field-select"
+                    value={extras[spec.key] || ''}
+                    onChange={(e) => setExtra(spec.key, e.target.value)}
+                  >
+                    {(spec.options || []).map((opt) => (
+                      <option key={opt} value={opt}>{opt || '— select —'}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    className="field-input"
+                    type={spec.type || 'text'}
+                    value={extras[spec.key] || ''}
+                    onChange={(e) => setExtra(spec.key, e.target.value)}
+                    placeholder={spec.placeholder || ''}
+                    maxLength={200}
+                  />
+                )}
+                {spec.hint && (
+                  <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: 2 }}>
+                    {spec.hint}
+                  </span>
+                )}
+              </Field>
+            ))}
+          </div>
+        </div>
+      )}
+
       <Field label="Tags (comma-separated)">
         <input className="field-input" value={f.tags} onChange={(e) => set('tags', e.target.value)} maxLength={300} />
       </Field>
@@ -644,8 +725,12 @@ export default function CRM() {
 
       {modal?.kind === 'contact' && (
         <Modal title={modal.record ? `Edit ${t('contact').toLowerCase()}` : t('contact_add')} onClose={() => setModal(null)} wide>
-          <ContactForm initial={modal.record} companies={companies}
-            onSubmit={(d) => handleSubmit('contact', d)} onCancel={() => setModal(null)} />
+          <ContactForm
+            initial={modal.record}
+            companies={companies}
+            industry={getCurrentBusiness()?.industry || ''}
+            onSubmit={(d) => handleSubmit('contact', d)}
+            onCancel={() => setModal(null)} />
         </Modal>
       )}
       {modal?.kind === 'company' && (
