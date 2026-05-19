@@ -39,6 +39,18 @@ export const saveProfileExtras = (extras) =>
   });
 export const getProfileExtras = () => req('/api/onboarding/profile-extras');
 
+// Industry-aware KPI tiles for the dashboard. Returns {industry, tiles[]}
+// where each tile is {label, value, sub, tone}. Healthcare sees count of
+// appointments; Real estate sees active listings; SaaS sees pipeline ARR.
+// Dashboard falls back to its existing per-card computation if this fails.
+export const getIndustryKPIs = () => req('/api/dashboard/industry-kpis');
+
+// Industry-tuned WhatsApp + Vox voice opener for the active workspace.
+// Returns {whatsapp, voice_opener, industry, _source}.
+export const getBusinessGreetings = () => req('/api/business/greetings');
+export const setBusinessGreetings = (updates) =>
+  req('/api/business/greetings', { method: 'PUT', body: JSON.stringify(updates) });
+
 // Notification preferences
 export const getNotificationPrefs = () => req('/api/notifications/prefs');
 export const setNotificationPrefs = (updates) =>

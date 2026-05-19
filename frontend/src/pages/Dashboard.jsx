@@ -18,6 +18,7 @@ import Skeleton from '../components/Skeleton';
 import Analytics from './Analytics';
 import { getCached, setCached, keyFor } from '../services/dataCache';
 import { useTerm } from '../services/industryTerms';
+import { getIndustryKPIs } from '../services/onboarding';
 
 // Cache key for the full dashboard payload (namespaced by current business
 // id inside keyFor()). 60s TTL — quick enough to feel fresh, long enough to
@@ -104,6 +105,10 @@ export default function Dashboard() {
   // We start `loaded=true` when we have cached data, so no skeleton flashes
   // on a return visit; only first-ever mount sees the shimmer.
   const [loaded, setLoaded] = useState(Object.keys(_cached).length > 0);
+  // Industry-aware KPI tiles. When this resolves we render these instead
+  // of the hardcoded 4 cards. Falls back gracefully if the endpoint fails
+  // or returns the generic tile set for businesses without an industry.
+  const [industryKpis, setIndustryKpis] = useState(_cached.industryKpis || null);
   const user = getUser();
   const current = getCurrentBusiness();
   const navigate = useNavigate();
@@ -177,11 +182,26 @@ export default function Dashboard() {
   // Whenever ANY of the dashboard data slices change, persist them as a
   // single snapshot. Cheaper than threading the values through reload(),
   // and naturally picks up the briefing/evening loaders too.
+  // Fetch industry KPIs in parallel with the dashboard's tier-2 data.
+  // Treated as additive — if it 4xx/5xx (e.g. business has no industry,
+  // or endpoint not deployed), dashboard renders the legacy KPI cards
+  // unchanged.
+  useEffect(() => {
+    let cancelled = false;
+    getIndustryKPIs()
+      .then((res) => {
+        if (cancelled) return;
+        if (res?.tiles?.length === 4) setIndustryKpis(res);
+      })
+      .catch(() => { /* silently fall back to legacy KPI cards */ });
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     if (!loaded) return;
     setCached(keyFor(DASH_CACHE_KEY), {
       health, notifs, activeWf, crm, pipe, tasks, invoices,
-      todayTasks, stats, calConn, events,
+      todayTasks, stats, calConn, events, industryKpis,
       briefing, briefingAgent, evening,
     });
   }, [
@@ -563,34 +583,62 @@ export default function Dashboard() {
 
         {/* Top KPI row — the numbers that matter */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
-          <KpiCard
-            icon={Briefcase} label={t('kpi_pipeline')} color="var(--color-warn)"
-            loading={!pipe}
-            value={money(pipelineTotal)}
-            sub={`${(pipe?.by_stage?.lead?.count || 0) + (pipe?.by_stage?.qualified?.count || 0) + (pipe?.by_stage?.proposal?.count || 0) + (pipe?.by_stage?.negotiation?.count || 0)} ${t('deals').toLowerCase()}`}
-            onClick={() => navigate('/crm')}
-          />
-          <KpiCard
-            icon={TrendingUp} label={t('kpi_won')} color="var(--color-ok)"
-            loading={!crm && !pipe}
-            value={money(crm?.won_this_month || 0)}
-            sub={`${pipe?.by_stage?.won?.count || 0} closed`}
-            onClick={() => navigate('/crm')}
-          />
-          <KpiCard
-            icon={Receipt} label={t('kpi_invoices')} color="var(--color-info)"
-            loading={!invoices}
-            value={money(invoices?.outstanding?.total || 0)}
-            sub={`${invoices?.outstanding?.count || 0} unpaid`}
-            onClick={() => navigate('/invoices')}
-          />
-          <KpiCard
-            icon={AlertTriangle} label={t('kpi_overdue')} color="var(--color-err)"
-            loading={!tasks && !invoices}
-            value={(tasks?.overdue || 0) + (invoices?.overdue?.count || 0)}
-            sub={`${tasks?.overdue || 0} ${t('tasks').toLowerCase()} · ${invoices?.overdue?.count || 0} ${t('invoices').toLowerCase()}`}
-            onClick={() => navigate('/tasks')}
-          />
+          {industryKpis?.tiles?.length === 4 ? (
+            // Industry-aware tiles — values match labels (Healthcare shows
+            // a COUNT of appointments, not a ₹ pipeline). Tile.tone maps
+            // to the colour CSS var. Click routes to the most relevant
+            // section by tone (warn→crm, ok→crm, info→invoices, err→tasks).
+            industryKpis.tiles.map((tile, i) => {
+              const toneColour = {
+                warn: 'var(--color-warn)', ok: 'var(--color-ok)',
+                info: 'var(--color-info)', err: 'var(--color-err)',
+              }[tile.tone] || 'var(--color-warn)';
+              const toneIcon = { warn: Briefcase, ok: TrendingUp, info: Receipt, err: AlertTriangle }[tile.tone] || Briefcase;
+              const toneRoute = { warn: '/crm', ok: '/crm', info: '/invoices', err: '/tasks' }[tile.tone] || '/crm';
+              return (
+                <KpiCard
+                  key={i}
+                  icon={toneIcon}
+                  label={tile.label}
+                  color={toneColour}
+                  value={tile.value}
+                  sub={tile.sub}
+                  onClick={() => navigate(toneRoute)}
+                />
+              );
+            })
+          ) : (
+            <>
+              <KpiCard
+                icon={Briefcase} label={t('kpi_pipeline')} color="var(--color-warn)"
+                loading={!pipe}
+                value={money(pipelineTotal)}
+                sub={`${(pipe?.by_stage?.lead?.count || 0) + (pipe?.by_stage?.qualified?.count || 0) + (pipe?.by_stage?.proposal?.count || 0) + (pipe?.by_stage?.negotiation?.count || 0)} ${t('deals').toLowerCase()}`}
+                onClick={() => navigate('/crm')}
+              />
+              <KpiCard
+                icon={TrendingUp} label={t('kpi_won')} color="var(--color-ok)"
+                loading={!crm && !pipe}
+                value={money(crm?.won_this_month || 0)}
+                sub={`${pipe?.by_stage?.won?.count || 0} closed`}
+                onClick={() => navigate('/crm')}
+              />
+              <KpiCard
+                icon={Receipt} label={t('kpi_invoices')} color="var(--color-info)"
+                loading={!invoices}
+                value={money(invoices?.outstanding?.total || 0)}
+                sub={`${invoices?.outstanding?.count || 0} unpaid`}
+                onClick={() => navigate('/invoices')}
+              />
+              <KpiCard
+                icon={AlertTriangle} label={t('kpi_overdue')} color="var(--color-err)"
+                loading={!tasks && !invoices}
+                value={(tasks?.overdue || 0) + (invoices?.overdue?.count || 0)}
+                sub={`${tasks?.overdue || 0} ${t('tasks').toLowerCase()} · ${invoices?.overdue?.count || 0} ${t('invoices').toLowerCase()}`}
+                onClick={() => navigate('/tasks')}
+              />
+            </>
+          )}
         </div>
 
         {/* Main two-column: left = focus list, right = business snapshot */}

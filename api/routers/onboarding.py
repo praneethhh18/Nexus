@@ -147,6 +147,54 @@ def get_business_greetings(ctx: dict = Depends(get_current_context)):
     }
 
 
+# ── Dashboard industry-aware KPIs ────────────────────────────────────────
+# Single endpoint that returns the 4 KPI tiles tuned for the workspace's
+# industry. Computed in-process from already-fetched CRM data — no extra
+# DB round-trips beyond the dashboard's normal tier-2 fetches.
+@router.get("/api/dashboard/industry-kpis")
+def dashboard_industry_kpis(ctx: dict = Depends(get_current_context)):
+    """Return 4 industry-aware KPI tiles for the dashboard.
+
+    Each tile: {label, value, sub, tone}. Frontend renders directly.
+    """
+    from api.industry_kpis import compute_kpis
+    from api.businesses import get_business
+    from api import crm as _crm
+    from api import tasks as _tasks
+    from api import invoices as _inv
+
+    biz = get_business(ctx["business_id"]) or {}
+    industry = biz.get("industry") or ""
+
+    # Pull the same data the dashboard's tier-2 calls already use.
+    # Each is wrapped so a single failed dependency doesn't drop the KPIs.
+    try:
+        pipe = _crm.deal_pipeline_stats(ctx["business_id"]) or {}
+    except Exception:
+        pipe = {}
+    try:
+        crm_overview = _crm.crm_overview(ctx["business_id"]) or {}
+    except Exception:
+        crm_overview = {}
+    try:
+        tasks_summary = _tasks.task_summary(ctx["business_id"]) or {}
+    except Exception:
+        tasks_summary = {}
+    try:
+        inv_summary = _inv.invoice_summary(ctx["business_id"]) or {}
+    except Exception:
+        inv_summary = {}
+
+    tiles = compute_kpis(
+        industry=industry,
+        pipe=pipe,
+        tasks=tasks_summary,
+        invoices=inv_summary,
+        crm=crm_overview,
+    )
+    return {"industry": industry, "tiles": tiles}
+
+
 class GreetingsUpdate(BaseModel):
     whatsapp:     str | None = None
     voice_opener: str | None = None
