@@ -92,11 +92,23 @@ except Exception as e:
     logger.warning(f"Agent scheduler start failed: {e}")
 
 # Apply composite indexes on frequently filtered columns (idempotent).
-try:
-    from api.db_indexes import apply_indexes
-    apply_indexes()
-except Exception as e:
-    logger.warning(f"Index pass failed: {e}")
+# Moved off the boot critical path — apply_indexes does CREATE INDEX
+# IF NOT EXISTS which takes a table-level lock and we've been bitten
+# by it waiting forever behind 'idle in transaction' sessions, stacking
+# uvicorn boots into an 18-connection deadlock. db_indexes.apply_indexes
+# already has a per-statement timeout, but running it on a background
+# thread means even a worst-case 5-minute-stuck pass can't block /api/
+# health or any other request.
+def _apply_indexes_async() -> None:
+    try:
+        from api.db_indexes import apply_indexes
+        apply_indexes()
+    except Exception as e:
+        logger.warning(f"[Boot/bg] Index pass failed: {e}")
+
+
+import threading as _threading_idx
+_threading_idx.Thread(target=_apply_indexes_async, name="db-indexes-bg", daemon=True).start()
 
 # Auto-seed Gmail IMAP + workspace SMTP from env in the background. These
 # touch network-adjacent code paths (IMAP credential checks, Fernet

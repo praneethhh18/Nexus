@@ -90,10 +90,32 @@ def apply_indexes() -> dict:
     """
     Apply every index whose table + columns are present. Returns a summary
     dict {applied: N, skipped: M, errors: [(idx_name, err)]}.
+
+    Each CREATE INDEX runs with a 15-second statement_timeout (Postgres
+    only) so a lock held by another connection cannot wedge the boot
+    forever. We observed a real outage where an 'idle in transaction'
+    session held a row lock on nexus_email_triage_log, and a chain of
+    18 subsequent uvicorn boots all stacked up waiting on the same
+    CREATE INDEX. With the timeout, each restart fails fast instead.
     """
     conn = get_conn()
     applied, skipped, errors = 0, 0, []
+    is_pg = False
     try:
+        # Detect Postgres so we can issue a per-statement timeout. The
+        # config.db wrapper hides backend type; we sniff by trying to
+        # set the GUC and treating SQLite's silent ignore as fine.
+        try:
+            from config.db import is_postgres
+            is_pg = is_postgres()
+        except Exception:
+            is_pg = False
+        if is_pg:
+            try:
+                conn.execute("SET LOCAL statement_timeout = '15s'")
+            except Exception:
+                pass
+
         for idx_name, table, cols in _INDEXES:
             if not _table_exists(conn, table):
                 skipped += 1
@@ -109,15 +131,29 @@ def apply_indexes() -> dict:
                 )
                 applied += 1
             except Exception as e:
-                errors.append((idx_name, str(e)))
+                # statement_timeout fires here too — log + move on instead
+                # of crashing the whole pass. A missing index is a perf
+                # regression at worst; a wedged boot is total downtime.
+                errors.append((idx_name, str(e)[:200]))
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
         # ANALYZE helps SQLite pick these indexes when the tables are small.
+        # On Postgres it can be slow on big tables — give it the same 15s
+        # ceiling so a stuck stats-collector doesn't extend the boot.
         try:
+            if is_pg:
+                conn.execute("SET LOCAL statement_timeout = '15s'")
             conn.execute("ANALYZE")
-        except Exception:
-            pass
+        except Exception as e:
+            errors.append(("ANALYZE", str(e)[:200]))
         conn.commit()
     finally:
         conn.close()
     result = {"applied": applied, "skipped": skipped, "errors": errors}
-    logger.info(f"[db_indexes] {result}")
+    if errors:
+        logger.warning(f"[db_indexes] {result}")
+    else:
+        logger.info(f"[db_indexes] {result}")
     return result
