@@ -524,7 +524,13 @@ export default function Layout() {
         </div>
       )}
 
-      {showOnboarding && <OnboardingWizard onClose={() => setShowOnboarding(false)} />}
+      {showOnboarding && <OnboardingWizard onClose={() => {
+        setShowOnboarding(false);
+        // PlanWelcomeModal listens for this event and replays any welcome
+        // that was deferred while the wizard was up (e.g. the trial
+        // celebration after a fresh signup).
+        window.dispatchEvent(new CustomEvent('nexus-onboarding-closed'));
+      }} />}
 
       <CommandPalette />
       <KeyboardShortcutsModal />

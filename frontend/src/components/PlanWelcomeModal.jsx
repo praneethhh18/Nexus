@@ -21,6 +21,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, X, ArrowRight, Users, Zap, CheckCircle2, Gift } from 'lucide-react';
 import { getPlans } from '../services/billing';
+import { shouldShowOnboarding } from './OnboardingWizard';
+
+// sessionStorage key used to defer the welcome modal until AFTER the first-run
+// onboarding wizard has been completed. Without this, a fresh signup saw the
+// trial-activated modal stack on top of (or compete with) the setup wizard.
+const PENDING_WELCOME_KEY = 'nexus_pending_welcome';
 
 // CSS-only confetti — 60 particles, deterministic placement per session so
 // React doesn't re-randomise on every render and cause jitter.
@@ -74,10 +80,29 @@ export default function PlanWelcomeModal() {
   const isTrial = planKey === 'trial';
 
   useEffect(() => {
-    // Read ?welcome=<key> exactly once on mount.
+    // Read ?welcome=<key> exactly once on mount, OR a deferred welcome that
+    // was parked in sessionStorage by an earlier mount that handed off to
+    // the onboarding wizard.
     const params = new URLSearchParams(window.location.search);
-    const k = params.get('welcome');
+    const urlKey = params.get('welcome');
+    const stashedKey = sessionStorage.getItem(PENDING_WELCOME_KEY);
+
+    // If a first-run wizard is still pending, defer the welcome modal:
+    // stash the key, strip ?welcome from the URL, render nothing. The
+    // wizard's celebrated step (or close) re-fires this modal by writing
+    // /?welcome=<key> back into the URL. This is what turned 3 stacked
+    // modals into a single linear flow.
+    if (urlKey && shouldShowOnboarding()) {
+      sessionStorage.setItem(PENDING_WELCOME_KEY, urlKey);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('welcome');
+      window.history.replaceState({}, '', url.pathname + (url.search || ''));
+      return;
+    }
+
+    const k = urlKey || stashedKey;
     if (!k) return;
+    if (stashedKey) sessionStorage.removeItem(PENDING_WELCOME_KEY);
     setPlanKey(k);
     // For the trial flow we always show the Pro feature set — the trial
     // unlocks Pro. For paid plans, fetch the live catalogue so prices /
@@ -86,6 +111,25 @@ export default function PlanWelcomeModal() {
     getPlans()
       .then(({ plans }) => setPlanMeta(plans?.[fetchKey] || null))
       .catch(() => setPlanMeta(null));
+  }, []);
+
+  // Replay handler: when the onboarding wizard finishes, Layout dispatches
+  // 'nexus-onboarding-closed'. If we stashed a welcome key while the wizard
+  // was open, fire it now so the trial celebration plays AFTER setup, not
+  // on top of it.
+  useEffect(() => {
+    const onWizardClosed = () => {
+      const k = sessionStorage.getItem(PENDING_WELCOME_KEY);
+      if (!k) return;
+      sessionStorage.removeItem(PENDING_WELCOME_KEY);
+      setPlanKey(k);
+      const fetchKey = k === 'trial' ? 'pro' : k;
+      getPlans()
+        .then(({ plans }) => setPlanMeta(plans?.[fetchKey] || null))
+        .catch(() => setPlanMeta(null));
+    };
+    window.addEventListener('nexus-onboarding-closed', onWizardClosed);
+    return () => window.removeEventListener('nexus-onboarding-closed', onWizardClosed);
   }, []);
 
   const close = () => {

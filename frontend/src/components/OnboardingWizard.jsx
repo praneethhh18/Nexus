@@ -310,7 +310,11 @@ export default function OnboardingWizard({ onClose }) {
       </Overlay>
     );
   }
-  if (!state || !currentStep) return <Overlay>Loading...</Overlay>;
+  // Render nothing while the initial onboarding state is fetched.
+  // The previous "Loading..." overlay flashed for a few hundred ms between
+  // PlanWelcomeModal and the actual wizard, making the post-signup sequence
+  // look like three stacked modals instead of one continuous flow.
+  if (!state || !currentStep) return null;
 
   const Icon = STEP_ICONS[currentKey] || Sparkles;
 
@@ -795,12 +799,19 @@ function Field({ label, children, hint, error }) {
 }
 
 function Overlay({ children, onClose }) {
+  // Heavier backdrop + blur than a normal modal: the wizard is the user's
+  // first-ever screen after signup and we want the dashboard underneath to
+  // disappear, not bleed through. Without the blur, a half-loaded dashboard
+  // (skeleton KPIs, sidebar, greeting) was visible behind the wizard.
   return (
     <div
       onClick={onClose}
       style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
-        zIndex: 500, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        position: 'fixed', inset: 0,
+        background: 'rgba(8, 10, 18, 0.92)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
+        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 20,
       }}
     >
