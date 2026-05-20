@@ -60,18 +60,36 @@ export default function VerifyEmail() {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh', display: 'grid', placeItems: 'center',
-      background: 'var(--color-bg)', padding: 24,
-    }}>
-      <div style={{
-        width: '100%', maxWidth: 460,
-        background: 'var(--color-surface-0)',
-        border: '1px solid var(--color-border)',
-        borderRadius: 16, padding: '36px 32px',
-        textAlign: 'center',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-      }}>
+    <div className="ve-shell">
+      <VerifyStyles />
+      <div className="ve-orb ve-orb-1" aria-hidden />
+      <div className="ve-orb ve-orb-2" aria-hidden />
+
+      <aside className="ve-rail">
+        <div className="ve-brand">
+          <div className="ve-brand-mark">N</div>
+          <div>
+            <div className="ve-brand-name">NexusAgent</div>
+            <div className="ve-brand-sub">14-day Pro trial</div>
+          </div>
+        </div>
+        <h1 className="ve-rail-h1">
+          Your AI team,<br/>
+          <span className="ve-rail-grad">always on duty</span>
+        </h1>
+        <p className="ve-rail-p">
+          We're verifying your email and activating the trial. Takes a few seconds —
+          no card, no commitment.
+        </p>
+        <ul className="ve-rail-list">
+          <li>✓ All 8 AI agents unlocked</li>
+          <li>✓ 500 WhatsApp + 100 voice minutes</li>
+          <li>✓ Industry-tuned templates</li>
+        </ul>
+      </aside>
+
+      <main className="ve-pane">
+        <div className="ve-card">
         {status === 'verifying' && (
           <>
             <Spinner />
@@ -139,8 +157,115 @@ export default function VerifyEmail() {
             }}>← Back to sign in</Link>
           </>
         )}
-      </div>
+        </div>
+      </main>
     </div>
+  );
+}
+
+function VerifyStyles() {
+  return (
+    <style>{`
+      .ve-shell {
+        position: fixed; inset: 0;
+        display: grid;
+        grid-template-columns: minmax(320px, 480px) 1fr;
+        background:
+          radial-gradient(1200px 600px at 0% 0%,    rgba(99,102,241,0.10), transparent 60%),
+          radial-gradient(900px 500px  at 100% 100%, rgba(16,185,129,0.07), transparent 55%),
+          var(--color-bg);
+        color: var(--color-text);
+        overflow: hidden;
+        animation: ve-fade-in 360ms cubic-bezier(.2,.7,.3,1);
+      }
+      .ve-orb {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        filter: blur(60px); opacity: 0.55;
+        animation: ve-drift 16s ease-in-out infinite alternate;
+      }
+      .ve-orb-1 {
+        width: 360px; height: 360px;
+        background: radial-gradient(circle, rgba(139,92,246,0.45), transparent 70%);
+        top: -80px; left: -80px;
+      }
+      .ve-orb-2 {
+        width: 460px; height: 460px;
+        background: radial-gradient(circle, rgba(16,185,129,0.35), transparent 70%);
+        bottom: -120px; right: -120px;
+        animation-delay: -8s;
+      }
+      @keyframes ve-drift {
+        0%   { transform: translate(0, 0) scale(1); }
+        100% { transform: translate(40px, 20px) scale(1.06); }
+      }
+      @keyframes ve-fade-in { 0% { opacity: 0; } 100% { opacity: 1; } }
+
+      .ve-rail {
+        position: relative; z-index: 1;
+        padding: 56px 44px;
+        display: flex; flex-direction: column; gap: 28px; justify-content: center;
+        background: linear-gradient(165deg, #0c1224 0%, #131b34 60%, #0c1224 100%);
+        border-right: 1px solid rgba(255,255,255,0.06);
+        color: #c0c4d0;
+      }
+      .ve-brand { display: flex; align-items: center; gap: 12px; }
+      .ve-brand-mark {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: linear-gradient(135deg, #10b981 0%, #6366f1 60%, #8b5cf6 100%);
+        display: grid; place-items: center;
+        color: white; font-size: 20px; font-weight: 800;
+        box-shadow: 0 0 0 1px rgba(99,102,241,0.25), 0 8px 24px rgba(99,102,241,0.18);
+      }
+      .ve-brand-name { font-size: 15px; font-weight: 700; color: #e6e8ef; }
+      .ve-brand-sub  { font-size: 11px; color: #6b7280; margin-top: 2px; letter-spacing: 0.3px; }
+
+      .ve-rail-h1 {
+        margin: 0; font-size: 32px; font-weight: 700; line-height: 1.15;
+        letter-spacing: -0.02em; color: #ffffff;
+      }
+      .ve-rail-grad {
+        background: linear-gradient(90deg, #10b981, #8b5cf6);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+      }
+      .ve-rail-p {
+        margin: 0; font-size: 14px; color: #9aa0b0; line-height: 1.65;
+      }
+      .ve-rail-list {
+        list-style: none; padding: 0; margin: 6px 0 0;
+        display: flex; flex-direction: column; gap: 8px;
+        font-size: 13px; color: #b8bcc9;
+      }
+      .ve-rail-list li { display: flex; gap: 6px; }
+
+      .ve-pane {
+        position: relative; z-index: 1;
+        display: flex; align-items: center; justify-content: center;
+        padding: 56px 40px;
+        overflow-y: auto;
+      }
+      .ve-card {
+        width: 100%; max-width: 440px;
+        background: var(--color-surface-0);
+        border: 1px solid var(--color-border);
+        border-radius: 16px;
+        padding: 40px 36px;
+        text-align: center;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.06);
+        animation: ve-card-in 360ms cubic-bezier(.2,.7,.3,1);
+      }
+      @keyframes ve-card-in {
+        0% { opacity: 0; transform: translateY(12px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+
+      @media (max-width: 900px) {
+        .ve-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        .ve-rail  { padding: 32px 24px; gap: 16px; }
+        .ve-rail-h1 { font-size: 24px; }
+        .ve-pane  { padding: 32px 22px; }
+      }
+    `}</style>
   );
 }
 

@@ -16,8 +16,9 @@ import {
   getIndustryPreset, saveProfileExtras,
 } from '../services/onboarding';
 import { updateBusiness } from '../services/businesses';
-import { uploadDocument, importData } from '../services/api';
+import { uploadDocument } from '../services/api';
 import { listPersonas, runAgent } from '../services/agents';
+import { createContact } from '../services/crm';
 import { getCurrentBusiness } from '../services/auth';
 import { comingSoonForIndustry, roadmapTitleSetForIndustry } from '../services/comingSoon';
 
@@ -310,17 +311,61 @@ export default function OnboardingWizard({ onClose }) {
     navigate(route);
   };
 
-  // Step 3 inline upload — pushes a CSV into nexus_contacts so the workspace
-  // starts with real lead data instead of an empty pipeline. Failures here
-  // are non-fatal: the user can still skip with "Do this later".
+  // Step 3 inline upload — parse the CSV in-browser and create contacts via
+  // the proper contacts API. We CAN'T use /api/database/import because that
+  // endpoint blocks writes to nexus_* "system" tables; instead we map known
+  // columns to contact fields and stash every extra column inside
+  // custom_fields JSON so power users with rich CSVs don't lose data.
   const uploadContactsCsv = async (file) => {
     if (!file) return;
     setBusy(true);
     setErr('');
     setCsvName(file.name);
     try {
-      const result = await importData(file, 'nexus_contacts', 'append');
-      setCsvRows(result?.rows_imported || result?.rows || 0);
+      const text = await file.text();
+      const rows = parseCsv(text);
+      if (rows.length === 0) {
+        throw new Error('That CSV looks empty — make sure the first row has column headers.');
+      }
+      const KNOWN = new Set(['first_name', 'last_name', 'email', 'phone', 'title', 'notes', 'tags', 'company']);
+      // Canonicalise headers: lower, snake_case, common aliases collapse to
+      // first/last name etc. so "First Name" and "FirstName" both map.
+      const headers = Object.keys(rows[0]).map(h => ({
+        raw: h,
+        canon: canonHeader(h),
+      }));
+      let ok = 0;
+      let failed = 0;
+      for (const row of rows) {
+        const body = { first_name: '', last_name: '', email: '', phone: '', title: '', notes: '', tags: '' };
+        const extras = {};
+        for (const h of headers) {
+          const v = (row[h.raw] ?? '').trim();
+          if (!v) continue;
+          if (KNOWN.has(h.canon)) {
+            if (h.canon === 'company') {
+              // No company column on contacts table — surface in custom_fields.
+              extras.company = v;
+            } else {
+              body[h.canon] = v;
+            }
+          } else {
+            extras[h.raw] = v;
+          }
+        }
+        if (!body.first_name && !body.last_name) continue;
+        body.custom_fields = JSON.stringify(extras);
+        try {
+          await createContact(body);
+          ok += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      if (ok === 0) {
+        throw new Error(`Couldn't import any rows. Check headers include first_name + last_name (any case).${failed ? ` ${failed} rows failed.` : ''}`);
+      }
+      setCsvRows(ok);
       await completeOnboardingStep('data_source');
       const fresh = await refreshState();
       const next = fresh.steps.findIndex(s => !s.done);
@@ -927,7 +972,9 @@ function FirstRunStep({ personas, runningKey, runResult, busy, onRun }) {
         gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
       }}>
         {personas.map((p) => {
-          const key = p.key || p.id;
+          // Backend returns `agent_key` (see api/routers/agents.py and
+          // agents/personas.py). Falling back to other keys for robustness.
+          const key = p.agent_key || p.key || p.id;
           const isRunning = runningKey === key;
           const isDone = runResult && runResult.key === key;
           return (
@@ -967,7 +1014,7 @@ function FirstRunStep({ personas, runningKey, runResult, busy, onRun }) {
                 </div>
               </div>
               <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                {p.tagline || p.description || 'Tap to run a quick sample task.'}
+                {p.description || p.role_tag || 'Tap to run a quick sample task.'}
               </div>
               <div style={{
                 fontSize: 11, fontWeight: 600, marginTop: 2,
@@ -1495,6 +1542,53 @@ function OnboardingStyles() {
       }
     `}</style>
   );
+}
+
+// ── CSV helpers (kept tiny, no dependency) ──────────────────────────────────
+// Handles quoted fields, escaped quotes ("" inside ""), and CRLF/LF newlines.
+// We intentionally don't pull in PapaParse for this — onboarding ships a
+// minimal contact import, power users can use the full Database page later.
+function parseCsv(text) {
+  const rows = [];
+  let i = 0;
+  const len = text.length;
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  while (i < len) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+        inQuotes = false; i++; continue;
+      }
+      field += c; i++; continue;
+    }
+    if (c === '"') { inQuotes = true; i++; continue; }
+    if (c === ',') { row.push(field); field = ''; i++; continue; }
+    if (c === '\r') { i++; continue; }
+    if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+    field += c; i++;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  if (rows.length === 0) return [];
+  const headers = rows[0].map(h => h.trim());
+  return rows.slice(1)
+    .filter(r => r.some(c => c.trim() !== ''))
+    .map(r => Object.fromEntries(headers.map((h, idx) => [h, r[idx] ?? ''])));
+}
+
+function canonHeader(h) {
+  const s = String(h || '').toLowerCase().trim().replace(/\s+|-/g, '_');
+  // Common aliases the user might use in their export.
+  if (s === 'firstname' || s === 'given_name')   return 'first_name';
+  if (s === 'lastname'  || s === 'surname' || s === 'family_name') return 'last_name';
+  if (s === 'fullname'  || s === 'name')         return 'first_name';
+  if (s === 'mobile'    || s === 'phone_number') return 'phone';
+  if (s === 'mail'      || s === 'email_address')return 'email';
+  if (s === 'job_title' || s === 'role')         return 'title';
+  if (s === 'organization' || s === 'org' || s === 'company_name') return 'company';
+  return s;
 }
 
 const ONBOARDING_KEY = 'nexus_onboarding_done';

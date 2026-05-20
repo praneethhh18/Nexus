@@ -155,8 +155,11 @@ export default function PlanWelcomeModal() {
       onClick={close}
       style={{
         position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(6px)',
+        // Heavier backdrop + stronger blur than before so the half-loaded
+        // dashboard underneath stops bleeding through the modal copy.
+        background: 'rgba(8, 10, 18, 0.88)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         display: 'grid', placeItems: 'center', padding: 16,
         animation: 'fade-in 200ms ease-out',
       }}

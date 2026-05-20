@@ -5,7 +5,7 @@ import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, 
 import { markNotificationRead, deleteNotification, getOnboardingState } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
-import OnboardingWizard, { shouldShowOnboarding } from './OnboardingWizard';
+import OnboardingWizard, { shouldShowOnboarding, markOnboardingSeen } from './OnboardingWizard';
 import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import TrialBanner from './TrialBanner';
@@ -525,6 +525,12 @@ export default function Layout() {
       )}
 
       {showOnboarding && <OnboardingWizard onClose={() => {
+        // Persist "wizard done" in localStorage so subsequent route changes
+        // (e.g. clicking "Invite teammates" in the welcome modal → /team)
+        // do NOT re-open the wizard on the next page load. Before this,
+        // shouldShowOnboarding() stayed true forever and every navigation
+        // re-mounted the wizard, making post-setup buttons feel broken.
+        markOnboardingSeen();
         setShowOnboarding(false);
         // PlanWelcomeModal listens for this event and replays any welcome
         // that was deferred while the wizard was up (e.g. the trial
