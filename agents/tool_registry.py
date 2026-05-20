@@ -164,7 +164,8 @@ def invoke_tool(
             "approval_id": action["id"],
             "summary": summary,
             "message": f"I prepared this action for you: {summary}. "
-                       f"It's waiting for your approval on the Approvals page.",
+                       f"It's waiting in your Inbox under 'Needs your approval' — "
+                       f"open Inbox to review and click Approve or Reject.",
         }
 
     result = execute_tool_now(tool_name, arguments, business_id, user_id, user_role)

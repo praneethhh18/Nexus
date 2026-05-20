@@ -2,8 +2,8 @@
 Approval queue — pending agent actions that need human sign-off before execution.
 
 Every write tool that is marked `requires_approval` gets routed here instead of
-executing immediately. The user sees it on the Approvals page and can approve
-(→ action runs, result stored) or reject (→ no action, just logged).
+executing immediately. The user sees it in the Inbox under 'Needs your approval'
+and can approve (→ action runs, result stored) or reject (→ no action, just logged).
 
 Security:
 - Every action is strictly scoped to a business_id; only members of that

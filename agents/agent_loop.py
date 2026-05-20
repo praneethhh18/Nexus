@@ -284,7 +284,7 @@ def run_agent(
                         "status": "queued_for_approval",
                         "approval_id": outcome["approval_id"],
                         "summary": outcome["summary"],
-                        "note": "This action is waiting for the user to approve on the Approvals page. Do not retry this exact action.",
+                        "note": "This action is waiting for the user to approve in the Inbox under 'Needs your approval'. Do not retry this exact action.",
                     }
                     tool_calls_record.append({
                         "name": tool_name, "args": args,
