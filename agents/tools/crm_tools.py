@@ -125,7 +125,14 @@ def _find_contacts(ctx, args):
     business_id = ctx["business_id"]
     search = args.get("search")
     company_id = args.get("company_id")
-    limit = int(args.get("limit", 20))
+    # Enforce a sane minimum. The LLM has been calling this with limit=1
+    # even when the user asked about the '5th contact' — and then making
+    # up names because the truncated 1-row list didn't have a 5th. We
+    # always return at least 25 rows so ordinal questions have actual
+    # data to read from. The LLM's `limit` is now a ceiling only, never
+    # a way to ask for less than 25.
+    requested = int(args.get("limit", 25))
+    limit = max(requested, 25)
     contacts = _crm.list_contacts(
         business_id, search=search, company_id=company_id, limit=limit,
     )
@@ -148,18 +155,20 @@ register_tool(
     name="find_contacts",
     description=(
         "Search or count contacts in the current business's CRM. Returns "
-        "`contacts` (a list, optionally truncated by `limit`) AND "
-        "`total_count` (the EXACT total matching the filter, ignoring "
-        "limit). For 'how many contacts do I have?' read total_count "
-        "directly — don't try to count the truncated list. Use this "
-        "before create_contact to avoid duplicates."
+        "`contacts` (a list, sorted by last_name then first_name, with a "
+        "`position` field on each row), `total_count` (the EXACT total "
+        "regardless of limit), and `truncated`. The handler enforces a "
+        "minimum of 25 rows — you cannot ask for fewer. For 'how many "
+        "contacts?' use total_count directly. For 'the Nth contact' read "
+        "the row where position == N. Use this before create_contact to "
+        "avoid duplicates."
     ),
     input_schema={
         "type": "object",
         "properties": {
             "search": {"type": "string", "description": "Name, email, or tag to search"},
             "company_id": {"type": "string", "description": "Optional — filter by company id"},
-            "limit": {"type": "integer", "default": 20, "description": "Max contacts in the list; total_count is always exact."},
+            "limit": {"type": "integer", "default": 25, "description": "Max contacts in the list (server clamps to minimum 25). total_count is always exact."},
         },
     },
     handler=_find_contacts,
