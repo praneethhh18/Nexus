@@ -70,11 +70,16 @@ def _create_template(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any
 register_tool(
     name="create_email_template",
     description=(
-        "Save a reusable email template. Use {{variable_name}} placeholders "
-        "in subject + body — they get auto-extracted and listed so callers "
-        "know what to fill at send time. Example: subject='Invoice "
-        "{{invoice_id}} overdue', body='Hi {{first_name}}, INV-{{invoice_id}} "
-        "for ₹{{amount}} is overdue…'."
+        "Save a reusable email template to the workspace library. This "
+        "does NOT send an email to anyone — it only stores the template "
+        "for later use. To actually send an email, call `send_email` (or "
+        "`send_email_from_template`). Use this when the user explicitly "
+        "asks to 'save a template' / 'create a template' / 'add this to "
+        "templates'. Use {{variable_name}} placeholders in subject + "
+        "body — they get auto-extracted and listed so callers know what "
+        "to fill at send time. Example: subject='Invoice {{invoice_id}} "
+        "overdue', body='Hi {{first_name}}, INV-{{invoice_id}} for "
+        "₹{{amount}} is overdue…'."
     ),
     input_schema={
         "type": "object",
