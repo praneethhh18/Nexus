@@ -98,57 +98,65 @@ try:
 except Exception as e:
     logger.warning(f"Index pass failed: {e}")
 
-# Auto-seed Gmail IMAP account for email triage if env vars are set and no
-# account exists yet. Uses imap.gmail.com:993 — works for any Gmail app password.
-try:
-    from config.settings import GMAIL_USER, GMAIL_APP_PASSWORD
-    if GMAIL_USER and GMAIL_APP_PASSWORD:
-        from agents.email_triage import save_account, get_account
-        from api.auth import ensure_default_admin
-        ensure_default_admin()
-        from config.db import get_conn as _gc
-        with _gc() as _c:
-            _biz = _c.execute("SELECT id FROM nexus_businesses LIMIT 1").fetchone()
-        if _biz:
-            _bid = _biz[0] if isinstance(_biz, tuple) else _biz["id"]
-            if not get_account(_bid):
-                save_account(
-                    business_id=_bid,
-                    imap_host="imap.gmail.com",
-                    imap_port=993,
-                    username=GMAIL_USER,
-                    password=GMAIL_APP_PASSWORD,
-                    folder="INBOX",
-                    enabled=True,
-                    auto_draft_reply=True,
-                )
-                logger.info(f"[Boot] Gmail IMAP auto-seeded for business {_bid} ({GMAIL_USER})")
-            else:
-                logger.debug(f"[Boot] Gmail IMAP already configured for business {_bid}")
-except Exception as e:
-    logger.warning(f"Gmail IMAP auto-seed failed: {e}")
+# Auto-seed Gmail IMAP + workspace SMTP from env in the background. These
+# touch network-adjacent code paths (IMAP credential checks, Fernet
+# key-derivation for encrypted storage) and were adding 5-15s to every
+# uvicorn boot, blocking the API from serving requests. Now they fire in
+# a daemon thread so /api/health responds immediately; the auto-seed
+# completes a moment later without anyone noticing.
+def _auto_seed_email_async() -> None:
+    try:
+        from config.settings import GMAIL_USER, GMAIL_APP_PASSWORD
+        if GMAIL_USER and GMAIL_APP_PASSWORD:
+            from agents.email_triage import save_account, get_account
+            from api.auth import ensure_default_admin
+            ensure_default_admin()
+            from config.db import get_conn as _gc
+            with _gc() as _c:
+                _biz = _c.execute("SELECT id FROM nexus_businesses LIMIT 1").fetchone()
+            if _biz:
+                _bid = _biz[0] if isinstance(_biz, tuple) else _biz["id"]
+                if not get_account(_bid):
+                    save_account(
+                        business_id=_bid,
+                        imap_host="imap.gmail.com",
+                        imap_port=993,
+                        username=GMAIL_USER,
+                        password=GMAIL_APP_PASSWORD,
+                        folder="INBOX",
+                        enabled=True,
+                        auto_draft_reply=True,
+                    )
+                    logger.info(f"[Boot/bg] Gmail IMAP auto-seeded for business {_bid} ({GMAIL_USER})")
+                else:
+                    logger.debug(f"[Boot/bg] Gmail IMAP already configured for business {_bid}")
+    except Exception as e:
+        logger.warning(f"[Boot/bg] Gmail IMAP auto-seed failed: {e}")
 
-# Auto-seed workspace SMTP from env GMAIL creds so Settings → Email shows as configured.
-try:
-    from config.settings import GMAIL_USER, GMAIL_APP_PASSWORD, EMAIL_ENABLED
-    if EMAIL_ENABLED:
-        from config.db import get_conn as _gc2
-        from api import smtp_credentials as _smtp_creds
-        with _gc2() as _c2:
-            _biz2 = _c2.execute("SELECT id FROM nexus_businesses LIMIT 1").fetchone()
-        if _biz2:
-            _bid2 = _biz2[0] if isinstance(_biz2, tuple) else _biz2["id"]
-            if not _smtp_creds.get_config(_bid2):
-                _smtp_creds.save_config(
-                    _bid2, "system",
-                    host="smtp.gmail.com", port=587,
-                    username=GMAIL_USER, password=GMAIL_APP_PASSWORD,
-                    from_email=GMAIL_USER, from_name="NexusAgent",
-                    use_tls=True,
-                )
-                logger.info(f"[Boot] Workspace SMTP auto-seeded ({GMAIL_USER})")
-except Exception as e:
-    logger.warning(f"Workspace SMTP auto-seed failed: {e}")
+    try:
+        from config.settings import GMAIL_USER, GMAIL_APP_PASSWORD, EMAIL_ENABLED
+        if EMAIL_ENABLED:
+            from config.db import get_conn as _gc2
+            from api import smtp_credentials as _smtp_creds
+            with _gc2() as _c2:
+                _biz2 = _c2.execute("SELECT id FROM nexus_businesses LIMIT 1").fetchone()
+            if _biz2:
+                _bid2 = _biz2[0] if isinstance(_biz2, tuple) else _biz2["id"]
+                if not _smtp_creds.get_config(_bid2):
+                    _smtp_creds.save_config(
+                        _bid2, "system",
+                        host="smtp.gmail.com", port=587,
+                        username=GMAIL_USER, password=GMAIL_APP_PASSWORD,
+                        from_email=GMAIL_USER, from_name="NexusAgent",
+                        use_tls=True,
+                    )
+                    logger.info(f"[Boot/bg] Workspace SMTP auto-seeded ({GMAIL_USER})")
+    except Exception as e:
+        logger.warning(f"[Boot/bg] Workspace SMTP auto-seed failed: {e}")
+
+
+import threading as _threading
+_threading.Thread(target=_auto_seed_email_async, name="email-seed-bg", daemon=True).start()
 
 # Apply pending schema migrations (idempotent, no-op on already-applied).
 # (First migration run happens above at ~line 53, skipping duplicate here to avoid
@@ -168,9 +176,18 @@ except Exception as e:
 # Only fires when SENTRY_DSN is set (set in production .env, unset in dev).
 # Captures unhandled exceptions, slow endpoints, and a sample of traces.
 # Free Education tier: 50K errors / 5GB logs / 5M spans / month for 1 year.
-try:
-    _sentry_dsn = os.getenv("SENTRY_DSN", "").strip()
-    if _sentry_dsn:
+#
+# Initialised in a background thread because sentry_sdk.init() pings the
+# ingest endpoint during setup, adding 2-5s to boot on every restart.
+# The trade-off: errors raised in the first ~2s after boot may not be
+# reported. That window is dominated by uvicorn's own startup logs;
+# real user traffic doesn't hit until /api/health is queried, by which
+# point Sentry is up.
+def _sentry_init_async() -> None:
+    try:
+        _sentry_dsn = os.getenv("SENTRY_DSN", "").strip()
+        if not _sentry_dsn:
+            return
         import sentry_sdk
         from sentry_sdk.integrations.fastapi import FastApiIntegration
         from sentry_sdk.integrations.starlette import StarletteIntegration
@@ -178,20 +195,19 @@ try:
             dsn=_sentry_dsn,
             environment=os.getenv("SENTRY_ENV", "production"),
             release=VERSION,
-            # Sample 10% of transactions for perf monitoring — keeps spans
-            # well under the 5M/month Education quota at expected traffic.
             traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", "0.1")),
-            # PII off by default — we don't want customer prompts in error reports.
             send_default_pii=False,
             integrations=[
                 FastApiIntegration(transaction_style="endpoint"),
                 StarletteIntegration(transaction_style="endpoint"),
             ],
         )
-        logger.success(f"[Boot] Sentry initialised (env={os.getenv('SENTRY_ENV', 'production')})")
-except Exception as _sentry_err:
-    # Sentry failures must never block the boot.
-    logger.warning(f"[Boot] Sentry init failed: {_sentry_err}")
+        logger.success(f"[Boot/bg] Sentry initialised (env={os.getenv('SENTRY_ENV', 'production')})")
+    except Exception as _sentry_err:
+        logger.warning(f"[Boot/bg] Sentry init failed: {_sentry_err}")
+
+
+_threading.Thread(target=_sentry_init_async, name="sentry-init-bg", daemon=True).start()
 
 
 # ── FastAPI App ───────────────────────────────────────────────────────────────
