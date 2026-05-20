@@ -34,6 +34,42 @@ def _ensure_column(conn, table: str, column: str, decl: str) -> None:
             pass
 
 
+_SEQ_FIXED = False
+
+
+def _heal_sequence_once(conn) -> None:
+    """Bump the Postgres SERIAL sequence on nexus_conversation_messages.id
+    to MAX(id) if it has fallen behind. Symptom of falling behind: every
+    INSERT raises 'duplicate key value violates unique constraint' with
+    Key (id)=(N) already exists. Happens when rows were loaded with
+    explicit IDs (e.g. SQLite -> Postgres migration) and the sequence
+    was never updated.
+
+    Runs at most once per process. No-op on SQLite."""
+    global _SEQ_FIXED
+    if _SEQ_FIXED:
+        return
+    try:
+        # pg_get_serial_sequence only exists on Postgres; on SQLite the
+        # query raises and we silently skip (the global flag still flips
+        # so we don't retry every connection).
+        row = conn.execute(
+            "SELECT pg_get_serial_sequence('nexus_conversation_messages', 'id')"
+        ).fetchone()
+        seq = row[0] if row else None
+        if seq:
+            conn.execute(
+                f"SELECT setval('{seq}', COALESCE((SELECT MAX(id) FROM {MSG_TABLE}), 1), true)"
+            )
+            conn.commit()
+    except Exception:
+        # Either SQLite (function missing) or a transient hiccup — either
+        # way, the next INSERT will surface the real error if it matters.
+        try: conn.rollback()
+        except Exception: pass
+    _SEQ_FIXED = True
+
+
 def _get_conn():
     conn = get_conn()
     conn.execute(f"""CREATE TABLE IF NOT EXISTS {TABLE} (
@@ -47,6 +83,7 @@ def _get_conn():
         sources_used TEXT DEFAULT '[]', multi_agent INTEGER DEFAULT 0,
         agents_used TEXT DEFAULT '[]', timestamp TEXT,
         FOREIGN KEY (conversation_id) REFERENCES {TABLE}(conversation_id))""")
+    _heal_sequence_once(conn)
 
     # Migrations: add business_id to existing installs
     _ensure_column(conn, TABLE, "business_id", "TEXT DEFAULT 'default'")
