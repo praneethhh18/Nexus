@@ -142,13 +142,37 @@ def _find_contacts(ctx, args):
     # list is sorted by (last_name, first_name) inside list_contacts, so
     # position 1 is always the same row across calls.
     contacts_with_pos = [{**c, "position": i + 1} for i, c in enumerate(contacts)]
-    return {
+
+    # When the search uniquely identified one contact, surface the
+    # contact's email + phone + id at the TOP of the response under
+    # a single key. We've observed the model calling find_contacts,
+    # receiving a 'contacts' array with .email inside, and then
+    # asking the USER 'please provide the email' — because the model
+    # didn't extract the nested field. With `match.email` at the top
+    # level the LLM can't pretend it doesn't know.
+    out = {
         "contacts": contacts_with_pos,
         "total_count": total,
         "returned": len(contacts),
         "truncated": total > len(contacts),
         "sort_order": "last_name ASC, first_name ASC",
     }
+    if search and len(contacts) == 1:
+        c = contacts[0]
+        out["match"] = {
+            "id":         c.get("id"),
+            "first_name": c.get("first_name"),
+            "last_name":  c.get("last_name"),
+            "email":      c.get("email"),
+            "phone":      c.get("phone"),
+            "company_id": c.get("company_id"),
+        }
+        out["next_step_hint"] = (
+            f"Exactly one contact matched. Use match.email "
+            f"('{c.get('email') or 'no email on file'}') as the recipient "
+            f"directly. Do NOT ask the user for it — it's right here."
+        )
+    return out
 
 
 register_tool(

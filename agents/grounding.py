@@ -57,7 +57,12 @@ def _walk_facts(value: Any, out: Set[str]) -> None:
     """Flatten nested dict/list values into a set of lowercased strings.
 
     Numbers are stringified; small ones (<1000) are skipped because
-    'we have 5 contacts' shouldn't have to come from the tool dump."""
+    'we have 5 contacts' shouldn't have to come from the tool dump.
+
+    For dicts that look like a contact record (have both first_name +
+    last_name), also emit the joined 'first last' form. Otherwise the
+    validator flags a legitimate 'Hi Meera Iyer' answer as ungrounded
+    because evidence only has 'meera' and 'iyer' as separate strings."""
     if value is None:
         return
     if isinstance(value, str):
@@ -70,6 +75,17 @@ def _walk_facts(value: Any, out: Set[str]) -> None:
             out.add(str(value).lower())
         return
     if isinstance(value, dict):
+        # Synthesise common name combinations so the validator doesn't
+        # false-flag answers that quote a contact's full name.
+        f = (value.get("first_name") or "").strip()
+        l = (value.get("last_name") or "").strip()
+        if f and l:
+            out.add(f"{f.lower()} {l.lower()}")
+            out.add(f"{l.lower()}, {f.lower()}")  # CRM-style sort key
+        # Also handle 'name' field (companies, deals) for cleanliness.
+        n = (value.get("name") or "").strip()
+        if n:
+            out.add(n.lower())
         for v in value.values():
             _walk_facts(v, out)
         return
