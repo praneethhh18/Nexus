@@ -161,6 +161,11 @@ def run_agent(
     working: List[Dict[str, Any]] = [dict(m) for m in compressed]
     tool_calls_record: List[Dict[str, Any]] = []
     pending_approval_ids: List[str] = []
+    # Raw tool outputs from this turn — fed to the grounding validator
+    # at the end so we can catch fabricated names/emails/phones in the
+    # final answer. We keep the full result, not the truncated preview,
+    # because the LLM may quote rows we didn't show in the trace UI.
+    grounding_evidence: List[Any] = []
 
     steps = 0
     consecutive_errors = 0
@@ -256,6 +261,12 @@ def run_agent(
                     if produced_files:
                         record["files"] = produced_files
                     tool_calls_record.append(record)
+                    # Capture the full tool result for the grounding
+                    # validator. Failed / pending tools contribute no
+                    # evidence (no row to quote from), so we only add
+                    # successful results here.
+                    if result_for_llm is not None:
+                        grounding_evidence.append(result_for_llm)
                 consecutive_errors = 0
             except Exception as e:
                 consecutive_errors += 1
@@ -314,10 +325,32 @@ def run_agent(
     except Exception:
         pass
 
+    # Hard grounding check: scan the final answer for names / emails /
+    # phones that don't appear anywhere in this turn's tool results. If
+    # the model invented something ('John Doe' when there's no John Doe
+    # in the data), append a transparency hedge so the user knows to
+    # double-check, and log a WARNING so we can see it in the server log.
+    grounding_warnings: List[Dict[str, str]] = []
+    try:
+        from agents import grounding as _grounding
+        evidence = _grounding.collect_evidence(grounding_evidence)
+        suspects = _grounding.find_ungrounded(final_text, evidence)
+        if suspects:
+            grounding_warnings = [{"kind": k, "value": v} for k, v in suspects]
+            logger.warning(
+                f"[Grounding] {len(suspects)} ungrounded value(s) in answer: "
+                f"{[f'{k}={v}' for k, v in suspects[:6]]}"
+            )
+            final_text = final_text + _grounding.hedge_message(suspects)
+    except Exception as e:
+        # Validator failures must never break the chat.
+        logger.warning(f"[Grounding] validator crashed (non-fatal): {e}")
+
     return {
         "answer": final_text,
         "tool_calls": tool_calls_record,
         "pending_approvals": pending_approval_ids,
         "steps": steps,
         "stop_reason": stop_reason,
+        "grounding_warnings": grounding_warnings,
     }
