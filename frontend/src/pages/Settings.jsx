@@ -10,6 +10,7 @@ import { getToken, getBusinessId, getCurrentBusiness, logout } from '../services
 import { calendarStatus, calendarStart, calendarDisconnect } from '../services/calendar';
 import { getToken as getTok, getBusinessId as getBiz } from '../services/auth';
 import WhatsAppConnect from '../components/WhatsAppConnect';
+import SettingsHub from '../components/SettingsHub';
 
 function etFetch(path, init = {}) {
   const h = { 'Content-Type': 'application/json', ...(init.headers || {}) };
@@ -124,6 +125,12 @@ export default function Settings() {
       <div className="page-header"><h1>Settings</h1><p>Manage your business, integrations, and system</p></div>
       <div className="page-body">
         {msg && <div className="panel" style={{ color: 'var(--color-info)', marginBottom: 12 }}>{msg}</div>}
+
+        {/* Hub — navigation grid to every settings sub-area. Replaces the
+            old flat sidebar items (Team, Memory, Security, Privacy Mode,
+            Audit log, Metrics, History, Plan & billing) with a discoverable
+            index. All direct URLs still work; this is just the front door. */}
+        <SettingsHub />
 
         <NotificationPrefsPanel />
         <OnboardingReopenPanel />

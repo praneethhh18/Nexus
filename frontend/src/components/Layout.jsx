@@ -12,36 +12,62 @@ import TrialBanner from './TrialBanner';
 import { prefetchRoute, prefetchAllRoutesIdle } from '../services/routePrefetch';
 import { prefetchData } from '../services/dataPrefetch';
 
-const NAV_MAIN = [
-  { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/chat', icon: MessageSquare, label: 'Chat' },
-  { to: '/crm', icon: Users, label: 'CRM' },
-  { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
-  { to: '/invoices', icon: Receipt, label: 'Invoices' },
-  { to: '/email-templates', icon: Mail, label: 'Email templates' },
-  { to: '/documents', icon: FileType2, label: 'Documents' },
-  { to: '/reports', icon: FileText, label: 'Reports' },
-  { to: '/workflows', icon: GitBranch, label: 'Workflows' },
-  { to: '/integrations', icon: Plug, label: 'Integrations' },
-  { to: '/inbox', icon: Inbox, label: 'Inbox', badge: 'approvals' },
-  { to: '/agents', icon: Bot, label: 'Agents' },
-  { to: '/team', icon: Users, label: 'Team' },
-  { to: '/memory', icon: Brain, label: 'Memory' },
-  { to: '/security', icon: Shield, label: 'Security' },
-  { to: '/settings/privacy-mode', icon: ShieldCheck, label: 'Privacy Mode' },
-  { to: '/audit', icon: Activity, label: 'Audit log' },
-  { to: '/admin/metrics', icon: BarChart3, label: 'Metrics' },
-  { to: '/history', icon: Clock, label: 'History' },
-  { to: '/pricing', icon: Sparkles, label: 'Plan & billing' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
+// ── Sidebar information architecture ─────────────────────────────────────
+// 3-tier disclosure so the daily UI doesn't read like an engineering org
+// chart:
+//
+//   Tier 1 (daily): 7 high-traffic items the SMB owner uses every login.
+//   Tier 2 (weekly): grouped under a quiet "More" label — power features
+//     that aren't part of the daily flow but should stay one click away.
+//   Tier 3 (admin): grouped under "Workspace" — settings, billing, help.
+//     Most live INSIDE the new /settings hub page; the sidebar only shows
+//     the top-level entry plus billing + help for direct access.
+//
+// Every existing route URL is preserved — only the visual grouping and a
+// few labels change. Industry-aware terminology already runs through every
+// page header via useTerm(), so renaming "CRM" → "Customers" here is the
+// universal default for businesses without a specific industry override.
+const NAV_PRIMARY = [
+  { to: '/',                icon: LayoutDashboard, label: 'Home' },
+  { to: '/inbox',           icon: Inbox,           label: 'Inbox',     badge: 'approvals' },
+  { to: '/crm',             icon: Users,           label: 'Customers' },
+  { to: '/tasks',           icon: CheckSquare,     label: 'Tasks' },
+  { to: '/invoices',        icon: Receipt,         label: 'Invoices' },
+  { to: '/documents',       icon: FileType2,       label: 'Documents' },
+  { to: '/chat',            icon: MessageSquare,   label: 'Chat with AI' },
+];
+
+const NAV_MORE = [
+  { to: '/agents',          icon: Bot,             label: 'AI Agents' },
+  { to: '/workflows',       icon: GitBranch,       label: 'Workflows' },
+  { to: '/reports',         icon: FileText,        label: 'Reports' },
+  { to: '/analytics',       icon: TrendingUp,      label: 'Analytics' },
+  { to: '/integrations',    icon: Plug,            label: 'Integrations' },
+  { to: '/email-templates', icon: Mail,            label: 'Email templates' },
+];
+
+const NAV_WORKSPACE = [
+  { to: '/settings',        icon: Settings,        label: 'Settings' },
+  { to: '/pricing',         icon: Sparkles,        label: 'Plan & billing' },
 ];
 
 const NAV_DEV = [
-  { to: '/database', icon: Database, label: 'Database' },
-  { to: '/sql', icon: Terminal, label: 'SQL Editor' },
+  { to: '/database',        icon: Database,        label: 'Database' },
+  { to: '/sql',             icon: Terminal,        label: 'SQL Editor' },
   // What-If moved into Chat as the /whatif slash command. Direct route at
   // /whatif still works for legacy bookmarks.
 ];
+
+// Items moved INTO the /settings hub (their URLs still work directly for
+// muscle-memory + deep links — only the sidebar entry is gone).
+// Documented here so future maintainers don't think they're missing.
+//   - /team             → Settings → Workspace → Team
+//   - /memory           → Settings → Account → Memory
+//   - /security         → Settings → Privacy & Security → Security
+//   - /audit            → Settings → Privacy & Security → Activity log
+//   - /admin/metrics    → Settings → Workspace → Metrics
+//   - /history          → Settings → Account → History
+//   - /settings/privacy-mode → Settings → Privacy & Security → Privacy Mode
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -305,43 +331,60 @@ export default function Layout() {
         )}
 
         <nav className="nav-section">
-          {NAV_MAIN.map(({ to, icon: Icon, label, badge }) => {
-            const count = badge === 'approvals' ? pendingApprovals : 0;
-            return (
-              <NavLink key={to} to={to} end={to === '/'} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
-                onMouseEnter={() => onNavHover(to)}
-                onMouseLeave={onNavLeave}
-                onFocus={() => onNavHover(to)}
-                onBlur={onNavLeave}>
-                <Icon size={18} />
-                {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
-                {count > 0 && !collapsed && (
-                  <span style={{ fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10, background: 'var(--color-warn)', color: 'var(--color-bg)', minWidth: 18, textAlign: 'center' }}>{count}</span>
-                )}
-                {count > 0 && collapsed && (
-                  <span style={{ position: 'absolute', top: 4, right: 4, width: 7, height: 7, borderRadius: '50%', background: 'var(--color-warn)' }} />
-                )}
-              </NavLink>
-            );
-          })}
+          {/* Tier 1 — daily, no group label (these are the obvious ones) */}
+          {NAV_PRIMARY.map((item) => (
+            <SidebarItem
+              key={item.to} item={item} collapsed={collapsed}
+              pendingApprovals={pendingApprovals}
+              onHover={onNavHover} onLeave={onNavLeave}
+            />
+          ))}
+
+          {/* Tier 2 — weekly tools. Group label visually separates without
+              hiding. On collapsed sidebar the label disappears but the
+              divider stays so the visual rhythm is preserved. */}
+          <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
+            {!collapsed && <div className="nav-group-label">More</div>}
+            {collapsed && <div className="nav-group-divider" />}
+            {NAV_MORE.map((item) => (
+              <SidebarItem
+                key={item.to} item={item} collapsed={collapsed}
+                pendingApprovals={pendingApprovals}
+                onHover={onNavHover} onLeave={onNavLeave}
+              />
+            ))}
+          </div>
+
+          {/* Tier 3 — workspace admin. Settings + Plan & billing only;
+              Team / Memory / Security / Privacy / Audit / Metrics / History
+              live INSIDE the Settings hub page instead of cluttering the
+              sidebar. Their direct URLs still work for deep links. */}
+          <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
+            {!collapsed && <div className="nav-group-label">Workspace</div>}
+            {collapsed && <div className="nav-group-divider" />}
+            {NAV_WORKSPACE.map((item) => (
+              <SidebarItem
+                key={item.to} item={item} collapsed={collapsed}
+                pendingApprovals={pendingApprovals}
+                onHover={onNavHover} onLeave={onNavLeave}
+              />
+            ))}
+          </div>
+
+          {/* Dev mode — only when explicitly toggled. Power tools that the
+              SMB owner should never see by default. */}
           {devMode && (
-            <>
-              {!collapsed && (
-                <div className="nav-group-label">Developer</div>
-              )}
-              {NAV_DEV.map(({ to, icon: Icon, label }) => (
-                <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-                  style={collapsed ? { justifyContent: 'center', padding: '10px' } : {}} title={label}
-                  onMouseEnter={() => onNavHover(to)}
-                  onMouseLeave={onNavLeave}
-                  onFocus={() => onNavHover(to)}
-                  onBlur={onNavLeave}>
-                  <Icon size={18} />
-                  {!collapsed && <span>{label}</span>}
-                </NavLink>
+            <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
+              {!collapsed && <div className="nav-group-label">Developer</div>}
+              {collapsed && <div className="nav-group-divider" />}
+              {NAV_DEV.map((item) => (
+                <SidebarItem
+                  key={item.to} item={item} collapsed={collapsed}
+                  pendingApprovals={pendingApprovals}
+                  onHover={onNavHover} onLeave={onNavLeave}
+                />
               ))}
-            </>
+            </div>
           )}
         </nav>
 
@@ -502,5 +545,45 @@ export default function Layout() {
         <span style={{ fontSize: 9, color: 'var(--color-text-dim)' }}>? Shortcuts</span>
       </div>
     </>
+  );
+}
+
+
+// ── SidebarItem ─────────────────────────────────────────────────────────
+// Single nav row shared across all three sidebar tiers + dev mode. Pulled
+// out so the rendering logic stays one place and group sections in Layout
+// remain readable.
+function SidebarItem({ item, collapsed, pendingApprovals, onHover, onLeave }) {
+  const { to, icon: Icon, label, badge } = item;
+  const count = badge === 'approvals' ? pendingApprovals : 0;
+  return (
+    <NavLink
+      to={to}
+      end={to === '/'}
+      className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+      style={collapsed ? { justifyContent: 'center', padding: '10px' } : undefined}
+      title={label}
+      onMouseEnter={() => onHover(to)}
+      onMouseLeave={onLeave}
+      onFocus={() => onHover(to)}
+      onBlur={onLeave}
+    >
+      <Icon size={18} />
+      {!collapsed && <span style={{ flex: 1 }}>{label}</span>}
+      {count > 0 && !collapsed && (
+        <span style={{
+          fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+          background: 'var(--color-warn)', color: 'var(--color-bg)',
+          minWidth: 18, textAlign: 'center',
+        }}>{count}</span>
+      )}
+      {count > 0 && collapsed && (
+        <span style={{
+          position: 'absolute', top: 4, right: 4,
+          width: 7, height: 7, borderRadius: '50%',
+          background: 'var(--color-warn)',
+        }} />
+      )}
+    </NavLink>
   );
 }

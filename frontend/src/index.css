@@ -997,3 +997,35 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Sidebar groups (Tier 2 + 3 + Dev) ─────────────────────────────────
+   The 3-tier sidebar uses `.nav-group` wrappers to add subtle visual
+   breathing room without hiding anything. Each group gets a small top
+   margin + an internal label or divider. Tier 1 (Primary) renders bare
+   for daily-use immediacy. */
+.nav-group {
+  margin-top: 14px;
+  padding-top: 4px;
+}
+.nav-group:not(:has(.nav-group-label)):not(:has(.nav-group-divider)) {
+  border-top: 1px solid var(--color-surface-2);
+}
+.nav-group.is-collapsed {
+  margin-top: 10px;
+}
+.nav-group-divider {
+  height: 1px;
+  background: var(--color-surface-2);
+  margin: 4px 12px 8px;
+}
+
+/* ── Settings hub cards ───────────────────────────────────────────────
+   Hover lifts the card subtly + brings the icon tile to accent colour so
+   the click target is unambiguous. Keep the lift small (transform 1px) so
+   it feels responsive, not gimmicky. */
+.settings-hub-card:hover {
+  background: var(--color-surface-2) !important;
+  border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border)) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
