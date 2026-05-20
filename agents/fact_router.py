@@ -89,11 +89,12 @@ def _row_company(r) -> str:
 
 
 def _row_deal(r) -> str:
-    bits = [r["title"] or "(untitled deal)"]
+    # Real schema: nexus_deals has `name` + `value` (NOT title/amount).
+    bits = [r["name"] or "(unnamed deal)"]
     if r["stage"]: bits.append(f"stage: {r['stage']}")
-    if r["amount"] is not None:
+    if r["value"] is not None:
         try:
-            bits.append(f"₹{int(r['amount']):,}")
+            bits.append(f"₹{int(r['value']):,}")
         except Exception:
             pass
     return " — ".join(bits)
@@ -107,11 +108,13 @@ def _row_task(r) -> str:
 
 
 def _row_invoice(r) -> str:
+    # Real schema: nexus_invoices has `total` (NOT total_amount) and
+    # `issue_date` (NOT issued_at).
     bits = [r["number"] or f"invoice #{r['id'][:8]}"]
     if r["status"]: bits.append(r["status"])
-    if r["total_amount"] is not None:
+    if r["total"] is not None:
         try:
-            bits.append(f"₹{int(r['total_amount']):,}")
+            bits.append(f"₹{int(r['total']):,}")
         except Exception:
             pass
     return " — ".join(bits)
@@ -140,7 +143,8 @@ ENTITIES = {
         "keywords": ["deal", "deals", "opportunity", "opportunities", "pipeline"],
         "table": "nexus_deals",
         "order_by": "created_at DESC",
-        "columns": "id, title, stage, amount, contact_id",
+        # nexus_deals real columns: name (not title), value (not amount).
+        "columns": "id, name, stage, value, contact_id",
         "row_fmt": _row_deal,
         "singular": "deal",
         "plural": "deals",
@@ -157,8 +161,10 @@ ENTITIES = {
     "invoice": {
         "keywords": ["invoice", "invoices", "bill", "bills"],
         "table": "nexus_invoices",
-        "order_by": "issued_at DESC",
-        "columns": "id, number, status, total_amount",
+        # nexus_invoices real columns: issue_date (not issued_at), total
+        # (not total_amount).
+        "order_by": "issue_date DESC",
+        "columns": "id, number, status, total",
         "row_fmt": _row_invoice,
         "singular": "invoice",
         "plural": "invoices",
@@ -314,10 +320,22 @@ def _try_fields(question: str, business_id: str, entity_key: str) -> Optional[st
         if col is None:
             return None
 
-    # Need a list-y intent OR a possessive ('of all', 'of them', 'of my')
-    # — otherwise it's a single-contact question that the LLM handles
-    # better (e.g. 'what is Rohit's email').
-    if not (_LIST_RE.search(question) or re.search(r"\bof\s+(them|all|my|the)\b", question, re.IGNORECASE)):
+    # Decide whether this is a single-contact field question (let the
+    # LLM handle, since it can match by name) or a list-all-fields
+    # question (we handle deterministically). Three signals point at
+    # the list interpretation:
+    #   1. A list verb (list / show / give me / ...).
+    #   2. A possessive ('of all', 'of them', 'of my', 'of the').
+    #   3. The bare phone-intent phrase by itself ('contact numbers',
+    #      'phone numbers', 'mobile numbers') — unambiguously plural
+    #      and the user obviously wants everyone, not one specific
+    #      person they haven't named.
+    is_list_intent = (
+        _LIST_RE.search(question)
+        or re.search(r"\bof\s+(them|all|my|the)\b", question, re.IGNORECASE)
+        or (phone_intent and len(question.split()) <= 4)
+    )
+    if not is_list_intent:
         return None
 
     e = ENTITIES[entity_key]
@@ -342,8 +360,15 @@ def _try_list(question: str, business_id: str, entity_key: str) -> Optional[str]
 
     Returns up to 25 rows formatted one per line. For totals > 25 we
     append a 'showing N of total' footer so the user knows there's
-    more, with a pointer to the dedicated page."""
-    if not _LIST_RE.search(question):
+    more, with a pointer to the dedicated page.
+
+    Triggers on EITHER:
+      - a list verb (list/show/give me/display/all-of-my/...), or
+      - an explicit slice ('first 5 contacts', 'top 10 deals',
+        'next 3 invoices') — without this, 'first 5 contacts' was
+        getting hijacked by _try_ordinal which captured '5' as the
+        ordinal and returned a single 5th-contact answer."""
+    if not _LIST_RE.search(question) and not _TOP_N_RE.search(question):
         return None
     e = ENTITIES[entity_key]
     total = _count(business_id, e["table"])
@@ -388,14 +413,28 @@ def try_answer(question: str, business_id: str) -> Optional[str]:
     #   fields (phones / emails) FIRST — 'contact numbers' would otherwise
     #     trip the count regex and answer with the wrong question.
     #   count next   — 'how many contacts' is the simplest answer.
-    #   ordinal     — '5th contact' / 'last deal' / 'first invoice'.
-    #   list last   — covers the broad 'show me my X' net.
-    for fn in (_try_fields, _try_count, _try_ordinal, _try_list):
+    #   list BEFORE ordinal — 'first 5 contacts' is a list-of-five, NOT
+    #     the 5th contact. _try_list now triggers on _TOP_N_RE too, so
+    #     it claims this case before _try_ordinal can mis-match the '5'.
+    #   ordinal LAST — '5th contact' / 'last deal' / a bare 'first
+    #     contact' (no number) still hit this because none of the
+    #     earlier handlers match those.
+    for fn in (_try_fields, _try_count, _try_list, _try_ordinal):
         try:
             answer = fn(q, business_id, entity)
             if answer:
                 return answer
-        except Exception:
-            # If SQL or pattern blows up, fall through to LLM.
+        except Exception as e:
+            # If SQL or pattern blows up, log loudly so we don't ship
+            # broken router patterns silently — previously a schema
+            # mismatch (e.g. column 'amount' on nexus_deals where the
+            # real column is 'value') would just fall through to the
+            # LLM with no visible signal that the deterministic path
+            # was broken.
+            import logging
+            logging.getLogger(__name__).exception(
+                f"[fact_router] {fn.__name__} crashed on q={q!r} "
+                f"entity={entity!r}: {e}"
+            )
             return None
     return None
