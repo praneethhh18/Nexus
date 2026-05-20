@@ -325,44 +325,48 @@ def run_agent(
     except Exception:
         pass
 
-    # Hard grounding check: scan the final answer for names / emails /
-    # phones that don't appear anywhere in this turn's tool results.
+    # Hard grounding check — ONLY when the user was asking about their
+    # own data (i.e., at least one tool was called this turn). General-
+    # knowledge questions ('how do I find clients', 'software industry
+    # trends', 'best practices for SaaS pricing') legitimately mention
+    # names/companies/products that the LLM knows from training. With
+    # no CRM tool involved, there's no 'evidence' to validate against
+    # — every name in a normal answer would look ungrounded and the
+    # bulk guard was killing legitimate replies.
     #
-    # Two thresholds:
-    #   1-2 suspects  -> append a hedge footer (probably real edge cases,
-    #                    don't throw away the whole answer)
-    #   3+ suspects   -> bulk hallucination — the model invented a list
-    #                    out of thin air. Replace the answer entirely
-    #                    with a hard refusal pointing to the real page.
+    # Rule: skip validation entirely when grounding_evidence is empty.
+    # When tools WERE called, the user is asking about THEIR data, and
+    # fabricated names are real bugs we want to catch.
     grounding_warnings: List[Dict[str, str]] = []
     BULK_HALLUCINATION_THRESHOLD = 3
-    try:
-        from agents import grounding as _grounding
-        evidence = _grounding.collect_evidence(grounding_evidence)
-        suspects = _grounding.find_ungrounded(final_text, evidence)
-        if suspects:
-            grounding_warnings = [{"kind": k, "value": v} for k, v in suspects]
-            logger.warning(
-                f"[Grounding] {len(suspects)} ungrounded value(s) in answer: "
-                f"{[f'{k}={v}' for k, v in suspects[:6]]}"
-            )
-            if len(suspects) >= BULK_HALLUCINATION_THRESHOLD:
-                # Don't ship 25 fake names with a tiny warning footer the
-                # user will miss. Replace the whole reply.
-                final_text = (
-                    "I couldn't retrieve real data for that — the response "
-                    "I was about to send had multiple unverified values. "
-                    "Open the relevant page (Customers, Tasks, Deals, "
-                    "Invoices, Documents) to see the actual records, or "
-                    "ask a more specific question like \"how many "
-                    "contacts do I have?\" or \"the 5th contact\"."
+    if grounding_evidence:
+        try:
+            from agents import grounding as _grounding
+            evidence = _grounding.collect_evidence(grounding_evidence)
+            suspects = _grounding.find_ungrounded(final_text, evidence)
+            if suspects:
+                grounding_warnings = [{"kind": k, "value": v} for k, v in suspects]
+                logger.warning(
+                    f"[Grounding] {len(suspects)} ungrounded value(s) in answer: "
+                    f"{[f'{k}={v}' for k, v in suspects[:6]]}"
                 )
-                stop_reason = "grounding_block"
-            else:
-                final_text = final_text + _grounding.hedge_message(suspects)
-    except Exception as e:
-        # Validator failures must never break the chat.
-        logger.warning(f"[Grounding] validator crashed (non-fatal): {e}")
+                if len(suspects) >= BULK_HALLUCINATION_THRESHOLD:
+                    # Don't ship 25 fake names with a tiny warning footer the
+                    # user will miss. Replace the whole reply.
+                    final_text = (
+                        "I couldn't retrieve real data for that — the response "
+                        "I was about to send had multiple unverified values. "
+                        "Open the relevant page (Customers, Tasks, Deals, "
+                        "Invoices, Documents) to see the actual records, or "
+                        "ask a more specific question like \"how many "
+                        "contacts do I have?\" or \"the 5th contact\"."
+                    )
+                    stop_reason = "grounding_block"
+                else:
+                    final_text = final_text + _grounding.hedge_message(suspects)
+        except Exception as e:
+            # Validator failures must never break the chat.
+            logger.warning(f"[Grounding] validator crashed (non-fatal): {e}")
 
     return {
         "answer": final_text,
