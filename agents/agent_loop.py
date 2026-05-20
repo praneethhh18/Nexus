@@ -32,6 +32,28 @@ from config.llm_tools import invoke_with_tools
 MAX_STEPS = 10
 MAX_CONSECUTIVE_ERRORS = 3
 
+# Tools whose output is "ground truth" the LLM must quote verbatim — the
+# only inputs the grounding validator should compare the final answer
+# against. Reading a contact's email from find_contacts and then making
+# up a different one IS a bug. Reading a SaaS-pricing essay from
+# research_subject and paraphrasing its bullet points is NOT.
+#
+# Anything not in this set returns content the LLM is supposed to
+# transform / summarise, so its strings won't appear verbatim in the
+# answer and shouldn't trip the validator.
+_CRM_GROUNDING_TOOLS = {
+    "find_contacts", "find_companies", "find_deals", "find_tasks",
+    "find_invoices", "find_leads",
+    "get_contact", "get_company", "get_deal", "get_task", "get_invoice",
+    "list_contacts", "list_companies", "list_deals", "list_tasks",
+    "list_invoices",
+    "create_contact", "create_company", "create_deal", "create_task",
+    "create_invoice",
+    "update_contact", "update_company", "update_deal", "update_task",
+    "update_invoice",
+    "send_email", "send_email_from_template",
+}
+
 
 def _build_system_prompt(business_id: str, business_name: str, user_name: str,
                          query_hint: str = "") -> str:
@@ -93,9 +115,17 @@ real email address from the CRM. Read the contact's `email` field. \
 Do NOT skip this — fabricating an email like 'praneeth.pk@example.com' \
 out of the name + a placeholder domain is forbidden.
 
-  2. If find_contacts returns NO matching contact and the recipient \
-might be the user themselves, ask once for the email address. Do not \
-guess.
+  1a. READ the find_contacts result. The response is a JSON object \
+with a `contacts` array; each contact has an `email` field. When \
+contacts[0].email is present, USE IT as the recipient. NEVER ask the \
+user 'please provide the email' if the tool already returned it — \
+that's the whole point of calling find_contacts. Similarly, if you \
+need a contact_id for create_task / create_deal, READ contacts[0].id \
+from the same result — don't ask the user for an ID.
+
+  2. If find_contacts returns NO matching contact (total_count == 0) \
+and the recipient might be the user themselves, ask once for the \
+email address. Do not guess.
 
   3. Once you have a REAL email address (either from find_contacts or \
 typed verbatim by the user), call `send_email` with:
@@ -303,10 +333,17 @@ def run_agent(
                         record["files"] = produced_files
                     tool_calls_record.append(record)
                     # Capture the full tool result for the grounding
-                    # validator. Failed / pending tools contribute no
-                    # evidence (no row to quote from), so we only add
-                    # successful results here.
-                    if result_for_llm is not None:
+                    # validator. Only tools that READ ground-truth CRM
+                    # data count as evidence — research / knowledge /
+                    # web-search tools return generic content the LLM
+                    # is supposed to paraphrase, and validating an
+                    # answer about 'Content Marketing' against an
+                    # essay snippet always produces false positives.
+                    #
+                    # _CRM_GROUNDING_TOOLS lists every tool that reads
+                    # user-owned records. Everything else is treated as
+                    # narrative content for which no grounding applies.
+                    if result_for_llm is not None and tool_name in _CRM_GROUNDING_TOOLS:
                         grounding_evidence.append(result_for_llm)
                 consecutive_errors = 0
             except Exception as e:
