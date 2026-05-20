@@ -383,6 +383,15 @@ export default function OnboardingWizard({ onClose }) {
   };
 
   // Step 5 inline persona load + run.
+  //
+  // Some agents can't be safely sample-run from the wizard:
+  //   - outbound_caller (Vox) — places real phone calls; needs a contact
+  //     with a phone number + Twilio setup before it can do anything
+  //   - memory_consolidate (Memory) — a weekly digest job, nothing
+  //     interesting to show on a brand-new workspace with no history
+  // Filter them out so the picker only offers agents that produce a
+  // meaningful sample result inline.
+  const FIRST_RUN_BLOCKLIST = new Set(['outbound_caller', 'memory_consolidate']);
   useEffect(() => {
     if (currentKey !== 'first_run' || personas !== null) return;
     let cancelled = false;
@@ -390,7 +399,8 @@ export default function OnboardingWizard({ onClose }) {
       .then((data) => {
         if (cancelled) return;
         const arr = Array.isArray(data) ? data : (data?.personas || []);
-        setPersonas(arr.slice(0, 6));
+        const filtered = arr.filter(p => !FIRST_RUN_BLOCKLIST.has(p.agent_key));
+        setPersonas(filtered.slice(0, 6));
       })
       .catch(() => { if (!cancelled) setPersonas([]); });
     return () => { cancelled = true; };

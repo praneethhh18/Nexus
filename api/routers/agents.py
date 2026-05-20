@@ -224,6 +224,17 @@ def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
             from agents.summarizer import consolidate_business_memory
             result = consolidate_business_memory(business_id, apply_changes=True)
             return result, result
+        # Vox doesn't have a synchronous run-now handler because outbound
+        # calls need a real contact + phone number + Twilio config to
+        # work — we can't sample-fire one safely. Return a clear 400
+        # explaining the next step rather than the generic 404 ('Unknown
+        # agent') the wizard's Step 5 was showing in red.
+        if agent_key == "outbound_caller":
+            raise HTTPException(
+                400,
+                "Vox makes real outbound calls — add a contact with a phone "
+                "number and queue a call from the Voice page to try it.",
+            )
         raise HTTPException(404, f"Unknown agent: {agent_key}")
 
     run_id = run_log.start(business_id, agent_key, trigger="manual")
