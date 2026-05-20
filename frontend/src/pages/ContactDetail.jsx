@@ -624,7 +624,7 @@ export default function ContactDetail() {
             <div className="panel">
               <div className="section-h" style={{ margin: '0 0 10px' }}>
                 <h2>Open deals · {openDeals.length}</h2>
-                <span className="meta">Won: ${wonValue.toLocaleString()}</span>
+                <span className="meta">Won: ₹{wonValue.toLocaleString('en-IN')}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {openDeals.map(d => (
@@ -648,7 +648,7 @@ export default function ContactDetail() {
                         {d.name}
                       </div>
                       <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'capitalize' }}>
-                        {d.stage} {d.value ? `· $${Number(d.value).toLocaleString()}` : ''}
+                        {d.stage} {d.value ? `· ₹${Number(d.value).toLocaleString('en-IN')}` : ''}
                       </div>
                     </div>
                   </Link>
@@ -884,7 +884,7 @@ export default function ContactDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
               <Snap label="Open deals" value={openDeals.length} />
               <Snap label="Won deals" value={deals.filter(d => d.stage === 'won').length} />
-              <Snap label="Won value" value={`$${wonValue.toLocaleString()}`} />
+              <Snap label="Won value" value={`₹${wonValue.toLocaleString('en-IN')}`} />
               <Snap label="Interactions" value={interactions.length} />
               <Snap label="Invoices" value={invoices.length} />
             </div>
@@ -1226,7 +1226,7 @@ function TimelineFeed({ interactions = [], deals = [], invoices = [] }) {
         kind: 'deal', subkind: d.stage,
         when: d.updated_at || d.created_at || '',
         title: `Deal "${d.name}"`,
-        body: `Stage: ${d.stage}` + (d.value ? ` · $${Number(d.value).toLocaleString()}` : ''),
+        body: `Stage: ${d.stage}` + (d.value ? ` · ₹${Number(d.value).toLocaleString('en-IN')}` : ''),
       });
     }
     for (const inv of invoices || []) {

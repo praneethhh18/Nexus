@@ -18,6 +18,16 @@ import {
 import { updateBusiness } from '../services/businesses';
 import { uploadDocument } from '../services/api';
 import { getCurrentBusiness } from '../services/auth';
+import { comingSoonForIndustry, roadmapTitleSetForIndustry } from '../services/comingSoon';
+
+// Tool names listed in the wizard's "industry workspace" preview that are
+// genuinely roadmap (not in v1). Phase G items show with a 'Soon' badge so
+// new signups don't expect to find them immediately.
+const ROADMAP_TOOL_HINTS = [
+  'live fleet tracking', 'driver app', 'lr tracking', 'fleet visibility',
+  'route optimisation', 'route optimization', 'geofence',
+  'driver coordination',  // we list this in PRESETS but full coordination is post-v1
+];
 
 const INDUSTRIES = [
   // Global categories
@@ -597,6 +607,11 @@ const GOAL_AGENT_HIGHLIGHTS = {
 
 function IndustryStep({ industry, preset, primaryGoal, companySize }) {
   const goalHighlight = GOAL_AGENT_HIGHLIGHTS[primaryGoal];
+  // Roadmap teaser — only renders for industries with at least one
+  // planned feature (Logistics, Travel, Real-estate broker, Local
+  // services, Auto repair). Sets honest expectations + collects demand
+  // signal without us shipping vapourware.
+  const upcoming = comingSoonForIndustry(industry);
   // For very small teams (1-5) we don't want to overpromise enterprise
   // features. For larger teams (51+) we explicitly call out SSO + roles.
   const sizeBand = companySize === '1-5'
@@ -619,17 +634,35 @@ function IndustryStep({ industry, preset, primaryGoal, companySize }) {
         </div>
       </div>
       <div className="onb-grid-2col" style={{ gap: 8 }}>
-        {preset.map((item) => (
-          <div key={item} style={{
-            padding: 10, borderRadius: 'var(--r-sm)',
-            background: 'color-mix(in srgb, var(--color-accent) 7%, var(--color-surface-1))',
-            border: '1px solid color-mix(in srgb, var(--color-accent) 20%, var(--color-border))',
-            fontSize: 12, color: 'var(--color-text)',
-            display: 'flex', alignItems: 'center', gap: 8,
-          }}>
-            <CheckCircle2 size={14} color="var(--color-ok)" /> {item}
-          </div>
-        ))}
+        {preset.map((item) => {
+          const lower = item.toLowerCase();
+          const isRoadmap = ROADMAP_TOOL_HINTS.some(k => lower.includes(k));
+          return (
+            <div key={item} style={{
+              padding: 10, borderRadius: 'var(--r-sm)',
+              background: isRoadmap
+                ? 'color-mix(in srgb, var(--color-warn) 5%, var(--color-surface-1))'
+                : 'color-mix(in srgb, var(--color-accent) 7%, var(--color-surface-1))',
+              border: isRoadmap
+                ? '1px dashed color-mix(in srgb, var(--color-warn) 30%, var(--color-border))'
+                : '1px solid color-mix(in srgb, var(--color-accent) 20%, var(--color-border))',
+              fontSize: 12, color: 'var(--color-text)',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              {isRoadmap
+                ? <span style={{ fontSize: 14 }}>🚧</span>
+                : <CheckCircle2 size={14} color="var(--color-ok)" />}
+              <span style={{ flex: 1 }}>{item}</span>
+              {isRoadmap && (
+                <span style={{
+                  fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 4,
+                  background: 'color-mix(in srgb, var(--color-warn) 20%, transparent)',
+                  color: 'var(--color-warn)', textTransform: 'uppercase', letterSpacing: 0.5,
+                }}>Soon</span>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {goalHighlight && (
@@ -654,6 +687,41 @@ function IndustryStep({ industry, preset, primaryGoal, companySize }) {
           fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.5,
         }}>
           {sizeBand}
+        </div>
+      )}
+
+      {upcoming.length > 0 && (
+        <div style={{
+          padding: 12, borderRadius: 'var(--r-sm)',
+          background: 'color-mix(in srgb, var(--color-warn) 5%, var(--color-surface-1))',
+          border: '1px dashed color-mix(in srgb, var(--color-warn) 30%, var(--color-border))',
+          fontSize: 12, color: 'var(--color-text)', lineHeight: 1.55,
+        }}>
+          <div style={{
+            fontSize: 11, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+            color: 'var(--color-warn)', marginBottom: 8,
+          }}>
+            🚧 Coming next for {industry}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {upcoming.map((f) => (
+              <div key={f.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span style={{
+                  flexShrink: 0,
+                  fontSize: 10, fontWeight: 600,
+                  padding: '2px 6px', borderRadius: 4,
+                  background: 'color-mix(in srgb, var(--color-warn) 18%, transparent)',
+                  color: 'var(--color-warn)', whiteSpace: 'nowrap', marginTop: 1,
+                }}>{f.eta}</span>
+                <span>
+                  <strong>{f.title}</strong> — {f.blurb}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-text-dim)' }}>
+            Reply to any onboarding email to register early interest — we ship to interested workspaces first.
+          </div>
         </div>
       )}
 

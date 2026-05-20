@@ -590,7 +590,7 @@ export default function CRM() {
                       </th>
                       <th>Name</th>
                       <th className="hide-on-mobile">Title</th>
-                      <th className="hide-on-mobile">Company</th>
+                      <th className="hide-on-mobile">{t('company')}</th>
                       <th className="hide-on-mobile">Email</th>
                       <th>Phone</th>
                       <th className="hide-on-mobile">Tags</th>

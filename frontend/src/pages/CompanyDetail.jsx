@@ -224,7 +224,7 @@ export default function CompanyDetail() {
             <div className="panel">
               <div className="section-h" style={{ margin: '0 0 10px' }}>
                 <h2>{t('deals')} · {deals.length}</h2>
-                <span className="meta">{openDealCount} open · won ${wonValue.toLocaleString()}</span>
+                <span className="meta">{openDealCount} open · won ₹{wonValue.toLocaleString('en-IN')}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {deals.map(d => (
@@ -243,7 +243,7 @@ export default function CompanyDetail() {
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 500 }}>{d.name}</div>
                       <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textTransform: 'capitalize' }}>
-                        {d.stage} {d.value ? `· $${Number(d.value).toLocaleString()}` : ''}
+                        {d.stage} {d.value ? `· ₹${Number(d.value).toLocaleString('en-IN')}` : ''}
                       </div>
                     </div>
                   </Link>
@@ -257,7 +257,7 @@ export default function CompanyDetail() {
             <div className="panel">
               <div className="section-h" style={{ margin: '0 0 10px' }}>
                 <h2>{t('invoices')} · {invoices.length}</h2>
-                <span className="meta">paid: ${totalRevenue.toLocaleString()}</span>
+                <span className="meta">paid: ₹{totalRevenue.toLocaleString('en-IN')}</span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {invoices.slice(0, 10).map(inv => (
@@ -310,9 +310,9 @@ export default function CompanyDetail() {
               <Snap label="Contacts" value={contacts.length} />
               <Snap label="Open deals" value={openDealCount} />
               <Snap label="Won deals" value={deals.filter(d => d.stage === 'won').length} />
-              <Snap label="Won value" value={`$${wonValue.toLocaleString()}`} />
+              <Snap label="Won value" value={`₹${wonValue.toLocaleString('en-IN')}`} />
               <Snap label="Invoices" value={invoices.length} />
-              <Snap label="Revenue (paid)" value={`$${totalRevenue.toLocaleString()}`} />
+              <Snap label="Revenue (paid)" value={`₹${totalRevenue.toLocaleString('en-IN')}`} />
             </div>
           </div>
         </div>
