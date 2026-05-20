@@ -297,9 +297,10 @@ export default function OnboardingWizard({ onClose }) {
     try {
       await uploadDocument(file);
       await completeOnboardingStep('document');
-      const fresh = await refreshState();
-      const next = fresh.steps.findIndex(s => !s.done);
-      setStep(next === -1 ? step + 1 : next);
+      // Same UX as Step 3: refresh state but stay on this step so the
+      // user actually sees the "Uploaded foo.pdf" confirmation in the
+      // drop zone. They click Continue when ready.
+      await refreshState();
     } catch (e) {
       setErr(e.message || 'Could not upload document');
     } finally {
@@ -368,9 +369,12 @@ export default function OnboardingWizard({ onClose }) {
       }
       setCsvRows(ok);
       await completeOnboardingStep('data_source');
-      const fresh = await refreshState();
-      const next = fresh.steps.findIndex(s => !s.done);
-      setStep(next === -1 ? step + 1 : next);
+      // Refresh state so the timeline / nav button reflect `done`, but
+      // DON'T auto-jump to the next step. The user just dropped a file —
+      // they need to see the green "Imported N rows from foo.csv"
+      // confirmation before they're moved on, or they'll think nothing
+      // happened. The Continue button picks it up from here.
+      await refreshState();
     } catch (e) {
       setErr(e.message || 'Could not import this CSV — check the column headers.');
     } finally {
@@ -522,7 +526,12 @@ export default function OnboardingWizard({ onClose }) {
             )}
 
             {currentKey === 'document' && (
-              <DocumentStep busy={busy} uploadedName={uploadedName} onUpload={uploadStarterDoc} />
+              <DocumentStep
+                busy={busy}
+                uploadedName={uploadedName}
+                done={currentStep.done}
+                onUpload={uploadStarterDoc}
+              />
             )}
 
             {currentKey === 'data_source' && (
@@ -1050,14 +1059,24 @@ function FirstRunStep({ personas, runningKey, runResult, busy, onRun }) {
   );
 }
 
-function DocumentStep({ busy, uploadedName, onUpload }) {
+function DocumentStep({ busy, uploadedName, done, onUpload }) {
+  // success = the step is marked done on the server AND we have a name
+  // to display. Treats the post-upload state with the same loud green
+  // border + check that the data-source step uses, so the user gets a
+  // clear confirmation before clicking Continue.
+  const success = done && uploadedName;
   return (
-    <div style={{ display: 'grid', gap: 12 }}>
+    <div style={{ display: 'grid', gap: 14 }}>
       <label style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        gap: 8, minHeight: 150, border: '2px dashed var(--color-border)',
-        borderRadius: 'var(--r-md)', background: 'var(--color-surface-1)',
-        cursor: busy ? 'wait' : 'pointer', textAlign: 'center', padding: 20,
+        gap: 10, minHeight: 170,
+        border: `2px dashed ${success ? 'var(--color-ok)' : 'var(--color-border)'}`,
+        borderRadius: 'var(--r-md)',
+        background: success
+          ? 'color-mix(in srgb, var(--color-ok) 6%, var(--color-surface-1))'
+          : 'var(--color-surface-1)',
+        cursor: busy ? 'wait' : 'pointer', textAlign: 'center', padding: 24,
+        transition: 'border-color 180ms, background 180ms',
       }}>
         <input
           type="file"
@@ -1066,16 +1085,24 @@ function DocumentStep({ busy, uploadedName, onUpload }) {
           style={{ display: 'none' }}
           onChange={(e) => onUpload(e.target.files?.[0])}
         />
-        <Upload size={24} color="var(--color-text-dim)" />
-        <div style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>
-          {busy ? `Uploading ${uploadedName || 'document'}...` : 'Upload company documents'}
+        {success
+          ? <CheckCircle2 size={26} color="var(--color-ok)" />
+          : <Upload size={26} color="var(--color-text-dim)" />}
+        <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>
+          {busy
+            ? `Uploading ${uploadedName || 'document'}…`
+            : success
+              ? `Uploaded ${uploadedName}`
+              : 'Drop a PDF / DOCX or click to choose'}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', maxWidth: 360, lineHeight: 1.5 }}>
-          Policies, product catalogs, service guides, pricing sheets, FAQs, or onboarding docs.
+        <div style={{ fontSize: 11.5, color: 'var(--color-text-dim)', maxWidth: 400, lineHeight: 1.5 }}>
+          {success
+            ? 'Indexed in your workspace. The AI will use it as safe context for first answers.'
+            : 'Policies, product catalogs, service guides, pricing sheets, FAQs, or onboarding docs.'}
         </div>
       </label>
-      <div style={{ fontSize: 11, color: 'var(--color-text-dim)', lineHeight: 1.55 }}>
-        This is optional for entry, but strongly recommended because it gives the AI safe company context before the user starts asking questions.
+      <div className="onb-info-card" style={{ fontSize: 12 }}>
+        Optional but recommended — one company doc is enough to seed the AI with safe context. You can upload more later from the Documents page.
       </div>
     </div>
   );
