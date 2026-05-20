@@ -208,8 +208,31 @@ def _rows(business_id: str, table: str, columns: str, order_by: str,
 
 
 # ── Pattern detectors ──────────────────────────────────────────────────────
+# Count detection. The previous regex matched 'number of' anywhere in
+# the sentence, which caught 'contact number of all of them' as a
+# count query. We now require the count phrase to appear in a counting
+# context — not when the user is asking about phone numbers / emails.
 _COUNT_RE = re.compile(
-    r"\b(how many|number of|count of|total\s+\w+|total)\b",
+    r"\b(how many|count of|total\s+\w+|total number of)\b|"
+    r"\bnumber of\b(?!\s+(?:them|us|you|those|these|all|the\s+contacts?))",
+    re.IGNORECASE,
+)
+
+# Field-extract — 'phone numbers of all contacts', 'emails of my leads'.
+# Catches the user asking for one field across the list.
+_FIELD_RE = re.compile(
+    r"\b(phone\s*number|phone|mobile|email|email\s*address|address|title|role|job\s*title|company)s?\b",
+    re.IGNORECASE,
+)
+_FIELD_MAP = {
+    "phone": "phone", "phone number": "phone", "mobile": "phone",
+    "email": "email", "email address": "email",
+    "title": "title", "role": "title", "job title": "title",
+}
+# When the user asks 'contact numbers', that's a phone-number request,
+# NOT a count. We need to detect this BEFORE the count router runs.
+_PHONE_INTENT_RE = re.compile(
+    r"\b(contact\s+number|phone\s+number|mobile\s+number|whatsapp\s+number)s?\b",
     re.IGNORECASE,
 )
 
@@ -268,6 +291,51 @@ _TOP_N_RE = re.compile(
 )
 
 
+def _try_fields(question: str, business_id: str, entity_key: str) -> Optional[str]:
+    """Handle 'phone numbers of all contacts', 'emails of leads',
+    'contact numbers' etc. Returns a tidy 'Name — value' list.
+
+    Only fires for `contact` entity right now (the only one with phone
+    + email columns in scope). Other entities fall through."""
+    if entity_key != "contact":
+        return None
+    # Detect the explicit phone-intent phrases first.
+    phone_intent = bool(_PHONE_INTENT_RE.search(question))
+    field_match = _FIELD_RE.search(question)
+    if not phone_intent and not field_match:
+        return None
+
+    # Decide which column to pull.
+    if phone_intent:
+        col = "phone"
+    else:
+        token = field_match.group(1).lower().replace("  ", " ").strip()
+        col = _FIELD_MAP.get(token)
+        if col is None:
+            return None
+
+    # Need a list-y intent OR a possessive ('of all', 'of them', 'of my')
+    # — otherwise it's a single-contact question that the LLM handles
+    # better (e.g. 'what is Rohit's email').
+    if not (_LIST_RE.search(question) or re.search(r"\bof\s+(them|all|my|the)\b", question, re.IGNORECASE)):
+        return None
+
+    e = ENTITIES[entity_key]
+    rows = _rows(business_id, e["table"], e["columns"], e["order_by"],
+                 limit=50, offset=0)
+    if not rows:
+        return f"You don't have any {e['plural']} yet."
+
+    label = {"phone": "Phone", "email": "Email", "title": "Title"}.get(col, col.title())
+    lines = []
+    for i, r in enumerate(rows):
+        name = " ".join(filter(None, [(r["first_name"] or "").strip(),
+                                       (r["last_name"] or "").strip()])).strip() or "(no name)"
+        val = (r.get(col) or "").strip() if isinstance(r, dict) else (r[col] or "").strip()
+        lines.append(f"{i + 1}. {name} — {val or '(no ' + col + ' on file)'}")
+    return f"{label}s for your {len(rows)} {e['plural']}:\n\n" + "\n".join(lines)
+
+
 def _try_list(question: str, business_id: str, entity_key: str) -> Optional[str]:
     """Catch the broad 'show me my <entity>' style asks. This is the
     pattern that previously hit the LLM and produced fabricated lists.
@@ -316,10 +384,13 @@ def try_answer(question: str, business_id: str) -> Optional[str]:
     entity = _match_entity(q)
     if not entity:
         return None
-    # Order matters: count > ordinal > list. A "how many" question
-    # could in principle match the list pattern too (it contains
-    # 'many'), so the count answer wins.
-    for fn in (_try_count, _try_ordinal, _try_list):
+    # Order matters:
+    #   fields (phones / emails) FIRST — 'contact numbers' would otherwise
+    #     trip the count regex and answer with the wrong question.
+    #   count next   — 'how many contacts' is the simplest answer.
+    #   ordinal     — '5th contact' / 'last deal' / 'first invoice'.
+    #   list last   — covers the broad 'show me my X' net.
+    for fn in (_try_fields, _try_count, _try_ordinal, _try_list):
         try:
             answer = fn(q, business_id, entity)
             if answer:
