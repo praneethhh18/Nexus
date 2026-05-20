@@ -469,10 +469,20 @@ const INDUSTRY_TERMS = {
 
 // ── Public API ──────────────────────────────────────────────────────────
 
+// Build a case-insensitive lookup once. Without this, an industry stored
+// as 'healthcare' (lowercase) or 'Healthcare ' (trailing space) would
+// silently fall through to defaults — same shape of bug we just patched
+// in api/industry_kpis.py. Backend normalise_industry() is the source of
+// truth; this mirrors its behaviour on the JS side.
+const _INDUSTRY_TERMS_CI = {};
+for (const k of Object.keys(INDUSTRY_TERMS)) {
+  _INDUSTRY_TERMS_CI[k.toLowerCase()] = INDUSTRY_TERMS[k];
+}
+
 // Shared resolver — pure, no React. Both the hook and the standalone
 // helper delegate here so there's one code path for lookup logic.
 function _resolve(industry, key) {
-  const map = INDUSTRY_TERMS[(industry || '').trim()] || {};
+  const map = _INDUSTRY_TERMS_CI[(industry || '').trim().toLowerCase()] || {};
   if (key in map) return map[key];
   if (key in DEFAULT_TERMS) return DEFAULT_TERMS[key];
   return key;
@@ -513,7 +523,7 @@ export function term(key) {
  * and any future "what will my workspace look like?" screen.
  */
 export function termsForIndustry(industry) {
-  const map = INDUSTRY_TERMS[(industry || '').trim()] || {};
+  const map = _INDUSTRY_TERMS_CI[(industry || '').trim().toLowerCase()] || {};
   return { ...DEFAULT_TERMS, ...map };
 }
 

@@ -59,10 +59,19 @@ export const COMING_SOON_FEATURES = [
 /**
  * Get coming-soon features that should be teased to the current workspace.
  * Returns [] for industries with nothing planned.
+ *
+ * Industry matching is case-insensitive — mirrors the backend
+ * normalize_industry() so 'healthcare' / 'HEALTHCARE' / 'Healthcare '
+ * all resolve to the same canonical industry key. Without this, a
+ * workspace whose industry got stored with non-canonical casing would
+ * silently see no roadmap teasers.
  */
 export function comingSoonForIndustry(industry) {
   if (!industry) return [];
-  return COMING_SOON_FEATURES.filter(f => f.industries.includes(industry));
+  const needle = industry.trim().toLowerCase();
+  return COMING_SOON_FEATURES.filter((f) =>
+    f.industries.some((ind) => ind.toLowerCase() === needle)
+  );
 }
 
 /**

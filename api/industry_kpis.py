@@ -430,6 +430,14 @@ def compute_kpis(
 ) -> List[KpiTile]:
     """Return the 4-tile KPI strip for the given industry. Always returns
     exactly 4 tiles. Falls through to generic CRM KPIs for unknown
-    industries (matches the dashboard's pre-industry-aware behaviour)."""
-    fn = _DISPATCH.get((industry or "").strip(), _generic)
+    industries (matches the dashboard's pre-industry-aware behaviour).
+
+    Industry resolution is case-insensitive — `normalize_industry()` is
+    the single source of truth used by preset/greetings/seed/terms layers
+    too, so 'healthcare' / 'HEALTHCARE' / 'Healthcare ' all resolve to
+    the same canonical 'Healthcare' key. Without this, lowercase-stored
+    industries silently fell through to generic KPIs."""
+    from api.industry_setup import normalize_industry
+    key = normalize_industry(industry or "")
+    fn = _DISPATCH.get(key, _generic)
     return fn(pipe or {}, tasks or {}, invoices or {}, crm or {})

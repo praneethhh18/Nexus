@@ -170,9 +170,19 @@ const SCHEMAS = {
   ],
 };
 
+// Case-insensitive index built once at module load. Mirrors the backend
+// normalize_industry() behaviour so 'healthcare' / 'HEALTHCARE' /
+// 'Healthcare ' all resolve to the same canonical schema. Without this,
+// a workspace whose industry got stored with non-canonical casing would
+// silently get no extra fields — invisible regression.
+const _SCHEMAS_CI = {};
+for (const k of Object.keys(SCHEMAS)) {
+  _SCHEMAS_CI[k.toLowerCase()] = SCHEMAS[k];
+}
+
 export function getContactFieldsForIndustry(industry) {
   if (!industry) return [];
-  return SCHEMAS[industry] || [];
+  return _SCHEMAS_CI[industry.trim().toLowerCase()] || [];
 }
 
 export const SUPPORTED_INDUSTRIES = Object.keys(SCHEMAS);
