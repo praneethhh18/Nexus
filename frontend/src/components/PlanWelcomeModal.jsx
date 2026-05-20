@@ -168,11 +168,17 @@ export default function PlanWelcomeModal() {
         onClick={(e) => e.stopPropagation()}
         style={{
           maxWidth: 500, width: '100%',
-          background: 'var(--color-surface-0)',
+          // Surface-1 (one step lighter than the page bg) so the card has
+          // visible separation from the very dark backdrop. With surface-0
+          // the card and backdrop collapsed to the same dark colour in
+          // dark theme and the feature copy was nearly invisible.
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
           borderRadius: 16,
           overflow: 'hidden',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.4)',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.04)',
           animation: 'fade-up 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2)',
+          color: 'var(--color-text)',
         }}
       >
         {/* Header — gradient hero with the "welcome" copy + confetti on trial */}
@@ -232,24 +238,24 @@ export default function PlanWelcomeModal() {
             <>
               <div style={{
                 fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
-                textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                textTransform: 'uppercase', color: 'var(--color-text-muted)',
                 marginBottom: 12,
               }}>
                 {isTrial ? 'What you get for the next 14 days' : 'What\'s now unlocked'}
               </div>
               <ul style={{
                 listStyle: 'none', padding: 0, margin: '0 0 22px',
-                display: 'flex', flexDirection: 'column', gap: 8,
+                display: 'flex', flexDirection: 'column', gap: 10,
               }}>
                 {features.map((f, i) => (
                   <li key={i} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 8,
-                    fontSize: 13.5, color: 'var(--color-text)',
-                    lineHeight: 1.5,
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                    fontSize: 14, color: 'var(--color-text)',
+                    lineHeight: 1.55, fontWeight: 500,
                   }}>
                     <CheckCircle2
-                      size={15}
-                      style={{ color: '#10B981', flexShrink: 0, marginTop: 2 }}
+                      size={16}
+                      style={{ color: '#10B981', flexShrink: 0, marginTop: 1 }}
                     />
                     <span>{f}</span>
                   </li>
@@ -260,7 +266,7 @@ export default function PlanWelcomeModal() {
 
           <div style={{
             fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
-            textTransform: 'uppercase', color: 'var(--color-text-dim)',
+            textTransform: 'uppercase', color: 'var(--color-text-muted)',
             marginBottom: 10,
           }}>
             Get started
@@ -305,8 +311,8 @@ export default function PlanWelcomeModal() {
           </div>
 
           <p style={{
-            fontSize: 11.5, color: 'var(--color-text-dim)',
-            margin: 0, textAlign: 'center', lineHeight: 1.5,
+            fontSize: 12, color: 'var(--color-text-muted)',
+            margin: 0, textAlign: 'center', lineHeight: 1.55,
           }}>
             {isTrial ? (
               <>
