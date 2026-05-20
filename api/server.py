@@ -1132,7 +1132,49 @@ async def upload_document(file: UploadFile = File(...), ctx: dict = Depends(get_
         }
 
     added = add_documents(texts, embeddings, metas)
+
+    # Also record the uploaded file in nexus_documents so it shows up on the
+    # Documents page. Without this row, the file is searchable by agents
+    # (it's in Chroma) but invisible in the UI — users uploaded company
+    # docs during onboarding and then couldn't find them anywhere.
+    _record_uploaded_doc(
+        business_id=ctx["business_id"],
+        user_id=ctx["user"]["id"],
+        filename=safe_name,
+        file_path=str(dest),
+        chunks=added,
+    )
+
     return {"filename": safe_name, "chunks_added": added, "indexed": True}
+
+
+def _record_uploaded_doc(*, business_id: str, user_id: str, filename: str,
+                         file_path: str, chunks: int) -> None:
+    """Insert a row in nexus_documents for an upload (vs. a generated doc).
+    Wrapped in try/except so a DB hiccup doesn't fail the upload — the file
+    is already on disk + in Chroma at this point."""
+    try:
+        import uuid
+        from datetime import datetime, timezone
+        from config.db import get_conn
+        ext = Path(filename).suffix.lower().lstrip(".") or "bin"
+        doc_id = str(uuid.uuid4())[:12]
+        conn = get_conn()
+        try:
+            conn.execute(
+                "INSERT INTO nexus_documents "
+                "(id, business_id, template_key, title, format, file_path, "
+                " variables, created_at, created_by) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (doc_id, business_id, "uploaded", filename, ext, file_path,
+                 '{"source": "knowledge_upload", "chunks": ' + str(chunks) + '}',
+                 datetime.now(timezone.utc).isoformat(), user_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.warning(f"[upload] could not record nexus_documents row: {e}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

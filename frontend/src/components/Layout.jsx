@@ -5,7 +5,7 @@ import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, 
 import { markNotificationRead, deleteNotification, getOnboardingState } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
-import OnboardingWizard, { shouldShowOnboarding, markOnboardingSeen } from './OnboardingWizard';
+import OnboardingWizard, { shouldShowOnboarding, markOnboardingSeen, clearOnboardingForBusiness } from './OnboardingWizard';
 import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import TrialBanner from './TrialBanner';
@@ -187,6 +187,12 @@ export default function Layout() {
       setShowNewBiz(false);
       setNewBizName('');
       setNewBizIndustry('');
+      // A brand-new business hasn't been through the wizard. Clear the
+      // per-business "done" flag (no-op if it wasn't there) and re-open
+      // the wizard so the new workspace gets profiled + seeded the same
+      // way the very first one did.
+      clearOnboardingForBusiness(biz.id);
+      setShowOnboarding(true);
     } catch (err) {
       alert(`Failed to create business: ${err.message}`);
     }

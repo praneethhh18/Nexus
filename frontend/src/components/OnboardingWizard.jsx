@@ -1593,10 +1593,44 @@ function canonHeader(h) {
 
 const ONBOARDING_KEY = 'nexus_onboarding_done';
 
+// Onboarding is per-business. Without this, finishing the wizard for
+// business A would suppress it for business B (same browser → same
+// localStorage flag). Each business gets its own ":<bizId>" key, so
+// a freshly-created business still triggers Step 1.
+function _bizKey() {
+  try {
+    return getCurrentBusiness()?.id || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
 export function shouldShowOnboarding() {
-  return localStorage.getItem(ONBOARDING_KEY) !== '1';
+  // Backward-compat: if the legacy single-key flag is set AND no
+  // per-business key exists yet, treat that as "done" for the current
+  // business too (so users who finished onboarding pre-multi-tenant
+  // don't get an unexpected wizard).
+  const bizId = _bizKey();
+  const perBiz = localStorage.getItem(`${ONBOARDING_KEY}:${bizId}`);
+  if (perBiz === '1') return false;
+  if (perBiz === null && localStorage.getItem(ONBOARDING_KEY) === '1') {
+    return false;
+  }
+  return true;
 }
 
 export function markOnboardingSeen() {
+  localStorage.setItem(`${ONBOARDING_KEY}:${_bizKey()}`, '1');
+  // Keep the legacy key set too — harmless, prevents flapping if a
+  // caller reads the un-suffixed key directly.
   localStorage.setItem(ONBOARDING_KEY, '1');
+}
+
+// Called by Layout's handleCreateBiz to ensure the wizard re-opens for
+// the brand-new business even on a browser that completed it earlier.
+export function clearOnboardingForBusiness(bizId) {
+  if (!bizId) return;
+  try {
+    localStorage.removeItem(`${ONBOARDING_KEY}:${bizId}`);
+  } catch { /* private mode */ }
 }
