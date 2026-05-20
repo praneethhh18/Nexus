@@ -572,14 +572,14 @@ export default function OnboardingWizard({ onClose }) {
             )}
 
             {currentKey === 'document' && (
-              <>
-                <button onClick={() => doAction('/documents')} className="onb-btn onb-btn-ghost" disabled={busy}>
-                  Open Documents
-                </button>
-                <button onClick={() => { completeStep('document').then(() => goNext()); }} className="onb-btn onb-btn-primary" disabled={busy}>
-                  Do this later <ArrowRight size={13} />
-                </button>
-              </>
+              <button
+                onClick={() => { completeStep('document').then(() => goNext()); }}
+                className="onb-btn onb-btn-primary" disabled={busy}
+              >
+                {busy ? 'Working…'
+                  : currentStep.done ? 'Continue'
+                  : 'Do this later'} <ArrowRight size={13} />
+              </button>
             )}
 
             {currentKey === 'data_source' && (

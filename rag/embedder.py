@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 
 import numpy as np
@@ -33,6 +34,12 @@ from loguru import logger
 
 from config.settings import OLLAMA_BASE_URL, EMBED_MODEL
 from config import privacy
+
+# Concurrent Bedrock calls. Titan v2 doesn't have a batch endpoint, so we
+# fan out N requests in parallel. 8 is a safe default — well under the
+# 50 RPS quota a fresh Bedrock account gets, and big enough that a 200-
+# chunk PDF embeds in ~5s instead of ~80s. Tune via env if needed.
+BEDROCK_EMBED_WORKERS = int(os.getenv("BEDROCK_EMBED_WORKERS", "8") or 8)
 
 # Cached client handles — populated lazily on first call to each backend.
 _ollama_embedder = None
@@ -123,14 +130,28 @@ def _embed_bedrock_one(text: str) -> List[float]:
 
 
 def _embed_bedrock_docs(texts: List[str]) -> List[List[float]]:
-    out: List[List[float]] = []
-    for t in texts:
-        # Redact PII before the call. Documents uploaded by the user are
-        # less sensitive than chat prompts (the user CHOSE to share them)
-        # but redaction is cheap insurance against unexpected secrets.
-        red, _, _ = privacy.prepare_for_cloud(t, "")
-        out.append(_embed_bedrock_one(red))
-    return out
+    """Parallel-embed N texts via Bedrock Titan.
+
+    Titan has no batch endpoint, so a 200-chunk PDF was hitting 200
+    serial invoke_model calls (~80s end-to-end). Fanning out 8 in
+    parallel cuts that to ~10s without tripping the default Bedrock
+    rate quota.
+
+    Order is preserved — output[i] corresponds to texts[i] regardless of
+    which thread finished first."""
+    # Redact PII before each call. Documents uploaded by the user are
+    # less sensitive than chat prompts (the user CHOSE to share them)
+    # but redaction is cheap insurance against unexpected secrets.
+    prepped = [privacy.prepare_for_cloud(t, "")[0] for t in texts]
+    n = len(prepped)
+    out: List[Optional[List[float]]] = [None] * n
+    workers = max(1, min(BEDROCK_EMBED_WORKERS, n))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(_embed_bedrock_one, prepped[i]): i for i in range(n)}
+        for fut in as_completed(futures):
+            i = futures[fut]
+            out[i] = fut.result()
+    return [v for v in out if v is not None]  # type: ignore[return-value]
 
 
 def _embed_bedrock_query(text: str) -> List[float]:
