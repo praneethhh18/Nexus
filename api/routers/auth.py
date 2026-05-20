@@ -129,6 +129,22 @@ def verify_email(req: VerifyEmailRequest):
     # is_email_verified() returns True.
     biz_id = ensure_business_for_user(user["id"], user["name"])
 
+    # Fire the celebratory "trial is live" email. Wrapped in try/except because
+    # SMTP transient failures must NOT block the verify response — the trial
+    # row is already committed and the user is waiting on the tokens to land
+    # in the dashboard. The email is a bonus, not a critical-path step.
+    try:
+        from api.businesses import get_business
+        from api.verification_emails import send_trial_welcome_email
+        biz = get_business(biz_id) or {}
+        send_trial_welcome_email(
+            to_email=user["email"],
+            name=user["name"],
+            business_name=biz.get("name"),
+        )
+    except Exception as e:
+        logger.warning(f"[Auth] trial-welcome email failed (non-fatal) for {user['email']}: {e}")
+
     access = create_access_token(user["id"], user["email"], user["role"])
     refresh = create_refresh_token(user["id"])
     return {
