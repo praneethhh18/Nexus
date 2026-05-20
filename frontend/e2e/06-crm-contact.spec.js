@@ -33,7 +33,16 @@ test.describe('CRM — contacts', () => {
     await page.getByRole('button', { name: /Companies/i }).click();
     await expect(page.getByText(/No companies yet/i)).toBeVisible({ timeout: 5000 });
 
-    await page.getByRole('button', { name: /Deals Pipeline/i }).click();
-    await expect(page.getByText(/No deals in the pipeline/i)).toBeVisible({ timeout: 5000 });
+    // The deals-tab label is industry-aware (services/industryTerms.js):
+    // 'Deal pipeline' for generic workspaces, 'Sales pipeline' for SaaS,
+    // 'Bookings pipeline' for Hospitality, 'Listing pipeline' for Real
+    // estate, etc. Match any tab whose label ends in 'pipeline' so the
+    // test stays green across all 22 industry presets.
+    await page.getByRole('button', { name: /pipeline/i }).first().click();
+    // Empty state copy is also industry-tuned. Match the generic
+    // "no deals" / "no leads" / "no listings" pattern.
+    await expect(
+      page.getByText(/no (deals|leads|listings|bookings|appointments|orders).*pipeline|pipeline.*empty|nothing in your pipeline/i)
+    ).toBeVisible({ timeout: 5000 });
   });
 });
