@@ -354,6 +354,17 @@ def create_contact(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
 
 
 def list_contacts(business_id: str, search: Optional[str] = None, company_id: Optional[str] = None, limit: int = 100) -> List[Dict]:
+    """Search-and-list contacts. Search is whitespace-tolerant +
+    case-insensitive: typing 'Praneeth PK' matches a contact stored
+    as 'Praneeth P K' (and vice-versa).
+
+    Matches across:
+      - first_name, last_name, email, tags (substring, case-insensitive)
+      - first_name || ' ' || last_name as a full name (so 'Praneeth P K'
+        is found by 'praneeth p k' regardless of stored case)
+      - the same full name with all spaces removed (so 'PraneethPK',
+        'Praneeth PK', 'praneeth p k' all collapse to the same key
+        and find the contact)"""
     conn = _get_conn()
     conn.row_factory = sqlite3.Row
     try:
@@ -365,9 +376,21 @@ def list_contacts(business_id: str, search: Optional[str] = None, company_id: Op
         """
         params: list = [business_id]
         if search:
-            sql += " AND (c.first_name LIKE ? OR c.last_name LIKE ? OR c.email LIKE ? OR c.tags LIKE ?)"
-            s = f"%{search}%"
-            params.extend([s, s, s, s])
+            s_raw = f"%{search.lower()}%"
+            # Strip all whitespace so 'Praneeth PK' and 'Praneeth P K'
+            # both become 'praneethpk' for matching.
+            s_compact = f"%{''.join(search.lower().split())}%"
+            sql += (
+                " AND ("
+                "   LOWER(c.first_name) LIKE ?"
+                "   OR LOWER(c.last_name) LIKE ?"
+                "   OR LOWER(c.email) LIKE ?"
+                "   OR LOWER(c.tags) LIKE ?"
+                "   OR LOWER(c.first_name || ' ' || c.last_name) LIKE ?"
+                "   OR REPLACE(LOWER(c.first_name || c.last_name), ' ', '') LIKE ?"
+                " )"
+            )
+            params.extend([s_raw, s_raw, s_raw, s_raw, s_raw, s_compact])
         if company_id:
             sql += " AND c.company_id = ?"
             params.append(company_id)
@@ -381,16 +404,27 @@ def list_contacts(business_id: str, search: Optional[str] = None, company_id: Op
 
 def count_contacts(business_id: str, search: Optional[str] = None, company_id: Optional[str] = None) -> int:
     """Total number of contacts matching the same filters as list_contacts,
-    ignoring the LIMIT. Lets the agent answer 'how many contacts do I have?'
-    without scanning a paginated list."""
+    ignoring the LIMIT. Kept in lockstep with list_contacts' fuzzy
+    whitespace-tolerant + case-insensitive search so a count and a
+    list query never disagree on what 'matches'."""
     conn = _get_conn()
     try:
         sql = f"SELECT COUNT(*) AS n FROM {CONTACTS_TABLE} WHERE business_id = ?"
         params: list = [business_id]
         if search:
-            sql += " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR tags LIKE ?)"
-            s = f"%{search}%"
-            params.extend([s, s, s, s])
+            s_raw = f"%{search.lower()}%"
+            s_compact = f"%{''.join(search.lower().split())}%"
+            sql += (
+                " AND ("
+                "   LOWER(first_name) LIKE ?"
+                "   OR LOWER(last_name) LIKE ?"
+                "   OR LOWER(email) LIKE ?"
+                "   OR LOWER(tags) LIKE ?"
+                "   OR LOWER(first_name || ' ' || last_name) LIKE ?"
+                "   OR REPLACE(LOWER(first_name || last_name), ' ', '') LIKE ?"
+                " )"
+            )
+            params.extend([s_raw, s_raw, s_raw, s_raw, s_raw, s_compact])
         if company_id:
             sql += " AND company_id = ?"
             params.append(company_id)
