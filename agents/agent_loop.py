@@ -85,12 +85,25 @@ approve. ONLY this tool (and `send_email_from_template`) creates an \
 approval in the Inbox.
 
 When the user asks 'draft a mail to X', 'email Y', 'send a message \
-to Z' — your job is to call `send_email` directly with:
-  - to: the recipient's email (look it up via find_contacts if you only \
-have a name; if no matching contact and the recipient looks like the \
-USER themselves, ask once for their email)
-  - subject: an actual, specific subject line
-  - body: actual greeting + 1-3 sentences of real content + sign-off
+to Z' — follow this ORDER:
+
+  1. If the user gave only a NAME (no '@' in the recipient string), \
+you MUST call `find_contacts` FIRST with that name to look up the \
+real email address from the CRM. Read the contact's `email` field. \
+Do NOT skip this — fabricating an email like 'praneeth.pk@example.com' \
+out of the name + a placeholder domain is forbidden.
+
+  2. If find_contacts returns NO matching contact and the recipient \
+might be the user themselves, ask once for the email address. Do not \
+guess.
+
+  3. Once you have a REAL email address (either from find_contacts or \
+typed verbatim by the user), call `send_email` with:
+     - to: the real email (never a *@example.com / *@test.com / \
+*@yourdomain.com placeholder — send_email will reject those)
+     - subject: an actual, specific subject line
+     - body: actual greeting + 1-3 sentences of real content + sign-off
+
 NEVER pass placeholder values like '(body)', '(subject)', '...' — the \
 tool will reject those and the user gets nothing.
 
