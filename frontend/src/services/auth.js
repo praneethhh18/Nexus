@@ -40,6 +40,15 @@ export function clearSession() {
 
 async function readAuthError(res) {
   const text = await res.text().catch(() => '');
+
+  // Vite dev proxy returns 502/503/504 with an HTML body when the FastAPI
+  // backend is restarting or hasn't booted yet. The raw "HTTP 502" the user
+  // sees on the signup page is alarming and unhelpful — surface a clear,
+  // actionable hint instead.
+  if (res.status === 502 || res.status === 503 || res.status === 504) {
+    return "Couldn't reach the server. The API may be restarting — wait a few seconds and try again.";
+  }
+
   if (!text) return `HTTP ${res.status}`;
 
   try {
@@ -48,6 +57,9 @@ async function readAuthError(res) {
     if (typeof data.message === 'string') return data.message;
     return JSON.stringify(data);
   } catch {
+    // Plain-text or HTML error bodies (typical for proxy errors) — don't dump
+    // the raw response into the UI.
+    if (text.length > 200 || text.includes('<')) return `Server error (HTTP ${res.status}). Please try again.`;
     return text;
   }
 }

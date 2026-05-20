@@ -397,7 +397,7 @@ function Nav() {
           <a href={`${APP_URL}/login`} className="nav-signin">Sign in</a>
           <a
             ref={ctaRef}
-            href={`${APP_URL}/setup`}
+            href="/trial"
             className="btn btn-primary btn-sm nav-cta-magnetic"
           >
             Start free <ArrowRight size={13} />
@@ -1282,7 +1282,7 @@ function AgentsSection() {
             </dl>
 
             <div className="agent-profile-cta-row">
-              <a href={`${APP_URL}/setup`} className="btn btn-primary btn-sm">
+              <a href="/trial" className="btn btn-primary btn-sm">
                 Try {agent.name} <ArrowRight size={12} />
               </a>
               <span className="agent-profile-hint">
@@ -1720,7 +1720,7 @@ function Footer() {
           <a href={`mailto:${MAIL}`}>Contact</a>
           <a href={GITHUB} target="_blank" rel="noreferrer">GitHub</a>
           <a href={`${APP_URL}/login`}>Sign in</a>
-          <a href={`${APP_URL}/setup`}>Get started</a>
+          <a href="/trial">Start free trial</a>
         </div>
         <div className="footer-col">
           <div className="footer-col-title">Legal</div>

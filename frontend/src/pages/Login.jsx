@@ -190,6 +190,16 @@ export default function Login() {
     const v = new URLSearchParams(window.location.search).get('view');
     return v === 'signup' ? 'signup' : 'login';
   })();
+  // Trial-mode = arrived from /trial (next contains plan=pro). When true we
+  // render a tailored "start your 14-day Pro trial" layout instead of the
+  // generic Sign In / Sign Up tabs — the user just chose a trial, they don't
+  // need to be re-asked whether they want to sign in.
+  const trialMode = (() => {
+    if (typeof window === 'undefined') return false;
+    const p = new URLSearchParams(window.location.search);
+    const next = p.get('next') || '';
+    return p.get('view') === 'signup' && /[?&]plan=pro\b/.test(next);
+  })();
   const [view, setView] = useState(initialView); // 'login' | 'signup' | 'forgot' | 'sent' | 'check_inbox'
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
@@ -491,37 +501,83 @@ export default function Login() {
         padding: '32px 40px', overflow: 'auto', background: 'var(--color-bg)',
       }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
-          {/* Heading */}
-          <h2 style={{ fontSize: 23, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
-            {view === 'login' ? 'Welcome back' : 'Create your account'}
-          </h2>
-          <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 24 }}>
-            {view === 'login'
-              ? 'Sign in to your NexusAgent workspace.'
-              : 'Get started with NexusAgent for free.'}
-          </p>
+          {/* Trial-mode header: replaces the generic Sign In / Sign Up tabs
+              when the visitor came from /trial. Leads with the offer they
+              already accepted ("14-day Pro trial") so the page feels like a
+              continuation of the funnel, not a context switch. */}
+          {trialMode && view === 'signup' ? (
+            <>
+              <div style={{
+                display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
+                textTransform: 'uppercase',
+                background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(139,92,246,0.16))',
+                border: '1px solid rgba(99,102,241,0.25)',
+                color: '#6366F1', padding: '4px 11px', borderRadius: 999,
+                marginBottom: 14,
+              }}>
+                Step 2 of 2 · Create your account
+              </div>
+              <h2 style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-text)', marginBottom: 8, lineHeight: 1.25 }}>
+                Start your <span style={{
+                  background: 'linear-gradient(90deg, #10b981, #8b5cf6)',
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                }}>14-day Pro trial</span>
+              </h2>
+              <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', lineHeight: 1.6, marginBottom: 18 }}>
+                All 8 AI agents · no credit card · cancel anytime.
+              </p>
+              <ul style={{
+                listStyle: 'none', padding: 0, margin: '0 0 22px',
+                display: 'flex', flexDirection: 'column', gap: 8,
+                fontSize: 12.5, color: 'var(--color-text-muted)',
+              }}>
+                {[
+                  'Atlas · Vox · Inbox · Kira · Sage · Forge · Echo · Memory',
+                  '500 WhatsApp + 100 voice minutes/month included',
+                  'Industry-tuned templates for 21 SMB types',
+                ].map(t => (
+                  <li key={t} style={{ display: 'flex', gap: 8 }}>
+                    <span style={{ color: '#10b981', flexShrink: 0 }}>✓</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              {/* Heading */}
+              <h2 style={{ fontSize: 23, fontWeight: 700, color: 'var(--color-text)', marginBottom: 4 }}>
+                {view === 'login' ? 'Welcome back' : 'Create your account'}
+              </h2>
+              <p style={{ fontSize: 13.5, color: 'var(--color-text-muted)', marginBottom: 24 }}>
+                {view === 'login'
+                  ? 'Sign in to your NexusAgent workspace.'
+                  : 'Get started with NexusAgent for free.'}
+              </p>
 
-          {/* Tab toggle */}
-          <div style={{
-            display: 'flex', background: 'var(--color-surface-2)',
-            borderRadius: 9, padding: 3, marginBottom: 28,
-          }}>
-            {['login', 'signup'].map(v => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => switchView(v)}
-                style={{
-                  flex: 1, padding: '9px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
-                  fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
-                  background: view === v ? 'var(--color-accent)' : 'transparent',
-                  color: view === v ? 'white' : 'var(--color-text-dim)',
-                }}
-              >
-                {v === 'login' ? 'Sign In' : 'Sign Up'}
-              </button>
-            ))}
-          </div>
+              {/* Tab toggle */}
+              <div style={{
+                display: 'flex', background: 'var(--color-surface-2)',
+                borderRadius: 9, padding: 3, marginBottom: 28,
+              }}>
+                {['login', 'signup'].map(v => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => switchView(v)}
+                    style={{
+                      flex: 1, padding: '9px 0', borderRadius: 7, border: 'none', cursor: 'pointer',
+                      fontSize: 13, fontWeight: 500, transition: 'all 0.15s',
+                      background: view === v ? 'var(--color-accent)' : 'transparent',
+                      color: view === v ? 'white' : 'var(--color-text-dim)',
+                    }}
+                  >
+                    {v === 'login' ? 'Sign In' : 'Sign Up'}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <form onSubmit={handleSubmit}>
             {/* Name — signup only */}
@@ -623,9 +679,29 @@ export default function Login() {
             >
               {loading ? 'Please wait…'
                 : view === 'login' ? 'Sign In'
+                : trialMode ? 'Start my 14-day trial'
                 : 'Create Account'}
             </button>
           </form>
+
+          {/* Trial-mode footer: keep Sign In reachable but de-emphasised, so
+              an existing customer who landed on /trial by mistake can still
+              find their way back. */}
+          {trialMode && view === 'signup' && (
+            <p style={{ textAlign: 'center', marginTop: 16, fontSize: 12.5, color: 'var(--color-text-dim)' }}>
+              Already have an account?{' '}
+              <button
+                type="button"
+                onClick={() => switchView('login')}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: 'var(--color-info)', fontSize: 12.5, padding: 0,
+                }}
+              >
+                Sign in instead
+              </button>
+            </p>
+          )}
 
           {/* Default credentials hint */}
           {view === 'login' && (
