@@ -384,26 +384,45 @@ async def agent_chat(req: AgentChatRequest, ctx: dict = Depends(get_current_cont
     _privacy.set_sensitive_context(_is_sensitive(conv_id))
 
     start = time.time()
-    loop = asyncio.get_event_loop()
-    try:
-        result = await loop.run_in_executor(
-            None,
-            lambda: _agent_loop.run_agent(
-                messages=agent_messages,
-                business_id=business_id,
-                business_name=business_name,
-                user_id=user["id"],
-                user_name=user.get("name") or user.get("email", "User"),
-                user_role=ctx["business_role"],
-            ),
-        )
-    except Exception as e:
-        logger.exception("[AgentChat] Run failed")
+
+    # ── Fast path: deterministic SQL for trivial fact queries ─────────────
+    # 'how many contacts', 'the 5th deal', 'last task' etc. don't need an
+    # LLM — answering them via SQL is faster, cheaper, and provably
+    # correct (no hallucinations). Anything more complex falls through
+    # to the agent loop below.
+    from agents import fact_router
+    direct_answer = fact_router.try_answer(req.query, business_id)
+    if direct_answer:
         result = {
-            "answer": f"Sorry, I hit an unexpected error: {e}",
-            "tool_calls": [], "pending_approvals": [], "steps": 0,
-            "stop_reason": "error",
+            "answer": direct_answer,
+            "tool_calls": [{"name": "fact_router", "args": {"query": req.query[:160]},
+                            "pending_approval": False, "result_preview": direct_answer[:200]}],
+            "pending_approvals": [],
+            "steps": 0,
+            "stop_reason": "direct_sql",
+            "grounding_warnings": [],
         }
+    else:
+        loop = asyncio.get_event_loop()
+        try:
+            result = await loop.run_in_executor(
+                None,
+                lambda: _agent_loop.run_agent(
+                    messages=agent_messages,
+                    business_id=business_id,
+                    business_name=business_name,
+                    user_id=user["id"],
+                    user_name=user.get("name") or user.get("email", "User"),
+                    user_role=ctx["business_role"],
+                ),
+            )
+        except Exception as e:
+            logger.exception("[AgentChat] Run failed")
+            result = {
+                "answer": f"Sorry, I hit an unexpected error: {e}",
+                "tool_calls": [], "pending_approvals": [], "steps": 0,
+                "stop_reason": "error",
+            }
 
     privacy_stats = _privacy.get_stats()
     duration_ms = int((time.time() - start) * 1000)
