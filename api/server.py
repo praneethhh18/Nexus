@@ -1095,13 +1095,44 @@ async def upload_document(file: UploadFile = File(...), ctx: dict = Depends(get_
     dest.write_bytes(content)
 
     docs = ingest_file(str(dest))
-    if docs:
-        texts = [d.page_content for d in docs]
-        metas = [{**d.metadata, "business_id": ctx["business_id"]} for d in docs]
+    if not docs:
+        raise HTTPException(400, "Could not process document — unsupported format or empty file.")
+
+    texts = [d.page_content for d in docs]
+    metas = [{**d.metadata, "business_id": ctx["business_id"]} for d in docs]
+
+    # Try to embed + index for RAG. If the embedding backend (Ollama by
+    # default) is offline, DON'T fail the upload — the file is already on
+    # disk and the user gets a clear "indexed-later" response. Without this
+    # guard, every cloud-first signup with no local Ollama saw the
+    # onboarding wizard's Step 4 explode with a 500 even though their doc
+    # uploaded fine. They can re-index from Documents → Reindex once
+    # Ollama (or another embedder) is reachable.
+    try:
         embeddings = embed_documents(texts)
-        added = add_documents(texts, embeddings, metas)
-        return {"filename": safe_name, "chunks_added": added}
-    raise HTTPException(400, "Could not process document")
+    except ConnectionError as e:
+        logger.warning(f"[upload] embedder offline — file saved, RAG indexing skipped: {e}")
+        return {
+            "filename": safe_name,
+            "chunks_added": 0,
+            "indexed": False,
+            "warning": (
+                "Document saved, but AI search indexing is offline right now. "
+                "Start Ollama (or your configured embedder) and run 'Reindex' "
+                "from Documents to make this file searchable by the agents."
+            ),
+        }
+    except Exception as e:
+        logger.exception(f"[upload] embedder failed unexpectedly: {e}")
+        return {
+            "filename": safe_name,
+            "chunks_added": 0,
+            "indexed": False,
+            "warning": f"Document saved but indexing failed: {e}",
+        }
+
+    added = add_documents(texts, embeddings, metas)
+    return {"filename": safe_name, "chunks_added": added, "indexed": True}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
