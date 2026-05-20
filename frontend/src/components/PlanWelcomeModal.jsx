@@ -18,8 +18,7 @@
  * for the first version.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Sparkles, X, ArrowRight, Users, Zap, CheckCircle2, Gift } from 'lucide-react';
+import { Sparkles, X, ArrowRight, Zap, CheckCircle2, Gift } from 'lucide-react';
 import { getPlans } from '../services/billing';
 import { shouldShowOnboarding } from './OnboardingWizard';
 
@@ -74,7 +73,6 @@ function ConfettiBurst() {
 }
 
 export default function PlanWelcomeModal() {
-  const navigate = useNavigate();
   const [planKey, setPlanKey] = useState(null);
   const [planMeta, setPlanMeta] = useState(null);
   const isTrial = planKey === 'trial';
@@ -148,7 +146,6 @@ export default function PlanWelcomeModal() {
                 : planMeta?.period === 'one-time' ? 'one-time'
                 : planMeta?.period || '';
   const features = (planMeta?.features || []).slice(0, 6);
-  const usersLimit = planMeta?.limits?.users || 1;
 
   return (
     <div
@@ -264,50 +261,24 @@ export default function PlanWelcomeModal() {
             </>
           )}
 
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: 0.6,
-            textTransform: 'uppercase', color: 'var(--color-text-muted)',
-            marginBottom: 10,
-          }}>
-            Get started
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+          {/* Single CTA. Agent activation already happened in wizard Step 5
+              and team invites live in Settings — duplicating those flows
+              here just gives the user three places to do the same thing
+              and a "now what?" moment after each. Keep this clean: one
+              button that drops them into the dashboard they just earned. */}
+          <div style={{ marginBottom: 16 }}>
             <button
-              onClick={() => { close(); navigate('/agents'); }}
+              onClick={close}
               className="btn-primary"
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                justifyContent: 'space-between', width: '100%',
-                padding: '11px 14px', textAlign: 'left',
+                justifyContent: 'center', width: '100%',
+                padding: '13px 14px', fontSize: 14, fontWeight: 600,
               }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Zap size={14} /> Activate your AI agents
-              </span>
+              <Zap size={14} /> Get started
               <ArrowRight size={14} />
             </button>
-
-            {/* Team invite nudge — show only if the plan unlocks >1 user. */}
-            {usersLimit > 1 && (
-              <button
-                onClick={() => { close(); navigate('/team'); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  justifyContent: 'space-between', width: '100%',
-                  padding: '11px 14px', textAlign: 'left',
-                  background: 'var(--color-surface-1)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: 8, cursor: 'pointer',
-                  color: 'var(--color-text)',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Users size={14} />
-                  Invite up to {usersLimit - 1} teammate{usersLimit > 2 ? 's' : ''}
-                </span>
-                <ArrowRight size={14} />
-              </button>
-            )}
           </div>
 
           <p style={{
