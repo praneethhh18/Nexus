@@ -180,7 +180,23 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
         from config import llm_bedrock
         return llm_bedrock.invoke(prompt, system=system, max_tokens=max_tokens,
                                   temperature=temperature, fast=fast)
-    return _invoke_ollama(prompt)
+    # Local path. Try Ollama; if it's offline AND cloud is configured, fall
+    # back to cloud rather than hard-failing. This is what unbreaks every
+    # downstream tool (magic_search, sql_agent, briefings, etc.) on
+    # cloud-first deployments where Ollama isn't running. The kill switch
+    # (ALLOW_CLOUD_LLM=false) and sensitive=True both block this fallback —
+    # privacy guarantees stay intact.
+    try:
+        return _invoke_ollama(prompt)
+    except (RuntimeError, ConnectionError) as e:
+        if not sensitive and privacy.ALLOW_CLOUD_LLM and (USE_CLAUDE or USE_BEDROCK):
+            logger.warning(f"[LLM] Ollama unreachable — falling back to cloud: {e}")
+            if USE_CLAUDE:
+                return _invoke_claude(prompt, system, max_tokens, temperature)
+            from config import llm_bedrock
+            return llm_bedrock.invoke(prompt, system=system, max_tokens=max_tokens,
+                                      temperature=temperature, fast=fast)
+        raise
 
 
 def stream(prompt: str, system: str = "", max_tokens: int = 1024,
@@ -219,7 +235,19 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
         from config import llm_bedrock
         yield from llm_bedrock.stream(prompt, system=system, max_tokens=max_tokens, fast=fast)
         return
-    yield from _stream_ollama(prompt)
+    # Same Ollama-offline fallback as invoke() — see comment there.
+    try:
+        yield from _stream_ollama(prompt)
+    except (RuntimeError, ConnectionError) as e:
+        if not sensitive and privacy.ALLOW_CLOUD_LLM and (USE_CLAUDE or USE_BEDROCK):
+            logger.warning(f"[LLM] Ollama stream unreachable — falling back to cloud: {e}")
+            if USE_CLAUDE:
+                yield from _stream_claude(prompt, system, max_tokens)
+                return
+            from config import llm_bedrock
+            yield from llm_bedrock.stream(prompt, system=system, max_tokens=max_tokens, fast=fast)
+            return
+        raise
 
 
 # ── Embeddings (always local — keeps RAG private) ───────────────────────────
