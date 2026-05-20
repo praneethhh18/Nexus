@@ -130,11 +130,17 @@ def _find_contacts(ctx, args):
         business_id, search=search, company_id=company_id, limit=limit,
     )
     total = _crm.count_contacts(business_id, search=search, company_id=company_id)
+    # Tag each contact with its 1-based position so the LLM can answer
+    # ordinal questions ('the 5th contact') without inventing data. The
+    # list is sorted by (last_name, first_name) inside list_contacts, so
+    # position 1 is always the same row across calls.
+    contacts_with_pos = [{**c, "position": i + 1} for i, c in enumerate(contacts)]
     return {
-        "contacts": contacts,
+        "contacts": contacts_with_pos,
         "total_count": total,
         "returned": len(contacts),
         "truncated": total > len(contacts),
+        "sort_order": "last_name ASC, first_name ASC",
     }
 
 

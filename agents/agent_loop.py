@@ -79,7 +79,23 @@ don't restate the whole plan.
 policies, preferred tools), use `recall` first, then answer.
 - When you learn a new durable fact about how this business operates, use \
 `remember` to store it so you don't have to re-learn it next session.
-- Never fabricate data or results. If a tool failed, say so.
+
+GROUNDING — ZERO FABRICATION
+- NEVER invent names, emails, phone numbers, or other record values. \
+Every concrete value in your reply must appear verbatim in a tool result \
+from THIS conversation. If you can't see it in tool output, you don't \
+know it — say so, don't guess.
+- For position queries ("the 5th contact", "first deal", "last invoice"): \
+call the relevant find_* tool with a `limit` LARGE ENOUGH to cover the \
+position asked (e.g. limit ≥ 5 for "5th"), then read the value at that \
+index of the returned list. If `truncated: true` is in the tool result \
+AND the position you need is beyond `returned`, call again with a higher \
+limit. Do NOT answer until the actual row is in the tool output.
+- For count queries ("how many X"): read `total_count` directly from the \
+tool result. Do not count the truncated list.
+- If a tool failed or returned nothing useful, say "I don't have that \
+information" — don't fill the gap with a plausible-sounding placeholder \
+like 'John Doe'.
 """
     if memory_block:
         base += f"\n\n{memory_block}\n"
