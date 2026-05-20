@@ -323,14 +323,13 @@ export default function Layout() {
                     {b.id === currentBizId && <Check size={12} style={{ color: 'var(--color-ok)' }} />}
                   </div>
                 ))}
-                <div style={{ borderTop: '1px solid var(--color-surface-2)' }}>
-                  <div
-                    onClick={() => { setShowBizMenu(false); setShowNewBiz(true); }}
-                    style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 12, color: 'var(--color-ok)', display: 'flex', alignItems: 'center', gap: 8 }}
-                  >
-                    <Plus size={12} /> New business
-                  </div>
-                </div>
+                {/* "+ New business" was removed intentionally: one
+                    subscription = one business. A customer who needs a
+                    second workspace is a second sale, not a free expansion.
+                    If we ship an Agency tier later, reinstate this entry
+                    behind a plan check. The modal + handleCreateBiz +
+                    /api/businesses POST endpoint are kept intact for
+                    that future path and for admin-tool scripts. */}
               </div>
             )}
           </div>
