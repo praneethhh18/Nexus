@@ -115,19 +115,37 @@ def _merge_updates(existing: Dict[str, Any], incoming: Dict[str, Any], allowed: 
 
 # ── Contacts ─────────────────────────────────────────────────────────────────
 def _find_contacts(ctx, args):
-    return _crm.list_contacts(
-        ctx["business_id"],
-        search=args.get("search"),
-        company_id=args.get("company_id"),
-        limit=int(args.get("limit", 20)),
+    """Return contacts AND total_count so the agent can answer both
+    'list my contacts' and 'how many contacts do I have' from one call.
+
+    Without total_count, the agent only saw a (possibly truncated) list
+    and would either undercount or call the tool a second time with a
+    huge limit — wasted tokens, wrong answers ('you have at least 1
+    contact' when the user has 10)."""
+    business_id = ctx["business_id"]
+    search = args.get("search")
+    company_id = args.get("company_id")
+    limit = int(args.get("limit", 20))
+    contacts = _crm.list_contacts(
+        business_id, search=search, company_id=company_id, limit=limit,
     )
+    total = _crm.count_contacts(business_id, search=search, company_id=company_id)
+    return {
+        "contacts": contacts,
+        "total_count": total,
+        "returned": len(contacts),
+        "truncated": total > len(contacts),
+    }
 
 
 register_tool(
     name="find_contacts",
     description=(
-        "Search contacts in the current business's CRM. Returns a list of "
-        "contacts matching the search string in name / email / tags. Use this "
+        "Search or count contacts in the current business's CRM. Returns "
+        "`contacts` (a list, optionally truncated by `limit`) AND "
+        "`total_count` (the EXACT total matching the filter, ignoring "
+        "limit). For 'how many contacts do I have?' read total_count "
+        "directly — don't try to count the truncated list. Use this "
         "before create_contact to avoid duplicates."
     ),
     input_schema={
@@ -135,7 +153,7 @@ register_tool(
         "properties": {
             "search": {"type": "string", "description": "Name, email, or tag to search"},
             "company_id": {"type": "string", "description": "Optional — filter by company id"},
-            "limit": {"type": "integer", "default": 20},
+            "limit": {"type": "integer", "default": 20, "description": "Max contacts in the list; total_count is always exact."},
         },
     },
     handler=_find_contacts,

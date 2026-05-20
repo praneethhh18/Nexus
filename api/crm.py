@@ -379,6 +379,27 @@ def list_contacts(business_id: str, search: Optional[str] = None, company_id: Op
     return [dict(r) for r in rows]
 
 
+def count_contacts(business_id: str, search: Optional[str] = None, company_id: Optional[str] = None) -> int:
+    """Total number of contacts matching the same filters as list_contacts,
+    ignoring the LIMIT. Lets the agent answer 'how many contacts do I have?'
+    without scanning a paginated list."""
+    conn = _get_conn()
+    try:
+        sql = f"SELECT COUNT(*) AS n FROM {CONTACTS_TABLE} WHERE business_id = ?"
+        params: list = [business_id]
+        if search:
+            sql += " AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR tags LIKE ?)"
+            s = f"%{search}%"
+            params.extend([s, s, s, s])
+        if company_id:
+            sql += " AND company_id = ?"
+            params.append(company_id)
+        row = conn.execute(sql, params).fetchone()
+        return int(row[0]) if row else 0
+    finally:
+        conn.close()
+
+
 def get_contact(business_id: str, contact_id: str) -> Dict:
     conn = _get_conn()
     conn.row_factory = sqlite3.Row
