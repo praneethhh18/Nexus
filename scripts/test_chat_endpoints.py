@@ -87,12 +87,16 @@ if conv_id:
         json={"sensitive": True})
     go("toggle sensitive off","patch",  f"/api/conversations/{conv_id}/sensitive",
         json={"sensitive": False})
-    # 6. Export markdown
-    go("export markdown",     "post",   "/api/export/markdown",
-        json={"conversation_id": conv_id})
+    # 6. Export markdown — endpoint expects a list[dict] of messages,
+    # not a conversation_id (the frontend pulls them from state and
+    # POSTs the array directly).
+    sample_msgs = [
+        {"role": "user", "content": "test", "timestamp": "10:00"},
+        {"role": "assistant", "content": "ok", "timestamp": "10:01"},
+    ]
+    go("export markdown",     "post",   "/api/export/markdown", json=sample_msgs)
     # 7. Export PDF
-    go("export pdf",          "post",   "/api/export/pdf",
-        json={"conversation_id": conv_id})
+    go("export pdf",          "post",   "/api/export/pdf", json=sample_msgs)
     # 8. Delete it (cleanup)
     go("delete conversation", "delete", f"/api/conversations/{conv_id}")
 else:

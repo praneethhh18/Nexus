@@ -198,7 +198,30 @@ class _PgConn:
 
     def execute(self, sql: str, params: Any = ()):
         cur = self._c.cursor()
-        cur.execute(_translate_sql(sql), params)
+        translated = _translate_sql(sql)
+        try:
+            cur.execute(translated, params)
+        except Exception as e:
+            # CREATE INDEX IF NOT EXISTS deadlocks against itself across
+            # processes — 20+ call sites in this codebase race-create
+            # indexes from per-request _get_conn() helpers, and an
+            # uvicorn reload kicks all of them off at once. When this
+            # happens, just swallow it: the index will exist by the
+            # time we need it (a competing process is finishing the
+            # same statement right now).
+            stripped = translated.strip().upper()
+            is_index_create = (
+                stripped.startswith("CREATE INDEX")
+                or stripped.startswith("CREATE UNIQUE INDEX")
+            )
+            cls = type(e).__name__
+            if is_index_create and cls in ("DeadlockDetected", "LockNotAvailable", "QueryCanceled"):
+                # Best-effort rollback so the transaction doesn't poison
+                # subsequent statements.
+                try: self._c.rollback()
+                except Exception: pass
+                return _PgCursor(cur, row_factory=self.row_factory)
+            raise
         return _PgCursor(cur, row_factory=self.row_factory)
 
     def cursor(self):
