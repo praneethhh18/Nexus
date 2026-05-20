@@ -50,13 +50,52 @@ register_tool(
 )
 
 
+# Placeholder strings the LLM was generating instead of real content
+# (e.g. it wrote body='(body)' or subject='(subject)' as a stub). We
+# refuse these at the tool layer so the model has to write the actual
+# email content before we save anything. Catches the failure that
+# saved 'Business Enquiry Visit Tomorrow' / body='(body)' as a template.
+_PLACEHOLDER_BODIES = {
+    "", "(body)", "(subject)", "(content)", "(message)",
+    "body", "subject", "content", "tbd", "todo", "to be filled",
+    "<body>", "<subject>", "{body}", "{subject}",
+    "...", "…",
+}
+
+
+def _is_placeholder(s: str) -> bool:
+    return (s or "").strip().lower() in _PLACEHOLDER_BODIES
+
+
 # ── Create ──────────────────────────────────────────────────────────────────
 def _create_template(ctx: Dict[str, Any], args: Dict[str, Any]) -> Dict[str, Any]:
     from api import email_templates as _et
+    name    = args.get("name") or ""
+    subject = args.get("subject") or ""
+    body    = args.get("body") or ""
+
+    # Validate against placeholder garbage. If the LLM tries to save a
+    # template with body='(body)' the user ends up with a dead template
+    # they can't use. Bounce it back with a clear error so the agent
+    # retries with real content.
+    if _is_placeholder(subject) or len(subject.strip()) < 5:
+        raise ValueError(
+            "Subject is too short or a placeholder. Write the actual "
+            "email subject (e.g. 'Quick check-in on the Q3 invoice'), "
+            "not a stub like '(subject)'."
+        )
+    if _is_placeholder(body) or len(body.strip()) < 20:
+        raise ValueError(
+            "Body is empty or a placeholder. Write the actual email "
+            "content (greeting + 1-3 sentences + sign-off). Saving "
+            "templates with stubs like '(body)' makes the library "
+            "useless. Try again with the real text."
+        )
+
     tpl = _et.create_template(ctx["business_id"], ctx["user_id"], {
-        "name":    args.get("name") or "",
-        "subject": args.get("subject") or "",
-        "body":    args.get("body") or "",
+        "name":    name,
+        "subject": subject,
+        "body":    body,
     })
     return {
         "ok":        True,

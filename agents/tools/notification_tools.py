@@ -80,6 +80,25 @@ def _send_email(ctx, args):
     body = (args.get("body") or "").strip()
     if not to or not subject or not body:
         raise ValueError("to, subject, and body are all required")
+    # Reject placeholder stubs the LLM sometimes ships instead of real
+    # content. Without this we ended up with approval rows containing
+    # body='(body)' that the user couldn't sensibly approve.
+    _placeholders = {
+        "(body)", "(subject)", "(content)", "(message)",
+        "body", "subject", "content", "tbd", "todo", "to be filled",
+        "<body>", "<subject>", "{body}", "{subject}", "...", "…",
+    }
+    if subject.lower() in _placeholders or len(subject) < 5:
+        raise ValueError(
+            "Subject is too short or a placeholder. Write the actual "
+            "email subject before queuing."
+        )
+    if body.lower() in _placeholders or len(body) < 20:
+        raise ValueError(
+            "Body is empty or a placeholder. Write the actual email "
+            "content (greeting + 1-3 sentences + sign-off) before "
+            "calling send_email."
+        )
 
     result = _ep.send_email(to=to, subject=subject, body=body)
 
