@@ -187,10 +187,17 @@ def _autodetect(business_id: str) -> Dict[str, bool]:
             except Exception:
                 pass
 
-            # first_run: at least one row in nexus_agent_runs for this business
+            # first_run: at least one USER-INITIATED run in nexus_agent_runs.
+            # Filtering by trigger='manual' is the whole point — scheduler /
+            # cron / system runs fire constantly on fresh workspaces (the
+            # AgentScheduler registers 10 jobs that tick immediately for any
+            # new business). Without this filter, Step 5 ('Try an agent right
+            # now') was rendering as already-complete on the wizard the very
+            # first time the user opened it, before they'd clicked anything.
             try:
                 row = conn.execute(
-                    "SELECT COUNT(*) AS n FROM nexus_agent_runs WHERE business_id = ?",
+                    "SELECT COUNT(*) AS n FROM nexus_agent_runs "
+                    "WHERE business_id = ? AND trigger = 'manual'",
                     (business_id,),
                 ).fetchone()
                 if row and int(row["n"] or 0) > 0:
