@@ -17,6 +17,9 @@ data/nexusagent.db
 data/.jwt_secret
 data/.whatsapp_secret
 data/.nexus_smtp_secret
+data/documents/
+data/uploads/
+data/cache/
 # Local scratch / temp notes — never committed
 ztest.md
 data/certbot/
