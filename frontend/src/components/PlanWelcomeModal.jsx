@@ -80,18 +80,8 @@ export default function PlanWelcomeModal() {
   if (!planKey) return null;
 
   const label = planMeta?.label || planKey.toUpperCase();
-  const limits = planMeta?.limits || {};
   const price = planMeta?.price_inr ?? null;
   const period = planMeta?.period === 'monthly' ? '/month' : planMeta?.period || '';
-
-  // Three concrete numbers. Composed at render time from the live plan
-  // catalogue so the modal is always honest about what THIS customer is
-  // getting (Pro vs Starter vs Privacy etc.).
-  const stats = [
-    { value: limits.agents || 8,             label: 'AI agents' },
-    { value: limits.whatsapp_per_month || 500, label: 'WhatsApp / mo', suffix: '' },
-    { value: limits.voice_minutes_per_month || 100, label: 'voice min / mo' },
-  ];
 
   return (
     <>
@@ -125,15 +115,6 @@ export default function PlanWelcomeModal() {
                     ? `₹${price.toLocaleString('en-IN')} ${period} — your account is now active.`
                     : 'Your account is now active.')}
             </p>
-
-            <div className="pwm-stats">
-              {stats.map((s) => (
-                <div key={s.label} className="pwm-stat">
-                  <div className="pwm-stat-value">{s.value}</div>
-                  <div className="pwm-stat-label">{s.label}</div>
-                </div>
-              ))}
-            </div>
 
             <button onClick={close} className="pwm-cta">
               Open my workspace <ArrowRight size={15} />
@@ -218,28 +199,10 @@ function ModalStyles() {
         max-width: 44ch;
       }
 
-      .pwm-stats {
-        display: grid; grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
-        margin: 6px 0 4px;
-        padding: 16px 4px;
-        border-top: 1px solid var(--color-border);
-        border-bottom: 1px solid var(--color-border);
-      }
-      .pwm-stat { text-align: center; }
-      .pwm-stat-value {
-        font-size: 22px; font-weight: 700; letter-spacing: -0.01em;
-        color: var(--color-text); line-height: 1.1;
-      }
-      .pwm-stat-label {
-        font-size: 11px; color: var(--color-text-dim);
-        margin-top: 4px; letter-spacing: 0.3px;
-      }
-
       .pwm-cta {
         display: inline-flex; align-items: center; justify-content: center;
         gap: 8px;
-        width: 100%; margin-top: 4px;
+        width: 100%; margin-top: 8px;
         padding: 13px 18px;
         background: linear-gradient(135deg, #10b981 0%, #6366f1 100%);
         color: #fff;
@@ -269,7 +232,6 @@ function ModalStyles() {
         .pwm-card { border-radius: 16px; }
         .pwm-body { padding: 28px 22px 22px; }
         .pwm-h2 { font-size: 22px; }
-        .pwm-stat-value { font-size: 20px; }
       }
     `}</style>
   );
