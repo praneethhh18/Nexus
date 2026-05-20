@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { resetPassword } from '../services/auth';
+import BrandMark from '../components/BrandMark';
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 const EyeOn = () => (
@@ -94,13 +95,7 @@ function LeftPanel() {
 
       <div style={{ position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 44 }}>
-          <div style={{
-            width: 42, height: 42, borderRadius: 11,
-            background: 'linear-gradient(135deg, #10b981, #7c3aed)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 19, fontWeight: 800, color: 'white',
-            boxShadow: '0 0 0 1px rgba(16,185,129,0.2), 0 8px 24px rgba(16,185,129,0.12)',
-          }}>N</div>
+          <BrandMark size={42} />
           <div>
             <div style={{ fontSize: 16, fontWeight: 700, color: '#dde0ea', lineHeight: 1 }}>NexusAgent</div>
             <div style={{ fontSize: 11, color: '#4a5068', marginTop: 2 }}>AI Business Platform</div>
@@ -285,12 +280,7 @@ export default function ResetPassword() {
       }}>
         <div style={{ width: '100%', maxWidth: 400 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 11, marginBottom: 32 }}>
-            <div style={{
-              width: 42, height: 42, borderRadius: 11,
-              background: 'linear-gradient(135deg, #10b981, #7c3aed)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 19, fontWeight: 800, color: 'white',
-            }}>N</div>
+            <BrandMark size={42} />
             <div>
               <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--color-text)' }}>NexusAgent</div>
               <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>AI Business Platform</div>

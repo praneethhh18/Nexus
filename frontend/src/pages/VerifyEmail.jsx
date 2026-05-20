@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { verifyEmail, resendVerification } from '../services/auth';
 import { CheckCircle2, XCircle, Loader2, Mail } from 'lucide-react';
+import BrandMark from '../components/BrandMark';
 
 export default function VerifyEmail() {
   const navigate = useNavigate();
@@ -67,7 +68,7 @@ export default function VerifyEmail() {
 
       <aside className="ve-rail">
         <div className="ve-brand">
-          <div className="ve-brand-mark">N</div>
+          <BrandMark size={44} />
           <div>
             <div className="ve-brand-name">NexusAgent</div>
             <div className="ve-brand-sub">14-day Pro trial</div>

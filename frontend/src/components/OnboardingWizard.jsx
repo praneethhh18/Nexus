@@ -21,6 +21,7 @@ import { listPersonas, runAgent } from '../services/agents';
 import { createContact } from '../services/crm';
 import { getCurrentBusiness } from '../services/auth';
 import { comingSoonForIndustry, roadmapTitleSetForIndustry } from '../services/comingSoon';
+import BrandMark from './BrandMark';
 
 // Tool names listed in the wizard's "industry workspace" preview that are
 // genuinely roadmap (not in v1). Phase G items show with a 'Soon' badge so
@@ -448,7 +449,7 @@ export default function OnboardingWizard({ onClose }) {
         <aside className="onb-rail">
           <div className="onb-rail-top">
             <div className="onb-brand">
-              <div className="onb-brand-mark">N</div>
+              <BrandMark size={44} />
               <div>
                 <div className="onb-brand-name">NexusAgent</div>
                 <div className="onb-brand-sub">Workspace setup</div>
@@ -1146,7 +1147,7 @@ function LeftRail({ steps, currentIndex, currentKey, selectedIndustry, canJump, 
     <aside className="onb-rail">
       <div className="onb-rail-top">
         <div className="onb-brand">
-          <div className="onb-brand-mark">N</div>
+          <BrandMark size={44} />
           <div>
             <div className="onb-brand-name">NexusAgent</div>
             <div className="onb-brand-sub">Workspace setup</div>
