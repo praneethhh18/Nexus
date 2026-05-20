@@ -38,6 +38,11 @@ async function req(path, opts = {}) {
 
 export const getPlans = () => req('/api/billing/plans');
 
+// Live subscription state for the current business: plan_key, status,
+// is_trial, trial_days_remaining, trial_ends_at, etc. Read by the
+// top-nav trial badge so the customer always sees the countdown.
+export const getSubscription = () => req('/api/billing/subscription');
+
 export const createOrder = (plan, extra = {}) =>
   req('/api/billing/create-order', {
     method: 'POST',

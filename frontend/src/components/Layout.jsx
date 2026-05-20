@@ -9,6 +9,7 @@ import OnboardingWizard, { shouldShowOnboarding, markOnboardingSeen, clearOnboar
 import CommandPalette from './CommandPalette';
 import KeyboardShortcutsModal from './KeyboardShortcutsModal';
 import TrialBanner from './TrialBanner';
+import TrialPill from './TrialPill';
 import { prefetchRoute, prefetchAllRoutesIdle } from '../services/routePrefetch';
 import { prefetchData } from '../services/dataPrefetch';
 
@@ -334,6 +335,11 @@ export default function Layout() {
             )}
           </div>
         )}
+
+        {/* Always-visible trial countdown. Renders nothing for paid / free /
+            expired accounts. Sits right under the business switcher so it's
+            in the customer's eye-line every time they look at the sidebar. */}
+        <TrialPill collapsed={collapsed} />
 
         <nav className="nav-section">
           {/* Tier 1 — daily, no group label (these are the obvious ones) */}
