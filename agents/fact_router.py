@@ -256,6 +256,51 @@ def _try_ordinal(question: str, business_id: str, entity_key: str) -> Optional[s
     return None
 
 
+# "list/show/give me all my contacts" — any verb that asks for the data set.
+_LIST_RE = re.compile(
+    r"\b(list|show|give\s+me|display|see|view|all\s+(of\s+)?my|all\s+the|all\s+(?=\w+))\b",
+    re.IGNORECASE,
+)
+# "first 10 deals" / "top 5 contacts" — a bounded slice from the front.
+_TOP_N_RE = re.compile(
+    r"\b(first|top|next)\s+(\d{1,2})\b",
+    re.IGNORECASE,
+)
+
+
+def _try_list(question: str, business_id: str, entity_key: str) -> Optional[str]:
+    """Catch the broad 'show me my <entity>' style asks. This is the
+    pattern that previously hit the LLM and produced fabricated lists.
+
+    Returns up to 25 rows formatted one per line. For totals > 25 we
+    append a 'showing N of total' footer so the user knows there's
+    more, with a pointer to the dedicated page."""
+    if not _LIST_RE.search(question):
+        return None
+    e = ENTITIES[entity_key]
+    total = _count(business_id, e["table"])
+    if total == 0:
+        return (f"You don't have any {e['plural']} yet. "
+                f"Add your first {e['singular']} from the {e['plural'].title()} page.")
+
+    # Honor 'first N' / 'top N' if present, otherwise default to 25.
+    requested = 25
+    m = _TOP_N_RE.search(question)
+    if m:
+        requested = min(max(int(m.group(2)), 1), 50)
+
+    rows = _rows(business_id, e["table"], e["columns"], e["order_by"],
+                 limit=requested, offset=0)
+    lines = [f"{i + 1}. {e['row_fmt'](r)}" for i, r in enumerate(rows)]
+    header = (
+        f"Here are all {total} of your {e['plural']}:"
+        if len(rows) >= total
+        else f"Showing the first {len(rows)} of {total} {e['plural']} "
+             f"(open the {e['plural'].title()} page for the full list):"
+    )
+    return header + "\n\n" + "\n".join(lines)
+
+
 # ── Public entry point ────────────────────────────────────────────────────
 def try_answer(question: str, business_id: str) -> Optional[str]:
     """If the question matches a known factual pattern, run SQL and return
@@ -271,9 +316,10 @@ def try_answer(question: str, business_id: str) -> Optional[str]:
     entity = _match_entity(q)
     if not entity:
         return None
-    # Order matters: a question can match both 'how many' and an
-    # ordinal pattern; "how many" wins because it's the simpler ask.
-    for fn in (_try_count, _try_ordinal):
+    # Order matters: count > ordinal > list. A "how many" question
+    # could in principle match the list pattern too (it contains
+    # 'many'), so the count answer wins.
+    for fn in (_try_count, _try_ordinal, _try_list):
         try:
             answer = fn(q, business_id, entity)
             if answer:
