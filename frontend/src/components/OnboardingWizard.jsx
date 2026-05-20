@@ -305,9 +305,14 @@ export default function OnboardingWizard({ onClose }) {
 
   if (err && !state) {
     return (
-      <Overlay onClose={canClose ? onClose : undefined}>
-        <div style={{ color: 'var(--color-err)', fontSize: 12 }}>{err}</div>
-      </Overlay>
+      <FullScreenShell onSkip={canClose ? onClose : null}>
+        <div className="onb-rail" />
+        <main className="onb-pane">
+          <div className="onb-pane-inner">
+            <div className="onb-error">{err}</div>
+          </div>
+        </main>
+      </FullScreenShell>
     );
   }
   // Render nothing while the initial onboarding state is fetched.
@@ -319,164 +324,121 @@ export default function OnboardingWizard({ onClose }) {
   const Icon = STEP_ICONS[currentKey] || Sparkles;
 
   return (
-    <Overlay onClose={canClose ? fullySkip : undefined}>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 18 }}>
-        {steps.map((s, i) => (
-          <div
-            key={s.key}
-            onClick={() => setStep(i)}
-            title={s.title}
-            style={{
-              flex: 1, height: 3, borderRadius: 2, cursor: 'pointer',
-              background: s.done
-                ? 'var(--color-ok)'
-                : (i === step ? 'var(--color-accent)' : 'var(--color-surface-2)'),
-            }}
-          />
-        ))}
-      </div>
+    <FullScreenShell onSkip={canClose ? fullySkip : null}>
+      <LeftRail
+        steps={steps}
+        currentIndex={step}
+        currentKey={currentKey}
+        selectedIndustry={selectedIndustry}
+        canJump={true}
+        onJump={(i) => setStep(i)}
+      />
 
-      {canClose && (
-        <button
-          onClick={fullySkip}
-          style={{
-            position: 'absolute', top: 16, right: 16,
-            background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer',
-          }}
-          title="Skip remaining onboarding"
-        >
-          <X size={16} />
-        </button>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-        <div style={{
-          width: 44, height: 44, borderRadius: 'var(--r-md)',
-          background: currentStep.done
-            ? 'color-mix(in srgb, var(--color-ok) 15%, transparent)'
-            : 'color-mix(in srgb, var(--color-accent) 15%, transparent)',
-          color: currentStep.done ? 'var(--color-ok)' : 'var(--color-accent)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          {currentStep.done ? <CheckCircle2 size={20} /> : <Icon size={20} />}
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--color-text-dim)', letterSpacing: 0.5, textTransform: 'uppercase' }}>
-            Step {step + 1} of {total}
+      <main className="onb-pane">
+        <div className="onb-pane-inner">
+          <div className="onb-step-meta">
+            <span className="onb-step-eyebrow">Step {step + 1} of {total}</span>
+            <h1 className="onb-step-title">{currentStep.title}</h1>
+            <p className="onb-step-desc">{currentStep.description}</p>
           </div>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600, color: 'var(--color-text)' }}>
-            {currentStep.title}
-          </h2>
-        </div>
-      </div>
 
-      <p style={{ fontSize: 13, color: 'var(--color-text-muted)', margin: '10px 0 18px', lineHeight: 1.55 }}>
-        {currentStep.description}
-      </p>
+          {err && (
+            <div className="onb-error">
+              {err}
+            </div>
+          )}
 
-      {err && (
-        <div style={{
-          padding: '8px 10px', marginBottom: 12, borderRadius: 'var(--r-sm)',
-          color: 'var(--color-err)', fontSize: 12,
-          background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--color-err) 24%, transparent)',
-        }}>
-          {err}
-        </div>
-      )}
+          {/* Step body — keyed on currentKey so React unmounts/remounts on
+              step change. The CSS keyframe on .onb-step-body then replays
+              the fade+slide-in animation, giving every step a calm entry. */}
+          <div key={currentKey} className="onb-step-body">
+            {currentKey === 'profile' && (
+              <ProfileStep profile={profile} setProfile={setProfile} errors={fieldErrors} />
+            )}
 
-      {currentKey === 'profile' && (
-        <ProfileStep profile={profile} setProfile={setProfile} errors={fieldErrors} />
-      )}
+            {currentKey === 'agents' && (
+              <IndustryStep
+                industry={industryPreset?.industry || selectedIndustry}
+                preset={presetTools}
+                primaryGoal={profile.primaryGoal}
+                companySize={profile.companySize}
+              />
+            )}
 
-      {currentKey === 'agents' && (
-        <IndustryStep
-          industry={industryPreset?.industry || selectedIndustry}
-          preset={presetTools}
-          primaryGoal={profile.primaryGoal}
-          companySize={profile.companySize}
-        />
-      )}
+            {currentKey === 'document' && (
+              <DocumentStep busy={busy} uploadedName={uploadedName} onUpload={uploadStarterDoc} />
+            )}
 
-      {currentKey === 'document' && (
-        <DocumentStep busy={busy} uploadedName={uploadedName} onUpload={uploadStarterDoc} />
-      )}
+            {currentKey !== 'profile' && currentKey !== 'agents'
+              && currentKey !== 'document' && currentKey !== 'celebrated' && (
+              <div className="onb-info-card">
+                Open <strong>{currentStep.cta}</strong> to finish this step inside the app.
+              </div>
+            )}
 
-      {currentKey !== 'profile' && currentKey !== 'agents' && currentKey !== 'document' && currentKey !== 'celebrated' && (
-        <div style={{
-          padding: 14, borderRadius: 'var(--r-md)',
-          background: 'var(--color-surface-1)',
-          border: '1px solid var(--color-border)',
-          fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.6,
-        }}>
-          Open <strong style={{ color: 'var(--color-text)' }}>{currentStep.cta}</strong> to finish this step inside the app.
-        </div>
-      )}
+            {currentKey === 'celebrated' && (
+              <CelebrationBlock industry={selectedIndustry} />
+            )}
+          </div>
 
-      {currentKey === 'celebrated' && (
-        <div style={{
-          padding: 18, borderRadius: 'var(--r-md)',
-          background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)',
-          border: '1px solid color-mix(in srgb, var(--color-ok) 25%, transparent)',
-          textAlign: 'center',
-        }}>
-          <Sparkles size={28} color="var(--color-ok)" />
-          <h3 style={{ margin: '8px 0 4px', fontSize: 15, color: 'var(--color-text)' }}>
-            Your NexusAgent workspace is ready
-          </h3>
-          <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0 }}>
-            Your first screen is shaped around {selectedIndustry.toLowerCase()} work.
-          </p>
-        </div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
-        <button onClick={goPrev} disabled={step === 0} className="btn-ghost" style={{ opacity: step === 0 ? 0.4 : 1 }}>
-          <ArrowLeft size={12} /> Back
-        </button>
-        <div style={{ flex: 1 }} />
-
-        {currentKey === 'profile' && (
-          <button onClick={saveProfile} className="btn-primary" disabled={busy}>
-            {busy ? 'Saving...' : 'Save business setup'} <ArrowRight size={12} />
-          </button>
-        )}
-
-        {currentKey === 'agents' && (
-          <button onClick={acceptRecommendations} className="btn-primary" disabled={busy}>
-            {busy ? 'Saving...' : 'Use these recommendations'} <ArrowRight size={12} />
-          </button>
-        )}
-
-        {currentKey === 'document' && (
-          <>
-            <button onClick={() => doAction('/documents')} className="btn-ghost" disabled={busy}>
-              Open Documents
+          <div className="onb-nav">
+            <button
+              onClick={goPrev}
+              disabled={step === 0}
+              className="onb-btn onb-btn-ghost"
+            >
+              <ArrowLeft size={13} /> Back
             </button>
-            <button onClick={() => { completeStep('document').then(() => goNext()); }} className="btn-ghost" disabled={busy}>
-              Do this later
-            </button>
-          </>
-        )}
+            <div className="onb-nav-spacer" />
 
-        {currentKey !== 'profile' && currentKey !== 'agents' && currentKey !== 'document' && currentKey !== 'celebrated' && (
-          <>
-            <button onClick={() => doAction(currentStep.route)} className="btn-ghost" disabled={busy}>
-              {currentStep.cta}
-            </button>
-            <button onClick={() => { completeStep(currentKey).then(() => goNext()); }} className="btn-primary" disabled={busy}>
-              {busy ? 'Saving...' : 'Mark done'} <ArrowRight size={12} />
-            </button>
-          </>
-        )}
+            {currentKey === 'profile' && (
+              <button onClick={saveProfile} className="onb-btn onb-btn-primary" disabled={busy}>
+                {busy ? 'Saving…' : 'Save business setup'} <ArrowRight size={13} />
+              </button>
+            )}
 
-        {currentKey === 'celebrated' && (
-          <button onClick={() => { completeStep('celebrated').then(() => onClose()); }} className="btn-primary" disabled={busy}>
-            {busy ? 'Saving...' : 'Jump to dashboard'} <ArrowRight size={12} />
-          </button>
-        )}
-      </div>
-    </Overlay>
+            {currentKey === 'agents' && (
+              <button onClick={acceptRecommendations} className="onb-btn onb-btn-primary" disabled={busy}>
+                {busy ? 'Saving…' : 'Use these recommendations'} <ArrowRight size={13} />
+              </button>
+            )}
+
+            {currentKey === 'document' && (
+              <>
+                <button onClick={() => doAction('/documents')} className="onb-btn onb-btn-ghost" disabled={busy}>
+                  Open Documents
+                </button>
+                <button onClick={() => { completeStep('document').then(() => goNext()); }} className="onb-btn onb-btn-primary" disabled={busy}>
+                  Do this later <ArrowRight size={13} />
+                </button>
+              </>
+            )}
+
+            {currentKey !== 'profile' && currentKey !== 'agents'
+              && currentKey !== 'document' && currentKey !== 'celebrated' && (
+              <>
+                <button onClick={() => doAction(currentStep.route)} className="onb-btn onb-btn-ghost" disabled={busy}>
+                  {currentStep.cta}
+                </button>
+                <button onClick={() => { completeStep(currentKey).then(() => goNext()); }} className="onb-btn onb-btn-primary" disabled={busy}>
+                  {busy ? 'Saving…' : 'Mark done'} <ArrowRight size={13} />
+                </button>
+              </>
+            )}
+
+            {currentKey === 'celebrated' && (
+              <button
+                onClick={() => { completeStep('celebrated').then(() => onClose()); }}
+                className="onb-btn onb-btn-primary onb-btn-celebrate"
+                disabled={busy}
+              >
+                {busy ? 'Saving…' : 'Enter my workspace'} <ArrowRight size={13} />
+              </button>
+            )}
+          </div>
+        </div>
+      </main>
+    </FullScreenShell>
   );
 }
 
@@ -798,35 +760,411 @@ function Field({ label, children, hint, error }) {
   );
 }
 
-function Overlay({ children, onClose }) {
-  // Heavier backdrop + blur than a normal modal: the wizard is the user's
-  // first-ever screen after signup and we want the dashboard underneath to
-  // disappear, not bleed through. Without the blur, a half-loaded dashboard
-  // (skeleton KPIs, sidebar, greeting) was visible behind the wizard.
+// ─────────────────────────────────────────────────────────────────────────
+// Full-screen shell
+// ─────────────────────────────────────────────────────────────────────────
+// The wizard is the first-ever screen a new account sees. We render it as
+// a full-viewport split layout instead of a small centered modal so the
+// experience feels like part of the product, not an interrupt over it.
+//
+// Layout: left rail (brand + vertical step timeline) + right pane (the
+// step content). The styles live next to the component as an injected
+// <style> tag so this file stays self-contained — no app-wide CSS edits.
+
+function FullScreenShell({ children, onSkip }) {
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0,
-        background: 'rgba(8, 10, 18, 0.92)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
-        zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
-          borderRadius: 'var(--r-lg)', padding: 28,
-          width: 'min(620px, 94vw)', position: 'relative',
-          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
-        }}
-      >
+    <>
+      <OnboardingStyles />
+      <div className="onb-shell" role="dialog" aria-modal="true" aria-label="Workspace setup">
+        {/* Ambient gradient orbs in the background — pure CSS, no JS. */}
+        <div className="onb-orb onb-orb-1" aria-hidden />
+        <div className="onb-orb onb-orb-2" aria-hidden />
+
+        {onSkip && (
+          <button
+            className="onb-skip"
+            onClick={onSkip}
+            title="Skip the rest of setup — you can finish later from Settings"
+          >
+            Skip for now <X size={13} />
+          </button>
+        )}
+
         {children}
       </div>
+    </>
+  );
+}
+
+// Left rail — brand + vertical step timeline. Clicking a step jumps to it
+// (the wizard already supported step skipping; we just reuse the handler).
+function LeftRail({ steps, currentIndex, currentKey, selectedIndustry, canJump, onJump }) {
+  return (
+    <aside className="onb-rail">
+      <div className="onb-rail-top">
+        <div className="onb-brand">
+          <div className="onb-brand-mark">N</div>
+          <div>
+            <div className="onb-brand-name">NexusAgent</div>
+            <div className="onb-brand-sub">Workspace setup</div>
+          </div>
+        </div>
+
+        <ol className="onb-timeline" role="list">
+          {steps.map((s, i) => {
+            const StepIcon = STEP_ICONS[s.key] || Sparkles;
+            const isActive = i === currentIndex;
+            const isDone = s.done;
+            return (
+              <li
+                key={s.key}
+                className={`onb-tl-item${isActive ? ' is-active' : ''}${isDone ? ' is-done' : ''}`}
+                onClick={canJump ? () => onJump(i) : undefined}
+              >
+                <div className="onb-tl-dot">
+                  {isDone ? <CheckCircle2 size={14} /> : <StepIcon size={13} />}
+                </div>
+                <div className="onb-tl-text">
+                  <div className="onb-tl-title">{s.title}</div>
+                  <div className="onb-tl-step">Step {i + 1}</div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      </div>
+
+      <div className="onb-rail-foot">
+        <div className="onb-rail-tip">
+          {currentKey === 'profile' && (
+            <>Your answers tune sample data, agent priorities and email templates — pick what's true today, you can refine later.</>
+          )}
+          {currentKey === 'agents' && (
+            <>We pre-shape the workspace for <strong>{selectedIndustry.toLowerCase()}</strong>. Every other agent stays one click away in the sidebar.</>
+          )}
+          {currentKey === 'document' && (
+            <>One company doc is enough to start. The AI uses it as safe context for first answers — no hallucinated specs.</>
+          )}
+          {currentKey === 'celebrated' && (
+            <>You're all set. Your dashboard, agents and sample data are waiting on the next click.</>
+          )}
+          {currentKey !== 'profile' && currentKey !== 'agents'
+            && currentKey !== 'document' && currentKey !== 'celebrated' && (
+            <>Quick step — most teams take under 2 minutes to finish setup.</>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}
+
+function CelebrationBlock({ industry }) {
+  return (
+    <div className="onb-celebrate">
+      <div className="onb-celebrate-burst" aria-hidden>
+        <Sparkles size={26} />
+      </div>
+      <h3 className="onb-celebrate-h3">Your NexusAgent workspace is ready.</h3>
+      <p className="onb-celebrate-sub">
+        Tuned for {industry.toLowerCase()} — your sidebar, sample data and agent priorities reflect what your day actually looks like.
+      </p>
     </div>
+  );
+}
+
+function OnboardingStyles() {
+  return (
+    <style>{`
+      .onb-shell {
+        position: fixed; inset: 0; z-index: 1000;
+        display: grid;
+        grid-template-columns: minmax(320px, 420px) 1fr;
+        background:
+          radial-gradient(1200px 600px at 0% 0%,   rgba(99,102,241,0.10), transparent 60%),
+          radial-gradient(900px 500px at 100% 100%, rgba(16,185,129,0.07), transparent 55%),
+          var(--color-bg);
+        color: var(--color-text);
+        overflow: hidden;
+        animation: onb-fade-in 360ms cubic-bezier(.2,.7,.3,1);
+      }
+      .onb-orb {
+        position: absolute; border-radius: 50%; pointer-events: none;
+        filter: blur(60px); opacity: 0.55;
+        animation: onb-orb-drift 16s ease-in-out infinite alternate;
+      }
+      .onb-orb-1 {
+        width: 360px; height: 360px;
+        background: radial-gradient(circle, rgba(139,92,246,0.45), transparent 70%);
+        top: -80px; left: -80px;
+      }
+      .onb-orb-2 {
+        width: 460px; height: 460px;
+        background: radial-gradient(circle, rgba(16,185,129,0.35), transparent 70%);
+        bottom: -120px; right: -120px;
+        animation-delay: -8s;
+      }
+      @keyframes onb-orb-drift {
+        0%   { transform: translate(0, 0)     scale(1); }
+        100% { transform: translate(40px, 20px) scale(1.06); }
+      }
+
+      /* ── Left rail ───────────────────────────────────────────────────── */
+      .onb-rail {
+        position: relative; z-index: 1;
+        display: flex; flex-direction: column; justify-content: space-between;
+        padding: 40px 32px;
+        background: linear-gradient(165deg,
+          rgba(15, 18, 30, 0.85) 0%,
+          rgba(20, 24, 40, 0.75) 50%,
+          rgba(15, 18, 30, 0.85) 100%);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-right: 1px solid rgba(255,255,255,0.06);
+      }
+      [data-theme="light"] .onb-rail {
+        background: linear-gradient(165deg, #0c1224 0%, #131b34 60%, #0c1224 100%);
+      }
+      .onb-rail-top { display: flex; flex-direction: column; gap: 36px; }
+      .onb-brand { display: flex; align-items: center; gap: 12px; }
+      .onb-brand-mark {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: linear-gradient(135deg, #10b981 0%, #6366f1 60%, #8b5cf6 100%);
+        display: grid; place-items: center;
+        color: white; font-size: 20px; font-weight: 800;
+        box-shadow: 0 0 0 1px rgba(99,102,241,0.25), 0 8px 24px rgba(99,102,241,0.18);
+      }
+      .onb-brand-name {
+        font-size: 15px; font-weight: 700; letter-spacing: -0.01em;
+        color: #e6e8ef;
+      }
+      .onb-brand-sub {
+        font-size: 11px; color: #6b7280; margin-top: 2px; letter-spacing: 0.3px;
+      }
+
+      .onb-timeline { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+      .onb-tl-item {
+        position: relative;
+        display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: center;
+        padding: 10px 10px 10px 6px; border-radius: 10px;
+        cursor: pointer; transition: background 180ms ease;
+      }
+      .onb-tl-item:hover { background: rgba(255,255,255,0.03); }
+      /* Vertical connector line between dots */
+      .onb-tl-item:not(:last-child)::after {
+        content: ""; position: absolute;
+        left: 21px; top: 36px; bottom: -4px;
+        width: 2px; border-radius: 1px;
+        background: rgba(255,255,255,0.06);
+        transition: background 240ms ease;
+      }
+      .onb-tl-item.is-done:not(:last-child)::after { background: rgba(16,185,129,0.5); }
+
+      .onb-tl-dot {
+        width: 32px; height: 32px; border-radius: 50%;
+        display: grid; place-items: center;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        color: #6b7280;
+        transition: all 240ms cubic-bezier(.2,.7,.3,1);
+      }
+      .onb-tl-item.is-active .onb-tl-dot {
+        background: linear-gradient(135deg, #6366f1, #8b5cf6);
+        border-color: rgba(139,92,246,0.6);
+        color: white;
+        transform: scale(1.06);
+        box-shadow: 0 0 0 4px rgba(99,102,241,0.18);
+      }
+      .onb-tl-item.is-done .onb-tl-dot {
+        background: rgba(16,185,129,0.18);
+        border-color: rgba(16,185,129,0.5);
+        color: #10b981;
+      }
+
+      .onb-tl-text { min-width: 0; }
+      .onb-tl-title {
+        font-size: 13px; font-weight: 600;
+        color: #c0c4d0;
+        transition: color 200ms ease;
+      }
+      .onb-tl-item.is-active .onb-tl-title { color: #ffffff; }
+      .onb-tl-item.is-done .onb-tl-title { color: #d3d6df; }
+      .onb-tl-step {
+        font-size: 10.5px; color: #5a6072; margin-top: 1px;
+        letter-spacing: 0.4px; text-transform: uppercase;
+      }
+
+      .onb-rail-foot {}
+      .onb-rail-tip {
+        padding: 14px 16px; border-radius: 12px;
+        background: rgba(255,255,255,0.035);
+        border: 1px solid rgba(255,255,255,0.06);
+        font-size: 12.5px; color: #9aa0b0; line-height: 1.6;
+      }
+      .onb-rail-tip strong { color: #d3d6df; font-weight: 600; }
+
+      /* ── Right pane ──────────────────────────────────────────────────── */
+      .onb-pane {
+        position: relative; z-index: 1;
+        overflow-y: auto;
+        display: flex; align-items: center; justify-content: center;
+        padding: 56px 40px;
+      }
+      .onb-pane-inner {
+        width: 100%;
+        max-width: 640px;
+        display: flex; flex-direction: column; gap: 28px;
+      }
+
+      .onb-skip {
+        position: absolute; top: 22px; right: 28px;
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 13px; border-radius: 999px;
+        background: transparent;
+        border: 1px solid var(--color-border);
+        color: var(--color-text-dim);
+        font-size: 12px; font-weight: 500; cursor: pointer;
+        transition: all 180ms ease;
+        z-index: 2;
+      }
+      .onb-skip:hover {
+        color: var(--color-text);
+        border-color: var(--color-text-dim);
+        background: var(--color-surface-1);
+      }
+
+      .onb-step-meta { display: flex; flex-direction: column; gap: 8px; }
+      .onb-step-eyebrow {
+        font-size: 11px; font-weight: 700; letter-spacing: 0.8px;
+        text-transform: uppercase;
+        background: linear-gradient(90deg, #10b981, #8b5cf6);
+        -webkit-background-clip: text; background-clip: text;
+        -webkit-text-fill-color: transparent; color: transparent;
+      }
+      .onb-step-title {
+        margin: 0; font-size: 28px; font-weight: 700;
+        letter-spacing: -0.02em; line-height: 1.15;
+        color: var(--color-text);
+      }
+      .onb-step-desc {
+        margin: 0; font-size: 14.5px; color: var(--color-text-muted);
+        line-height: 1.55; max-width: 60ch;
+      }
+
+      .onb-error {
+        padding: 10px 14px; border-radius: 10px;
+        background: color-mix(in srgb, var(--color-err) 8%, transparent);
+        border: 1px solid color-mix(in srgb, var(--color-err) 26%, transparent);
+        color: var(--color-err); font-size: 12.5px; line-height: 1.5;
+      }
+
+      /* Step body — replays the fade+slide entrance on every step switch
+         because the parent component remounts it via the React `key`.    */
+      .onb-step-body { animation: onb-step-enter 320ms cubic-bezier(.2,.7,.3,1); }
+      @keyframes onb-step-enter {
+        0%   { opacity: 0; transform: translateY(8px); }
+        100% { opacity: 1; transform: translateY(0);   }
+      }
+      @keyframes onb-fade-in {
+        0%   { opacity: 0; }
+        100% { opacity: 1; }
+      }
+
+      .onb-info-card {
+        padding: 14px 16px; border-radius: 12px;
+        background: var(--color-surface-1);
+        border: 1px solid var(--color-border);
+        font-size: 13px; color: var(--color-text-muted); line-height: 1.6;
+      }
+      .onb-info-card strong { color: var(--color-text); font-weight: 600; }
+
+      /* ── Celebration block ──────────────────────────────────────────── */
+      .onb-celebrate {
+        text-align: center; padding: 32px 24px;
+        border-radius: 16px;
+        background:
+          radial-gradient(80% 80% at 50% 0%, rgba(16,185,129,0.10), transparent 70%),
+          var(--color-surface-1);
+        border: 1px solid color-mix(in srgb, var(--color-ok) 22%, var(--color-border));
+      }
+      .onb-celebrate-burst {
+        width: 56px; height: 56px; border-radius: 50%;
+        margin: 0 auto 14px;
+        display: grid; place-items: center;
+        background: linear-gradient(135deg, rgba(16,185,129,0.18), rgba(99,102,241,0.18));
+        color: #10b981;
+        animation: onb-pulse 2.4s ease-in-out infinite;
+      }
+      @keyframes onb-pulse {
+        0%, 100% { transform: scale(1);    box-shadow: 0 0 0 0 rgba(16,185,129,0.20); }
+        50%      { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(16,185,129,0.00); }
+      }
+      .onb-celebrate-h3 {
+        margin: 0 0 6px; font-size: 18px; font-weight: 700;
+        color: var(--color-text); letter-spacing: -0.01em;
+      }
+      .onb-celebrate-sub {
+        margin: 0; font-size: 13.5px; color: var(--color-text-muted); line-height: 1.6;
+      }
+
+      /* ── Nav row ─────────────────────────────────────────────────────── */
+      .onb-nav {
+        display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+        padding-top: 8px;
+      }
+      .onb-nav-spacer { flex: 1; }
+      .onb-btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 11px 18px; border-radius: 10px;
+        font-size: 13.5px; font-weight: 600; letter-spacing: 0.01em;
+        cursor: pointer; border: 1px solid transparent;
+        transition: transform 140ms ease, box-shadow 180ms ease,
+                    background 180ms ease, color 180ms ease, border-color 180ms ease;
+      }
+      .onb-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+      .onb-btn-ghost {
+        background: transparent;
+        border-color: var(--color-border);
+        color: var(--color-text-muted);
+      }
+      .onb-btn-ghost:hover:not(:disabled) {
+        color: var(--color-text);
+        border-color: var(--color-text-dim);
+        background: var(--color-surface-1);
+      }
+      .onb-btn-primary {
+        background: linear-gradient(135deg, #10b981 0%, #6366f1 100%);
+        color: #fff;
+        box-shadow: 0 6px 20px rgba(99,102,241,0.22);
+      }
+      .onb-btn-primary:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 28px rgba(99,102,241,0.32);
+      }
+      .onb-btn-primary:active:not(:disabled) { transform: translateY(0); }
+      .onb-btn-celebrate {
+        padding: 13px 22px; font-size: 14px;
+        background: linear-gradient(135deg, #10b981 0%, #8b5cf6 100%);
+      }
+
+      /* ── Responsive ──────────────────────────────────────────────────── */
+      @media (max-width: 900px) {
+        .onb-shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
+        .onb-rail { padding: 24px 22px; }
+        .onb-rail-top { gap: 20px; }
+        .onb-rail-foot { display: none; }
+        .onb-timeline { flex-direction: row; gap: 0; overflow-x: auto; }
+        .onb-tl-item { grid-template-columns: 28px auto; padding: 6px 10px; }
+        .onb-tl-item:not(:last-child)::after {
+          left: auto; right: -2px; top: 50%; bottom: auto;
+          transform: translateY(-50%);
+          width: 16px; height: 2px;
+        }
+        .onb-tl-step { display: none; }
+        .onb-tl-title { font-size: 12px; }
+        .onb-pane { padding: 32px 22px; }
+        .onb-step-title { font-size: 22px; }
+      }
+    `}</style>
   );
 }
 
