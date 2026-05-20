@@ -315,11 +315,44 @@ export default function OnboardingWizard({ onClose }) {
       </FullScreenShell>
     );
   }
-  // Render nothing while the initial onboarding state is fetched.
-  // The previous "Loading..." overlay flashed for a few hundred ms between
-  // PlanWelcomeModal and the actual wizard, making the post-signup sequence
-  // look like three stacked modals instead of one continuous flow.
-  if (!state || !currentStep) return null;
+  // While the initial onboarding state is being fetched, render the
+  // full-screen shell with skeleton content. We MUST cover the dashboard
+  // immediately — returning null here used to let the half-loaded sidebar
+  // + greeting + KPIs flash through behind the future wizard, which is
+  // what the user was seeing on the left after email verification.
+  if (!state || !currentStep) {
+    return (
+      <FullScreenShell onSkip={null}>
+        <aside className="onb-rail">
+          <div className="onb-rail-top">
+            <div className="onb-brand">
+              <div className="onb-brand-mark">N</div>
+              <div>
+                <div className="onb-brand-name">NexusAgent</div>
+                <div className="onb-brand-sub">Workspace setup</div>
+              </div>
+            </div>
+            <div className="onb-skeleton-stack">
+              {[0,1,2,3,4,5].map(i => (
+                <div key={i} className="onb-skeleton-row">
+                  <div className="onb-skeleton-dot" />
+                  <div className="onb-skeleton-line" style={{ width: `${60 + (i*5)%30}%` }} />
+                </div>
+              ))}
+            </div>
+          </div>
+        </aside>
+        <main className="onb-pane">
+          <div className="onb-pane-inner">
+            <div className="onb-skeleton-eyebrow" />
+            <div className="onb-skeleton-title" />
+            <div className="onb-skeleton-desc" />
+            <div className="onb-skeleton-desc" style={{ width: '70%' }} />
+          </div>
+        </main>
+      </FullScreenShell>
+    );
+  }
 
   const Icon = STEP_ICONS[currentKey] || Sparkles;
 
@@ -1144,6 +1177,39 @@ function OnboardingStyles() {
       .onb-btn-celebrate {
         padding: 13px 22px; font-size: 14px;
         background: linear-gradient(135deg, #10b981 0%, #8b5cf6 100%);
+      }
+
+      /* ── Skeleton placeholders (state-loading window) ────────────────── */
+      .onb-skeleton-stack { display: flex; flex-direction: column; gap: 14px; }
+      .onb-skeleton-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; }
+      .onb-skeleton-dot {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: rgba(255,255,255,0.05);
+        animation: onb-shimmer 1.6s ease-in-out infinite;
+      }
+      .onb-skeleton-line {
+        height: 10px; border-radius: 4px;
+        background: rgba(255,255,255,0.05);
+        animation: onb-shimmer 1.6s ease-in-out infinite;
+      }
+      .onb-skeleton-eyebrow {
+        width: 80px; height: 11px; border-radius: 4px; margin-bottom: 14px;
+        background: var(--color-surface-2);
+        animation: onb-shimmer 1.6s ease-in-out infinite;
+      }
+      .onb-skeleton-title {
+        width: 60%; height: 28px; border-radius: 6px; margin-bottom: 18px;
+        background: var(--color-surface-2);
+        animation: onb-shimmer 1.6s ease-in-out infinite;
+      }
+      .onb-skeleton-desc {
+        width: 90%; height: 12px; border-radius: 4px; margin-bottom: 10px;
+        background: var(--color-surface-2);
+        animation: onb-shimmer 1.6s ease-in-out infinite;
+      }
+      @keyframes onb-shimmer {
+        0%, 100% { opacity: 0.6; }
+        50%      { opacity: 1; }
       }
 
       /* ── Responsive ──────────────────────────────────────────────────── */
