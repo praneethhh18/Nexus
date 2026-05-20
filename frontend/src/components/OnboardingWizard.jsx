@@ -16,7 +16,8 @@ import {
   getIndustryPreset, saveProfileExtras,
 } from '../services/onboarding';
 import { updateBusiness } from '../services/businesses';
-import { uploadDocument } from '../services/api';
+import { uploadDocument, importData } from '../services/api';
+import { listPersonas, runAgent } from '../services/agents';
 import { getCurrentBusiness } from '../services/auth';
 import { comingSoonForIndustry, roadmapTitleSetForIndustry } from '../services/comingSoon';
 
@@ -75,6 +76,7 @@ const GOALS = [
   'Document intelligence',
   'Finance and invoices',
   'Team productivity',
+  'Other',
 ];
 
 const FALLBACK_INDUSTRY_TOOLS = {
@@ -119,6 +121,13 @@ export default function OnboardingWizard({ onClose }) {
   const [err, setErr] = useState('');
   const [uploadedName, setUploadedName] = useState('');
   const [industryPreset, setIndustryPreset] = useState(null);
+  // Step 3 (data source): inline CSV upload state.
+  const [csvName, setCsvName] = useState('');
+  const [csvRows, setCsvRows] = useState(0);
+  // Step 5 (first run): inline agent picker state.
+  const [personas, setPersonas] = useState(null);
+  const [runResult, setRunResult] = useState(null);
+  const [runningKey, setRunningKey] = useState('');
   // Per-field validation messages for the profile step. Keyed by the
   // field name in `profile` (name / businessType / industry / companySize /
   // primaryGoal). Cleared field-by-field as the user fixes each.
@@ -130,6 +139,7 @@ export default function OnboardingWizard({ onClose }) {
     businessType: '',
     companySize: '',
     primaryGoal: '',
+    customGoal: '',   // populated only when primaryGoal === 'Other'
   }));
   const navigate = useNavigate();
 
@@ -210,6 +220,9 @@ export default function OnboardingWizard({ onClose }) {
     if (!profile.industry.trim()) validation.industry     = 'Industry tunes terminology + sample data.';
     if (!profile.companySize)     validation.companySize  = 'Choose a size band.';
     if (!profile.primaryGoal)     validation.primaryGoal  = "Tell us what to focus on first.";
+    if (profile.primaryGoal === 'Other' && !profile.customGoal?.trim()) {
+      validation.primaryGoal = "Write a one-line goal so we know what to set up.";
+    }
     if (Object.keys(validation).length) {
       setFieldErrors(validation);
       setErr('A few fields still need answers.');
@@ -222,10 +235,13 @@ export default function OnboardingWizard({ onClose }) {
       // Keep the legacy human-readable description for back-compat with
       // anywhere in the product that already parses it. The structured
       // version lives in settings.profile via saveProfileExtras below.
+      const goalForSave = profile.primaryGoal === 'Other'
+        ? `Other — ${profile.customGoal.trim()}`
+        : profile.primaryGoal;
       const description = [
         `Business type: ${profile.businessType}`,
         `Company size: ${profile.companySize}`,
-        `Primary goal: ${profile.primaryGoal}`,
+        `Primary goal: ${goalForSave}`,
       ].join('\n');
       await updateBusiness(current.id, {
         name: profile.name.trim(),
@@ -238,7 +254,7 @@ export default function OnboardingWizard({ onClose }) {
         await saveProfileExtras({
           business_type: profile.businessType,
           company_size:  profile.companySize,
-          primary_goal:  profile.primaryGoal,
+          primary_goal:  goalForSave,
         });
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -292,6 +308,67 @@ export default function OnboardingWizard({ onClose }) {
   const doAction = (route) => {
     onClose();
     navigate(route);
+  };
+
+  // Step 3 inline upload — pushes a CSV into nexus_contacts so the workspace
+  // starts with real lead data instead of an empty pipeline. Failures here
+  // are non-fatal: the user can still skip with "Do this later".
+  const uploadContactsCsv = async (file) => {
+    if (!file) return;
+    setBusy(true);
+    setErr('');
+    setCsvName(file.name);
+    try {
+      const result = await importData(file, 'nexus_contacts', 'append');
+      setCsvRows(result?.rows_imported || result?.rows || 0);
+      await completeOnboardingStep('data_source');
+      const fresh = await refreshState();
+      const next = fresh.steps.findIndex(s => !s.done);
+      setStep(next === -1 ? step + 1 : next);
+    } catch (e) {
+      setErr(e.message || 'Could not import this CSV — check the column headers.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Step 5 inline persona load + run.
+  useEffect(() => {
+    if (currentKey !== 'first_run' || personas !== null) return;
+    let cancelled = false;
+    listPersonas()
+      .then((data) => {
+        if (cancelled) return;
+        const arr = Array.isArray(data) ? data : (data?.personas || []);
+        setPersonas(arr.slice(0, 6));
+      })
+      .catch(() => { if (!cancelled) setPersonas([]); });
+    return () => { cancelled = true; };
+  }, [currentKey, personas]);
+
+  const runFirstAgent = async (key) => {
+    setBusy(true);
+    setErr('');
+    setRunningKey(key);
+    setRunResult(null);
+    try {
+      const res = await runAgent(key);
+      setRunResult({ key, summary: res?.summary || res?.output || 'Agent finished — check the dashboard for output.' });
+      await completeOnboardingStep('first_run');
+      const fresh = await refreshState();
+      const next = fresh.steps.findIndex(s => !s.done);
+      // Don't auto-advance — let the user see the run result for a moment.
+      // The "Continue" button on the right will move on.
+      setRunningKey('');
+      if (next === -1) {
+        // already at last step; do nothing
+      }
+    } catch (e) {
+      setErr(e.message || 'Agent could not start. Try another or skip for now.');
+      setRunningKey('');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const fullySkip = async () => {
@@ -402,11 +479,24 @@ export default function OnboardingWizard({ onClose }) {
               <DocumentStep busy={busy} uploadedName={uploadedName} onUpload={uploadStarterDoc} />
             )}
 
-            {currentKey !== 'profile' && currentKey !== 'agents'
-              && currentKey !== 'document' && currentKey !== 'celebrated' && (
-              <div className="onb-info-card">
-                Open <strong>{currentStep.cta}</strong> to finish this step inside the app.
-              </div>
+            {currentKey === 'data_source' && (
+              <DataSourceStep
+                busy={busy}
+                csvName={csvName}
+                csvRows={csvRows}
+                done={currentStep.done}
+                onUpload={uploadContactsCsv}
+              />
+            )}
+
+            {currentKey === 'first_run' && (
+              <FirstRunStep
+                personas={personas}
+                runningKey={runningKey}
+                runResult={runResult}
+                busy={busy}
+                onRun={runFirstAgent}
+              />
             )}
 
             {currentKey === 'celebrated' && (
@@ -432,7 +522,7 @@ export default function OnboardingWizard({ onClose }) {
 
             {currentKey === 'agents' && (
               <button onClick={acceptRecommendations} className="onb-btn onb-btn-primary" disabled={busy}>
-                {busy ? 'Saving…' : 'Use these recommendations'} <ArrowRight size={13} />
+                {busy ? 'Applying…' : 'Apply this setup'} <ArrowRight size={13} />
               </button>
             )}
 
@@ -447,16 +537,30 @@ export default function OnboardingWizard({ onClose }) {
               </>
             )}
 
+            {currentKey === 'data_source' && (
+              <button
+                onClick={() => { completeStep('data_source').then(() => goNext()); }}
+                className="onb-btn onb-btn-primary" disabled={busy}
+              >
+                {currentStep.done ? 'Continue' : 'Do this later'} <ArrowRight size={13} />
+              </button>
+            )}
+
+            {currentKey === 'first_run' && (
+              <button
+                onClick={() => { completeStep('first_run').then(() => goNext()); }}
+                className="onb-btn onb-btn-primary" disabled={busy}
+              >
+                {currentStep.done ? 'Continue' : 'Do this later'} <ArrowRight size={13} />
+              </button>
+            )}
+
             {currentKey !== 'profile' && currentKey !== 'agents'
-              && currentKey !== 'document' && currentKey !== 'celebrated' && (
-              <>
-                <button onClick={() => doAction(currentStep.route)} className="onb-btn onb-btn-ghost" disabled={busy}>
-                  {currentStep.cta}
-                </button>
-                <button onClick={() => { completeStep(currentKey).then(() => goNext()); }} className="onb-btn onb-btn-primary" disabled={busy}>
-                  {busy ? 'Saving…' : 'Mark done'} <ArrowRight size={13} />
-                </button>
-              </>
+              && currentKey !== 'document' && currentKey !== 'data_source'
+              && currentKey !== 'first_run' && currentKey !== 'celebrated' && (
+              <button onClick={() => { completeStep(currentKey).then(() => goNext()); }} className="onb-btn onb-btn-primary" disabled={busy}>
+                {busy ? 'Saving…' : 'Mark done'} <ArrowRight size={13} />
+              </button>
             )}
 
             {currentKey === 'celebrated' && (
@@ -578,6 +682,21 @@ function ProfileStep({ profile, setProfile, errors }) {
           <option value="">What should NexusAgent help with first?</option>
           {GOALS.map(x => <option key={x} value={x}>{x}</option>)}
         </select>
+        {/* "Other" surfaces a free-text box so workspaces that don't fit one of
+            the 6 templates can still tell us what they need. The value is
+            stored back into primaryGoal so the rest of the flow (saveProfile,
+            IndustryStep's goal highlight) keeps reading one field. */}
+        {profile.primaryGoal === 'Other' && (
+          <input
+            className="field-input"
+            style={{ marginTop: 8 }}
+            placeholder="Describe what you'd like NexusAgent to do for you…"
+            value={profile.customGoal || ''}
+            onChange={(e) => update('customGoal', e.target.value)}
+            maxLength={140}
+            autoFocus
+          />
+        )}
       </Field>
       <div style={{
         display: 'flex', gap: 10, padding: 12, borderRadius: 'var(--r-md)',
@@ -735,6 +854,150 @@ function IndustryStep({ industry, preset, primaryGoal, companySize }) {
       }}>
         This will tune priority agents, schedules, and starter email templates. All other NexusAgent features remain available from the sidebar.
       </div>
+    </div>
+  );
+}
+
+// ── Step 3: data source (inline CSV upload, no navigation) ──────────────────
+function DataSourceStep({ busy, csvName, csvRows, done, onUpload }) {
+  const success = done && csvName;
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      <label style={{
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        gap: 10, minHeight: 170,
+        border: `2px dashed ${success ? 'var(--color-ok)' : 'var(--color-border)'}`,
+        borderRadius: 'var(--r-md)',
+        background: success
+          ? 'color-mix(in srgb, var(--color-ok) 6%, var(--color-surface-1))'
+          : 'var(--color-surface-1)',
+        cursor: busy ? 'wait' : 'pointer', textAlign: 'center', padding: 24,
+        transition: 'border-color 180ms, background 180ms',
+      }}>
+        <input
+          type="file"
+          disabled={busy}
+          accept=".csv,text/csv"
+          style={{ display: 'none' }}
+          onChange={(e) => onUpload(e.target.files?.[0])}
+        />
+        {success
+          ? <CheckCircle2 size={26} color="var(--color-ok)" />
+          : <Database size={26} color="var(--color-text-dim)" />}
+        <div style={{ fontSize: 14, color: 'var(--color-text)', fontWeight: 600 }}>
+          {busy
+            ? `Importing ${csvName || 'CSV'}…`
+            : success
+              ? `Imported ${csvRows || 'your'} rows from ${csvName}`
+              : 'Drop a contacts CSV or click to choose'}
+        </div>
+        <div style={{ fontSize: 11.5, color: 'var(--color-text-dim)', maxWidth: 400, lineHeight: 1.5 }}>
+          {success
+            ? 'Atlas will use these in your CRM. You can import more from Database later.'
+            : 'Any spreadsheet with name + email + phone columns works. We auto-detect the rest.'}
+        </div>
+      </label>
+      <div className="onb-info-card" style={{ fontSize: 12 }}>
+        Expected headers (any order): <strong>first_name, last_name, email, phone, company</strong>. Skip this if you'd rather start from a blank pipeline.
+      </div>
+    </div>
+  );
+}
+
+// ── Step 5: pick an agent + run it inline ───────────────────────────────────
+function FirstRunStep({ personas, runningKey, runResult, busy, onRun }) {
+  if (personas === null) {
+    return (
+      <div className="onb-info-card" style={{ textAlign: 'center', padding: 24 }}>
+        Loading your agent line-up…
+      </div>
+    );
+  }
+  if (personas.length === 0) {
+    return (
+      <div className="onb-info-card">
+        We couldn't load your agent presets right now — you can skip this step and start an agent from the Agents page after setup.
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'grid', gap: 12 }}>
+      <div style={{
+        display: 'grid', gap: 10,
+        gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+      }}>
+        {personas.map((p) => {
+          const key = p.key || p.id;
+          const isRunning = runningKey === key;
+          const isDone = runResult && runResult.key === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => !busy && onRun(key)}
+              disabled={busy}
+              style={{
+                textAlign: 'left',
+                padding: '14px 14px',
+                borderRadius: 12,
+                background: isDone
+                  ? 'color-mix(in srgb, var(--color-ok) 8%, var(--color-surface-1))'
+                  : 'var(--color-surface-1)',
+                border: `1px solid ${isDone
+                  ? 'color-mix(in srgb, var(--color-ok) 35%, var(--color-border))'
+                  : 'var(--color-border)'}`,
+                cursor: busy ? 'wait' : 'pointer',
+                display: 'flex', flexDirection: 'column', gap: 6,
+                transition: 'transform 140ms, border-color 180ms, background 180ms',
+              }}
+              onMouseEnter={(e) => !busy && (e.currentTarget.style.transform = 'translateY(-1px)')}
+              onMouseLeave={(e) => (e.currentTarget.style.transform = 'translateY(0)')}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: 8,
+                  background: 'color-mix(in srgb, var(--color-accent) 14%, transparent)',
+                  color: 'var(--color-accent)',
+                  display: 'grid', placeItems: 'center',
+                }}>
+                  {isDone ? <CheckCircle2 size={14} /> : <Bot size={14} />}
+                </div>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--color-text)' }}>
+                  {p.name || key}
+                </div>
+              </div>
+              <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+                {p.tagline || p.description || 'Tap to run a quick sample task.'}
+              </div>
+              <div style={{
+                fontSize: 11, fontWeight: 600, marginTop: 2,
+                color: isRunning ? 'var(--color-accent)'
+                      : isDone   ? 'var(--color-ok)'
+                                 : 'var(--color-text-dim)',
+              }}>
+                {isRunning ? 'Running…' : isDone ? 'Finished ✓' : 'Run sample task →'}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {runResult && (
+        <div style={{
+          padding: 14, borderRadius: 12,
+          background: 'color-mix(in srgb, var(--color-ok) 7%, var(--color-surface-1))',
+          border: '1px solid color-mix(in srgb, var(--color-ok) 25%, var(--color-border))',
+          fontSize: 12.5, color: 'var(--color-text)', lineHeight: 1.55,
+        }}>
+          <div style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5, textTransform: 'uppercase',
+            color: 'var(--color-ok)', marginBottom: 6,
+          }}>
+            Run complete
+          </div>
+          {String(runResult.summary).slice(0, 320)}
+        </div>
+      )}
     </div>
   );
 }
