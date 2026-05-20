@@ -1058,7 +1058,7 @@ function OnboardingStyles() {
       }
 
       /* Step body — replays the fade+slide entrance on every step switch
-         because the parent component remounts it via the React `key`.    */
+         because the parent component remounts it via the React key prop. */
       .onb-step-body { animation: onb-step-enter 320ms cubic-bezier(.2,.7,.3,1); }
       @keyframes onb-step-enter {
         0%   { opacity: 0; transform: translateY(8px); }
