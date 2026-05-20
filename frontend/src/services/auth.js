@@ -91,17 +91,30 @@ async function authRequest(path, body) {
   return res.json();
 }
 
+// Browser-local flags that gate first-run UX. A fresh signup or verify
+// must reset them — otherwise the onboarding wizard skips itself for a
+// brand-new account because a PREVIOUS account on this browser already
+// completed it. Same browser, same localStorage, different user.
+function _resetFirstRunFlags() {
+  try {
+    localStorage.removeItem('nexus_onboarding_done');
+    sessionStorage.removeItem('nexus_pending_welcome');
+  } catch { /* private mode — safe to ignore */ }
+}
+
 export async function signup(email, name, password) {
   const data = await authRequest('/signup', { email, name, password });
   // verification_required=true → no access token returned. Caller (Login.jsx)
   // shows the "check your inbox" screen instead of redirecting to dashboard.
   // verification_required=false / undefined → legacy auto-login flow (dev).
+  _resetFirstRunFlags();
   if (!data.verification_required) setSession(data);
   return data;
 }
 
 export async function verifyEmail(token) {
   const data = await authRequest('/verify-email', { token });
+  _resetFirstRunFlags();
   setSession(data);   // verify returns full tokens — log the user straight in
   return data;
 }
