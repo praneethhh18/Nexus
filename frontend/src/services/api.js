@@ -60,6 +60,11 @@ export const setConversationSensitive = (id, sensitive) =>
   });
 export const updateConversation = (id, title) =>
   request(`/conversations/${id}`, { method: 'PATCH', body: JSON.stringify({ title }) });
+export const appendMessage = (id, message) =>
+  request(`/conversations/${id}/messages`, {
+    method: 'POST',
+    body: JSON.stringify(message),
+  });
 
 // Database
 export const getTables = () => request('/database/tables');

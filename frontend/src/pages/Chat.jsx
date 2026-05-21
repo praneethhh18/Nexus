@@ -14,7 +14,8 @@ const MD_COMPONENTS = {
 };
 import { sendMessage, getConversation, getConversations, deleteConversation,
          exportMarkdown, uploadDocument, downloadReport,
-         setConversationSensitive, updateConversation } from '../services/api';
+         setConversationSensitive, updateConversation,
+         createConversation, appendMessage } from '../services/api';
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { transcribeBlob, voiceSupported } from '../services/voice';
@@ -757,20 +758,44 @@ export default function Chat() {
       _uploadPlaceholder: true,
     };
     setMessages(prev => [...prev, startMsg]);
+
+    // Make sure we have a conversation row to attach the upload message
+    // to, so the agent can see "X.pdf was uploaded" in its history on
+    // the next turn.
+    let activeConvId = convId;
+    if (!activeConvId) {
+      try {
+        const c = await createConversation();
+        activeConvId = c?.conversation_id || null;
+        if (activeConvId) setConvId(activeConvId);
+      } catch { /* non-fatal — we'll still upload */ }
+    }
+
     try {
       const data = await uploadDocument(file);
       const ok = data && (data.chunks_added || data.success);
+      const finalContent = ok
+        ? `📎 **\`${file.name}\`** uploaded — ${data.chunks_added || 0} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`
+        : `📎 **\`${file.name}\`** uploaded but no content was extracted. Try a different file or check the format.`;
       setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
-        ...m,
-        _uploadPlaceholder: false,
-        content: ok
-          ? `📎 **\`${file.name}\`** uploaded — ${data.chunks_added || 0} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`
-          : `📎 **\`${file.name}\`** uploaded but no content was extracted. Try a different file or check the format.`,
+        ...m, _uploadPlaceholder: false, content: finalContent,
       } : m));
+      // Persist the upload notification so the agent's conversation
+      // history (loaded from DB) actually includes it. Without this,
+      // when the user follows up with "what's in this document", the
+      // agent has no idea what they're referring to.
+      if (activeConvId && ok) {
+        try {
+          await appendMessage(activeConvId, {
+            role: 'assistant',
+            content: finalContent,
+            tools_used: ['upload'],
+          });
+        } catch (e) { /* non-fatal */ }
+      }
     } catch (err) {
       setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
-        ...m,
-        _uploadPlaceholder: false,
+        ...m, _uploadPlaceholder: false,
         content: `📎 **Upload failed** — ${err.message || 'unknown error'}.`,
       } : m));
     } finally {

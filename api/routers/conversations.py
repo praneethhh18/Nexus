@@ -70,3 +70,26 @@ def create_new_conversation(ctx: dict = Depends(get_current_context)):
     from memory.conversation_store import create_conversation
     conv_id = create_conversation(user_id=ctx["user"]["id"], business_id=ctx["business_id"])
     return {"conversation_id": conv_id}
+
+
+@router.post("/api/conversations/{conv_id}/messages")
+def append_message_api(conv_id: str, body: dict,
+                       ctx: dict = Depends(get_current_context)):
+    """Append a single message (role + content) to the conversation history.
+
+    Frontend-driven events like 'file uploaded' need to persist into the
+    transcript so the agent sees them in the next turn. Without this the
+    upload notification was local React state only — the agent loaded
+    DB history on the next message and had no idea a document existed.
+    """
+    from memory.conversation_store import save_message, assert_conversation_access
+    assert_conversation_access(conv_id, ctx["business_id"])
+    role = (body.get("role") or "assistant").strip()
+    content = (body.get("content") or "").strip()
+    if not content:
+        return {"ok": False, "error": "content required"}
+    save_message(
+        conv_id, role, content,
+        tools_used=body.get("tools_used") or [],
+    )
+    return {"ok": True}
