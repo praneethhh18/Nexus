@@ -214,6 +214,11 @@ export default function Workflows() {
   const [wfEnabled, setWfEnabled] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+  // Monotonic counter — bumped every time we (re)open the builder. Used
+  // as part of ReactFlow's `key` so the canvas fully remounts even when
+  // the workflow id is null (e.g. opening two different templates in a
+  // row via Customize).
+  const [builderInstance, setBuilderInstance] = useState(0);
   const [runResult, setRunResult] = useState(null);
   const [rfNodes, setRfNodes, onNodesChange] = useNodesState([]);
   const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState([]);
@@ -295,17 +300,34 @@ export default function Workflows() {
 
   const onNodeClick = useCallback((_, node) => { setSelectedNodeId(node.id); }, []);
 
+  // Map a stored workflow's nodes/edges into the React Flow shape.
+  //
+  // Every template uses the same internal IDs ("n1", "n2", ...) for its
+  // nodes. React Flow keys nodes by id internally — if we feed it two
+  // different workflows back-to-back, ID collisions made the canvas show
+  // the FIRST workflow's data for the second one (every edit looked the
+  // same). Fix: namespace IDs with the workflow id so the IDs are unique
+  // across switches, and remap edge endpoints to match. We also deep-clone
+  // each node's config so we never share refs with the `templates` state.
   const wfToRf = (wf) => {
+    const ns = (wf.id || 'new') + ':';
     const nodes = (wf.nodes || []).map(n => {
       const ndef = nodeTypeDefs[n.type] || {};
       return {
-        id: n.id, type: 'workflowNode',
+        id: ns + n.id,
+        type: 'workflowNode',
         position: { x: n.x || 0, y: n.y || 0 },
-        data: { label: n.name, nodeType: n.type, category: ndef.category || 'control', description: ndef.description?.substring(0, 60), config: n.config || {} },
+        data: {
+          origId: n.id,
+          label: n.name, nodeType: n.type,
+          category: ndef.category || 'control',
+          description: ndef.description?.substring(0, 60),
+          config: JSON.parse(JSON.stringify(n.config || {})),
+        },
       };
     });
     const edges = (wf.edges || []).map((e, i) => ({
-      id: `e-${i}`, source: e.source, target: e.target,
+      id: `e-${i}`, source: ns + e.source, target: ns + e.target,
       label: e.label || '', animated: true,
       style: { stroke: 'color-mix(in srgb, var(--color-accent) 50%, transparent)', strokeWidth: 2 },
       markerEnd: { type: MarkerType.ArrowClosed, color: 'var(--color-accent)' },
@@ -314,12 +336,28 @@ export default function Workflows() {
     return { nodes, edges };
   };
 
+  // Strip the per-workflow ID namespace that wfToRf added, so we save
+  // clean short IDs (n1/n2/...) back to disk. `origId` was stashed in
+  // data — fall back to the prefixed id if it's missing (newly added
+  // nodes won't have origId).
   const rfToWf = () => {
+    const stripNs = (id) => {
+      const idx = id?.indexOf(':');
+      return idx > 0 ? id.slice(idx + 1) : id;
+    };
     const nodes = rfNodes.map(n => ({
-      id: n.id, type: n.data.nodeType, name: n.data.label,
-      config: n.data.config || {}, x: Math.round(n.position.x), y: Math.round(n.position.y),
+      id: n.data?.origId || stripNs(n.id),
+      type: n.data.nodeType,
+      name: n.data.label,
+      config: n.data.config || {},
+      x: Math.round(n.position.x),
+      y: Math.round(n.position.y),
     }));
-    const edges = rfEdges.map(e => ({ source: e.source, target: e.target, label: e.label || '' }));
+    const edges = rfEdges.map(e => ({
+      source: stripNs(e.source),
+      target: stripNs(e.target),
+      label: e.label || '',
+    }));
     return { id: wfId, name: wfName, nodes, edges, enabled: wfEnabled };
   };
 
@@ -327,6 +365,7 @@ export default function Workflows() {
     setWfId(null); setWfName('New Workflow'); setWfEnabled(false);
     setRfNodes([]); setRfEdges([]); setDirty(true);
     setRunResult(null); setSelectedNodeId(null);
+    setBuilderInstance(i => i + 1);
     setView('builder');
   };
 
@@ -335,6 +374,7 @@ export default function Workflows() {
     const { nodes, edges } = wfToRf(tmpl);
     setRfNodes(nodes); setRfEdges(edges);
     setDirty(true); setRunResult(null); setSelectedNodeId(null);
+    setBuilderInstance(i => i + 1);
     setView('builder');
   };
 
@@ -344,6 +384,7 @@ export default function Workflows() {
     const { nodes, edges } = wfToRf(wf);
     setRfNodes(nodes); setRfEdges(edges);
     setDirty(false); setRunResult(null); setSelectedNodeId(null);
+    setBuilderInstance(i => i + 1);
     setView('builder');
   };
 
@@ -699,6 +740,13 @@ export default function Workflows() {
             ) : (
               <div style={{ flex: 1 }}>
                 <ReactFlow
+                  // Force a fresh React Flow instance whenever the active
+                  // workflow changes. Without this, React Flow's internal
+                  // store would keep the previous workflow's nodes (since
+                  // every workflow reuses the same n1/n2/... IDs). The
+                  // builderInstance counter also covers switching between
+                  // two unsaved templates (where wfId is null for both).
+                  key={`${wfId || 'new'}-${builderInstance}`}
                   nodes={rfNodes} edges={rfEdges}
                   onNodesChange={(...args) => { onNodesChange(...args); setDirty(true); }}
                   onEdgesChange={(...args) => { onEdgesChange(...args); setDirty(true); }}
