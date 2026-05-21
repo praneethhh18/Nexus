@@ -112,9 +112,15 @@ export function stripMarkdownForSpeech(text) {
   // ("smiling face with open mouth emoji"). Catches the standard emoji
   // ranges (extended-pictographic), variation selectors, ZWJ joiners,
   // and skin-tone modifiers.
+  // Extended_Pictographic covers nearly all emojis INCLUDING skin-tone
+  // modifiers (U+1F3FB-FF). What it doesn't cover: ZWJ (U+200D),
+  // variation selector (U+FE0F), and keycap suffix (U+20E3). Strip
+  // those individually with single-char regexes (a character class with
+  // combining marks would trip eslint's no-misleading-character-class).
   t = t.replace(/\p{Extended_Pictographic}/gu, '');
-  t = t.replace(/[‍️⃣]/g, '');     // ZWJ + variation selector + keycap
-  t = t.replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '');   // skin tone modifiers
+  t = t.replace(/‍/g, '');
+  t = t.replace(/️/g, '');
+  t = t.replace(/⃣/g, '');
   // Also strip lone-emoji bullets / arrows / dashes that the agent uses as
   // visual list markers — they read as "right arrow" etc.
   t = t.replace(/[→←↑↓⇒⇐➡⬅•▪▫◦●○■□★☆※]/g, '');

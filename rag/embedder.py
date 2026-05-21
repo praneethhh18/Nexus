@@ -39,7 +39,7 @@ from config import privacy
 # fan out N requests in parallel. 8 is a safe default — well under the
 # 50 RPS quota a fresh Bedrock account gets, and big enough that a 200-
 # chunk PDF embeds in ~5s instead of ~80s. Tune via env if needed.
-BEDROCK_EMBED_WORKERS = int(os.getenv("BEDROCK_EMBED_WORKERS", "8") or 8)
+BEDROCK_EMBED_WORKERS = int(os.getenv("BEDROCK_EMBED_WORKERS", "4") or 4)
 
 # Cached client handles — populated lazily on first call to each backend.
 _ollama_embedder = None
@@ -114,19 +114,45 @@ def _get_bedrock():
     return _bedrock_client
 
 
-def _embed_bedrock_one(text: str) -> List[float]:
+def _embed_bedrock_one(text: str, _max_retries: int = 6) -> List[float]:
     """One Titan call → one vector. Titan v2 doesn't have a batch endpoint,
-    so we serialise. Caller can parallelise if throughput matters later."""
+    so we serialise. Caller can parallelise if throughput matters later.
+
+    Bedrock returns ThrottlingException when the parallel-fanout from
+    _embed_bedrock_docs sends more requests/sec than the account quota
+    allows (often the case for new accounts with lower TPM limits).
+    Without backoff, a 60-chunk PDF would fail half its calls. With this
+    exponential backoff retry, we keep latency reasonable while staying
+    inside the quota."""
+    import time
+    import random
     client = _get_bedrock()
     body = json.dumps({"inputText": text})
-    resp = client.invoke_model(
-        modelId=TITAN_MODEL,
-        body=body,
-        contentType="application/json",
-        accept="application/json",
-    )
-    payload = json.loads(resp["body"].read())
-    return payload["embedding"]
+    delay = 0.5
+    for attempt in range(_max_retries):
+        try:
+            resp = client.invoke_model(
+                modelId=TITAN_MODEL,
+                body=body,
+                contentType="application/json",
+                accept="application/json",
+            )
+            payload = json.loads(resp["body"].read())
+            return payload["embedding"]
+        except Exception as e:
+            # Catch any throttling-shaped error (ThrottlingException,
+            # ProvisionedThroughputExceededException, even ConnectionError).
+            msg = str(e).lower()
+            throttled = ("throttl" in msg or "too many requests" in msg
+                         or "rate exceed" in msg or "provisioned" in msg)
+            if not throttled or attempt == _max_retries - 1:
+                raise
+            sleep_for = min(8.0, delay + random.uniform(0, 0.25))
+            logger.warning(f"[Embedder/Bedrock] throttled (attempt {attempt+1}/{_max_retries}) — sleeping {sleep_for:.1f}s")
+            time.sleep(sleep_for)
+            delay *= 2  # exponential backoff
+    # Unreachable, but keeps type-checkers happy.
+    raise RuntimeError("Bedrock embed exhausted retries")
 
 
 def _embed_bedrock_docs(texts: List[str]) -> List[List[float]]:

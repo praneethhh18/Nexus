@@ -162,7 +162,7 @@ policies, preferred tools), use `recall` first, then answer.
 
 OUTPUT FORMAT
 - Write your reply as PLAIN natural-language conversation. Never wrap \
-your final answer in a JSON envelope (no {"action": ..., "answer": ...} \
+your final answer in a JSON envelope (no `{{"action": ..., "answer": ...}}` \
 shape, no ```json``` fences). The user sees your reply directly — \
 JSON code blocks look broken to them.
 - Markdown formatting (bold, lists, tables) is fine and encouraged for \
