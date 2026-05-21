@@ -209,6 +209,16 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
             from config import llm_bedrock
             return llm_bedrock.invoke(prompt, system=system, max_tokens=max_tokens,
                                       temperature=temperature, fast=fast)
+        # sensitive=True and local model is unreachable. The privacy rule
+        # forbids cloud fallback. Return a clean human-readable message
+        # instead of leaking the HTTPConnectionPool stacktrace to chat.
+        if sensitive:
+            return (
+                "Local mode is active for this conversation, but the local model "
+                "(Ollama) isn't running. Start Ollama with `ollama serve` to use "
+                "offline mode, or toggle **Agent ON · Cloud** in the top right to "
+                "switch to the cloud agent."
+            )
         raise
 
 
@@ -263,6 +273,16 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
                 return
             from config import llm_bedrock
             yield from llm_bedrock.stream(prompt, system=system, max_tokens=max_tokens, fast=fast)
+            return
+        # Same graceful surface as invoke() — local-only mode + unreachable
+        # Ollama is a configuration state, not a crash.
+        if sensitive:
+            yield (
+                "Local mode is active for this conversation, but the local model "
+                "(Ollama) isn't running. Start Ollama with `ollama serve` to use "
+                "offline mode, or toggle **Agent ON · Cloud** in the top right to "
+                "switch to the cloud agent."
+            )
             return
         raise
 

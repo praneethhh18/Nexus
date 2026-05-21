@@ -471,7 +471,7 @@ export default function Chat() {
     if (!confirm('Delete this conversation?')) return;
     await deleteConversation(id).catch(() => {});
     setConversations(c => c.filter(x => x.conversation_id !== id));
-    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); }
+    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); setInput(''); setStreamingText(''); localStorage.removeItem('nexus_active_conv'); }
   };
 
   const filteredConvs = conversations.filter(c =>
@@ -489,7 +489,7 @@ export default function Chat() {
     };
     const onNew = () => {
       setMessages([]); setConvId(null); setChartData(null);
-      setConvSensitive(false);
+      setConvSensitive(false); setInput(''); setStreamingText('');
       localStorage.removeItem('nexus_active_conv');
       inputRef.current?.focus();
     };
@@ -924,7 +924,7 @@ export default function Chat() {
           }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 6, alignItems: 'center' }}>
               <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '7px 10px' }}
-                onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); inputRef.current?.focus(); }}>
+                onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); setInput(''); setStreamingText(''); localStorage.removeItem('nexus_active_conv'); inputRef.current?.focus(); }}>
                 <Plus size={13} /> New chat
               </button>
             </div>

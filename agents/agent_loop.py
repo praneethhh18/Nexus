@@ -255,6 +255,27 @@ def run_agent(
     # because the LLM may quote rows we didn't show in the trace UI.
     grounding_evidence: List[Any] = []
 
+    # Seed evidence with the user's OWN message text. If the user wrote
+    # "invite Praneeth P K to the party on 26th May", the agent quoting
+    # "Praneeth P K", "Party", or "26th May" in the reply is grounded —
+    # those words came from the user, not the model's imagination. Before
+    # this seed, the bulk-hallucination guard nuked legitimate drafts
+    # because the agent quoted nouns from the prompt that don't appear
+    # in any CRM tool output.
+    try:
+        for _m in messages[-3:]:  # last few turns is enough
+            if _m.get("role") != "user":
+                continue
+            _c = _m.get("content", "")
+            if isinstance(_c, str) and _c.strip():
+                grounding_evidence.append({"_user_prompt": _c})
+            elif isinstance(_c, list):
+                for _b in _c:
+                    if isinstance(_b, dict) and _b.get("type") == "text":
+                        grounding_evidence.append({"_user_prompt": _b.get("text", "")})
+    except Exception:
+        pass
+
     steps = 0
     consecutive_errors = 0
     final_text = ""
