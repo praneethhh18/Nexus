@@ -56,6 +56,53 @@ export const extractDocFromUpload = async (file) => {
   return res.json();
 };
 
+// Template autofill — given a reference PDF / text, the model maps content
+// onto this template's variables so the user doesn't have to re-type.
+// Returns { variables: { name: value, ... }, filled_count, source_chars,
+//           truncated }.
+export const autofillTemplateFromText = (template_key, text) =>
+  req('/autofill-template', { method: 'POST', body: JSON.stringify({ template_key, text }) });
+
+export const autofillTemplateFromUpload = async (template_key, file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const h = headers();
+  delete h['Content-Type'];
+  const res = await fetch(
+    `${BASE}/autofill-template-upload?template_key=${encodeURIComponent(template_key)}`,
+    { method: 'POST', headers: h, body: fd },
+  );
+  if (res.status === 401) { window.location.href = '/login'; throw new Error('Session expired'); }
+  if (!res.ok) {
+    const txt = await res.text();
+    let msg = txt;
+    try { msg = JSON.parse(txt).detail || txt; } catch {}
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+// Upload an image asset (logo / header) for embedding in generated docs.
+// Returns { path, filename } — pass `path` back into generateDocument as
+// `logo_path`.
+export const uploadDocumentAsset = async (file) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const h = headers();
+  delete h['Content-Type'];
+  const res = await fetch(`${BASE}/upload-asset`, {
+    method: 'POST', headers: h, body: fd,
+  });
+  if (res.status === 401) { window.location.href = '/login'; throw new Error('Session expired'); }
+  if (!res.ok) {
+    const txt = await res.text();
+    let msg = txt;
+    try { msg = JSON.parse(txt).detail || txt; } catch {}
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
 export const downloadDocument = async (id, filename) => {
   const h = headers();
   delete h['Content-Type'];

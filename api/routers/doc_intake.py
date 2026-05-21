@@ -314,6 +314,142 @@ def extract_from_text(
     return _extract_via_llm(payload.text)
 
 
+# ── Template autofill ───────────────────────────────────────────────────────
+# Given a template (with a fixed variable schema) plus either a PDF / text
+# source, ask the LLM to map source content onto template variables. This is
+# the "drop your past contract and we'll prefill the new one" flow that
+# saves SMB owners from re-typing every field.
+_AUTOFILL_SYSTEM = """You map content from a reference document onto a fixed \
+set of variable names so a template can be auto-filled. You are filling in \
+form fields, not generating prose.
+
+You receive:
+  1. A list of variable names the template expects (e.g. client_name, start_date).
+  2. The text of a reference document the user wants to copy values from.
+
+Return ONLY a JSON object: {"<variable_name>": "<value or empty string>", ...}.
+
+Rules:
+  - Only emit values that the document actually contains. Empty string ("") for
+    anything you can't find. Do NOT guess.
+  - Match dates to ISO format (YYYY-MM-DD) when possible.
+  - For money fields, return just the numeric value (no currency symbol or commas).
+  - For long-form fields (scope, deliverables, etc.), copy the relevant
+    paragraph(s) verbatim. Keep it under 800 characters.
+  - For party-name variables (client_name, vendor_name, etc.), use the legal
+    entity name as it appears in the document.
+  - Output the JSON object only. No code fences. No prose.
+"""
+
+
+class AutofillIn(BaseModel):
+    template_key: str = Field(..., min_length=1, max_length=80)
+    text: str = Field("", max_length=200_000)
+
+
+def _autofill_via_llm(template_key: str, text: str) -> dict:
+    """Internal helper — shared by the JSON-body and multipart endpoints."""
+    from api.documents import TEMPLATES
+    if template_key not in TEMPLATES:
+        raise HTTPException(404, f"Unknown template: {template_key}")
+    variables = TEMPLATES[template_key].get("variables", [])
+    if not variables:
+        return {"variables": {}}
+
+    text_for_llm, source_chars, truncated = _prepare_text(text)
+    if len(text_for_llm) < _MIN_TEXT_LEN:
+        raise HTTPException(400, f"Text too short — need at least {_MIN_TEXT_LEN} characters.")
+
+    prompt = (
+        f"Variable names to fill:\n{json.dumps(variables)}\n\n"
+        f"Reference document:\n---\n{text_for_llm}\n---"
+    )
+    try:
+        raw = llm_invoke(
+            prompt, system=_AUTOFILL_SYSTEM,
+            max_tokens=1600, temperature=0.1, sensitive=True,
+        )
+    except Exception as e:
+        logger.warning(f"[doc-intake] autofill LLM failed: {e}")
+        raise HTTPException(503, "Couldn't reach the model. Is Ollama running?")
+
+    # Salvage a JSON object from the response; gracefully degrade to {} on
+    # parse failure so the user just sees no autofill, not an error.
+    mapped: dict = {}
+    try:
+        # Find the outermost {...}
+        m = re.search(r"\{[\s\S]*\}", raw or "")
+        if m:
+            mapped = json.loads(m.group(0))
+    except Exception as e:
+        logger.info(f"[doc-intake] autofill JSON parse failed: {e}")
+        mapped = {}
+
+    # Only keep keys the template actually declared, and coerce to strings.
+    filtered = {}
+    for k in variables:
+        v = mapped.get(k, "")
+        if v is None:
+            v = ""
+        if not isinstance(v, str):
+            v = str(v)
+        filtered[k] = v.strip()
+    return {
+        "variables": filtered,
+        "source_chars": source_chars,
+        "truncated": truncated,
+        "filled_count": sum(1 for v in filtered.values() if v),
+    }
+
+
+@router.post("/api/documents/autofill-template")
+def autofill_template_from_text(
+    payload: AutofillIn,
+    ctx: dict = Depends(get_current_context),
+):
+    """Autofill a template's variables from pasted reference-doc text."""
+    _ = ctx["business_id"]
+    return _autofill_via_llm(payload.template_key, payload.text)
+
+
+@router.post("/api/documents/autofill-template-upload")
+async def autofill_template_from_upload(
+    template_key: str,
+    file: UploadFile = File(...),
+    ctx: dict = Depends(get_current_context),
+):
+    """Autofill from an uploaded PDF / text file. Same logic as the text
+    endpoint but extracts text from the binary upload first."""
+    _ = ctx["business_id"]
+
+    buf = bytearray()
+    while True:
+        chunk = await file.read(1024 * 64)
+        if not chunk:
+            break
+        buf.extend(chunk)
+        if len(buf) > _MAX_UPLOAD_BYTES:
+            raise HTTPException(413, f"File too large (max {_MAX_UPLOAD_BYTES // (1024 * 1024)} MB).")
+    if not buf:
+        raise HTTPException(400, "Empty file.")
+
+    name = (file.filename or "").lower()
+    content_type = (file.content_type or "").lower()
+    looks_pdf = name.endswith(".pdf") or "pdf" in content_type
+    if looks_pdf:
+        text = _pdf_to_text(bytes(buf))
+        if not text.strip():
+            raise HTTPException(400,
+                "PDF has no extractable text — looks like a scan. Paste the text instead.")
+    else:
+        try:
+            text = bytes(buf).decode("utf-8", errors="ignore")
+        except Exception:
+            raise HTTPException(400, "Couldn't read that file as text or PDF.")
+
+    return _autofill_via_llm(template_key, text)
+
+
 @router.post("/api/documents/extract-upload")
 async def extract_from_upload(
     file: UploadFile = File(...),

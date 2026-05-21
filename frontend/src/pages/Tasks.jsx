@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat, Check, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, extractFromNotes, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
+import { listContacts, listCompanies, listDeals } from '../services/crm';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
+import FilterPopover from '../components/FilterPopover';
 import SuggestionPanel from '../components/SuggestionPanel';
 import { TagPicker, TagChips } from '../components/TagChips';
 import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
@@ -53,20 +55,47 @@ function Modal({ title, onClose, children }) {
 function TaskForm({ initial, onSubmit, onCancel }) {
   const [f, setF] = useState({
     title: '', description: '', priority: 'normal', status: 'open',
-    due_date: '', tags: '', recurrence: 'none', ...(initial || {}),
+    due_date: '', tags: '', recurrence: 'none',
+    contact_id: '', company_id: '', deal_id: '',
+    ...(initial || {}),
   });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+
+  // CRM lookups for the linkage dropdowns. Lazy: only fetch when the form
+  // is opened (which is when this component mounts).
+  const [contacts, setContacts] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [deals, setDeals] = useState([]);
+  useEffect(() => {
+    listContacts().then(setContacts).catch(() => {});
+    listCompanies().then(setCompanies).catch(() => {});
+    listDeals().then(setDeals).catch(() => {});
+  }, []);
+
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
+      {/* What */}
       <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Title *</label>
-        <input className="field-input" required autoFocus value={f.title} onChange={(e) => set('title', e.target.value)} maxLength={200} />
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>What needs doing? *</label>
+        <input className="field-input" required autoFocus
+               placeholder='e.g. "Send Q3 proposal to Acme"'
+               value={f.title} onChange={(e) => set('title', e.target.value)} maxLength={200} />
       </div>
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Description</label>
-        <textarea className="field-input" rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={4000} />
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>
+          Details &mdash; the "why" + "what done looks like"
+        </label>
+        <textarea className="field-input" rows={3}
+                  placeholder={'Context: client asked for revised pricing on the discovery call.\nDone when: PDF sent + reply received + logged in CRM.'}
+                  value={f.description} onChange={(e) => set('description', e.target.value)} maxLength={4000} />
+        <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>
+          Tip: lay out the outcome you're going for. Future-you and the AI both work better with context.
+        </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+
+      {/* Priority + Status + Due */}
+      <div className="divider-h">Schedule</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
         <div>
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Priority</label>
           <select className="field-select" value={f.priority} onChange={(e) => set('priority', e.target.value)} style={{ width: '100%' }}>
@@ -83,12 +112,6 @@ function TaskForm({ initial, onSubmit, onCancel }) {
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Due date</label>
           <input className="field-input" type="date" value={f.due_date || ''} onChange={(e) => set('due_date', e.target.value)} />
         </div>
-      </div>
-      <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Legacy tags (text)</label>
-          <input className="field-input" placeholder="comma-separated" value={f.tags} onChange={(e) => set('tags', e.target.value)} />
-        </div>
         <div>
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>
             <Repeat size={10} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 3 }} />
@@ -99,12 +122,53 @@ function TaskForm({ initial, onSubmit, onCancel }) {
           </select>
         </div>
       </div>
-      {initial?.id && (
-        <div style={{ marginTop: 10 }}>
+
+      {/* CRM linkage — so the task is hooked into the right account /
+          deal and the briefing/voice agents can find it later. */}
+      <div className="divider-h">Linked to (optional)</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Contact</label>
+          <select className="field-select" value={f.contact_id || ''}
+                  onChange={(e) => set('contact_id', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— none —</option>
+            {contacts.map(c => (
+              <option key={c.id} value={c.id}>
+                {`${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email || '(unnamed)'}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Company</label>
+          <select className="field-select" value={f.company_id || ''}
+                  onChange={(e) => set('company_id', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— none —</option>
+            {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Deal</label>
+          <select className="field-select" value={f.deal_id || ''}
+                  onChange={(e) => set('deal_id', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— none —</option>
+            {deals.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Tags */}
+      {initial?.id ? (
+        <div style={{ marginBottom: 12 }}>
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Tags</label>
           <TagPicker entityType="task" entityId={initial.id} />
         </div>
+      ) : (
+        <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginBottom: 12 }}>
+          Save first to enable tags.
+        </div>
       )}
+
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary">{initial ? 'Save' : 'Add Task'}</button>
@@ -444,15 +508,28 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Filters */}
-      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)', flexWrap: 'wrap' }}>
-        {[['active', 'Active'], ['open', 'Open'], ['in_progress', 'In progress'], ['done', 'Done'], ['all', 'All']].map(([k, lbl]) => (
-          <button key={k} onClick={() => setFilter(k)} className={filter === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>{lbl}</button>
-        ))}
-        <div style={{ width: 1, background: 'var(--color-surface-2)', margin: '0 4px' }} />
-        {[['', 'Any due'], ['overdue', 'Overdue'], ['today', 'Today'], ['this_week', 'This week']].map(([k, lbl]) => (
-          <button key={k || 'any'} onClick={() => setDueWindow(k)} className={dueWindow === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>{lbl}</button>
-        ))}
+      {/* Filters — single popover instead of a long row of pill buttons. */}
+      <div style={{ padding: '0 24px 10px', borderBottom: '1px solid var(--color-surface-2)' }}>
+        <FilterPopover
+          values={{ status: filter === 'active' ? '' : filter, due: dueWindow }}
+          onChange={(k, v) => {
+            if (k === 'status') setFilter(v || 'active');
+            if (k === 'due')    setDueWindow(v);
+          }}
+          groups={[
+            { key: 'status', label: 'Status', options: [
+              { value: 'open',        label: 'Open' },
+              { value: 'in_progress', label: 'In progress' },
+              { value: 'done',        label: 'Done' },
+              { value: 'all',         label: 'All' },
+            ]},
+            { key: 'due', label: 'Due window', options: [
+              { value: 'overdue',   label: 'Overdue' },
+              { value: 'today',     label: 'Today' },
+              { value: 'this_week', label: 'This week' },
+            ]},
+          ]}
+        />
       </div>
 
       {/* Select-all strip — only appears when bulk mode is active (something

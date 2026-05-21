@@ -222,10 +222,11 @@ def get_template(template_key: str) -> Dict[str, Any]:
 
 
 # ── Generation ───────────────────────────────────────────────────────────────
-def _render_docx(template_key: str, vars_map: Dict[str, Any], out_path: Path) -> None:
+def _render_docx(template_key: str, vars_map: Dict[str, Any], out_path: Path,
+                 logo_path: str | None = None) -> None:
     """Render the template as a Word document using python-docx."""
     from docx import Document
-    from docx.shared import Pt, RGBColor
+    from docx.shared import Pt, RGBColor, Inches
     from docx.enum.text import WD_ALIGN_PARAGRAPH
 
     tmpl = TEMPLATES[template_key]
@@ -237,6 +238,18 @@ def _render_docx(template_key: str, vars_map: Dict[str, Any], out_path: Path) ->
     style.font.size = Pt(11)
 
     accent = RGBColor(0x1E, 0x3A, 0x5F)
+
+    # Optional logo at the top of the document. Sized at 1.5in wide so it
+    # doesn't dominate the page. Errors are swallowed — a missing/corrupt
+    # image shouldn't kill the whole render.
+    if logo_path:
+        try:
+            p = doc.add_paragraph()
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            run = p.add_run()
+            run.add_picture(logo_path, width=Inches(1.5))
+        except Exception as e:
+            logger.warning(f"[documents] couldn't embed logo: {e}")
 
     for kind, raw in tmpl["sections"]:
         text = _resolve(raw, vars_map)
@@ -267,14 +280,15 @@ def _render_docx(template_key: str, vars_map: Dict[str, Any], out_path: Path) ->
     doc.save(str(out_path))
 
 
-def _render_pdf(template_key: str, vars_map: Dict[str, Any], out_path: Path) -> None:
+def _render_pdf(template_key: str, vars_map: Dict[str, Any], out_path: Path,
+                logo_path: str | None = None) -> None:
     """Render the template as a PDF using ReportLab."""
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import cm
     from reportlab.platypus import (
-        SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem, HRFlowable,
+        SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem, HRFlowable, Image,
     )
 
     ACCENT = colors.HexColor("#1e3a5f")
@@ -291,6 +305,21 @@ def _render_pdf(template_key: str, vars_map: Dict[str, Any], out_path: Path) -> 
         leftMargin=2 * cm, rightMargin=2 * cm,
     )
     story = []
+
+    # Optional logo block at the very top.
+    if logo_path:
+        try:
+            img = Image(logo_path)
+            # Constrain to ~4cm wide while preserving aspect ratio.
+            max_w = 4 * cm
+            if img.imageWidth > 0:
+                ratio = img.imageHeight / img.imageWidth
+                img.drawWidth = max_w
+                img.drawHeight = max_w * ratio
+            story.append(img)
+            story.append(Spacer(1, 0.4 * cm))
+        except Exception as e:
+            logger.warning(f"[documents] couldn't embed logo in PDF: {e}")
 
     for kind, raw in tmpl["sections"]:
         text = _resolve(raw, vars_map).replace("\n", "<br/>")
@@ -326,6 +355,7 @@ def generate_document(
     title: str,
     variables: Dict[str, Any],
     fmt: str = "docx",
+    logo_path: str | None = None,
 ) -> Dict[str, Any]:
     if template_key not in TEMPLATES:
         raise HTTPException(404, f"Unknown template: {template_key}")
@@ -349,10 +379,25 @@ def generate_document(
     out_dir = _business_dir(business_id)
     out_path = out_dir / filename
 
+    # Validate logo path is within the business assets dir (basic
+    # path-traversal guard) before passing it to the renderer.
+    safe_logo = None
+    if logo_path:
+        from pathlib import Path as _P
+        try:
+            p = _P(logo_path).resolve()
+            biz_assets = (Path(OUTPUTS_DIR) / "documents" / "_assets" / business_id).resolve()
+            if biz_assets in p.parents and p.exists():
+                safe_logo = str(p)
+            else:
+                logger.warning(f"[documents] logo_path outside biz assets dir: {logo_path}")
+        except Exception as e:
+            logger.warning(f"[documents] logo_path validation failed: {e}")
+
     if fmt == "docx":
-        _render_docx(template_key, vars_map, out_path)
+        _render_docx(template_key, vars_map, out_path, logo_path=safe_logo)
     else:
-        _render_pdf(template_key, vars_map, out_path)
+        _render_pdf(template_key, vars_map, out_path, logo_path=safe_logo)
 
     doc_id = f"doc-{uuid.uuid4().hex[:10]}"
     now = datetime.now().isoformat()

@@ -1,15 +1,21 @@
 """Documents router — proposals, SOW, contracts, offer letters."""
 from __future__ import annotations
 
+import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from api import documents as _docs
 from api.auth import get_current_context
+from config.settings import OUTPUTS_DIR
 
 router = APIRouter(tags=["documents"])
+
+ASSETS_DIR = Path(OUTPUTS_DIR) / "documents" / "_assets"
+MAX_ASSET_BYTES = 5 * 1024 * 1024   # 5 MB
+ALLOWED_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
 
 
 @router.get("/api/documents/templates")
@@ -36,7 +42,35 @@ def generate_document_api(body: dict, ctx: dict = Depends(get_current_context)):
         title=body.get("title", ""),
         variables=body.get("variables", {}) or {},
         fmt=body.get("format", "docx"),
+        logo_path=body.get("logo_path") or None,
     )
+
+
+@router.post("/api/documents/upload-asset")
+async def upload_document_asset(
+    file: UploadFile = File(...),
+    ctx: dict = Depends(get_current_context),
+):
+    """Upload an image asset (logo, header) for embedding in generated docs.
+    Returns the server-side path the /generate call should reference."""
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_IMAGE_EXT:
+        raise HTTPException(400, f"Unsupported image format. Use one of: "
+                                  f"{', '.join(sorted(ALLOWED_IMAGE_EXT))}")
+    buf = bytearray()
+    while True:
+        chunk = await file.read(1024 * 64)
+        if not chunk:
+            break
+        buf.extend(chunk)
+        if len(buf) > MAX_ASSET_BYTES:
+            raise HTTPException(413, f"Image too large (max {MAX_ASSET_BYTES // (1024*1024)} MB).")
+    biz_assets = ASSETS_DIR / ctx["business_id"]
+    biz_assets.mkdir(parents=True, exist_ok=True)
+    name = f"{uuid.uuid4().hex[:12]}{ext}"
+    out = biz_assets / name
+    out.write_bytes(bytes(buf))
+    return {"path": str(out), "filename": name}
 
 
 @router.get("/api/documents/{document_id}")

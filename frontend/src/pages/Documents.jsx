@@ -3,7 +3,10 @@ import { FileText, Download, Trash2, Plus, X, FileType2, Sparkles, Upload, Loade
 import {
   listDocTemplates, listDocuments, generateDocument, deleteDocument, downloadDocument,
   extractDocFromText, extractDocFromUpload,
+  autofillTemplateFromText, autofillTemplateFromUpload,
+  uploadDocumentAsset,
 } from '../services/documents';
+import { Image as ImageIcon } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import { getCached, setCached, keyFor } from '../services/dataCache';
 
@@ -111,8 +114,87 @@ function GenerateForm({ template, onSubmit, onCancel }) {
   const [vars, setVars] = useState(() => Object.fromEntries(template.variables.map((v) => [v, ''])));
   const [busy, setBusy] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  // Autofill state — the upload-a-PDF-and-fill-the-form flow.
+  const [autofill, setAutofill] = useState({ open: false, busy: false, error: '',
+                                              pastedText: '', mode: 'choose' });
+  // Logo: { path, filename, previewUrl } once uploaded.
+  const [logo, setLogo] = useState(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoErr, setLogoErr] = useState('');
+  const logoInputRef = useRef(null);
 
-  const update = (k, v) => setVars((p) => ({ ...p, [k]: v }));
+  const handleLogoPick = async (file) => {
+    if (!file) return;
+    setLogoBusy(true); setLogoErr('');
+    try {
+      const r = await uploadDocumentAsset(file);
+      setLogo({ path: r.path, filename: r.filename, previewUrl: URL.createObjectURL(file) });
+    } catch (e) {
+      setLogoErr(e.message || 'Upload failed.');
+    } finally {
+      setLogoBusy(false);
+    }
+  };
+  const clearLogo = () => {
+    if (logo?.previewUrl) URL.revokeObjectURL(logo.previewUrl);
+    setLogo(null);
+  };
+  // Set of variable keys the AI filled in this session — used to show
+  // a small "AI" badge that fades once the user types over the field.
+  const [aiFilled, setAiFilled] = useState(new Set());
+
+  const update = (k, v) => {
+    setVars((p) => ({ ...p, [k]: v }));
+    // User typed over an AI-filled field → it's now user-owned, drop the badge.
+    if (aiFilled.has(k)) {
+      setAiFilled(prev => {
+        const next = new Set(prev); next.delete(k); return next;
+      });
+    }
+  };
+
+  const applyAutofill = (mapped) => {
+    if (!mapped) return;
+    const newKeys = new Set();
+    setVars((p) => {
+      const next = { ...p };
+      for (const [k, v] of Object.entries(mapped)) {
+        if (template.variables.includes(k) && v) {
+          next[k] = String(v);
+          newKeys.add(k);
+        }
+      }
+      return next;
+    });
+    setAiFilled(newKeys);
+  };
+
+  const runAutofillFromFile = async (file) => {
+    if (!file) return;
+    setAutofill((s) => ({ ...s, busy: true, error: '' }));
+    try {
+      const r = await autofillTemplateFromUpload(template.key, file);
+      applyAutofill(r.variables);
+      setAutofill({ open: false, busy: false, error: '', pastedText: '', mode: 'choose' });
+    } catch (e) {
+      setAutofill((s) => ({ ...s, busy: false, error: e.message || 'Autofill failed.' }));
+    }
+  };
+  const runAutofillFromText = async () => {
+    const txt = (autofill.pastedText || '').trim();
+    if (txt.length < 30) {
+      setAutofill((s) => ({ ...s, error: 'Paste at least 30 characters first.' }));
+      return;
+    }
+    setAutofill((s) => ({ ...s, busy: true, error: '' }));
+    try {
+      const r = await autofillTemplateFromText(template.key, txt);
+      applyAutofill(r.variables);
+      setAutofill({ open: false, busy: false, error: '', pastedText: '', mode: 'choose' });
+    } catch (e) {
+      setAutofill((s) => ({ ...s, busy: false, error: e.message || 'Autofill failed.' }));
+    }
+  };
 
   // Categorise variables: required vs. optional (per the hint dictionary).
   const requiredVars = template.variables.filter((v) => hintFor(v).required);
@@ -129,7 +211,10 @@ function GenerateForm({ template, onSubmit, onCancel }) {
     if (!isFormValid()) return;
     setBusy(true);
     try {
-      await onSubmit({ template_key: template.key, title, variables: vars, format: fmt });
+      await onSubmit({
+        template_key: template.key, title, variables: vars, format: fmt,
+        logo_path: logo?.path || undefined,
+      });
     } finally {
       setBusy(false);
     }
@@ -171,6 +256,103 @@ function GenerateForm({ template, onSubmit, onCancel }) {
         </div>
       </div>
 
+      {/* Logo / branding — optional image embedded at the top of the
+          generated document. Most SMB users want their company logo on
+          proposals + contracts; this is the path of least resistance. */}
+      <div className="divider-h">Branding (optional)</div>
+      <div style={{
+        marginBottom: 14, padding: 12,
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--r-md)',
+        display: 'flex', alignItems: 'center', gap: 12,
+      }}>
+        <input ref={logoInputRef} type="file"
+               accept="image/png,image/jpeg,image/webp,image/gif"
+               onChange={(e) => handleLogoPick(e.target.files?.[0])}
+               style={{ display: 'none' }} />
+        {logo?.previewUrl ? (
+          <>
+            <img src={logo.previewUrl} alt="Logo preview"
+                 style={{
+                   width: 56, height: 56, objectFit: 'contain',
+                   borderRadius: 6, background: '#fff', padding: 4,
+                   border: '1px solid var(--color-border)',
+                 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text)', fontWeight: 500 }}>
+                Logo attached
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                Will appear at the top of the generated document.
+              </div>
+            </div>
+            <button type="button" className="btn-ghost btn-sm"
+                    onClick={() => logoInputRef.current?.click()}
+                    style={{ fontSize: 11 }}>
+              Replace
+            </button>
+            <button type="button" className="btn-ghost btn-sm"
+                    onClick={clearLogo}
+                    style={{ fontSize: 11, color: 'var(--color-err)' }}>
+              Remove
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{
+              width: 56, height: 56, borderRadius: 6,
+              border: '1.5px dashed var(--color-border-strong)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--color-text-dim)',
+            }}>
+              <ImageIcon size={20} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: 'var(--color-text)', fontWeight: 500 }}>
+                Add your company logo
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                PNG / JPG / WEBP &mdash; embedded at the top of the document. Max 5 MB.
+              </div>
+              {logoErr && (
+                <div style={{ fontSize: 10.5, color: 'var(--color-err)', marginTop: 4 }}>
+                  {logoErr}
+                </div>
+              )}
+            </div>
+            <button type="button" className="btn-ghost"
+                    onClick={() => logoInputRef.current?.click()}
+                    disabled={logoBusy}
+                    style={{ fontSize: 11 }}>
+              {logoBusy ? <><Loader2 size={11} className="animate-spin" /> Uploading…</>
+                        : <><Upload size={11} /> Upload</>}
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Auto-fill from a reference doc — saves the user from typing
+          every field. Drops a PDF or text from a past contract /
+          proposal / offer and the AI maps it onto our template variables. */}
+      <div style={{
+        padding: '10px 12px', marginBottom: 14,
+        background: 'color-mix(in srgb, var(--color-accent) 6%, transparent)',
+        border: '1px dashed color-mix(in srgb, var(--color-accent) 35%, transparent)',
+        borderRadius: 'var(--r-md)',
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+      }}>
+        <Sparkles size={14} color="var(--color-accent)" />
+        <div style={{ flex: 1, fontSize: 12, color: 'var(--color-text)' }}>
+          <b>Tired of typing?</b> Drop a past PDF / Word doc / paste any text — AI
+          will auto-fill the fields below. Edit anything you want before generating.
+        </div>
+        <button type="button" className="btn-primary" style={{ fontSize: 11 }}
+                onClick={() => setAutofill({ open: true, busy: false, error: '', pastedText: '', mode: 'choose' })}>
+          <Sparkles size={11} /> Auto-fill
+        </button>
+      </div>
+
       {/* Template variables — grouped by required first, then optional */}
       <div className="divider-h">Fill in the template</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
@@ -188,9 +370,21 @@ function GenerateForm({ template, onSubmit, onCancel }) {
               gridColumn: isLong ? '1 / -1' : 'auto',
               display: 'flex', flexDirection: 'column', gap: 4,
             }}>
-              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
+              <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500,
+                              display: 'flex', alignItems: 'center', gap: 6 }}>
                 {label}
-                {hint.required && <span style={{ color: 'var(--color-err)', marginLeft: 4 }}>*</span>}
+                {hint.required && <span style={{ color: 'var(--color-err)' }}>*</span>}
+                {aiFilled.has(v) && (
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    fontSize: 9, fontWeight: 700, letterSpacing: 0.3,
+                    padding: '1px 6px', borderRadius: 8,
+                    background: 'color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                    color: 'var(--color-accent)', textTransform: 'uppercase',
+                  }} title="AI auto-filled from your reference document">
+                    <Sparkles size={8} /> AI
+                  </span>
+                )}
               </label>
               {isLong ? (
                 <textarea
@@ -227,7 +421,122 @@ function GenerateForm({ template, onSubmit, onCancel }) {
           {busy ? 'Generating…' : 'Generate'}
         </button>
       </div>
+
+      {autofill.open && (
+        <AutofillModal
+          state={autofill}
+          setState={setAutofill}
+          onFile={runAutofillFromFile}
+          onText={runAutofillFromText}
+        />
+      )}
     </form>
+  );
+}
+
+
+function AutofillModal({ state, setState, onFile, onText }) {
+  const fileRef = useRef(null);
+  return (
+    <div onClick={() => state.busy ? null : setState({ ...state, open: false })}
+         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+                  zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()}
+           style={{
+             background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
+             borderRadius: 12, padding: 22, width: 500, maxHeight: '90vh', overflow: 'auto',
+             boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+           }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0,
+                       display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Sparkles size={14} color="var(--color-accent)" /> Auto-fill from a reference document
+          </h3>
+          <button onClick={() => setState({ ...state, open: false })}
+                  disabled={state.busy}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <p style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5, marginTop: 0 }}>
+          Upload a similar document (e.g. your last contract) or paste any text.
+          The AI reads it and fills in the form fields below — you can edit anything before generating.
+        </p>
+
+        {/* Mode toggle */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+          <button type="button" className={state.mode === 'choose' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                  onClick={() => setState({ ...state, mode: 'choose' })}
+                  style={{ fontSize: 11 }}>
+            <Upload size={11} /> Upload PDF / file
+          </button>
+          <button type="button" className={state.mode === 'paste' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                  onClick={() => setState({ ...state, mode: 'paste' })}
+                  style={{ fontSize: 11 }}>
+            <FileText size={11} /> Paste text
+          </button>
+        </div>
+
+        {state.mode === 'choose' && (
+          <div>
+            <input ref={fileRef} type="file" accept=".pdf,.txt,.md,application/pdf,text/plain"
+                   onChange={(e) => onFile(e.target.files?.[0])}
+                   style={{ display: 'none' }} />
+            <button type="button" className="btn-ghost"
+                    onClick={() => fileRef.current?.click()}
+                    disabled={state.busy}
+                    style={{
+                      width: '100%', padding: 28, border: '2px dashed var(--color-border-strong)',
+                      borderRadius: 'var(--r-md)', cursor: state.busy ? 'wait' : 'pointer',
+                      display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
+                      background: 'var(--color-surface-1)',
+                    }}>
+              {state.busy ? (
+                <><Loader2 size={28} color="var(--color-accent)" className="animate-spin" />
+                  <div style={{ fontSize: 12, color: 'var(--color-text)' }}>Reading the document…</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>~5–15 seconds</div>
+                </>
+              ) : (
+                <><Upload size={28} color="var(--color-text-dim)" />
+                  <div style={{ fontSize: 12, color: 'var(--color-text)' }}>Click to choose a file</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>PDF, TXT, or MD &mdash; up to 25 MB</div>
+                </>
+              )}
+            </button>
+          </div>
+        )}
+
+        {state.mode === 'paste' && (
+          <div>
+            <textarea
+              className="field-input"
+              rows={9}
+              placeholder='Paste the full text of your reference document here — e.g. last year&apos;s contract, an offer letter, an old proposal. The AI will pull out the relevant fields.'
+              value={state.pastedText || ''}
+              onChange={(e) => setState({ ...state, pastedText: e.target.value })}
+              maxLength={200_000}
+              disabled={state.busy}
+              style={{ width: '100%', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 11.5 }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+              <button type="button" className="btn-primary" onClick={onText} disabled={state.busy}>
+                {state.busy ? <><Loader2 size={11} className="animate-spin" /> Reading…</>
+                            : <><Sparkles size={11} /> Auto-fill from this</>}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {state.error && (
+          <div style={{ fontSize: 11.5, color: 'var(--color-err)', marginTop: 10,
+                        padding: '6px 10px', borderRadius: 6,
+                        background: 'color-mix(in srgb, var(--color-err) 8%, transparent)' }}>
+            {state.error}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

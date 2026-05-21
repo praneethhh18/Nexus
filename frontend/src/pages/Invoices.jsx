@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { FileText, Plus, Download, Trash2, Edit3, Send, X, DollarSign, Clock, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
+import FilterPopover from '../components/FilterPopover';
 import SuggestionPanel from '../components/SuggestionPanel';
 import {
   listInvoices, createInvoice, updateInvoice, deleteInvoice,
@@ -415,10 +416,20 @@ export default function Invoices() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: 6, padding: '0 24px 8px', borderBottom: '1px solid var(--color-surface-2)' }}>
-        {[['', 'All'], ['draft', 'Draft'], ['sent', 'Sent'], ['paid', 'Paid'], ['overdue', 'Overdue']].map(([k, lbl]) => (
-          <button key={k || 'all'} onClick={() => setFilter(k)} className={filter === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>{lbl}</button>
-        ))}
+      <div style={{ padding: '0 24px 10px', borderBottom: '1px solid var(--color-surface-2)' }}>
+        <FilterPopover
+          values={{ status: filter }}
+          onChange={(k, v) => { if (k === 'status') setFilter(v); }}
+          groups={[
+            { key: 'status', label: 'Status', options: [
+              { value: 'draft',     label: 'Draft' },
+              { value: 'sent',      label: 'Sent' },
+              { value: 'paid',      label: 'Paid' },
+              { value: 'overdue',   label: 'Overdue' },
+              { value: 'cancelled', label: 'Cancelled' },
+            ]},
+          ]}
+        />
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
