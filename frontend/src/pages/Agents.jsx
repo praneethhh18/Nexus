@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { Edit3, Check, X, RotateCcw, Clock, ExternalLink, Loader2, Bot, Activity, Play,
          Pause, PlayCircle, AlertTriangle, ShieldCheck, History, Plus, Sparkles, Settings2 } from 'lucide-react';
@@ -239,14 +240,28 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
     if (running) return;
     setRunning(true); setRunResult(null); setErr('');
     try {
+      console.log(`[Agents] Run now: ${persona.agent_key}`);
       const r = await runAgent(persona.agent_key);
+      console.log(`[Agents] ${persona.agent_key} returned:`, r);
       // Stash the raw detail too — the modal renders the actual artifact
       // (briefing text, list of stale deals, etc.) so the user sees proof
       // of work instead of guessing what happened.
       const formatted = formatAgentResult(persona.agent_key, r.detail || {});
-      setRunResult({ ...formatted, detail: r.detail || {} });
+      const next = { ...formatted, detail: r.detail || {} };
+      console.log(`[Agents] formatted result:`, next);
+      setRunResult(next);
       onRanAgent?.();
     } catch (e) {
+      console.error(`[Agents] ${persona.agent_key} failed:`, e);
+      // Show the error as a result modal too — so the user always gets a
+      // visible response, never just a silent flash-and-disappear.
+      setRunResult({
+        tone: 'skip',
+        summary: 'Run failed',
+        details: e.message || 'The agent could not complete. See console for details.',
+        hint: 'If this keeps happening, the backend may be down or your session expired — try logging out and back in.',
+        detail: {},
+      });
       setErr(e.message || 'Run failed');
     } finally {
       setRunning(false);
@@ -659,10 +674,14 @@ function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenS
                : tone === 'info'    ? 'var(--color-info)'
                                     : 'var(--color-text-dim)';
 
-  return (
+  // Render via portal directly into document.body so the fixed-position
+  // backdrop can't be clipped by any ancestor with transform/filter/
+  // overflow CSS (e.g. the card's transition: transform creates a
+  // containing block in some browsers).
+  return createPortal((
     <div onClick={onClose}
          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
-                  zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
                   padding: 20 }}>
       <div onClick={(e) => e.stopPropagation()}
            style={{
@@ -736,7 +755,7 @@ function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenS
         </div>
       </div>
     </div>
-  );
+  ), document.body);
 }
 
 
