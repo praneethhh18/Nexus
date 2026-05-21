@@ -291,8 +291,13 @@ def _parse_text_tool_envelope(text: str) -> Optional[Dict[str, Any]]:
         return None
 
     # Final-answer envelope: {"action":"final", "answer":"<prose>"}
+    # Some models (Mistral Ministral 14B in particular) sometimes emit
+    # `answer` as a LIST of bullet strings instead of one paragraph. Join
+    # them so the user sees readable prose instead of raw JSON.
     if obj.get("action") == "final":
         ans = obj.get("answer") or obj.get("text") or obj.get("response")
+        if isinstance(ans, list):
+            ans = "\n".join(f"- {str(x).strip()}" for x in ans if str(x).strip())
         if isinstance(ans, str) and ans.strip():
             return {"kind": "final", "answer": ans.strip()}
         return None
