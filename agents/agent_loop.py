@@ -200,6 +200,7 @@ def run_agent(
     max_steps: int = MAX_STEPS,
     tool_whitelist: Optional[List[str]] = None,
     system_override: Optional[str] = None,
+    force_first_tool: bool = False,
 ) -> Dict[str, Any]:
     """
     Run the full agent loop.
@@ -307,6 +308,14 @@ def run_agent(
                 # envelopes the user sees as broken output and which
                 # don't actually fire tools.
                 force_cloud=True,
+                # On the FIRST step of a custom-agent run, pass
+                # toolChoice=any to Bedrock so weak-tool-using models
+                # (Mistral Ministral 14B in particular) can't slip into
+                # "I don't have access to tools" mode and have to call
+                # one of the available tools. Only on step 1 — once we
+                # have evidence, the model gets to decide whether to
+                # call more tools or write the final answer.
+                force_first_tool=(steps == 1 and force_first_tool),
             )
         except Exception as e:
             logger.exception("[AgentLoop] LLM invocation failed")

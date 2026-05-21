@@ -271,14 +271,57 @@ def delete_agent(business_id: str, agent_id: str) -> None:
 
 # ── Runtime ─────────────────────────────────────────────────────────────────
 def _build_system_prompt(agent: Dict) -> str:
-    return (
+    """
+    Build the system prompt for the agent loop.
+
+    Smaller open-weight models on Bedrock (Mistral Ministral 14B in
+    particular) sometimes refuse to call tools and write prose like
+    "I don't have access to the tools". The fix is to:
+      1. List the available tools by name in the prompt itself
+      2. Tell the model explicitly that it MUST call a tool first
+      3. Forbid the "I don't have tools" excuse
+    Bigger models (Claude, Nova Pro) tolerate the looser prompt fine.
+    """
+    tools = agent.get("tool_whitelist") or []
+    tool_list_line = (
+        ", ".join(tools) if tools else "(none — your job is purely conversational)"
+    )
+
+    base = (
         f"You are {agent['name']}, an autonomous agent for a small business.\n"
         f"Role: {agent.get('description') or '(no description provided)'}\n\n"
         f"Your goal: {agent['goal']}\n\n"
-        "Plan what to do, call the tools you need, and finish with a short "
-        "summary of what you did or found. Be concise. If the task is unclear "
-        "or can't be done with the tools you have, say so plainly."
     )
+
+    if tools:
+        base += (
+            f"AVAILABLE TOOLS: {tool_list_line}\n"
+            "You have access to these tools right now. "
+            "Do NOT say 'I don't have access to tools' or 'I would search if I could' "
+            "— these tools are listed above and you can call them directly.\n\n"
+            "REQUIRED BEHAVIOUR:\n"
+            "1. First decide which tool(s) you need to accomplish the goal.\n"
+            "2. Invoke them via the tool-use API.\n"
+            "3. After tools return results, write a SHORT human-readable summary.\n\n"
+            "If a tool returns empty results, report that plainly with the exact "
+            "search you tried — that's a valid outcome, not a failure.\n\n"
+            "FALLBACK FORMAT (only if the native tool-use API is unavailable to you): "
+            "emit exactly one fenced JSON block per turn in this shape:\n"
+            '```json\n'
+            '{"action":"tool", "tool":"<one_of_the_tool_names_above>", "arguments":{...}}\n'
+            '```\n'
+            "After all needed tool calls are done, emit your final answer using:\n"
+            '```json\n'
+            '{"action":"final", "answer":"<your concise summary here>"}\n'
+            '```\n'
+            "Never write prose explaining that you can't use tools — always either "
+            "use the native API or emit one of these JSON envelopes.\n"
+        )
+    else:
+        base += (
+            "You have no tools assigned. Answer purely from the goal text.\n"
+        )
+    return base
 
 
 def _post_output(business_id: str, agent: Dict, answer: str) -> None:
@@ -365,6 +408,11 @@ def run_agent_now(agent_id: str, trigger: str = "manual",
             max_steps=6,
             tool_whitelist=agent.get("tool_whitelist") or None,
             system_override=system,
+            # Force the first step to call a tool. Without this, Mistral
+            # Ministral 14B on Bedrock often produces "I don't have access
+            # to tools" prose instead of actually calling search_knowledge
+            # / list_tasks / etc. — toolChoice=any on Bedrock fixes it.
+            force_first_tool=bool(agent.get("tool_whitelist")),
         )
         answer = (result or {}).get("answer", "") or ""
         tool_calls = (result or {}).get("tool_calls") or []

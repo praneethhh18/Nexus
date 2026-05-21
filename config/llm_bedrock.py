@@ -433,8 +433,16 @@ def invoke_with_tools(
     max_tokens: int = 2048,
     temperature: float = 0.1,
     fast: bool = False,
+    force_tool: bool = False,
 ) -> Dict[str, Any]:
-    """One tool-use turn. Returns the agent-loop-shaped dict."""
+    """One tool-use turn. Returns the agent-loop-shaped dict.
+
+    `force_tool=True` adds `toolChoice: {"any": {}}` to the Bedrock call,
+    which forces the model to invoke ONE of the supplied tools instead of
+    writing prose. Used on the first step of a custom agent run so models
+    like Mistral Ministral 14B can't slip into 'I don't have access to
+    tools' mode despite having them.
+    """
     client = _get_client()
     model = fast_model_id() if fast else primary_model_id()
     bedrock_messages = _to_bedrock_messages(messages)
@@ -453,6 +461,8 @@ def invoke_with_tools(
         kwargs["system"] = [{"text": system}]
     tool_config = _to_bedrock_tools(tools)
     if tool_config:
+        if force_tool:
+            tool_config["toolChoice"] = {"any": {}}
         kwargs["toolConfig"] = tool_config
 
     try:

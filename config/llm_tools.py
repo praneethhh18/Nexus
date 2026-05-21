@@ -40,6 +40,7 @@ def invoke_with_tools(
     fast: bool = False,
     sensitive: bool = False,
     force_cloud: bool = False,
+    force_first_tool: bool = False,
 ) -> Dict[str, Any]:
     """
     Run a single LLM turn with tool use enabled.
@@ -85,6 +86,7 @@ def invoke_with_tools(
         return llm_bedrock.invoke_with_tools(
             messages=messages, tools=tools, system=system,
             max_tokens=max_tokens, temperature=temperature, fast=fast,
+            force_tool=force_first_tool,
         )
     return _invoke_ollama_tools(messages, tools, system, max_tokens)
 
