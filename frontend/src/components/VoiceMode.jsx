@@ -290,6 +290,18 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   // Kick off listening when the user confirms they want voice mode
   const handleStart = () => { if (state === 'idle' || state === 'error') startListening(); };
 
+  // Manual flush — forces the recorder to stop NOW and send what it has.
+  // Necessary escape hatch when VAD's silence detection is finicky
+  // (background noise, soft speaker, room echo) and the user is sitting
+  // there waiting for "Thinking..." that never comes. Tied to the orb
+  // click during listening + a visible "Send now" button.
+  const handleFlushNow = () => {
+    if (stateRef.current !== 'listening') return;
+    if (recorderRef.current && recorderRef.current.state === 'recording') {
+      try { recorderRef.current.stop(); } catch {}
+    }
+  };
+
   if (!open) return null;
 
   const isActive = state === 'listening' || state === 'speaking';
@@ -305,12 +317,25 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   return (
     <div
       role="dialog" aria-modal="true" aria-label="Voice conversation"
+      onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'color-mix(in srgb, var(--color-bg) 94%, black)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex', flexDirection: 'column',
+        background: 'rgba(15,23,42,0.55)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 20,
         animation: 'fade-in var(--dur-base) var(--ease-out)',
+      }}
+    >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: '100%', maxWidth: 460, maxHeight: '85vh',
+        background: 'var(--color-bg-elev)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 16,
+        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+        display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}
     >
       {/* Top bar */}
@@ -338,10 +363,10 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
-        padding: 24, gap: 28, minHeight: 0,
+        padding: 20, gap: 18, minHeight: 0, overflow: 'auto',
       }}>
         {/* Orb */}
-        <div style={{ position: 'relative', width: 240, height: 240 }}>
+        <div style={{ position: 'relative', width: 140, height: 140, flexShrink: 0 }}>
           {/* Outer glow halo */}
           <div style={{
             position: 'absolute', inset: -60, borderRadius: '50%',
@@ -350,7 +375,8 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
           }} />
           {/* Main orb */}
           <div
-            onClick={handleStart}
+            onClick={state === 'listening' ? handleFlushNow : handleStart}
+            title={state === 'listening' ? 'Click to send now' : ''}
             style={{
               position: 'absolute', inset: 0, borderRadius: '50%',
               background: 'radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--color-accent) 65%, white), var(--color-accent) 55%, color-mix(in srgb, var(--color-accent) 55%, black))',
@@ -358,7 +384,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
               transition: 'transform 90ms cubic-bezier(0.3, 0.8, 0.4, 1), opacity 200ms',
               opacity: orbOpacity,
               boxShadow: `0 0 80px color-mix(in srgb, var(--color-accent) ${Math.round(orbOpacity * 45)}%, transparent)`,
-              cursor: state === 'idle' || state === 'error' ? 'pointer' : 'default',
+              cursor: (state === 'idle' || state === 'error' || state === 'listening') ? 'pointer' : 'default',
               animation: state === 'speaking' ? 'voice-orb-breathe 1.4s ease-in-out infinite' : 'none',
             }}
           />
@@ -369,11 +395,11 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
             pointerEvents: 'none', color: 'white',
             textShadow: '0 2px 8px rgba(0,0,0,0.4)',
           }}>
-            {state === 'listening' && <Mic size={42} />}
-            {state === 'thinking'  && <Loader2 size={42} style={{ animation: 'spin 1.2s linear infinite' }} />}
-            {state === 'speaking'  && <Volume2 size={42} />}
-            {state === 'error'     && <AlertTriangle size={42} />}
-            {state === 'idle'      && <MicOff size={42} />}
+            {state === 'listening' && <Mic size={28} />}
+            {state === 'thinking'  && <Loader2 size={28} style={{ animation: 'spin 1.2s linear infinite' }} />}
+            {state === 'speaking'  && <Volume2 size={28} />}
+            {state === 'error'     && <AlertTriangle size={28} />}
+            {state === 'idle'      && <MicOff size={28} />}
           </div>
         </div>
 
@@ -432,9 +458,9 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
         padding: '14px 24px', borderTop: '1px solid var(--color-border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       }}>
-        <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-          {state === 'idle' && 'Click the orb to begin. Pause when you finish a question — I\'ll answer.'}
-          {state === 'listening' && 'Speak naturally. I\'ll start answering when you pause.'}
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)', flex: 1 }}>
+          {state === 'idle' && 'Click the orb to begin. Pause when done — I\'ll answer.'}
+          {state === 'listening' && 'Speak naturally. Click orb or "Send now" if I don\'t pick up the pause.'}
           {state === 'speaking'  && 'Press Exit or Esc to interrupt.'}
           {state === 'thinking'  && 'Working on it…'}
           {state === 'error'     && 'Click to try again.'}
@@ -444,7 +470,13 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
             <Mic size={12} /> Start
           </button>
         )}
+        {state === 'listening' && (
+          <button className="btn-primary" onClick={handleFlushNow}>
+            <Volume2 size={12} /> Send now
+          </button>
+        )}
       </div>
+    </div>
     </div>
   );
 }

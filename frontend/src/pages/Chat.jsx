@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
          PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search, AudioLines,
-         Sun, Moon, ArrowRight, Lock, Unlock } from 'lucide-react';
+         Sun, Moon, ArrowRight, Lock, Unlock, Pencil, Check, X as XIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,7 +14,7 @@ const MD_COMPONENTS = {
 };
 import { sendMessage, getConversation, getConversations, deleteConversation,
          exportMarkdown, uploadDocument, downloadReport,
-         setConversationSensitive } from '../services/api';
+         setConversationSensitive, updateConversation } from '../services/api';
 import { agentChat } from '../services/agent';
 import { getToken, getBusinessId } from '../services/auth';
 import { transcribeBlob, voiceSupported } from '../services/voice';
@@ -442,6 +442,28 @@ export default function Chat() {
     }
   }, [convId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Inline rename. `renamingId` is the conversation being edited;
+  // `renameDraft` is the working title. Esc cancels, Enter or blur commits.
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const startRename = (e, c) => {
+    e.stopPropagation();
+    setRenamingId(c.conversation_id);
+    setRenameDraft(c.title || '');
+  };
+  const cancelRename = () => { setRenamingId(null); setRenameDraft(''); };
+  const commitRename = async (id) => {
+    const next = renameDraft.trim();
+    cancelRename();
+    if (!next) return;
+    try {
+      await updateConversation(id, next);
+      setConversations(cs => cs.map(c =>
+        c.conversation_id === id ? { ...c, title: next } : c
+      ));
+    } catch (err) { console.error('Rename failed', err); }
+  };
+
   const removeConversation = async (e, id) => {
     e.stopPropagation();
     if (!confirm('Delete this conversation?')) return;
@@ -694,27 +716,66 @@ export default function Chat() {
     setLoading(false);
   };
 
-  const doExport = async () => {
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const doExportMd = async () => {
+    setExportMenuOpen(false);
     try {
       const res = await exportMarkdown(messages);
       const blob = new Blob([res.markdown], { type: 'text/markdown' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `nexus_chat_${Date.now()}.md`; a.click();
-    } catch {}
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = `nexus_chat_${Date.now()}.md`; a.click();
+    } catch (e) { console.error('Markdown export failed', e); }
+  };
+  const doExportPdf = async () => {
+    setExportMenuOpen(false);
+    try {
+      const { exportPdf } = await import('../services/api');
+      const blob = await exportPdf(messages);
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = `nexus_chat_${Date.now()}.pdf`; a.click();
+    } catch (e) { console.error('PDF export failed', e); }
   };
 
   // ── Document Upload ────────────────────────────────────────────────────────
+  // Show progress in the chat thread itself, NEVER auto-send a fake user
+  // message. Two messages get appended:
+  //   1. "📎 filename.pdf — uploading…" (assistant role, replaced on done)
+  //   2. The success/error result, with a hint to ask a follow-up question
+  // The user types their own question afterwards — they know what they
+  // want better than we do.
+  const [uploadingFile, setUploadingFile] = useState(null);
   const handleDocUpload = async (e) => {
     const file = e.target.files[0];
+    e.target.value = '';
     if (!file) return;
+    setUploadingFile(file.name);
+    const startMsg = {
+      role: 'assistant',
+      content: `📎 **Uploading \`${file.name}\`…**`,
+      tools_used: ['upload'],
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      _uploadPlaceholder: true,
+    };
+    setMessages(prev => [...prev, startMsg]);
     try {
       const data = await uploadDocument(file);
-      if (data.chunks_added) {
-        send(`I just uploaded ${file.name}. What's in this document?`);
-      }
+      const ok = data && (data.chunks_added || data.success);
+      setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
+        ...m,
+        _uploadPlaceholder: false,
+        content: ok
+          ? `📎 **\`${file.name}\`** uploaded — ${data.chunks_added || 0} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`
+          : `📎 **\`${file.name}\`** uploaded but no content was extracted. Try a different file or check the format.`,
+      } : m));
     } catch (err) {
-      console.error('Upload failed:', err);
+      setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
+        ...m,
+        _uploadPlaceholder: false,
+        content: `📎 **Upload failed** — ${err.message || 'unknown error'}.`,
+      } : m));
+    } finally {
+      setUploadingFile(null);
     }
-    e.target.value = '';
   };
 
   return (
@@ -769,7 +830,46 @@ export default function Chat() {
           </label>
           {messages.length > 0 && (
             <>
-              <button className="action-btn" onClick={doExport}><Download size={13} /> Export</button>
+              <div style={{ position: 'relative' }}>
+                <button className="action-btn" onClick={() => setExportMenuOpen(v => !v)}>
+                  <Download size={13} /> Export
+                </button>
+                {exportMenuOpen && (
+                  <>
+                    {/* Click-outside backdrop. */}
+                    <div onClick={() => setExportMenuOpen(false)}
+                         style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+                    <div style={{
+                      position: 'absolute', right: 0, top: 'calc(100% + 6px)',
+                      minWidth: 160, padding: 4, borderRadius: 8, zIndex: 51,
+                      background: 'var(--color-bg-elev)',
+                      border: '1px solid var(--color-border)',
+                      boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
+                    }}>
+                      <button onClick={doExportMd}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8,
+                                       width: '100%', padding: '8px 12px', borderRadius: 6,
+                                       background: 'transparent', border: 0,
+                                       color: 'var(--color-text)', fontSize: 13,
+                                       cursor: 'pointer', textAlign: 'left' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-1)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <Download size={12} /> Markdown (.md)
+                      </button>
+                      <button onClick={doExportPdf}
+                              style={{ display: 'flex', alignItems: 'center', gap: 8,
+                                       width: '100%', padding: '8px 12px', borderRadius: 6,
+                                       background: 'transparent', border: 0,
+                                       color: 'var(--color-text)', fontSize: 13,
+                                       cursor: 'pointer', textAlign: 'left' }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-1)'}
+                              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                        <Download size={12} /> PDF (.pdf)
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
               <button className="action-btn" onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); }}><Plus size={13} /> New</button>
             </>
           )}
@@ -805,30 +905,63 @@ export default function Chat() {
               )}
               {filteredConvs.map(c => {
                 const active = c.conversation_id === convId;
+                const isRenaming = renamingId === c.conversation_id;
                 return (
                   <div key={c.conversation_id}
-                    onClick={() => loadConversation(c.conversation_id)}
+                    onClick={() => !isRenaming && loadConversation(c.conversation_id)}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 8,
                       padding: '7px 10px', borderRadius: 'var(--r-sm)',
                       fontSize: 12, color: active ? 'var(--color-text)' : 'var(--color-text-muted)',
                       background: active ? 'var(--color-accent-soft)' : 'transparent',
                       border: `1px solid ${active ? 'color-mix(in srgb, var(--color-accent) 25%, transparent)' : 'transparent'}`,
-                      cursor: 'pointer', marginBottom: 2,
+                      cursor: isRenaming ? 'default' : 'pointer', marginBottom: 2,
                       transition: 'background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out)',
                     }}
-                    onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = 'var(--color-surface-3)'; }}
-                    onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = 'transparent'; }}
+                    onMouseEnter={(e) => { if (!active && !isRenaming) e.currentTarget.style.background = 'var(--color-surface-3)'; }}
+                    onMouseLeave={(e) => { if (!active && !isRenaming) e.currentTarget.style.background = 'transparent'; }}
                   >
                     <MessageSquare size={12} style={{ flexShrink: 0, opacity: 0.5 }} />
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
-                    <button onClick={(e) => removeConversation(e, c.conversation_id)}
-                      title="Delete chat"
-                      style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 2, opacity: 0.5 }}
-                      onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-err)'; e.currentTarget.style.opacity = 1; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-dim)'; e.currentTarget.style.opacity = 0.5; }}>
-                      <Trash2 size={12} />
-                    </button>
+                    {isRenaming ? (
+                      <input
+                        type="text"
+                        autoFocus
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitRename(c.conversation_id);
+                          if (e.key === 'Escape') cancelRename();
+                        }}
+                        onBlur={() => commitRename(c.conversation_id)}
+                        style={{ flex: 1, minWidth: 0,
+                                 padding: '2px 6px', borderRadius: 4,
+                                 border: '1px solid var(--color-border-strong)',
+                                 background: 'var(--color-bg)',
+                                 color: 'var(--color-text)',
+                                 fontSize: 12, fontFamily: 'inherit' }}
+                      />
+                    ) : (
+                      <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
+                    )}
+                    {!isRenaming && (
+                      <>
+                        <button onClick={(e) => startRename(e, c)}
+                          title="Rename chat"
+                          style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 2, opacity: 0.5 }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-accent)'; e.currentTarget.style.opacity = 1; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-dim)'; e.currentTarget.style.opacity = 0.5; }}>
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={(e) => removeConversation(e, c.conversation_id)}
+                          title="Delete chat"
+                          style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 2, opacity: 0.5 }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--color-err)'; e.currentTarget.style.opacity = 1; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--color-text-dim)'; e.currentTarget.style.opacity = 0.5; }}>
+                          <Trash2 size={12} />
+                        </button>
+                      </>
+                    )}
                   </div>
                 );
               })}

@@ -147,6 +147,18 @@ export const clearCache = () => request('/settings/clear-cache', { method: 'POST
 export const exportMarkdown = (messages) =>
   request('/export/markdown', { method: 'POST', body: JSON.stringify(messages) });
 export const exportPdfUrl = `${BASE}/export/pdf`;
+// Real PDF download: POST messages, receive the binary PDF as a Blob,
+// then hand off to the browser as a save. The plain `request()` helper
+// always JSON-parses, so we hit fetch directly here.
+export const exportPdf = async (messages) => {
+  const r = await fetch(`${BASE}/export/pdf`, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify(messages),
+  });
+  if (!r.ok) throw new Error(`PDF export failed: HTTP ${r.status}`);
+  return r.blob();
+};
 
 // Workflows
 export const getWorkflows = () => request('/workflows');
