@@ -182,10 +182,14 @@ def _get_conn():
         created_by TEXT
     )""")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_docs_biz ON {DOCS_TABLE}(business_id, created_at)")
-    # Additive migration for RAG collections + document expiry — safe to re-run.
+    # Additive migration for RAG collections + document expiry + category.
+    # Category lets agents filter knowledge-base searches to a logical bucket
+    # (competitor, internal, client, contract, social, other) so e.g. the
+    # Competitor Price Watcher can search ONLY competitor docs.
     for col, decl in [
         ("collection_id", "TEXT"),
         ("expires_at",    "TEXT"),
+        ("category",      "TEXT DEFAULT 'other'"),
     ]:
         existing = list_columns(conn, DOCS_TABLE)
         if col not in existing:
@@ -348,6 +352,14 @@ def _render_pdf(template_key: str, vars_map: Dict[str, Any], out_path: Path,
     pdf.build(story)
 
 
+DOC_CATEGORIES = {"competitor", "internal", "client", "contract", "social", "other"}
+
+
+def _validate_category(cat: str | None) -> str:
+    cat = (cat or "other").strip().lower()
+    return cat if cat in DOC_CATEGORIES else "other"
+
+
 def generate_document(
     business_id: str,
     user_id: str,
@@ -356,6 +368,7 @@ def generate_document(
     variables: Dict[str, Any],
     fmt: str = "docx",
     logo_path: str | None = None,
+    category: str | None = None,
 ) -> Dict[str, Any]:
     if template_key not in TEMPLATES:
         raise HTTPException(404, f"Unknown template: {template_key}")
@@ -401,13 +414,14 @@ def generate_document(
 
     doc_id = f"doc-{uuid.uuid4().hex[:10]}"
     now = datetime.now().isoformat()
+    cat = _validate_category(category)
     conn = _get_conn()
     try:
         conn.execute(
             f"INSERT INTO {DOCS_TABLE} (id, business_id, template_key, title, format, "
-            f"file_path, variables, created_at, created_by) VALUES (?,?,?,?,?,?,?,?,?)",
+            f"file_path, variables, created_at, created_by, category) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (doc_id, business_id, template_key, title, fmt,
-             str(out_path), json.dumps(vars_map, default=str), now, user_id),
+             str(out_path), json.dumps(vars_map, default=str), now, user_id, cat),
         )
         conn.commit()
     finally:

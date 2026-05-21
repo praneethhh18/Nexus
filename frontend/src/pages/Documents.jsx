@@ -4,7 +4,7 @@ import {
   listDocTemplates, listDocuments, generateDocument, deleteDocument, downloadDocument,
   extractDocFromText, extractDocFromUpload,
   autofillTemplateFromText, autofillTemplateFromUpload,
-  uploadDocumentAsset,
+  uploadDocumentAsset, updateDocumentMeta, DOC_CATEGORIES,
 } from '../services/documents';
 import { Image as ImageIcon } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
@@ -117,6 +117,9 @@ function GenerateForm({ template, onSubmit, onCancel }) {
   // Autofill state — the upload-a-PDF-and-fill-the-form flow.
   const [autofill, setAutofill] = useState({ open: false, busy: false, error: '',
                                               pastedText: '', mode: 'choose' });
+  // Knowledge-base category — controls which "bucket" the doc lives in
+  // so agents can filter their searches (e.g. competitor-only).
+  const [category, setCategory] = useState('other');
   // Logo: { path, filename, previewUrl } once uploaded.
   const [logo, setLogo] = useState(null);
   const [logoBusy, setLogoBusy] = useState(false);
@@ -214,6 +217,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
       await onSubmit({
         template_key: template.key, title, variables: vars, format: fmt,
         logo_path: logo?.path || undefined,
+        category,
       });
     } finally {
       setBusy(false);
@@ -237,8 +241,8 @@ function GenerateForm({ template, onSubmit, onCancel }) {
         </div>
       </div>
 
-      {/* Document title + format */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 14 }}>
+      {/* Document title + format + category */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
           <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
             Document title <span style={{ color: 'var(--color-err)' }}>*</span>
@@ -253,6 +257,15 @@ function GenerateForm({ template, onSubmit, onCancel }) {
             <option value="pdf">PDF</option>
           </select>
           <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>Word stays editable; PDF is final.</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>Category</label>
+          <select className="field-select" value={category} onChange={(e) => setCategory(e.target.value)} style={{ width: '100%' }}>
+            {DOC_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+          <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+            Lets agents search "competitor docs" vs "our docs" separately.
+          </span>
         </div>
       </div>
 
@@ -680,7 +693,7 @@ export default function Documents() {
             <div className="table-panel">
               <table className="data-table">
                 <thead>
-                  <tr><th>Title</th><th>Template</th><th>Format</th><th>Created</th><th style={{ width: 120 }}></th></tr>
+                  <tr><th>Title</th><th>Template</th><th>Format</th><th>Category</th><th>Created</th><th style={{ width: 120 }}></th></tr>
                 </thead>
                 <tbody>
                   {documents.map((d) => (
@@ -688,6 +701,27 @@ export default function Documents() {
                       <td style={{ fontWeight: 500 }}>{d.title}</td>
                       <td style={{ textTransform: 'capitalize' }}>{d.template_key.replace('_', ' ')}</td>
                       <td><span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, background: 'var(--color-surface-1)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>{d.format}</span></td>
+                      <td>
+                        <select
+                          value={d.category || 'other'}
+                          onChange={async (e) => {
+                            try {
+                              await updateDocumentMeta(d.id, { category: e.target.value });
+                              flash('Category updated.');
+                              reload();
+                            } catch (err) { flash(`Failed: ${err.message}`); }
+                          }}
+                          style={{
+                            fontSize: 10.5, padding: '2px 6px',
+                            background: 'var(--color-bg)', color: 'var(--color-text)',
+                            border: '1px solid var(--color-border)',
+                            borderRadius: 'var(--r-sm)', cursor: 'pointer',
+                          }}
+                          title="Knowledge-base bucket. Agents can filter by this."
+                        >
+                          {DOC_CATEGORIES.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                        </select>
+                      </td>
                       <td>{d.created_at?.substring(0, 16)}</td>
                       <td style={{ display: 'flex', gap: 4 }}>
                         <button className="btn-ghost" style={{ padding: 4 }} onClick={() => downloadDocument(d.id, d.filename).catch((e) => flash(e.message))} title="Download"><Download size={11} /></button>

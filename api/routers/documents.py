@@ -43,7 +43,30 @@ def generate_document_api(body: dict, ctx: dict = Depends(get_current_context)):
         variables=body.get("variables", {}) or {},
         fmt=body.get("format", "docx"),
         logo_path=body.get("logo_path") or None,
+        category=body.get("category"),
     )
+
+
+@router.patch("/api/documents/{document_id}")
+def update_document_meta(document_id: str, body: dict,
+                         ctx: dict = Depends(get_current_context)):
+    """Update document metadata in place — currently just the category bucket
+    so users can re-tag a doc after upload without re-generating."""
+    new_cat = _docs._validate_category(body.get("category"))
+    from config.db import get_conn
+    conn = get_conn()
+    try:
+        cur = conn.execute(
+            "UPDATE nexus_documents SET category = ? "
+            "WHERE id = ? AND business_id = ?",
+            (new_cat, document_id, ctx["business_id"]),
+        )
+        if cur.rowcount == 0:
+            raise HTTPException(404, "Document not found")
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True, "category": new_cat}
 
 
 @router.post("/api/documents/upload-asset")

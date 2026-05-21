@@ -29,6 +29,20 @@ export const listDocuments = () => req('');
 export const getDocument = (id) => req(`/${id}`);
 export const generateDocument = (body) => req('/generate', { method: 'POST', body: JSON.stringify(body) });
 export const deleteDocument = (id) => req(`/${id}`, { method: 'DELETE' });
+export const updateDocumentMeta = (id, body) =>
+  req(`/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+// Categories an uploaded doc can be tagged with — used to filter
+// knowledge-base searches so e.g. the Competitor Watcher only reads
+// competitor PDFs, not our own.
+export const DOC_CATEGORIES = [
+  { value: 'competitor', label: 'Competitor', description: "Their pricing, plans, marketing" },
+  { value: 'internal',   label: 'Internal',   description: 'Our own policies, playbooks, pricing' },
+  { value: 'client',     label: 'Client doc', description: 'Client briefs, requirements, agreements' },
+  { value: 'contract',   label: 'Contract',   description: 'Signed contracts, NDAs, SOWs' },
+  { value: 'social',     label: 'Social / press', description: 'Brand mentions, news, social posts' },
+  { value: 'other',      label: 'Other',      description: 'Anything that doesn\'t fit above' },
+];
 
 // AI document intake — extract structured fields from pasted text or an
 // uploaded file. Preview-only — does not persist anything.

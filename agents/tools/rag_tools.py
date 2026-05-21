@@ -10,15 +10,53 @@ def _search_knowledge(ctx, args):
     """retrieve() returns a dict {results, low_confidence, warning, query}.
     Earlier this function iterated the dict directly — iterating yields
     keys (strings), so r.get(...) blew up with 'str' has no attribute
-    'get'. Unwrap properly and surface the warning when present."""
+    'get'. Unwrap properly and surface the warning when present.
+
+    Optional `category` filter narrows the search to documents tagged with
+    that category (competitor / internal / client / contract / social /
+    other). The filter is applied post-retrieval against the nexus_documents
+    table so we don't have to rebuild the vector index per category.
+    """
     from rag.retriever import retrieve
+    category = (args.get("category") or "").strip().lower() or None
     resp = retrieve(args["query"], top_k=int(args.get("top_k", 5)))
     if not isinstance(resp, dict):
         return {"results": [], "warning": "Retriever returned unexpected shape"}
     items = resp.get("results") or []
+
+    # If a category was requested, fetch the matching doc paths for this
+    # business and keep only chunks whose source matches one of them.
+    allowed_sources = None
+    if category:
+        try:
+            from config.db import get_conn
+            import sqlite3 as _sq
+            conn = get_conn()
+            conn.row_factory = _sq.Row
+            try:
+                rows = conn.execute(
+                    "SELECT file_path FROM nexus_documents "
+                    "WHERE business_id = ? AND category = ?",
+                    (ctx.get("business_id", ""), category),
+                ).fetchall()
+            finally:
+                conn.close()
+            allowed_sources = {(r["file_path"] or "") for r in rows}
+        except Exception as e:
+            logger.warning(f"[search_knowledge] category filter failed: {e}")
+            allowed_sources = None
+
+    def _src(r):
+        return (r.get("source") if isinstance(r, dict) else "") or ""
+
+    if allowed_sources is not None:
+        # Keep chunks whose source path either matches exactly or appears
+        # in any of the allowed paths (Chroma may store stem-only).
+        items = [r for r in items if _src(r) and any(_src(r) in p or p in _src(r) for p in allowed_sources)]
+
     out_results = [
         {
-            "source": (r.get("source") if isinstance(r, dict) else "") or "",
+            "source": _src(r),
             "page":   (r.get("page")   if isinstance(r, dict) else "") or "",
             "text":   ((r.get("text") if isinstance(r, dict) else "") or
                        (r.get("page_content") if isinstance(r, dict) else "") or "")[:1000],
@@ -26,12 +64,20 @@ def _search_knowledge(ctx, args):
         }
         for r in items
     ]
-    return {
+    out = {
         "results": out_results,
         "low_confidence": bool(resp.get("low_confidence")),
         "warning": resp.get("warning"),
         "query": resp.get("query") or args.get("query"),
     }
+    if category is not None:
+        out["category_filter"] = category
+        if allowed_sources is not None and len(allowed_sources) == 0:
+            out["warning"] = (
+                f"No documents categorised as '{category}' in this workspace. "
+                f"Upload a doc and set its category in /documents to enable this search."
+            )
+    return out
 
 
 register_tool(
@@ -39,13 +85,21 @@ register_tool(
     description=(
         "Search the uploaded document knowledge base using semantic search. "
         "Returns the top-k most relevant chunks with their source. Use for "
-        "company policy, uploaded PDFs, reference documents."
+        "company policy, uploaded PDFs, reference documents. "
+        "Pass `category` to restrict the search to one bucket "
+        "(competitor / internal / client / contract / social / other) — "
+        "essential when comparing 'our docs' vs 'their docs'."
     ),
     input_schema={
         "type": "object",
         "properties": {
-            "query": {"type": "string"},
-            "top_k": {"type": "integer", "default": 5},
+            "query":    {"type": "string"},
+            "top_k":    {"type": "integer", "default": 5},
+            "category": {
+                "type": "string",
+                "description": "Restrict to docs tagged with this category. Omit for all categories.",
+                "enum": ["competitor", "internal", "client", "contract", "social", "other"],
+            },
         },
         "required": ["query"],
     },

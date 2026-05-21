@@ -10,7 +10,7 @@ A custom agent is a small contract:
       description:    "Checks pricing pages daily and flags changes.",
       goal:           "Fetch the current pricing on competitor X's public page
                        and tell me if it differs from what's in memory.",
-      tool_whitelist: ["rag_search", "create_task"],   # subset of the 51 built-ins
+      tool_whitelist: ["search_knowledge", "create_task"],   # subset of the 51 built-ins
       interval_min:   1440,
       output_target:  "inbox"  | "briefing"  | "none",
       template_key:   "competitor_price_watcher" | null,
@@ -382,10 +382,13 @@ TEMPLATES: List[Dict] = [
         "name":            "Competitor Price Watcher",
         "emoji":           "👀",
         "description":     "Checks a competitor's pricing and reports changes.",
-        "goal":            "Search the knowledge base for the last known competitor pricing. "
-                           "If you find recent pricing data, compare it to previous entries and "
-                           "note any changes. Summarise in 3 bullet points.",
-        "tool_whitelist":  ["rag_search"],
+        "goal":            "Search the knowledge base ONLY for documents categorised as 'competitor'. "
+                           "Use search_knowledge with category='competitor'. Look for pricing, plans, "
+                           "tiers, or discounts. Compare what you find against previous mentions and "
+                           "note any changes in 3 bullet points. If no competitor documents are "
+                           "found, say so plainly and remind the user to upload competitor PDFs "
+                           "categorised as 'competitor' in Documents.",
+        "tool_whitelist":  ["search_knowledge"],
         "interval_minutes": 1440,
         "output_target":   "inbox",
     },
@@ -419,7 +422,7 @@ TEMPLATES: List[Dict] = [
         "description":     "Flags contracts expiring in the next 30 days.",
         "goal":            "Query tasks and documents for anything whose due date or expiry is "
                            "within 30 days. Produce a short list of each with title + date.",
-        "tool_whitelist":  ["list_tasks", "rag_search"],
+        "tool_whitelist":  ["list_tasks", "search_knowledge"],
         "interval_minutes": 1440,
         "output_target":   "inbox",
     },
@@ -439,10 +442,11 @@ TEMPLATES: List[Dict] = [
         "name":            "Social Mention Monitor",
         "emoji":           "📣",
         "description":     "Scans the knowledge base for recent mentions of your brand.",
-        "goal":            "Search documents for recent mentions of our business name or "
-                           "products. Note the top 3 most relevant mentions with a one-line "
-                           "summary each.",
-        "tool_whitelist":  ["rag_search"],
+        "goal":            "Search the knowledge base for recent mentions of our business name or "
+                           "products. Prefer documents categorised as 'social' or 'press' if any "
+                           "exist (use search_knowledge with category='social'). Note the top 3 "
+                           "most relevant mentions with a one-line summary each.",
+        "tool_whitelist":  ["search_knowledge"],
         "interval_minutes": 4320,   # every 3 days
         "output_target":   "inbox",
     },
