@@ -55,6 +55,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
   const [open, setOpen] = useState(false);
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
   const ref = useRef(null);
 
   const load = async () => {
@@ -83,10 +84,15 @@ export function TagPicker({ entityType, entityId, onChange }) {
   const save = async (nextIds) => {
     if (busy) return;
     setBusy(true);
+    setErr('');
     try {
       const fresh = await setTagsFor(entityType, entityId, nextIds);
       setMine(fresh);
       onChange?.(fresh);
+    } catch (e) {
+      // Errors used to be swallowed silently — user clicked Add and
+      // nothing happened. Now surface the reason so they can act.
+      setErr(e.message || 'Failed to save tag');
     } finally { setBusy(false); }
   };
 
@@ -100,12 +106,15 @@ export function TagPicker({ entityType, entityId, onChange }) {
   const addNew = async () => {
     const name = newName.trim();
     if (!name) return;
+    setErr('');
     try {
       const t = await createTag(name);
       setAll(prev => prev.some(x => x.id === t.id) ? prev : [...prev, t]);
       await save([...mine.map(x => x.id), t.id]);
       setNewName('');
-    } catch {}
+    } catch (e) {
+      setErr(e.message || 'Failed to create tag');
+    }
   };
 
   return (
@@ -145,6 +154,13 @@ export function TagPicker({ entityType, entityId, onChange }) {
               <Plus size={10} />
             </button>
           </div>
+          {err && (
+            <div style={{ fontSize: 10.5, color: 'var(--color-err)', marginBottom: 6, padding: '4px 6px',
+                          background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+                          borderRadius: 4 }}>
+              {err}
+            </div>
+          )}
           <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {all.length === 0 && (
               <span style={{ fontSize: 10, color: 'var(--color-text-dim)', padding: 4 }}>

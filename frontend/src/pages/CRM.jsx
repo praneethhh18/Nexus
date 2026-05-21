@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listIntakeKeys, createIntakeKey, revokeIntakeKey } from '../services/tags';
 import { extractEmail, saveLeadFromEmail, forgeBrainstorm, forgeAccept } from '../services/crm';
@@ -380,6 +380,35 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove, onOpen }) {
 // table. Filtered/searched views aren't cached — only the unfiltered base.
 const CRM_CACHE_KEY = 'crm:page';
 
+
+// Pure sorter at module scope — moved out of the component so React
+// Compiler can memoize the consuming `reload` callback cleanly. The
+// closures inside the component scope used to capture state, which
+// confused the compiler's memoization analysis.
+function applyCrmSort(rows, key) {
+  if (!Array.isArray(rows) || rows.length === 0) return rows;
+  const cmp = (a, b, asc = true) => {
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    if (typeof a === 'number' && typeof b === 'number') return (a - b) * (asc ? 1 : -1);
+    return String(a).localeCompare(String(b)) * (asc ? 1 : -1);
+  };
+  const out = [...rows];
+  const nameOf = (r) => (r.name || `${r.first_name || ''} ${r.last_name || ''}`).trim().toLowerCase();
+  if (key === 'name_asc')  out.sort((a, b) => cmp(nameOf(a), nameOf(b), true));
+  else if (key === 'name_desc') out.sort((a, b) => cmp(nameOf(a), nameOf(b), false));
+  else if (key === 'created_desc') out.sort((a, b) => cmp(b.created_at, a.created_at, true));
+  else if (key === 'created_asc')  out.sort((a, b) => cmp(a.created_at, b.created_at, true));
+  else if (key === 'last_contacted_desc') out.sort((a, b) => cmp(
+    b.last_contacted_at || b.last_interaction_at,
+    a.last_contacted_at || a.last_interaction_at, true));
+  else if (key === 'value_desc') out.sort((a, b) => cmp(Number(a.value || 0), Number(b.value || 0), false));
+  else if (key === 'value_asc')  out.sort((a, b) => cmp(Number(a.value || 0), Number(b.value || 0), true));
+  return out;
+}
+
+
 export default function CRM() {
   const navigate = useNavigate();
   // Industry-aware vocabulary — same product, the user sees "Patients"
@@ -387,7 +416,70 @@ export default function CRM() {
   // Fallback for businesses with no industry: generic CRM terms.
   const t = useTerm();
   const _cached = getCached(keyFor(CRM_CACHE_KEY)) || {};
-  const [tab, setTab] = useState('contacts');
+  // Persist active tab across navigation so clicking a row → detail
+  // page → Back returns to the SAME tab the user came from (Companies
+  // or Deals), not always Contacts.
+  const [tab, setTab] = useState(() => {
+    const saved = sessionStorage.getItem('nexus_crm_tab');
+    return saved && ['contacts', 'companies', 'deals', 'leads'].includes(saved) ? saved : 'contacts';
+  });
+  useEffect(() => { sessionStorage.setItem('nexus_crm_tab', tab); }, [tab]);
+  // Per-tab sort key, also persisted. Default values are picked so the
+  // first impression of each tab is useful (newest contacts, biggest
+  // deals first).
+  const [sortKey, setSortKey] = useState(() => {
+    const saved = sessionStorage.getItem('nexus_crm_sort');
+    return saved || 'name_asc';
+  });
+  useEffect(() => { sessionStorage.setItem('nexus_crm_sort', sortKey); }, [sortKey]);
+  // Bake tab-switch sort reset into the click handler instead of a
+  // separate effect — react-compiler can't memoize an effect that
+  // setState's based on a piece of state it doesn't depend on.
+  const switchTab = useCallback((next) => {
+    setTab(next);
+    setSortKey(next === 'deals' ? 'value_desc' : 'name_asc');
+  }, []);
+
+  // ── Export current visible tab as CSV ───────────────────────────────
+  const handleExport = () => {
+    let rows, headers, filename;
+    if (tab === 'contacts') {
+      rows = visibleContacts;
+      headers = ['First name', 'Last name', 'Email', 'Phone', 'Company', 'Role', 'Created'];
+      filename = `nexus_contacts_${new Date().toISOString().slice(0, 10)}.csv`;
+      rows = rows.map(r => [
+        r.first_name || '', r.last_name || '', r.email || '', r.phone || '',
+        r.company_name || '', r.role || r.title || '', r.created_at || '',
+      ]);
+    } else if (tab === 'companies') {
+      rows = visibleCompanies;
+      headers = ['Name', 'Industry', 'Size', 'Website', 'Created'];
+      filename = `nexus_companies_${new Date().toISOString().slice(0, 10)}.csv`;
+      rows = rows.map(r => [
+        r.name || '', r.industry || '', r.size || '', r.website || '', r.created_at || '',
+      ]);
+    } else if (tab === 'deals') {
+      rows = visibleDeals;
+      headers = ['Name', 'Stage', 'Value (INR)', 'Probability', 'Company', 'Contact', 'Created'];
+      filename = `nexus_deals_${new Date().toISOString().slice(0, 10)}.csv`;
+      rows = rows.map(r => [
+        r.name || r.title || '', r.stage || '', r.value || 0, r.probability || '',
+        r.company_name || '', r.contact_name || '', r.created_at || '',
+      ]);
+    } else {
+      return;
+    }
+    // CSV with proper escaping (quoting cells that contain commas/quotes/newlines)
+    const esc = (v) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = [headers, ...rows].map(r => r.map(esc).join(',')).join('\n');
+    const blob = new Blob(['﻿', csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename; a.click();
+  };
   const [overview, setOverview] = useState(_cached.overview ?? null);
   const [contacts, setContacts] = useState(_cached.contacts ?? []);
   const [companies, setCompanies] = useState(_cached.companies ?? []);
@@ -413,6 +505,7 @@ export default function CRM() {
     undoTimerRef.current = setTimeout(() => setUndoToast(null), 5000);
   };
 
+  // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const reload = useCallback(async () => {
     try {
       const [ov, cts, cos, dls] = await Promise.all([
@@ -438,10 +531,10 @@ export default function CRM() {
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [searchStr]);
 
-  // Filtered views — apply selected-tag filter per tab
-  const visibleContacts  = filterItems(contacts,  tagsByContact, selectedTagIds);
-  const visibleCompanies = filterItems(companies, tagsByCompany, selectedTagIds);
-  const visibleDeals     = filterItems(deals,     tagsByDeal,    selectedTagIds);
+  // Filtered + sorted views.
+  const visibleContacts  = applyCrmSort(filterItems(contacts,  tagsByContact, selectedTagIds), sortKey);
+  const visibleCompanies = applyCrmSort(filterItems(companies, tagsByCompany, selectedTagIds), sortKey);
+  const visibleDeals     = applyCrmSort(filterItems(deals,     tagsByDeal,    selectedTagIds), sortKey);
 
   // Selection is scoped per tab — easiest: re-bind on the currently visible list
   const selectionContacts  = useBulkSelection(visibleContacts);
@@ -545,13 +638,54 @@ export default function CRM() {
           ['companies', t('companies'),     Building2],
           ['deals',     t('deal_pipeline'), Briefcase],
         ].map(([k, lbl, Icon]) => (
-          <button key={k} onClick={() => setTab(k)} className={tab === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>
+          <button key={k} onClick={() => switchTab(k)} className={tab === k ? 'btn-primary' : 'btn-ghost'} style={{ fontSize: 11 }}>
             <Icon size={12} /> {lbl}
           </button>
         ))}
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Search size={12} color="var(--color-text-dim)" />
           <input className="field-input" placeholder="Search..." value={searchStr} onChange={(e) => setSearchStr(e.target.value)} style={{ fontSize: 11, width: 200 }} />
+          <select
+            value={sortKey}
+            onChange={(e) => setSortKey(e.target.value)}
+            className="field-input"
+            style={{ fontSize: 11, padding: '4px 8px', cursor: 'pointer' }}
+            title="Sort by"
+          >
+            {tab === 'contacts' && (
+              <>
+                <option value="name_asc">Name A→Z</option>
+                <option value="name_desc">Name Z→A</option>
+                <option value="created_desc">Newest first</option>
+                <option value="created_asc">Oldest first</option>
+                <option value="last_contacted_desc">Recently contacted</option>
+              </>
+            )}
+            {tab === 'companies' && (
+              <>
+                <option value="name_asc">Name A→Z</option>
+                <option value="name_desc">Name Z→A</option>
+                <option value="created_desc">Newest first</option>
+                <option value="created_asc">Oldest first</option>
+              </>
+            )}
+            {tab === 'deals' && (
+              <>
+                <option value="value_desc">Value (high→low)</option>
+                <option value="value_asc">Value (low→high)</option>
+                <option value="name_asc">Name A→Z</option>
+                <option value="created_desc">Newest first</option>
+              </>
+            )}
+          </select>
+          <button
+            onClick={handleExport}
+            className="btn-ghost"
+            style={{ fontSize: 11, padding: '4px 10px' }}
+            title="Download current view as CSV"
+          >
+            <Download size={11} /> Export
+          </button>
         </div>
       </div>
 

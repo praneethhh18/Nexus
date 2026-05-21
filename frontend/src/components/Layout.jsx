@@ -433,41 +433,76 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Notification panel — anchored to the bell at bottom-left of the
-          sidebar so the click → panel visual relationship is obvious.
-          Previously the bell sat bottom-left but the panel slid in from
-          the right edge of the screen, which looked disconnected. */}
+      {/* Notification panel — anchored next to the bell. Designed with
+          consistent app tokens (no hardcoded 'white' text, no scratch
+          spacing) so it feels like a first-class part of the UI. */}
       {showNotifs && (
         <>
-          {/* Click-outside backdrop. */}
           <div
             onClick={() => setShowNotifs(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 99, background: 'transparent' }}
           />
-          <div style={{
+          <div role="dialog" aria-label="Notifications" style={{
             position: 'fixed',
             bottom: 56,
             left: collapsed ? 64 : 14,
-            width: 340,
+            width: 360,
             maxHeight: 'min(560px, 70vh)',
             background: 'var(--color-bg-elev)',
-            border: '1px solid var(--color-border)',
-            borderRadius: 12,
+            border: '1px solid var(--color-border-strong)',
+            borderRadius: 14,
             zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
-            boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
+            overflow: 'hidden',
+            boxShadow: '0 24px 60px rgba(0,0,0,0.32), 0 4px 12px rgba(0,0,0,0.18)',
           }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-surface-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Notifications</span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={handleClearNotifs} style={{ fontSize: 11, color: 'var(--color-text-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>Mark all read</button>
-              <button onClick={() => setShowNotifs(false)} style={{ fontSize: 16, color: 'var(--color-text-dim)', background: 'none', border: 'none', cursor: 'pointer' }}>x</button>
+          <div style={{
+            padding: '14px 16px',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'var(--color-surface-1)',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Bell size={14} color="var(--color-text)" />
+              <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>Notifications</span>
+              {notifData.unread_count > 0 && (
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 10,
+                  background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+                }}>{notifData.unread_count} new</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              {notifData.unread_count > 0 && (
+                <button onClick={handleClearNotifs} style={{
+                  fontSize: 11, color: 'var(--color-text-muted)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '4px 8px', borderRadius: 6,
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                  Mark all read
+                </button>
+              )}
+              <button onClick={() => setShowNotifs(false)} title="Close"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
+                               width: 24, height: 24, borderRadius: 6,
+                               background: 'transparent', border: 'none',
+                               color: 'var(--color-text-muted)', cursor: 'pointer' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--color-surface-2)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}>
+                <X size={13} />
+              </button>
             </div>
           </div>
-          <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+          <div style={{ flex: 1, overflow: 'auto', padding: 6 }}>
             {notifData.notifications.length === 0 ? (
-              <p style={{ textAlign: 'center', padding: 40, color: 'var(--color-text-dim)', fontSize: 12 }}>No notifications</p>
+              <div style={{ textAlign: 'center', padding: '48px 24px', color: 'var(--color-text-muted)' }}>
+                <Bell size={20} style={{ opacity: 0.4, marginBottom: 8 }} />
+                <p style={{ fontSize: 12, margin: 0 }}>You're all caught up</p>
+                <p style={{ fontSize: 10.5, margin: '4px 0 0', opacity: 0.7 }}>Updates from your agents will show here.</p>
+              </div>
             ) : notifData.notifications.map((n) => {
               const markOne = async () => {
                 await markNotificationRead(n.id).catch(() => {});
@@ -486,28 +521,71 @@ export default function Layout() {
                   notifications: d.notifications.filter(x => x.id !== n.id),
                 }));
               };
+              const accent = ({
+                critical: 'var(--color-err)',
+                warning:  'var(--color-warn)',
+                success:  'var(--color-ok)',
+                info:     'var(--color-accent)',
+              }[n.severity]) || 'var(--color-text-dim)';
+              // Relative time: "5m ago" / "2h ago" / "Mon 14:30"
+              let rel = n.created_at || '';
+              try {
+                const t = new Date(n.created_at).getTime();
+                const diff = Date.now() - t;
+                if (diff < 60_000) rel = 'just now';
+                else if (diff < 3_600_000) rel = `${Math.floor(diff / 60_000)}m ago`;
+                else if (diff < 86_400_000) rel = `${Math.floor(diff / 3_600_000)}h ago`;
+                else rel = new Date(t).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+              } catch { /* keep raw */ }
               return (
                 <div
                   key={n.id}
                   onClick={markOne}
                   style={{
-                    padding: '10px 12px', borderRadius: 8, marginBottom: 4, cursor: 'pointer',
-                    background: n.read ? 'transparent' : 'var(--color-surface-2)',
-                    borderLeft: `3px solid ${{ critical: 'var(--color-err)', warning: 'var(--color-warn)', success: 'var(--color-ok)', info: 'var(--color-accent)' }[n.severity] || 'var(--color-text-dim)'}`,
-                    position: 'relative',
+                    padding: '10px 12px 10px 14px', borderRadius: 8, marginBottom: 2,
+                    cursor: 'pointer', position: 'relative',
+                    background: n.read ? 'transparent' : 'var(--color-surface-1)',
+                    transition: 'background var(--dur-fast) var(--ease-out)',
                   }}
+                  onMouseEnter={(e) => { if (n.read) e.currentTarget.style.background = 'var(--color-surface-1)'; }}
+                  onMouseLeave={(e) => { if (n.read) e.currentTarget.style.background = 'transparent'; }}
                 >
-                  <p style={{ fontSize: 12, fontWeight: n.read ? 400 : 600, color: 'var(--color-text)', paddingRight: 20 }}>{n.title}</p>
-                  <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.message}</p>
-                  <p style={{ fontSize: 9, color: 'var(--color-text-dim)', marginTop: 2 }}>{n.created_at?.substring(0, 16)}</p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
+                    <span aria-hidden style={{
+                      width: 7, height: 7, borderRadius: '50%',
+                      background: n.read ? 'transparent' : accent, flexShrink: 0,
+                      border: n.read ? '1.5px solid var(--color-border-strong)' : 'none',
+                    }} />
+                    <p style={{
+                      fontSize: 13, fontWeight: n.read ? 500 : 600,
+                      color: 'var(--color-text)', margin: 0,
+                      paddingRight: 22, lineHeight: 1.35,
+                      flex: 1, minWidth: 0,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{n.title}</p>
+                  </div>
+                  {n.message && (
+                    <p style={{
+                      fontSize: 11.5, color: 'var(--color-text-muted)',
+                      margin: '0 0 0 15px', lineHeight: 1.4,
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>{n.message}</p>
+                  )}
+                  <p style={{ fontSize: 10.5, color: 'var(--color-text-dim)', margin: '4px 0 0 15px' }}>{rel}</p>
                   <button
                     onClick={removeOne}
                     title="Remove this notification"
+                    aria-label="Remove notification"
                     style={{
-                      position: 'absolute', top: 6, right: 6,
-                      background: 'none', border: 'none', cursor: 'pointer',
-                      color: 'var(--color-text-dim)', padding: 2, opacity: 0.6,
+                      position: 'absolute', top: 8, right: 8,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      width: 22, height: 22, borderRadius: 6,
+                      background: 'transparent', border: 'none', cursor: 'pointer',
+                      color: 'var(--color-text-muted)', padding: 0, opacity: 0.7,
                     }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = 1; e.currentTarget.style.background = 'var(--color-surface-2)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = 0.7; e.currentTarget.style.background = 'transparent'; }}
                   >
                     <Trash2 size={11} />
                   </button>
