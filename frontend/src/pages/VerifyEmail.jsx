@@ -150,12 +150,13 @@ export default function VerifyEmail() {
             </IconWrap>
             <h2 style={h2}>Check your inbox</h2>
             <p style={p}>
-              If that email is registered, a fresh verification link is on its way.
-              The link is valid for 48 hours.
+              If that email is registered and not yet verified, a fresh link is
+              on its way. The link is valid for 48 hours.
             </p>
-            <Link to="/login" style={{
-              display: 'inline-block', marginTop: 18, fontSize: 13, color: 'var(--color-info)',
-            }}>← Back to sign in</Link>
+            <p style={{ ...p, marginTop: 14, fontSize: 13 }}>
+              Already verified your account? Just{' '}
+              <Link to="/login" style={a}>sign in</Link>{' '}— no link needed.
+            </p>
           </>
         )}
         </div>

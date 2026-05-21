@@ -39,6 +39,12 @@ def is_configured() -> bool:
     return _provider() != "none"
 
 
+def default_from_name() -> str:
+    """Display name shown in the recipient's inbox. Defaults to NexusAgent
+    so users see 'NexusAgent <addr>' instead of the raw Gmail address."""
+    return (os.getenv("EMAIL_FROM_NAME") or "NexusAgent").strip()
+
+
 def default_from() -> str:
     """Resolve the From address. Resend requires this be either:
         - a verified domain (e.g. hi@nexusagent.in after DNS setup), OR
@@ -47,6 +53,21 @@ def default_from() -> str:
     if _provider() == "resend":
         return (os.getenv("EMAIL_FROM") or "onboarding@resend.dev").strip()
     return (os.getenv("GMAIL_USER") or "").strip()
+
+
+def _branded_from(addr: str) -> str:
+    """Return 'NexusAgent <addr>' if addr doesn't already include a name.
+    Recipients see the friendly name in their inbox even when we're
+    routing through the founder's personal Gmail in dev."""
+    addr = (addr or "").strip()
+    if not addr:
+        return addr
+    if "<" in addr and ">" in addr:
+        return addr  # already in 'Name <a@b>' form
+    name = default_from_name()
+    if not name:
+        return addr
+    return f"{name} <{addr}>"
 
 
 def send_email(*, to: str, subject: str, body: str,
@@ -111,7 +132,8 @@ def _send_via_resend(*, sender: str, to: str, subject: str, body: str,
         raise RuntimeError("RESEND_API_KEY missing")
 
     payload = {
-        "from":    sender,
+        # Branded display name even when sender is a raw resend.dev addr.
+        "from":    _branded_from(sender),
         "to":      [to],
         "subject": subject,
         "text":    body,
@@ -171,7 +193,12 @@ def _send_via_gmail_smtp(*, sender: str, to: str, subject: str, body: str,
         raise RuntimeError("GMAIL_APP_PASSWORD missing")
 
     msg = MIMEMultipart()
-    msg["From"]    = sender
+    # Recipient sees 'NexusAgent <addr>'. Critical: smtplib's
+    # send_message uses msg['From'] for the envelope sender by default —
+    # Gmail rejects sends if the envelope address doesn't match the
+    # authenticated account. So we pass the bare address as from_addr
+    # explicitly, and keep the friendly Name <addr> only in the header.
+    msg["From"]    = _branded_from(sender)
     msg["To"]      = to
     msg["Subject"] = subject
     if reply_to:
@@ -182,7 +209,7 @@ def _send_via_gmail_smtp(*, sender: str, to: str, subject: str, body: str,
         with smtplib.SMTP("smtp.gmail.com", 587) as server:
             server.starttls()
             server.login(sender, password)
-            server.send_message(msg)
+            server.send_message(msg, from_addr=sender, to_addrs=[to])
     except Exception as e:
         raise RuntimeError(f"Gmail SMTP error: {e}")
 
