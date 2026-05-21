@@ -221,11 +221,15 @@ def agent_impact(business_id: str, days: int = 30) -> Dict[str, Any]:
     cutoff = (now_utc_naive() - timedelta(days=days)).isoformat()
     conn = _conn()
     try:
+        # psycopg interprets bare `%` as a parameter placeholder, so
+        # `LIKE 'agent.%'` literal-style raises 'only %s/%b/%t allowed'.
+        # Pass the pattern as a bound parameter instead — works on both
+        # SQLite and Postgres.
         rows = conn.execute(
             "SELECT tool_name, COUNT(*) AS cnt, AVG(duration_ms) AS avg_d, AVG(success) AS rate "
-            "FROM nexus_audit_log WHERE business_id = ? AND timestamp >= ? AND tool_name LIKE 'agent.%' "
+            "FROM nexus_audit_log WHERE business_id = ? AND timestamp >= ? AND tool_name LIKE ? "
             "GROUP BY tool_name ORDER BY cnt DESC",
-            (business_id, cutoff),
+            (business_id, cutoff, "agent.%"),
         ).fetchall()
         total_row = conn.execute(
             "SELECT COUNT(*), AVG(duration_ms), AVG(success) FROM nexus_audit_log "
