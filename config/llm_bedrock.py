@@ -29,7 +29,7 @@ import json
 import os
 import re
 import uuid
-from typing import Any, Dict, Generator, List
+from typing import Any, Dict, Generator, List, Optional
 
 from loguru import logger
 
@@ -208,12 +208,78 @@ def _from_bedrock_response(resp: Dict[str, Any]) -> Dict[str, Any]:
     stop_reason = "tool_use" if stop_reason_raw == "tool_use" else (
         "end_turn" if stop_reason_raw in ("end_turn", "stop_sequence", "max_tokens") else stop_reason_raw
     )
+    joined_text = "\n".join(text_parts).strip()
+
+    # Smaller open-weight models (Mistral Ministral 14B in particular)
+    # occasionally emit a ```json{"action":"tool","tool":"X",...}```
+    # envelope as TEXT instead of using the structured tool_calls API.
+    # When that happens AND no real tool was selected, parse the
+    # envelope and synthesise a tool_call so the agent loop can still
+    # execute the intended tool.
+    if not tool_calls and joined_text:
+        synth = _parse_text_tool_envelope(joined_text)
+        if synth:
+            tool_calls = [synth]
+            assistant_content = [{
+                "type": "tool_use",
+                "id": synth["id"],
+                "name": synth["name"],
+                "input": synth["arguments"],
+            }]
+            joined_text = ""           # the envelope was the tool intent, not prose
+            stop_reason = "tool_use"
 
     return {
         "stop_reason": stop_reason,
-        "text": "\n".join(text_parts).strip(),
+        "text": joined_text,
         "tool_calls": tool_calls,
         "assistant_content": assistant_content,
+    }
+
+
+def _parse_text_tool_envelope(text: str) -> Optional[Dict[str, Any]]:
+    """Detect a JSON tool envelope smuggled into a model's text output.
+
+    Recognised shapes:
+        {"action":"tool", "tool":"NAME", "arguments":{...}}
+        {"action":"NAME", "arguments":{...}}     (model dropped 'tool' key)
+        {"name":"NAME", "arguments":{...}}       (OpenAI-style leak)
+
+    Returns a tool_call dict {id, name, arguments} or None."""
+    import json
+    import re
+    import uuid
+    # Strip markdown code fences if present
+    stripped = re.sub(r"^```(?:json)?\s*", "", text.strip(), flags=re.MULTILINE)
+    stripped = re.sub(r"\s*```$", "", stripped)
+    # Find the first JSON object
+    m = re.search(r"\{[\s\S]*\}", stripped)
+    if not m:
+        return None
+    try:
+        obj = json.loads(m.group(0))
+    except Exception:
+        return None
+    if not isinstance(obj, dict):
+        return None
+    args = obj.get("arguments") or obj.get("input") or obj.get("parameters") or {}
+    if not isinstance(args, dict):
+        return None
+    # Tool name candidates, in order of likelihood
+    name = obj.get("tool") or obj.get("name") or obj.get("function")
+    # The "{action: 'tool_name', arguments: ...}" shape — only treat
+    # `action` as a tool name if it's NOT one of the literal control
+    # strings the ReAct prompt uses.
+    if not name:
+        action = obj.get("action")
+        if isinstance(action, str) and action not in ("tool", "final"):
+            name = action
+    if not isinstance(name, str) or not name:
+        return None
+    return {
+        "id": f"synth_{uuid.uuid4().hex[:8]}",
+        "name": name,
+        "arguments": args,
     }
 
 

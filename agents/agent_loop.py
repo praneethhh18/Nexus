@@ -280,6 +280,14 @@ def run_agent(
     consecutive_errors = 0
     final_text = ""
     stop_reason = "end_turn"
+    # Track whether a *real* CRM-data tool was called this turn. The
+    # grounding validator only makes sense when the agent's reply is
+    # ABOUT user-owned records. For general-knowledge questions (no CRM
+    # tool fired), the model's answer references public concepts like
+    # "Sales Navigator" or "Google Ads" — those aren't fabrications,
+    # they're just nouns we don't have in evidence, and the bulk-block
+    # ate them.
+    had_crm_evidence = False
 
     while steps < max_steps:
         steps += 1
@@ -391,6 +399,7 @@ def run_agent(
                     # narrative content for which no grounding applies.
                     if result_for_llm is not None and tool_name in _CRM_GROUNDING_TOOLS:
                         grounding_evidence.append(result_for_llm)
+                        had_crm_evidence = True
                 consecutive_errors = 0
             except Exception as e:
                 consecutive_errors += 1
@@ -463,7 +472,11 @@ def run_agent(
     # fabricated names are real bugs we want to catch.
     grounding_warnings: List[Dict[str, str]] = []
     BULK_HALLUCINATION_THRESHOLD = 3
-    if grounding_evidence:
+    # Validate ONLY when the agent actually touched the CRM this turn.
+    # A general-knowledge reply (no CRM tool fired) shouldn't be
+    # validated against an empty evidence set — that always nukes
+    # legitimate prose about external products and frameworks.
+    if had_crm_evidence and grounding_evidence:
         try:
             from agents import grounding as _grounding
             evidence = _grounding.collect_evidence(grounding_evidence)
