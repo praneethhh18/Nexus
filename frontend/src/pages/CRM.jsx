@@ -248,12 +248,12 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
         </div>
       )}
 
-      <Field label="Tags (comma-separated)">
-        <input className="field-input" value={f.tags} onChange={(e) => set('tags', e.target.value)} maxLength={300} />
-      </Field>
       <Field label="Notes">
         <textarea className="field-input" rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
+      <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: -6, marginBottom: 8 }}>
+        Tip: add tags from the contact&apos;s detail page (click the row after saving) — that&apos;s where the colour-coded tag chips live.
+      </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary">{initial ? 'Save' : 'Add Contact'}</button>
@@ -336,16 +336,14 @@ function CompanyForm({ initial, onSubmit, onCancel }) {
                  value={f.email} onChange={(e) => set('email', e.target.value)} maxLength={200} />
         </Field>
       </div>
-      <Field label="Tags">
-        <input className="field-input"
-               placeholder="comma-separated, e.g. enterprise, q4-target"
-               value={f.tags} onChange={(e) => set('tags', e.target.value)} />
-      </Field>
       <Field label="Notes">
         <textarea className="field-input" rows={3}
                   placeholder="Anything worth remembering — founder background, key contacts, deal history…"
                   value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
+      <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginBottom: 8 }}>
+        Tip: add tags from the company&apos;s detail page (click the row after saving) — that&apos;s where the colour-coded tag chips live.
+      </div>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary">{initial ? 'Save changes' : 'Add company'}</button>
@@ -704,18 +702,29 @@ export default function CRM() {
       {overview && (
         <div style={{ padding: '0 24px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 8 }}>
           {[
-            { label: t('contacts'),     value: overview.contacts, icon: Users, color: 'var(--color-info)' },
-            { label: t('companies'),    value: overview.companies, icon: Building2, color: '#a78bfa' },
-            { label: `Open ${t('deals').toLowerCase()}`, value: `${overview.open_deals_count} · ${money(overview.open_deals_value)}`, icon: Briefcase, color: 'var(--color-warn)' },
-            { label: t('kpi_won'),      value: money(overview.won_this_month), icon: TrendingUp, color: 'var(--color-ok)' },
-          ].map(({ label, value, icon: Icon, color }, i) => (
+            { label: t('contacts'),  value: overview.contacts,  sub: null, icon: Users, color: 'var(--color-info)' },
+            { label: t('companies'), value: overview.companies, sub: null, icon: Building2, color: '#a78bfa' },
+            // Open deals: big number = count, sub-line = total value
+            // ("4 · ₹24,75,000" used to read as gibberish to first-time
+            // users; the split makes the relationship obvious).
+            { label: `Open ${t('deals').toLowerCase()}`,
+              value: overview.open_deals_count,
+              sub: `worth ${money(overview.open_deals_value)}`,
+              icon: Briefcase, color: 'var(--color-warn)' },
+            { label: t('kpi_won'), value: money(overview.won_this_month),
+              sub: 'this month',
+              icon: TrendingUp, color: 'var(--color-ok)' },
+          ].map(({ label, value, sub, icon: Icon, color }, i) => (
             <div key={i} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ width: 32, height: 32, borderRadius: 8, background: `${color}22`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Icon size={16} />
               </div>
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{label}</div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{value}</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', lineHeight: 1.2 }}>{value}</div>
+                {sub && (
+                  <div style={{ fontSize: 10, color: 'var(--color-text-muted)', marginTop: 1 }}>{sub}</div>
+                )}
               </div>
             </div>
           ))}
@@ -2238,7 +2247,7 @@ document.getElementById('lead-form').addEventListener('submit', async (e) => {
 
 
 // ── Stat card (mirrors the History page's pattern) ──────────────────────────
-function Stat({ label, value, icon, tone = 'dim' }) {
+function Stat({ label, value, sub, icon, tone = 'dim' }) {
   const toneColor = {
     accent: 'var(--color-accent)',
     info:   'var(--color-info)',
@@ -2256,6 +2265,9 @@ function Stat({ label, value, icon, tone = 'dim' }) {
       <div className="kpi-body">
         <div className="kpi-label">{label}</div>
         <div className="kpi-value">{value}</div>
+        {sub && (
+          <div style={{ fontSize: 10.5, color: 'var(--color-text-muted)', marginTop: 2 }}>{sub}</div>
+        )}
       </div>
     </div>
   );
