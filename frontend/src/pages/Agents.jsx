@@ -699,6 +699,122 @@ function RunsDrawer({ persona, onClose }) {
   );
 }
 
+// ── Custom-agent card ─────────────────────────────────────────────────────
+// Cloned-template or user-built agent. Same result-modal treatment as the
+// built-in personas so clicking "Run now" never feels like a dead click.
+function CustomAgentCard({ agent, onRan, onEdit }) {
+  const ca = agent;
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [err, setErr] = useState('');
+  const navigate = useNavigate();
+
+  const run = async () => {
+    if (running) return;
+    setRunning(true); setResult(null); setErr('');
+    try {
+      const r = await runCustomAgent(ca.id);
+      // Backend returns: { ok, agent_id, answer, tool_calls, run_id }
+      if (r.ok === false && r.reason === 'disabled') {
+        setResult({
+          tone: 'skip',
+          summary: 'Agent is paused.',
+          hint: 'Enable the agent from its Edit panel before running.',
+          detail: r,
+        });
+      } else if (r.ok === false) {
+        setResult({
+          tone: 'skip',
+          summary: 'Run failed',
+          details: r.error || 'The agent loop returned an error.',
+          detail: r,
+        });
+      } else {
+        const tools = (r.tool_calls || []).map(t => t.name || t.tool || '');
+        setResult({
+          tone: 'success',
+          summary: `${ca.name} just ran`,
+          details: tools.length ? `Called ${tools.length} tool${tools.length === 1 ? '' : 's'}: ${tools.join(', ')}`
+                                : 'No tools needed — answered from context.',
+          link: ca.output_target === 'inbox' ? { label: 'Open Inbox', href: '/inbox' } : null,
+          customAnswer: r.answer || '',
+          customTools: r.tool_calls || [],
+          detail: r,
+        });
+      }
+      onRan?.();
+    } catch (e) {
+      console.error(`[CustomAgents] ${ca.name} failed:`, e);
+      setResult({
+        tone: 'skip',
+        summary: 'Run failed',
+        details: e.message || 'See console for details.',
+        hint: 'If this keeps happening, the backend may be down or the agent goal needs more tools.',
+        detail: {},
+      });
+      setErr(e.message || 'Run failed');
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const fmtSchedule = (m) => m < 60 ? `${m} min`
+    : m % 1440 === 0 ? `${m / 1440} d`
+    : m % 60 === 0 ? `${m / 60} hr`
+    : `${m} min`;
+
+  return (
+    <div className="panel" style={{
+      padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
+      opacity: ca.enabled ? 1 : 0.6,
+      borderStyle: ca.enabled ? 'solid' : 'dashed',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 22 }}>{ca.emoji || '🤖'}</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{ca.name}</div>
+          <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
+            {ca.description || <em>No description</em>}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button
+          onClick={run}
+          className="btn-primary"
+          style={{ fontSize: 11, padding: '5px 12px' }}
+          disabled={!ca.enabled || running}
+        >
+          {running
+            ? <><Loader2 size={10} style={{ animation: 'spin 1s linear infinite' }} /> Working…</>
+            : <><Play size={10} /> Run now</>}
+        </button>
+        <button onClick={onEdit} className="btn-ghost" style={{ fontSize: 11, padding: '5px 10px' }}>
+          <Settings2 size={10} /> Edit
+        </button>
+      </div>
+      <div style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <span><Clock size={9} style={{ verticalAlign: 'middle' }} /> every {fmtSchedule(ca.interval_minutes)}</span>
+        <span>→ {ca.output_target}</span>
+        <span>· {ca.tool_whitelist.length} tool{ca.tool_whitelist.length === 1 ? '' : 's'}</span>
+      </div>
+      {err && <div style={{ fontSize: 11, color: 'var(--color-err)' }}>{err}</div>}
+
+      {result && (
+        <AgentResultModal
+          agentKey={`custom:${ca.id}`}
+          agentName={ca.name}
+          emoji={ca.emoji || '🤖'}
+          result={result}
+          onClose={() => setResult(null)}
+          onOpenSurface={(path) => navigate(path)}
+        />
+      )}
+    </div>
+  );
+}
+
+
 // ── Run-result modal ─────────────────────────────────────────────────────────
 // Shown after the user clicks "Run now". The point is to give NEW USERS
 // proof-of-work — show the actual artifact (briefing text, list of stale
@@ -807,6 +923,51 @@ function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenS
 // briefing in another tab.
 function AgentArtifact({ agentKey, result }) {
   const d = result.detail || {};
+
+  // Custom-agent answer — render the LLM's reply + which tools it called
+  // so the user can see exactly what the agent did.
+  if (agentKey?.startsWith?.('custom:') && result.customAnswer) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{
+          padding: '14px 16px', borderRadius: 'var(--r-md)',
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          fontSize: 13, color: 'var(--color-text)', lineHeight: 1.55,
+          whiteSpace: 'pre-wrap',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          maxHeight: 360, overflow: 'auto',
+        }}>
+          {result.customAnswer}
+        </div>
+        {(result.customTools || []).length > 0 && (
+          <div style={{
+            padding: '10px 12px', borderRadius: 8,
+            background: 'var(--color-bg)',
+            border: '1px solid var(--color-border)',
+            fontSize: 11,
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+                          textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                          marginBottom: 4 }}>
+              Tools used during this run
+            </div>
+            <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              {(result.customTools || []).map((t, i) => (
+                <code key={i} style={{
+                  fontSize: 10, padding: '2px 6px', borderRadius: 4,
+                  background: 'var(--color-surface-1)', color: 'var(--color-text)',
+                  border: '1px solid var(--color-border)',
+                }}>
+                  {t.name || t.tool || '(unknown)'}
+                </code>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Briefing-style agents — render the narrative text
   if ((agentKey === 'morning_briefing' || agentKey === 'evening_digest') && d.narrative) {
@@ -1063,15 +1224,10 @@ export default function Agents() {
     }
   };
 
-  const onCustomRun = async (id) => {
-    try {
-      await runCustomAgent(id);
-      loadActivity();
-      load({ silent: true });
-    } catch (e) {
-      alert(`Run failed: ${e.message}`);
-    }
-  };
+  // Custom-agent runs now happen INSIDE each CustomAgentCard so it can
+  // own a result modal the same way PersonaCard does. The parent only
+  // needs to know how to refresh the lists after a successful run.
+  const onCustomRanRefresh = () => { loadActivity(); load({ silent: true }); };
 
   const onCustomSaved = (saved) => {
     setShowBuilder(false);
@@ -1138,49 +1294,12 @@ export default function Agents() {
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
               {customAgents.map(ca => (
-                <div key={ca.id} className="panel" style={{
-                  padding: 16, display: 'flex', flexDirection: 'column', gap: 10,
-                  opacity: ca.enabled ? 1 : 0.6,
-                  borderStyle: ca.enabled ? 'solid' : 'dashed',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: 22 }}>{ca.emoji || '🤖'}</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>{ca.name}</div>
-                      <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
-                        {ca.description || <em>No description</em>}
-                      </div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    <button
-                      onClick={() => onCustomRun(ca.id)}
-                      className="btn-primary"
-                      style={{ fontSize: 11, padding: '5px 12px' }}
-                      disabled={!ca.enabled}
-                    >
-                      <Play size={10} /> Run now
-                    </button>
-                    <button
-                      onClick={() => { setBuilderInitial(ca); setShowBuilder(true); }}
-                      className="btn-ghost"
-                      style={{ fontSize: 11, padding: '5px 10px' }}
-                    >
-                      <Settings2 size={10} /> Edit
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <span>
-                      <Clock size={9} style={{ verticalAlign: 'middle' }} />
-                      {' '}every {ca.interval_minutes < 60 ? `${ca.interval_minutes} min`
-                        : ca.interval_minutes % 1440 === 0 ? `${ca.interval_minutes / 1440} d`
-                        : ca.interval_minutes % 60 === 0 ? `${ca.interval_minutes / 60} hr`
-                        : `${ca.interval_minutes} min`}
-                    </span>
-                    <span>→ {ca.output_target}</span>
-                    <span>· {ca.tool_whitelist.length} tool{ca.tool_whitelist.length === 1 ? '' : 's'}</span>
-                  </div>
-                </div>
+                <CustomAgentCard
+                  key={ca.id}
+                  agent={ca}
+                  onRan={onCustomRanRefresh}
+                  onEdit={() => { setBuilderInitial(ca); setShowBuilder(true); }}
+                />
               ))}
             </div>
           </div>
