@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail, X } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { markNotificationRead, deleteNotification, getOnboardingState } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
@@ -527,16 +527,17 @@ export default function Layout() {
                 success:  'var(--color-ok)',
                 info:     'var(--color-accent)',
               }[n.severity]) || 'var(--color-text-dim)';
-              // Relative time: "5m ago" / "2h ago" / "Mon 14:30"
-              let rel = n.created_at || '';
-              try {
-                const t = new Date(n.created_at).getTime();
-                const diff = Date.now() - t;
-                if (diff < 60_000) rel = 'just now';
-                else if (diff < 3_600_000) rel = `${Math.floor(diff / 60_000)}m ago`;
-                else if (diff < 86_400_000) rel = `${Math.floor(diff / 3_600_000)}h ago`;
-                else rel = new Date(t).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-              } catch { /* keep raw */ }
+              // Relative time: "5m ago" / "2h ago" / "Mon 14:30".
+              const rel = (() => {
+                try {
+                  const t = new Date(n.created_at).getTime();
+                  const diff = Date.now() - t;
+                  if (diff < 60_000) return 'just now';
+                  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+                  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
+                  return new Date(t).toLocaleDateString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+                } catch { return n.created_at || ''; }
+              })();
               return (
                 <div
                   key={n.id}
