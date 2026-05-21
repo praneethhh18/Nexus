@@ -13,11 +13,10 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import {
-  getInvoice, updateInvoice, deleteInvoice, renderInvoicePdf, invoicePdfUrl,
+  getInvoice, updateInvoice, deleteInvoice, renderInvoicePdf, fetchInvoicePdfBlob,
   INVOICE_STATUSES,
 } from '../services/invoices';
 import { getContact, getCompany } from '../services/crm';
-import { getToken, getBusinessId } from '../services/auth';
 
 const STATUS_TONE = {
   draft:     'var(--color-text-dim)',
@@ -118,23 +117,15 @@ export default function InvoiceDetail() {
   const handleRender = async () => {
     setBusy('render');
     try {
-      const r = await renderInvoicePdf(id);
+      await renderInvoicePdf(id);
       flash('PDF regenerated.');
-      // Open the PDF in a new tab.
-      const url = invoicePdfUrl(id);
-      const t = getToken();
-      const b = getBusinessId();
-      const h = {};
-      if (t) h.Authorization = `Bearer ${t}`;
-      if (b) h['X-Business-Id'] = b;
-      const res = await fetch(url, { headers: h });
-      if (res.ok) {
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
-        window.open(blobUrl, '_blank');
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
-      }
-      void r;
+      // Fetch the freshly rendered PDF as a binary blob (auth-aware) and
+      // open it in a new tab. Previously this passed a Promise object to
+      // fetch() which silently downloaded the Vite SPA shell instead.
+      const blob = await fetchInvoicePdfBlob(id);
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
     } catch (e) { flash(`PDF render failed: ${e.message}`); }
     setBusy('');
   };
@@ -380,17 +371,16 @@ export default function InvoiceDetail() {
                 detail={invoice.pdf_path ? 'Last rendered version' : 'Generate first to download'}
                 disabled={!invoice.pdf_path}
                 onClick={async () => {
-                  const url = invoicePdfUrl(id);
-                  const t = getToken(); const b = getBusinessId();
-                  const h = {}; if (t) h.Authorization = `Bearer ${t}`; if (b) h['X-Business-Id'] = b;
-                  const res = await fetch(url, { headers: h });
-                  if (!res.ok) return flash('No PDF yet — render first.');
-                  const blob = await res.blob();
-                  const a = document.createElement('a');
-                  a.href = URL.createObjectURL(blob);
-                  a.download = `${invoice.number}.pdf`;
-                  a.click();
-                  URL.revokeObjectURL(a.href);
+                  try {
+                    const blob = await fetchInvoicePdfBlob(id);
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `${invoice.number}.pdf`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                  } catch (e) {
+                    flash(`Download failed: ${e.message || 'No PDF yet — render first.'}`);
+                  }
                 }}
               />
               <ActionRow

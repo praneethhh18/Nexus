@@ -127,7 +127,11 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
         background: selected ? 'color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-2))' : undefined,
       }}
     >
-      {/* Round checkbox — "Mark done." Always visible. Status, not selection. */}
+      {/* "Mark done" toggle — round, with a faint check ghost-icon in
+          idle state so it's unmistakably a "tick off the task" affordance
+          and not a selection checkbox. Bulk-select lives on the far right
+          of the row (near the action buttons) so the two never sit
+          adjacent and get confused. */}
       <button
         type="button"
         onClick={() => onToggle(task)}
@@ -135,17 +139,12 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
         title={done ? 'Mark as not done' : 'Mark as done'}
         aria-label={done ? 'Mark as not done' : 'Mark as done'}
       >
-        {done && <Check size={12} strokeWidth={3} />}
+        <Check
+          size={12}
+          strokeWidth={3}
+          style={{ opacity: done ? 1 : 0.25 }}
+        />
       </button>
-
-      {/* Bulk checkbox — "Select." Hidden until hover or bulk mode. Square. */}
-      <span
-        className="row-bulk"
-        title="Select for bulk action"
-        aria-label="Select task for bulk actions"
-      >
-        <BulkCheckbox checked={selected} onChange={() => onToggleSelect(task.id)} />
-      </span>
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
@@ -169,9 +168,20 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
           {task.tags && <span>· {task.tags}</span>}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
         <button className="btn-ghost btn-sm" onClick={() => onEdit(task)}>Edit</button>
         <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }} onClick={() => onDelete(task)} title="Delete task" aria-label="Delete task"><Trash2 size={12} /></button>
+        {/* Bulk-select lives at the far right (hidden until hover / bulk
+            mode) so it's spatially separated from the round "mark done"
+            toggle on the left. */}
+        <span
+          className="row-bulk"
+          title="Select for bulk action"
+          aria-label="Select task for bulk actions"
+          style={{ marginLeft: 4 }}
+        >
+          <BulkCheckbox checked={selected} onChange={() => onToggleSelect(task.id)} />
+        </span>
       </div>
     </div>
   );
@@ -253,9 +263,26 @@ export default function Tasks() {
 
   const handleDelete = async (t) => {
     if (!confirm(`Delete "${t.title}"?`)) return;
+    // Snapshot every editable field so undo can re-create the task with the
+    // same data — same pattern as doBulkDelete just below.
+    const snapshot = { ...t };
     try {
       await deleteTask(t.id);
       reload();
+      showUndo(`Deleted "${t.title}"`, async () => {
+        try {
+          await createTask({
+            title: snapshot.title,
+            description: snapshot.description,
+            status: snapshot.status,
+            priority: snapshot.priority,
+            due_date: snapshot.due_date,
+            tags: snapshot.tags,
+            recurrence: snapshot.recurrence || 'none',
+          });
+        } catch {}
+        reload();
+      });
     } catch (e) { flash(`Failed: ${e.message}`); }
   };
 

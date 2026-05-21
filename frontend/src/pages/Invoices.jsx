@@ -6,7 +6,7 @@ import EmptyState from '../components/EmptyState';
 import SuggestionPanel from '../components/SuggestionPanel';
 import {
   listInvoices, createInvoice, updateInvoice, deleteInvoice,
-  renderInvoicePdf, invoicePdfUrl, invoiceSummary,
+  renderInvoicePdf, fetchInvoicePdfBlob, invoiceSummary,
   INVOICE_STATUSES,
 } from '../services/invoices';
 import { listContacts, listCompanies } from '../services/crm';
@@ -69,8 +69,8 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
     customer_name: '', customer_email: '', customer_address: '',
     customer_company_id: '', customer_contact_id: '',
     currency: 'INR', issue_date: today,
-    due_date: defaultDue, notes: '', tax_pct: 0,
-    line_items: [{ description: '', quantity: 1, unit_price: 0 }],
+    due_date: defaultDue, notes: '', tax_pct: '',
+    line_items: [{ description: '', quantity: 1, unit_price: '' }],
     status: 'draft',
     ...(initial || {}),
   });
@@ -84,7 +84,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
       return { ...p, line_items: items };
     });
   };
-  const addLine = () => setF((p) => ({ ...p, line_items: [...p.line_items, { description: '', quantity: 1, unit_price: 0 }] }));
+  const addLine = () => setF((p) => ({ ...p, line_items: [...p.line_items, { description: '', quantity: 1, unit_price: '' }] }));
   const removeLine = (idx) => setF((p) => ({ ...p, line_items: p.line_items.filter((_, i) => i !== idx) }));
 
   // Auto-fill from CRM picks — the user shouldn't have to retype data.
@@ -166,9 +166,13 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
         </Field>
       </div>
 
-      {/* Dates + Currency + Status */}
+      {/* Dates + Currency. Status is intentionally NOT user-editable here —
+          new invoices always start as draft, and the lifecycle (Draft →
+          Sent → Paid / Cancelled) is driven by the dedicated action
+          buttons on each row. Otherwise users freely click between
+          statuses and the audit trail becomes meaningless. */}
       <div className="divider-h">Invoice details</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
         <Field label="Issue date" required helper="Defaults to today.">
           <input className="field-input" type="date" required value={f.issue_date} onChange={(e) => set('issue_date', e.target.value)} />
         </Field>
@@ -180,15 +184,18 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
             {COMMON_CURRENCIES.map((c) => <option key={c}>{c}</option>)}
           </select>
         </Field>
-        <Field label="Status" helper="Start as draft, mark sent later.">
-          <select className="field-select" value={f.status} onChange={(e) => set('status', e.target.value)} style={{ width: '100%' }}>
-            {INVOICE_STATUSES.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </Field>
       </div>
 
-      {/* Line items */}
+      {/* Line items — works for products (Qty × Unit price) and services
+          (Hours × Rate, or just one line with Qty=1 + flat fee in Rate). */}
       <div className="divider-h">Line items</div>
+      <div style={{
+        fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 8,
+        marginTop: -4,
+      }}>
+        Selling a service? Use Qty <code>1</code> + the full fee in <b>Rate</b>.
+        Billing hourly? Qty = hours, Rate = hourly rate.
+      </div>
       <div style={{ marginBottom: 14 }}>
         {/* Header row — column labels so the per-line inputs stay slim. */}
         <div style={{
@@ -198,16 +205,20 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
           textTransform: 'uppercase', color: 'var(--color-text-dim)',
         }}>
           <span>Description *</span>
-          <span>Qty *</span>
-          <span>Unit price</span>
-          <span>Subtotal</span>
+          <span>Qty / Hours *</span>
+          <span>Rate / Price</span>
+          <span>Amount</span>
           <span></span>
         </div>
         {f.line_items.map((it, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px', gap: 6, marginBottom: 6 }}>
             <input className="field-input" placeholder="e.g. Q1 retainer — strategy" value={it.description} onChange={(e) => setLine(i, 'description', e.target.value)} maxLength={400} required />
-            <input className="field-input" type="number" step="0.01" min={0} placeholder="1" value={it.quantity} onChange={(e) => setLine(i, 'quantity', parseFloat(e.target.value) || 0)} />
-            <input className="field-input" type="number" step="0.01" min={0} placeholder="0.00" value={it.unit_price} onChange={(e) => setLine(i, 'unit_price', parseFloat(e.target.value) || 0)} />
+            <input className="field-input" type="number" step="0.01" min={0} placeholder="1"
+                   value={it.quantity === 0 ? '' : it.quantity}
+                   onChange={(e) => setLine(i, 'quantity', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))} />
+            <input className="field-input" type="number" step="0.01" min={0} placeholder="0.00"
+                   value={it.unit_price === 0 ? '' : it.unit_price}
+                   onChange={(e) => setLine(i, 'unit_price', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))} />
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 11.5, color: 'var(--color-text-muted)', padding: '0 6px', fontFeatureSettings: '"tnum"' }}>
               {money(Number(it.quantity) * Number(it.unit_price), f.currency)}
             </div>
@@ -253,8 +264,9 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
             <input
               type="number"
               step="0.01" min={0} max={100}
-              value={f.tax_pct}
-              onChange={(e) => set('tax_pct', parseFloat(e.target.value) || 0)}
+              placeholder="0"
+              value={f.tax_pct === 0 ? '' : f.tax_pct}
+              onChange={(e) => set('tax_pct', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
               style={{
                 width: 56, fontSize: 11.5, padding: '3px 6px',
                 background: 'var(--color-bg)',
@@ -349,7 +361,7 @@ export default function Invoices() {
 
   const handleDownload = async (inv) => {
     try {
-      const blob = await invoicePdfUrl(inv.id);
+      const blob = await fetchInvoicePdfBlob(inv.id);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = `${inv.number}.pdf`; a.click();

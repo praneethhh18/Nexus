@@ -210,19 +210,30 @@ def _parse(raw: str, source_chars: int, truncated: bool) -> dict:
 
 
 def _pdf_to_text(buf: bytes) -> str:
-    """Best-effort PDF text extraction via pypdf. Returns empty string if
-    the PDF is image-only (no embedded text) — caller should surface a
-    helpful "looks like a scan, paste text instead" message in that case."""
+    """Best-effort PDF text extraction. Tries pypdf first (lightweight),
+    falls back to PyMuPDF for PDFs with custom font encodings or
+    compressed streams that pypdf chokes on. Returns empty string if the
+    PDF is genuinely image-only (no embedded text on any page)."""
+    pypdf_text = _extract_with_pypdf(buf)
+    if pypdf_text.strip():
+        return pypdf_text
+    # pypdf returned nothing — the PDF might still have extractable text
+    # that pypdf can't decode. PyMuPDF (fitz) handles many more encodings
+    # and is the de-facto industry standard for this.
+    return _extract_with_pymupdf(buf)
+
+
+def _extract_with_pypdf(buf: bytes) -> str:
     try:
         from pypdf import PdfReader
     except Exception as e:
         logger.warning(f"[doc-intake] pypdf import failed: {e}")
-        raise HTTPException(500, "Server missing PDF support — paste the text instead.")
+        return ""
     try:
         reader = PdfReader(io.BytesIO(buf))
     except Exception as e:
-        logger.info(f"[doc-intake] couldn't open PDF: {e}")
-        raise HTTPException(400, "Couldn't open that file as a PDF.")
+        logger.info(f"[doc-intake] pypdf couldn't open PDF: {e}")
+        return ""
     chunks: List[str] = []
     for page in reader.pages:
         try:
@@ -231,6 +242,32 @@ def _pdf_to_text(buf: bytes) -> str:
             t = ""
         if t.strip():
             chunks.append(t.strip())
+    return "\n\n".join(chunks)
+
+
+def _extract_with_pymupdf(buf: bytes) -> str:
+    try:
+        import fitz  # PyMuPDF
+    except Exception as e:
+        logger.warning(f"[doc-intake] PyMuPDF unavailable: {e}")
+        return ""
+    try:
+        doc = fitz.open(stream=buf, filetype="pdf")
+    except Exception as e:
+        logger.info(f"[doc-intake] PyMuPDF couldn't open PDF: {e}")
+        return ""
+    chunks: List[str] = []
+    try:
+        for page in doc:
+            try:
+                t = page.get_text("text") or ""
+            except Exception:
+                t = ""
+            if t.strip():
+                chunks.append(t.strip())
+    finally:
+        try: doc.close()
+        except Exception: pass
     return "\n\n".join(chunks)
 
 
