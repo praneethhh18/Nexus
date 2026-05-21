@@ -906,7 +906,9 @@ export default function Chat() {
                   </>
                 )}
               </div>
-              <button className="action-btn" onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); }}><Plus size={13} /> New</button>
+              {/* The '+ New chat' button in the sidebar (left) already
+                  creates a new conversation, so this top-right duplicate
+                  was just clutter. Removed. */}
             </>
           )}
         </div>
