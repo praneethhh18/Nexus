@@ -118,6 +118,28 @@ export const uploadToKnowledgeBase = async (file, { category = 'other', title = 
   return res.json();
 };
 
+// Upload many files at once with a shared category. Returns:
+//   { uploaded, failed, total, results: [{ok, filename, error?, id?, ...}] }
+// so the UI can show per-file status.
+export const uploadBatchToKnowledgeBase = async (files, { category = 'other' } = {}) => {
+  const fd = new FormData();
+  for (const f of files) fd.append('files', f);
+  const qs = new URLSearchParams();
+  if (category) qs.set('category', category);
+  const h = headers();
+  delete h['Content-Type'];
+  const url = `${BASE}/upload-batch${qs.toString() ? '?' + qs.toString() : ''}`;
+  const res = await fetch(url, { method: 'POST', headers: h, body: fd });
+  if (res.status === 401) { window.location.href = '/login'; throw new Error('Session expired'); }
+  if (!res.ok) {
+    const txt = await res.text();
+    let msg = txt;
+    try { msg = JSON.parse(txt).detail || txt; } catch {}
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
 
 // Upload an image asset (logo / header) for embedding in generated docs.
 // Returns { path, filename } — pass `path` back into generateDocument as

@@ -5,7 +5,7 @@ import {
   extractDocFromText, extractDocFromUpload,
   autofillTemplateFromText, autofillTemplateFromUpload,
   uploadDocumentAsset, updateDocumentMeta, DOC_CATEGORIES,
-  uploadToKnowledgeBase,
+  uploadBatchToKnowledgeBase,
 } from '../services/documents';
 import { Image as ImageIcon } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
@@ -642,22 +642,29 @@ export default function Documents() {
 
   // ── Upload-to-knowledge-base flow ──────────────────────────────────────
   // Separate from "Extract from PDF" — extract is preview-only, this one
-  // actually adds the file to the searchable knowledge base so agents can
-  // query it later (e.g. Competitor Price Watcher searches by category).
-  const [uploadModal, setUploadModal] = useState(null);   // { busy, error, file, category, title } | null
+  // actually adds files to the searchable knowledge base so agents can
+  // query them later (e.g. Competitor Price Watcher searches by category).
+  // Supports multi-file upload — pick a category once, drop many PDFs in
+  // one go, agent indexes them all under that bucket.
+  const [uploadModal, setUploadModal] = useState(null);
   const openUploadModal = () => {
-    setUploadModal({ busy: false, error: '', file: null, category: 'other', title: '' });
+    setUploadModal({ busy: false, error: '', files: [], category: 'other', results: null });
   };
   const runUploadToKb = async () => {
-    if (!uploadModal?.file) return;
-    setUploadModal((m) => ({ ...m, busy: true, error: '' }));
+    if (!uploadModal?.files?.length) return;
+    setUploadModal((m) => ({ ...m, busy: true, error: '', results: null }));
     try {
-      const r = await uploadToKnowledgeBase(uploadModal.file, {
+      const r = await uploadBatchToKnowledgeBase(uploadModal.files, {
         category: uploadModal.category,
-        title:    uploadModal.title || uploadModal.file.name,
       });
-      flash(`Uploaded "${r.title}" → ${r.chunks_added} chunks indexed (category: ${r.category})`);
-      setUploadModal(null);
+      // Show per-file outcome inside the modal — keeps the user oriented
+      // when one of the files is a scanned PDF (and so fails to ingest).
+      setUploadModal((m) => ({ ...m, busy: false, results: r }));
+      const tag = uploadModal.category;
+      if (r.uploaded > 0) {
+        flash(`Indexed ${r.uploaded} file${r.uploaded === 1 ? '' : 's'} under "${tag}"`
+              + (r.failed ? ` (${r.failed} failed)` : ''));
+      }
       reload();
     } catch (e) {
       setUploadModal((m) => ({ ...m, busy: false, error: e.message || 'Upload failed.' }));
@@ -1149,56 +1156,119 @@ function UploadKbModal({ state, setState, onSubmit }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [setState, state.busy]);
+
+  const addFiles = (list) => {
+    const incoming = Array.from(list || []);
+    setState((s) => {
+      // Dedup by (name + size) so the same file dropped twice doesn't pile up.
+      const seen = new Map((s.files || []).map(f => [`${f.name}__${f.size}`, f]));
+      for (const f of incoming) seen.set(`${f.name}__${f.size}`, f);
+      return { ...s, files: Array.from(seen.values()), error: '' };
+    });
+  };
+  const removeFile = (i) => {
+    setState((s) => ({ ...s, files: (s.files || []).filter((_, idx) => idx !== i) }));
+  };
+
+  // Drag-and-drop support
+  const onDrop = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (state.busy) return;
+    addFiles(e.dataTransfer?.files);
+  };
+  const onDragOver = (e) => { e.preventDefault(); e.stopPropagation(); };
+
+  const files = state.files || [];
+  const results = state.results;
+
   return (
     <Modal title="Upload to knowledge base" onClose={() => state.busy ? null : setState(null)}>
       <p style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55, marginTop: 0 }}>
-        Drop a PDF, Word, or text file. We'll chunk it, embed it, and add it
-        to your searchable knowledge base. Tag it with a <b>category</b> so
-        agents can search the right bucket — e.g. the Competitor Watcher
-        only reads docs tagged "Competitor".
+        Drop one or many PDFs, Word, or text files. We'll chunk, embed, and
+        add each to your searchable knowledge base under the same <b>category</b>.
+        Agents like Competitor Watcher only read docs from their bucket.
       </p>
 
-      <input ref={fileRef} type="file" accept=".pdf,.docx,.doc,.txt,.md"
-             onChange={(e) => setState((s) => ({ ...s, file: e.target.files?.[0] || null, error: '' }))}
+      <input ref={fileRef} type="file" multiple accept=".pdf,.docx,.doc,.txt,.md"
+             onChange={(e) => addFiles(e.target.files)}
              style={{ display: 'none' }} />
-      <button type="button" className="btn-ghost"
-              onClick={() => fileRef.current?.click()}
-              disabled={state.busy}
-              style={{
-                width: '100%', padding: 22, border: '2px dashed var(--color-border-strong)',
-                borderRadius: 'var(--r-md)', cursor: state.busy ? 'wait' : 'pointer',
-                display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
-                background: 'var(--color-surface-1)', marginBottom: 14,
-              }}>
+      <div onDrop={onDrop} onDragOver={onDragOver}
+           onClick={() => !state.busy && fileRef.current?.click()}
+           style={{
+             padding: 22, border: '2px dashed var(--color-border-strong)',
+             borderRadius: 'var(--r-md)', cursor: state.busy ? 'wait' : 'pointer',
+             display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
+             background: 'var(--color-surface-1)', marginBottom: 12,
+           }}>
         <Upload size={26} color="var(--color-text-dim)" />
         <div style={{ fontSize: 12, color: 'var(--color-text)' }}>
-          {state.file ? state.file.name : 'Click to choose a file'}
+          {files.length === 0
+            ? 'Click or drag files here'
+            : `${files.length} file${files.length === 1 ? '' : 's'} selected — click to add more`}
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-          PDF, DOCX, or TXT &mdash; up to 30 MB
+          PDF, DOCX, or TXT &mdash; up to 30 MB each
         </div>
-      </button>
-
-      <div style={{ marginBottom: 10 }}>
-        <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
-          Title (optional)
-        </label>
-        <input className="field-input" placeholder={state.file?.name || 'Document title'}
-               value={state.title}
-               onChange={(e) => setState((s) => ({ ...s, title: e.target.value }))}
-               maxLength={200} disabled={state.busy} />
-        <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
-          Defaults to the file name if blank.
-        </span>
       </div>
 
+      {/* Picked-file list */}
+      {files.length > 0 && (
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12,
+          maxHeight: 160, overflow: 'auto',
+        }}>
+          {files.map((f, i) => {
+            const res = results?.results?.find(r => r.filename === f.name);
+            const status = !results ? null : (res?.ok ? 'ok' : 'failed');
+            return (
+              <div key={`${f.name}-${i}`} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 10px',
+                background: 'var(--color-bg)',
+                border: '1px solid var(--color-border)',
+                borderRadius: 'var(--r-sm)',
+                fontSize: 11.5,
+              }}>
+                <FileText size={12} color="var(--color-text-dim)" />
+                <span style={{ flex: 1, color: 'var(--color-text)',
+                               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {f.name}
+                </span>
+                <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
+                  {Math.round(f.size / 1024)} KB
+                </span>
+                {status === 'ok' && (
+                  <span style={{ fontSize: 10, color: 'var(--color-ok)' }}>
+                    ✓ {res.chunks_added} chunks
+                  </span>
+                )}
+                {status === 'failed' && (
+                  <span style={{ fontSize: 10, color: 'var(--color-err)' }} title={res.error}>
+                    ✗ failed
+                  </span>
+                )}
+                {!state.busy && !results && (
+                  <button type="button" onClick={() => removeFile(i)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer',
+                                   color: 'var(--color-text-dim)', padding: 0, display: 'flex' }}
+                          title="Remove">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Category — picked once for the whole batch */}
       <div style={{ marginBottom: 14 }}>
         <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
-          Category *
+          Category * (applies to all selected files)
         </label>
         <select className="field-select" value={state.category}
                 onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
-                disabled={state.busy} style={{ width: '100%' }}>
+                disabled={state.busy || !!results} style={{ width: '100%' }}>
           {DOC_CATEGORIES.map(c => (
             <option key={c.value} value={c.value}>
               {c.label} &mdash; {c.description}
@@ -1218,15 +1288,35 @@ function UploadKbModal({ state, setState, onSubmit }) {
         </div>
       )}
 
+      {results && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 'var(--r-md)',
+          background: results.uploaded === results.total
+            ? 'color-mix(in srgb, var(--color-ok) 10%, transparent)'
+            : 'color-mix(in srgb, var(--color-warn) 10%, transparent)',
+          border: `1px solid ${results.uploaded === results.total
+            ? 'color-mix(in srgb, var(--color-ok) 30%, transparent)'
+            : 'color-mix(in srgb, var(--color-warn) 30%, transparent)'}`,
+          fontSize: 12, color: 'var(--color-text)', marginBottom: 12,
+        }}>
+          Indexed <b>{results.uploaded}</b> of <b>{results.total}</b> files
+          {results.failed > 0 && <> &middot; {results.failed} failed (see list above)</>}
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
         <button type="button" className="btn-ghost"
-                onClick={() => setState(null)} disabled={state.busy}>Cancel</button>
-        <button type="button" className="btn-primary"
-                onClick={onSubmit} disabled={!state.file || state.busy}>
-          {state.busy
-            ? <><Loader2 size={11} className="animate-spin" /> Indexing…</>
-            : <><Upload size={11} /> Upload &amp; index</>}
+                onClick={() => setState(null)} disabled={state.busy}>
+          {results ? 'Close' : 'Cancel'}
         </button>
+        {!results && (
+          <button type="button" className="btn-primary"
+                  onClick={onSubmit} disabled={files.length === 0 || state.busy}>
+            {state.busy
+              ? <><Loader2 size={11} className="animate-spin" /> Indexing {files.length}…</>
+              : <><Upload size={11} /> Upload &amp; index {files.length || ''}</>}
+          </button>
+        )}
       </div>
     </Modal>
   );
