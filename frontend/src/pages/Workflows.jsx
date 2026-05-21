@@ -205,6 +205,10 @@ export default function Workflows() {
   const [history, setHistory] = useState([]);
 
   const [view, setView] = useState('gallery'); // gallery | my | history | builder
+  // Where to return to when the user hits Back in the builder. Set
+  // every time we enter the builder from a list view, so Back doesn't
+  // always dump them on My Workflows when they came from Templates.
+  const [prevView, setPrevView] = useState('gallery');
   const [msg, setMsg] = useState('');
   const [enablingName, setEnablingName] = useState('');
 
@@ -362,6 +366,10 @@ export default function Workflows() {
   };
 
   const openBuilderForNew = () => {
+    // Remember where the user came from so Back returns there. Default
+    // to 'my' for a brand-new workflow since that's where it'll land
+    // after save.
+    setPrevView(view === 'builder' ? prevView : (view || 'my'));
     setWfId(null); setWfName('New Workflow'); setWfEnabled(false);
     setRfNodes([]); setRfEdges([]); setDirty(true);
     setRunResult(null); setSelectedNodeId(null);
@@ -370,6 +378,7 @@ export default function Workflows() {
   };
 
   const openBuilderFromTemplate = (tmpl) => {
+    setPrevView(view === 'builder' ? prevView : (view || 'gallery'));
     setWfId(null); setWfName(tmpl.name); setWfEnabled(false);
     const { nodes, edges } = wfToRf(tmpl);
     setRfNodes(nodes); setRfEdges(edges);
@@ -379,6 +388,7 @@ export default function Workflows() {
   };
 
   const openBuilderForWorkflow = async (id) => {
+    setPrevView(view === 'builder' ? prevView : (view || 'my'));
     const wf = await getWorkflow(id);
     setWfId(wf.id); setWfName(wf.name); setWfEnabled(wf.enabled || false);
     const { nodes, edges } = wfToRf(wf);
@@ -473,9 +483,36 @@ export default function Workflows() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1>Workflows</h1>
-          <p>Automations that run on a schedule, on triggers, or on demand</p>
+        <div style={{ minWidth: 0 }}>
+          {view === 'builder' ? (
+            <>
+              <h1 style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{ color: 'var(--color-text-dim)', fontWeight: 400 }}>
+                  Workflows /
+                </span>
+                <span title={wfName}>{wfName || 'Untitled workflow'}</span>
+                {dirty && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 999,
+                    background: 'color-mix(in srgb, var(--color-warn) 14%, transparent)',
+                    color: 'var(--color-warn)',
+                  }}>
+                    UNSAVED
+                  </span>
+                )}
+              </h1>
+              <p>
+                {wfId
+                  ? `Editing existing workflow · ${rfNodes.length} step${rfNodes.length === 1 ? '' : 's'}`
+                  : `New workflow draft · ${rfNodes.length} step${rfNodes.length === 1 ? '' : 's'}`}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1>Workflows</h1>
+              <p>Automations that run on a schedule, on triggers, or on demand</p>
+            </>
+          )}
         </div>
         {view !== 'builder' && (
           <div style={{ display: 'flex', gap: 6 }}>
@@ -486,8 +523,17 @@ export default function Workflows() {
         )}
         {view === 'builder' && (
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className="btn-ghost" onClick={() => setView('my')}>
-              <ArrowLeft size={14} /> Back
+            <button
+              className="btn-ghost"
+              onClick={() => {
+                // If there are unsaved edits, warn before discarding —
+                // the user already lost work once today and we don't
+                // want a stray Back click to ruin a long edit session.
+                if (dirty && !confirm('You have unsaved changes. Leave the builder?')) return;
+                setView(prevView === 'builder' ? 'my' : (prevView || 'my'));
+              }}
+            >
+              <ArrowLeft size={14} /> Back to {prevView === 'gallery' ? 'Templates' : prevView === 'history' ? 'Run History' : 'My Workflows'}
             </button>
             <button className="btn-ghost" onClick={handleSave}>
               <Save size={14} /> {dirty ? 'Save *' : 'Save'}
@@ -720,10 +766,33 @@ export default function Workflows() {
           </div>
 
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderBottom: '1px solid var(--color-surface-2)' }}>
-              <input value={wfName} onChange={e => { setWfName(e.target.value); setDirty(true); }}
-                style={{ background: 'transparent', border: '1px solid var(--color-border-strong)', borderRadius: 6, padding: '4px 10px', color: 'white', fontSize: 13, fontWeight: 500, flex: 1, outline: 'none' }}
-                placeholder="Workflow name" />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid var(--color-surface-2)', background: 'var(--color-surface-1)' }}>
+              <Edit3 size={14} color="var(--color-text-dim)" />
+              <label style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>
+                Name
+              </label>
+              <input
+                value={wfName}
+                onChange={e => { setWfName(e.target.value); setDirty(true); }}
+                style={{
+                  background: 'var(--color-surface-2)',
+                  border: '1px solid var(--color-border-strong)',
+                  borderRadius: 6, padding: '6px 12px',
+                  color: 'var(--color-text)', fontSize: 14, fontWeight: 600,
+                  flex: 1, outline: 'none', minWidth: 0,
+                }}
+                placeholder="Give this workflow a name"
+              />
+              {wfId && (
+                <span style={{
+                  fontSize: 10, fontFamily: 'monospace',
+                  padding: '3px 8px', borderRadius: 4,
+                  background: 'var(--color-surface-2)',
+                  color: 'var(--color-text-dim)',
+                }} title="Stored workflow id">
+                  {wfId}
+                </span>
+              )}
               {wfId && (
                 <button className="btn-ghost" onClick={() => handleToggleEnabled(wfId, !wfEnabled).then(() => setWfEnabled(!wfEnabled))}>
                   <Power size={12} /> {wfEnabled ? 'Enabled' : 'Disabled'}
