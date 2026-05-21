@@ -17,6 +17,7 @@ messages until stop_reason == "end_turn" or a safety cap is hit.
 from __future__ import annotations
 
 import json
+import os
 import re
 import uuid
 from typing import List, Dict, Any, Optional
@@ -48,6 +49,16 @@ def invoke_with_tools(
     sensitive   — True forces local Ollama regardless of complexity (PII / DB data).
     force_cloud — True bypasses complexity routing and always uses cloud if available.
     """
+    # NIM evaluation path — opt-in via env var. Production stays on Bedrock.
+    if os.getenv("NEXUS_LLM_PROVIDER") == "nim" and not sensitive:
+        from config import llm_nim
+        if llm_nim.nim_available():
+            return llm_nim.invoke_with_tools(
+                messages=messages, tools=tools, system=system,
+                max_tokens=max_tokens, temperature=temperature,
+            )
+        logger.warning("[Tools] NEXUS_LLM_PROVIDER=nim but credentials missing — falling back")
+
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()

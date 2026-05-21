@@ -117,9 +117,14 @@ def _generate_sql(question: str, business_id: str, max_rows: int) -> str:
     )
     prompt = f"Question: {question.strip()}\n\nSQL:"
     try:
-        # sensitive=True keeps the schema + question on local Ollama
+        # SQL generation is structural — the question is the user's own
+        # words and the schema is generic table layout (not PII). Force
+        # cloud so this stays reliable when Ollama isn't running. Row
+        # data never leaves: we execute the SQL locally against the
+        # tenant-isolated DB, and only the SELECT statement was generated
+        # remotely.
         sql = llm_provider.invoke(prompt, system=system, max_tokens=400,
-                                   temperature=0.1, sensitive=True)
+                                   temperature=0.1, force_cloud=True)
     except Exception as e:
         raise RuntimeError(f"SQL generation failed: {e}")
 

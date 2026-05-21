@@ -32,6 +32,7 @@ from loguru import logger
 
 from config.db import get_conn, table_exists
 from config.llm_config import get_llm
+from config import llm_provider
 
 
 # ── Scenario parsing ─────────────────────────────────────────────────────────
@@ -42,7 +43,6 @@ def parse_scenario(query: str) -> Dict[str, Any]:
     Returns:
         {metric, change_pct, secondary_metric, secondary_change_pct, description}
     """
-    llm = get_llm()
     prompt = f"""Extract the scenario parameters from this what-if question.
 
 Question: "{query}"
@@ -55,7 +55,10 @@ SECONDARY_CHANGE_PCT: <number or 0>
 DESCRIPTION: <one sentence describing the scenario>"""
 
     try:
-        response = llm.invoke(prompt)
+        # Use unified llm_provider with force_cloud — short structured
+        # extraction is cheap on cloud and avoids a ~10s Ollama timeout
+        # when the local model isn't running.
+        response = llm_provider.invoke(prompt, max_tokens=200, temperature=0.1, force_cloud=True)
         lines = response.strip().split("\n")
         result = {
             "metric": "revenue",
@@ -135,7 +138,7 @@ def _simulate_from_invoices(
             SELECT
                 COALESCE(NULLIF(status, ''), 'draft') AS status,
                 COUNT(*)                              AS invoice_count,
-                ROUND(SUM(total), 2)                  AS revenue
+                ROUND(SUM(total)::numeric, 2)         AS revenue
             FROM nexus_invoices
             WHERE business_id = ?
             GROUP BY status
@@ -352,7 +355,6 @@ def generate_comparison(before: pd.DataFrame, after: pd.DataFrame,
 def critique_simulation(scenario: Dict[str, Any], result: Dict[str, Any]) -> str:
     """Ask LLM to critique the assumptions and flag risks."""
     try:
-        llm = get_llm()
         prompt = f"""You are a CFO reviewing a business scenario simulation. Critique the assumptions.
 
 SCENARIO: {scenario.get('description', 'Unknown')}
@@ -362,7 +364,7 @@ NET REVENUE IMPACT: ${result.get('net_impact_abs', 0):,.0f} ({result.get('net_im
 List 3 key assumptions that may be incorrect, and 2 risks to watch.
 Be concise — 2-3 sentences total."""
 
-        return llm.invoke(prompt).strip()
+        return llm_provider.invoke(prompt, max_tokens=400, temperature=0.2, force_cloud=True).strip()
     except Exception as e:
         return f"Critique unavailable: {e}"
 

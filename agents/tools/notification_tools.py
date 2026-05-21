@@ -1,9 +1,55 @@
 """Notification + email tools for the agent."""
 from __future__ import annotations
 
+import html as _htmlmod
+import re
+
 from loguru import logger
 
 from agents.tool_registry import register_tool
+
+
+def _md_to_html(text: str) -> str:
+    """Minimal markdown→HTML for agent-drafted email bodies.
+
+    The LLM often writes bodies with `**bold**`, `- list items`, and
+    blank-line paragraphs. Without conversion these go out as literal
+    `**Date:**` etc. in the recipient's mailbox, which looks like the
+    agent forgot how to type. This handles the subset the agent
+    actually emits — bold, italic, lists, headers, paragraphs, line
+    breaks — and HTML-escapes everything else so a stray `<` doesn't
+    break rendering."""
+    # Escape first so the markdown tokens we generate aren't double-escaped.
+    s = _htmlmod.escape(text or "")
+    # Headers (must run before bold since both use #/* sigils).
+    s = re.sub(r"(?m)^### (.+)$", r"<h3>\1</h3>", s)
+    s = re.sub(r"(?m)^## (.+)$",  r"<h2>\1</h2>", s)
+    s = re.sub(r"(?m)^# (.+)$",   r"<h1>\1</h1>", s)
+    # Bold / italic (lazy, single-line — covers 99% of agent output).
+    s = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", s)
+    s = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"<em>\1</em>", s)
+    # Bullet lists — group consecutive "- foo" lines into a <ul>.
+    lines, out, in_list = s.split("\n"), [], False
+    for ln in lines:
+        if re.match(r"^\s*[-*]\s+", ln):
+            if not in_list:
+                out.append("<ul>"); in_list = True
+            out.append("<li>" + re.sub(r"^\s*[-*]\s+", "", ln) + "</li>")
+        else:
+            if in_list:
+                out.append("</ul>"); in_list = False
+            out.append(ln)
+    if in_list:
+        out.append("</ul>")
+    s = "\n".join(out)
+    # Paragraphs from blank lines; remaining single newlines become <br/>.
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", s) if p.strip()]
+    s = "\n".join(
+        p if p.startswith(("<h", "<ul", "<ol", "<li", "<p"))
+          else f"<p>{p.replace(chr(10), '<br/>')}</p>"
+        for p in paragraphs
+    )
+    return s
 
 
 def _send_slack(ctx, args):
@@ -135,7 +181,11 @@ def _send_email(ctx, args):
             f"for the correct address — do not guess."
         )
 
-    result = _ep.send_email(to=to, subject=subject, body=body)
+    # Provide both plaintext and HTML versions. The HTML version is
+    # what mail clients render when they can; plaintext is the fallback.
+    # Without this, **markdown** sigils in the agent's draft go out raw.
+    result = _ep.send_email(to=to, subject=subject, body=body,
+                            html_body=_md_to_html(body))
 
     # Auto-log as a CRM interaction if we can find a matching contact
     try:

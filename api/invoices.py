@@ -41,7 +41,7 @@ def _get_conn():
         customer_name TEXT,
         customer_email TEXT,
         customer_address TEXT DEFAULT '',
-        currency TEXT DEFAULT 'USD',
+        currency TEXT DEFAULT 'INR',
         issue_date TEXT,
         due_date TEXT,
         notes TEXT DEFAULT '',
@@ -215,7 +215,7 @@ def create_invoice(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict
     issue = _validate_date(data.get("issue_date"), "issue_date") or date.today().isoformat()
     due = _validate_date(data.get("due_date"), "due_date")
 
-    currency = _validate_text(data.get("currency", "USD"), "Currency", 8) or "USD"
+    currency = _validate_text(data.get("currency", "INR"), "Currency", 8) or "INR"
 
     recurrence = (data.get("recurrence") or "none").strip().lower()
     if recurrence not in INVOICE_RECURRENCES:
@@ -442,7 +442,7 @@ def spawn_next_if_recurring(business_id: str, paid_invoice_id: str) -> Optional[
         "customer_name": src.get("customer_name", ""),
         "customer_email": src.get("customer_email", ""),
         "customer_address": src.get("customer_address", ""),
-        "currency": src.get("currency", "USD"),
+        "currency": src.get("currency", "INR"),
         "issue_date": new_issue,
         "due_date": new_due,
         "notes": src.get("notes", ""),
@@ -540,7 +540,7 @@ def render_pdf(business_id: str, invoice_id: str, business_name: str = "") -> st
     story.append(Spacer(1, 0.6 * cm))
 
     # Line items table
-    currency = inv.get("currency", "USD")
+    currency = inv.get("currency", "INR")
     header = ["Description", "Qty", f"Unit ({currency})", f"Amount ({currency})"]
     rows = [header]
     for it in inv["line_items"]:

@@ -193,6 +193,36 @@ def _update_status(action_id: str, business_id: str, status: str, **extras) -> N
         conn.close()
 
 
+def refine_action(business_id: str, user_id: str, action_id: str,
+                  args: Dict[str, Any]) -> Dict[str, Any]:
+    """Update args on a pending approval without committing it.
+
+    Lets the user edit the agent's draft (eg. tweak an email body) before
+    approving. Only pending actions can be refined — once approved or
+    rejected, args are frozen. Returns the updated row so the UI can
+    re-render with the new content."""
+    conn = _get_conn()
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            f"SELECT * FROM {APPROVALS_TABLE} WHERE id = ? AND business_id = ?",
+            (action_id, business_id),
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "Pending action not found")
+        if row["status"] != "pending":
+            raise HTTPException(409, f"Cannot refine — action already {row['status']}")
+        conn.execute(
+            f"UPDATE {APPROVALS_TABLE} SET args_json = ? WHERE id = ?",
+            (json.dumps(args or {}), action_id),
+        )
+        conn.commit()
+        logger.info(f"[Approvals] {action_id} refined by user {user_id}")
+    finally:
+        conn.close()
+    return get_action(business_id, action_id)
+
+
 def approve_action(business_id: str, user_id: str, action_id: str) -> Dict[str, Any]:
     """Approve and execute the action. Returns the updated action with result."""
     action = get_action(business_id, action_id)

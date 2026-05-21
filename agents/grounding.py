@@ -41,15 +41,48 @@ _PHONE_RE = re.compile(r"(?:\+?\d{1,3}[\s-]?)?\(?\d{2,4}\)?[\s-]?\d{3,4}[\s-]?\d
 # Title-Case words are excluded — they're usually proper nouns from the
 # domain (Pro, India, Mumbai) that don't need to live in the tool data.
 _NAME_RE = re.compile(r"\b([A-Z][a-z]{1,15})\s+([A-Z][a-z]{1,15})\b")
+# Single Title-Case word — used by find_ungrounded to walk adjacent pairs.
+_TITLE_WORD_RE = re.compile(r"\b([A-Z][a-z]{1,15})\b")
 
 # Words that look like names but are common false positives — skip them.
+# Two angles: the word lives in a section header/label/UI chrome rather
+# than naming a real person OR org, so it doesn't need to live in the
+# evidence set. Each membership check is against either of the two words
+# in the Title-Case pair, so "Next Steps" matches via "Next" or "Steps".
 _NAME_STOPWORDS: Set[str] = {
+    # Greetings + sign-offs
     "Hi", "Hello", "Hey", "Dear", "Thanks", "Thank", "Best", "Regards",
     "Sincerely", "Cheers", "Kind", "Warm",
+    # Pronouns
     "I", "You", "We", "They", "It", "He", "She",
+    # Product nouns / UI chrome
     "AI", "AI Agent", "Privacy Mode", "Business Profile", "Cloud LLM",
     "Atlas", "Vox", "Inbox", "Kira", "Sage", "Forge", "Echo", "Memory",
     "Pro", "Starter", "Free",
+    # Section / list headers the agent commonly writes in long answers
+    "Next", "Steps", "Key", "Observations", "Summary", "Overview",
+    "Recommendation", "Recommendations", "Action", "Actions",
+    "Items", "Final", "Verdict", "Notes", "Note", "Important",
+    "Highlights", "Insights", "Risks", "Assumptions", "Critique",
+    "Conclusion", "Background", "Context", "Reasoning", "Analysis",
+    "Plan", "Proposal",
+    # Table / form column labels
+    "Due", "Date", "Issue", "Total", "Amount", "Subtotal",
+    "Invoice", "Number", "Customer", "Name", "First", "Last",
+    "Company", "Phone", "Email", "Address", "Postal", "Code",
+    "Status", "Priority", "Stage", "Pipeline", "Deal", "Stage",
+    "Account", "Type", "Created", "Updated", "Modified",
+    "Description", "Quantity", "Unit", "Price", "Tax", "Discount",
+    "Currency", "Industry", "Title", "Role", "Department",
+    "Last", "Called", "Contact", "Details", "None", "The",
+    # Time markers commonly used as headers
+    "Today", "Yesterday", "Tomorrow", "Week", "Month", "Year",
+    "Q1", "Q2", "Q3", "Q4",
+    # Status values + business terms
+    "Past", "Due", "Paid", "Unpaid", "Pending", "Draft",
+    "Open", "Closed", "Won", "Lost", "Active", "Inactive",
+    "Net", "Gross", "Impact", "Revenue", "Profit", "Cost",
+    "Lead", "Leads", "Qualified", "Proposal", "Negotiation",
 }
 
 
@@ -133,6 +166,32 @@ def _phone_in_evidence(phone: str, evidence: Set[str]) -> bool:
     return any(digits in _phone_normalize(e) for e in evidence)
 
 
+def _strip_structural_markdown(answer: str) -> str:
+    """Remove markdown structural chrome so the name regex only scans the
+    answer's prose. Without this, the validator flags table column
+    headers ("Due Date", "Key Observations") and section titles
+    ("**Next Steps**") as ungrounded people-names, which scares users
+    even though the agent isn't actually claiming those are CRM records."""
+    out_lines = []
+    for ln in answer.splitlines():
+        stripped = ln.strip()
+        # Markdown table separator rows: |---|---|
+        if re.fullmatch(r"\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?", stripped):
+            continue
+        # Table rows (any line with two or more |) — column labels live here.
+        if stripped.count("|") >= 2:
+            continue
+        # Headings: # H1 / ## H2 / ### H3 + their leading marker
+        if stripped.startswith("#"):
+            continue
+        # Bold-only headers like "**Next Steps**" or "**Key Observations:**"
+        if re.fullmatch(r"\**\s*[A-Za-z][\w\s]*\**\s*:?\**", stripped) \
+                and stripped.startswith("**") and stripped.rstrip(":").endswith("**"):
+            continue
+        out_lines.append(ln)
+    return "\n".join(out_lines)
+
+
 def find_ungrounded(answer: str, evidence: Set[str]) -> List[Tuple[str, str]]:
     """Return [(kind, value), ...] for any concrete value in `answer`
     that is NOT supported by the evidence. kind ∈ {name, email, phone}."""
@@ -140,6 +199,8 @@ def find_ungrounded(answer: str, evidence: Set[str]) -> List[Tuple[str, str]]:
         return []
     suspects: List[Tuple[str, str]] = []
 
+    # Emails / phones are checked against the FULL answer — they're
+    # always factual claims, never section chrome.
     for m in _EMAIL_RE.finditer(answer):
         e = m.group(0)
         if not _email_in_evidence(e, evidence):
@@ -150,10 +211,25 @@ def find_ungrounded(answer: str, evidence: Set[str]) -> List[Tuple[str, str]]:
         if not _phone_in_evidence(p, evidence):
             suspects.append(("phone", p))
 
-    for m in _NAME_RE.finditer(answer):
-        name = f"{m.group(1)} {m.group(2)}"
-        if m.group(1) in _NAME_STOPWORDS or m.group(2) in _NAME_STOPWORDS:
+    # Names are checked AFTER stripping markdown chrome, because Title-Case
+    # pairs inside table column headers + section titles aren't factual
+    # claims about CRM records. We use a sliding-window over ALL adjacent
+    # Title-Case word pairs (rather than non-overlapping regex matches)
+    # so a stopword leading into a real name doesn't mask the name —
+    # e.g. "Contact John Doe" checks both (Contact, John) AND (John, Doe).
+    name_scan_text = _strip_structural_markdown(answer)
+    title_words = list(_TITLE_WORD_RE.finditer(name_scan_text))
+    for i in range(len(title_words) - 1):
+        w1m, w2m = title_words[i], title_words[i + 1]
+        between = name_scan_text[w1m.end():w2m.start()]
+        # Words must be separated by whitespace only (so we don't pair
+        # "Praneeth" with the next sentence's "The").
+        if between.strip() != "" or "\n" in between:
             continue
+        w1, w2 = w1m.group(1), w2m.group(1)
+        if w1 in _NAME_STOPWORDS or w2 in _NAME_STOPWORDS:
+            continue
+        name = f"{w1} {w2}"
         if not _name_in_evidence(name, evidence):
             suspects.append(("name", name))
 

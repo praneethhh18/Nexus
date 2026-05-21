@@ -28,6 +28,13 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, REPO_ROOT)
 
+# Optional provider override: `python test_chat_full.py --nim` flips to NVIDIA NIM
+# for the duration of this process. Must be set BEFORE importing agent_loop.
+if "--nim" in sys.argv:
+    os.environ["NEXUS_LLM_PROVIDER"] = "nim"
+    sys.argv.remove("--nim")
+    print(f"[harness] NEXUS_LLM_PROVIDER=nim  model={os.getenv('NEXUS_NIM_MODEL', 'default')}")
+
 RESULT_PATH = os.path.join(REPO_ROOT, "scripts", "_test_chat_full_results.log")
 PER_TEST_TIMEOUT = 60   # seconds per LLM call
 

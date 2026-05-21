@@ -332,15 +332,14 @@ def run(query: str, tone: Dict[str, Any] = None, user_id: str = "default") -> Di
         "multi_agent": use_multi_agent,
     }
 
-    graph = get_graph()
-    if graph is not None:
-        try:
-            final_state = graph.invoke(state)
-        except Exception as e:
-            logger.error(f"[Graph] LangGraph invoke failed, using fallback: {e}")
-            final_state = _run_fallback_pipeline(state)
-    else:
-        final_state = _run_fallback_pipeline(state)
+    # LangGraph's concurrent-update model conflicts with our shared state
+    # dict (multi_agent + synthesizer both write into the same keys), which
+    # surfaced as INVALID_CONCURRENT_GRAPH_UPDATE in production. The
+    # sequential fallback runs the same nodes in order and produces the
+    # same final_answer without the state-schema trap. Keeping
+    # _build_graph() around so we can re-enable once the state schema is
+    # rewritten with Annotated reducers.
+    final_state = _run_fallback_pipeline(state)
 
     duration_ms = int((time.time() - start) * 1000)
 

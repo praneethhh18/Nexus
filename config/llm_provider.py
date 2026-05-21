@@ -162,6 +162,16 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
             # Never block sensitive prompts on a bridge bug
             logger.warning(f"[Privacy Bridge] lookup error: {e}")
 
+    # NIM evaluation path — opt-in via env var. Production stays on Bedrock.
+    if os.getenv("NEXUS_LLM_PROVIDER") == "nim" and not sensitive:
+        try:
+            from config import llm_nim
+            if llm_nim.nim_available():
+                return llm_nim.invoke(prompt, system=system,
+                                     max_tokens=max_tokens, temperature=temperature)
+        except Exception as e:
+            logger.warning(f"[LLM] NIM invoke failed, falling back: {e}")
+
     use_cloud = (
         privacy.should_use_cloud(sensitive, cloud_available=(USE_CLAUDE or USE_BEDROCK))
         and cloud_budget.should_allow_cloud()
@@ -188,7 +198,10 @@ def invoke(prompt: str, system: str = "", max_tokens: int = 1024,
     # privacy guarantees stay intact.
     try:
         return _invoke_ollama(prompt)
-    except (RuntimeError, ConnectionError) as e:
+    except Exception as e:
+        # Broad catch — requests.ConnectionError isn't a subclass of the
+        # built-in ConnectionError, so the prior narrow catch let the raw
+        # HTTPConnectionPool error leak as the assistant's reply.
         if not sensitive and privacy.ALLOW_CLOUD_LLM and (USE_CLAUDE or USE_BEDROCK):
             logger.warning(f"[LLM] Ollama unreachable — falling back to cloud: {e}")
             if USE_CLAUDE:
@@ -236,9 +249,13 @@ def stream(prompt: str, system: str = "", max_tokens: int = 1024,
         yield from llm_bedrock.stream(prompt, system=system, max_tokens=max_tokens, fast=fast)
         return
     # Same Ollama-offline fallback as invoke() — see comment there.
+    # Catch broadly: requests.ConnectionError isn't a subclass of the
+    # built-in ConnectionError, so the original narrow catch missed it
+    # and the raw `[Error: HTTPConnectionPool(host='localhost', port=11434)...]`
+    # leaked into the chat as the assistant's reply.
     try:
         yield from _stream_ollama(prompt)
-    except (RuntimeError, ConnectionError) as e:
+    except Exception as e:
         if not sensitive and privacy.ALLOW_CLOUD_LLM and (USE_CLAUDE or USE_BEDROCK):
             logger.warning(f"[LLM] Ollama stream unreachable — falling back to cloud: {e}")
             if USE_CLAUDE:

@@ -49,3 +49,15 @@ def reject_action(action_id: str, body: dict = None,
     return _approvals.reject_action(
         ctx["business_id"], ctx["user"]["id"], action_id, reason=reason,
     )
+
+
+@router.post("/api/approvals/{action_id}/refine")
+def refine_action(action_id: str, body: dict,
+                  ctx: dict = Depends(get_current_context)):
+    """Edit a pending approval's args (eg. tweak the email body) before
+    approving. The action stays pending; the user still has to hit
+    Approve afterwards to actually execute."""
+    args = (body or {}).get("args") or {}
+    return _approvals.refine_action(
+        ctx["business_id"], ctx["user"]["id"], action_id, args=args,
+    )
