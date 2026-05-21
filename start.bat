@@ -81,7 +81,7 @@ if errorlevel 1 (
 
 :: ── 3. NexusAgent API (port 8000) ─────────────────────────────────────────
 echo [3/8] Starting NexusAgent API (port 8000)...
-start "NEXUS_API" powershell -NoProfile -NoExit -Command "$env:SENTRY_DSN=''; $env:NEXUS_SKIP_SAMPLE_DOCS='1'; Set-Location -LiteralPath '%NEXUS_DIR%'; .\venv\Scripts\python.exe -m uvicorn api.server:app --host 0.0.0.0 --port 8000"
+start "NEXUS_API" powershell -NoProfile -NoExit -Command "$env:SENTRY_DSN=''; $env:NEXUS_SKIP_SAMPLE_DOCS='1'; Set-Location -LiteralPath '%NEXUS_DIR%'; .\venv\Scripts\python.exe -m uvicorn api.server:app --host 0.0.0.0 --port 8000 --reload --reload-dir api --reload-dir agents --reload-dir config --reload-dir rag --reload-dir workflows"
 venv\Scripts\python.exe scripts\wait_for_url.py http://127.0.0.1:8000/api/ready 600 "NexusAgent API"
 if errorlevel 1 (
     echo.
