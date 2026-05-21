@@ -11,6 +11,53 @@ import IntervalPicker from '../components/IntervalPicker';
 import CustomAgentBuilder from '../components/CustomAgentBuilder';
 import CustomAgentGallery from '../components/CustomAgentGallery';
 
+// Per-agent profiles shown in the IDLE state of the run-result modal —
+// so a new user on an empty workspace sees concretely what the agent WILL
+// do once there's data, instead of a vague "nothing happened" feeling.
+const IDLE_PROFILES = {
+  morning_briefing: {
+    watches: 'overnight changes in tasks, deals, invoices, and triaged emails.',
+    produces: 'a one-page morning briefing delivered to your Inbox at 08:00.',
+    example: 'On a busy day: "3 invoices went overdue, Acme moved to negotiation, 2 leads need follow-up."',
+  },
+  evening_digest: {
+    watches: "what closed, sent, or advanced today across CRM, tasks, and billing.",
+    produces: "an end-of-day recap delivered to your Inbox at 18:00.",
+    example: '"₹2.1L collected today · 1 deal won (Nimbus) · 4 follow-ups completed."',
+  },
+  invoice_reminder: {
+    watches: 'invoices that are past their due date and still unpaid.',
+    produces: 'a polite reminder email draft queued for your approval (never auto-sent).',
+    example: 'Invoice INV-2026-0007 is 8 days overdue → drafts a "friendly check-in" email to the contact.',
+  },
+  stale_deal_watcher: {
+    watches: 'open deals that haven\'t moved a stage in 14+ days.',
+    produces: 'a follow-up task on the contact, tagged "stale-deal", with a suggested next action.',
+    example: 'Deal "Acme Q3 Pilot" stuck in "proposal" for 18 days → task: "Nudge Priya on the proposal."',
+  },
+  meeting_prep: {
+    watches: 'meetings on your connected calendar starting in the next 30 minutes.',
+    produces: 'a briefing on the contact: recent interactions, open deals, suggested talking points.',
+    example: 'Meeting with Priya at 3pm → brief: "Last spoke 6 days ago, 2 open deals worth ₹4.5L, blocker = pricing."',
+  },
+  email_triage: {
+    watches: 'every new email landing in your connected inbox.',
+    produces: 'a classification (lead / customer / supplier / spam) + a reply draft for the important ones.',
+    example: '"New inquiry from a Bangalore D2C brand asking about pricing" → classified as lead, reply drafted.',
+  },
+  memory_consolidate: {
+    watches: 'your conversation history with the AI and notes added across the workspace.',
+    produces: 'a refined long-term memory the AI uses for future context.',
+    example: 'After a week: distils dozens of chats into "User runs a SaaS analytics firm, key clients are X/Y/Z, prefers WhatsApp."',
+  },
+  outbound_caller: {
+    watches: 'manual queue of contacts you want Vox to call (or a workflow trigger).',
+    produces: 'a real phone call following your script + a structured summary filed on the contact.',
+    example: 'Queue a "follow up on quote" call → Vox dials, has a short conversation, logs outcome.',
+  },
+};
+
+
 // Per-agent result formatter — turns the raw `detail` from the backend into
 // a structured object the card can render clearly. Returns:
 //   { tone: 'success' | 'skip' | 'idle' | 'info',
@@ -223,12 +270,6 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setValue(persona.name); }, [persona.name]);
 
-  // Debug: log every time runResult changes — caught the case where state
-  // sets but then immediately clears.
-  useEffect(() => {
-    console.log(`[Agents] runResult changed for ${persona.agent_key}:`, runResult);
-  }, [runResult, persona.agent_key]);
-
   const save = async (newVal) => {
     if (busy) return;
     setBusy(true); setErr('');
@@ -246,16 +287,12 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
     if (running) return;
     setRunning(true); setRunResult(null); setErr('');
     try {
-      console.log(`[Agents] Run now: ${persona.agent_key}`);
       const r = await runAgent(persona.agent_key);
-      console.log(`[Agents] ${persona.agent_key} returned:`, r);
       // Stash the raw detail too — the modal renders the actual artifact
       // (briefing text, list of stale deals, etc.) so the user sees proof
       // of work instead of guessing what happened.
       const formatted = formatAgentResult(persona.agent_key, r.detail || {});
-      const next = { ...formatted, detail: r.detail || {} };
-      console.log(`[Agents] formatted result:`, next);
-      setRunResult(next);
+      setRunResult({ ...formatted, detail: r.detail || {} });
       onRanAgent?.();
     } catch (e) {
       console.error(`[Agents] ${persona.agent_key} failed:`, e);
@@ -668,16 +705,11 @@ function RunsDrawer({ persona, onClose }) {
 // deals, etc.) inline, not just a "Done." toast. For skipped agents this
 // becomes an inline setup CTA instead of a confusing dead-end.
 function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenSurface }) {
-  console.log(`[Agents] AgentResultModal MOUNTING for ${agentKey}`, { result, hasBody: !!document?.body });
   useEffect(() => {
-    console.log(`[Agents] AgentResultModal effect attached for ${agentKey}`);
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', onKey);
-    return () => {
-      console.log(`[Agents] AgentResultModal UNMOUNTING for ${agentKey}`);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose, agentKey]);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
 
   const tone = result.tone || 'success';
   const accent = tone === 'success' ? 'var(--color-ok)'
@@ -883,23 +915,64 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // "Idle" / nothing-to-do case — show a friendly empty state
+  // "Idle" / nothing-to-do case — explain what the agent WATCHES for and
+  // what it'll DO when it finds something, so new users on an empty
+  // workspace see real value rather than a hollow "nothing happened".
   if (result.tone === 'idle') {
+    const profile = IDLE_PROFILES[agentKey] || {
+      watches: 'changes in your workspace',
+      produces: 'a tagged item in the relevant queue',
+      example: '—',
+    };
     return (
       <div style={{
-        padding: '24px 18px', textAlign: 'center', borderRadius: 'var(--r-md)',
+        padding: '18px 16px', borderRadius: 'var(--r-md)',
         background: 'var(--color-surface-1)',
-        border: '1px dashed var(--color-border-strong)',
-        color: 'var(--color-text-muted)',
+        border: '1px solid var(--color-border)',
       }}>
-        <div style={{ fontSize: 28, marginBottom: 6 }}>🌱</div>
-        <div style={{ fontSize: 13 }}>
-          Nothing actionable right now — that's a good thing.
-          <br />
-          <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-            This agent runs on a schedule too — it'll surface work the moment something changes.
-          </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <div style={{ fontSize: 26 }}>🌱</div>
+          <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            Nothing to act on right now — that's healthy.
+            This agent runs on a schedule and will surface work the moment something changes.
+          </div>
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{
+            padding: 10, borderRadius: 8, background: 'var(--color-bg)',
+            border: '1px solid var(--color-border)',
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+                          textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                          marginBottom: 4 }}>What I watch for</div>
+            <div style={{ fontSize: 11.5, color: 'var(--color-text)', lineHeight: 1.45 }}>
+              {profile.watches}
+            </div>
+          </div>
+          <div style={{
+            padding: 10, borderRadius: 8, background: 'var(--color-bg)',
+            border: '1px solid var(--color-border)',
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+                          textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                          marginBottom: 4 }}>What I do</div>
+            <div style={{ fontSize: 11.5, color: 'var(--color-text)', lineHeight: 1.45 }}>
+              {profile.produces}
+            </div>
+          </div>
+        </div>
+        {profile.example && (
+          <div style={{
+            marginTop: 10, padding: '8px 10px', borderRadius: 6,
+            fontSize: 11, color: 'var(--color-text-muted)',
+            background: 'color-mix(in srgb, var(--color-accent) 6%, transparent)',
+            border: '1px dashed color-mix(in srgb, var(--color-accent) 25%, transparent)',
+            lineHeight: 1.5,
+          }}>
+            <b style={{ color: 'var(--color-text)' }}>Example: </b>
+            {profile.example}
+          </div>
+        )}
       </div>
     );
   }
