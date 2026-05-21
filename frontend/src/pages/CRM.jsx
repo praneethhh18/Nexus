@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle, Download, Share2, QrCode, ExternalLink, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listIntakeKeys, createIntakeKey, revokeIntakeKey } from '../services/tags';
+import { listTags } from '../services/tags';
 import {
   listLeadForms, createLeadForm, updateLeadForm, archiveLeadForm,
   formShareUrl, FORM_FIELD_CATALOGUE,
@@ -21,7 +22,7 @@ import { bulkDeleteContacts, bulkDeleteCompanies, bulkDeleteDeals, bulkDealStage
 import { prepareDialForContact } from '../services/voice_calls';
 import { useBulkSelection, BulkCheckbox, BulkActionBar, UndoToast } from '../components/BulkActionBar';
 import { TagChips, TagPicker } from '../components/TagChips';
-import TagFilterBar, { filterItems } from '../components/TagFilterBar';
+import { filterItems } from '../components/TagFilterBar';
 import { getCached, setCached, keyFor } from '../services/dataCache';
 import { useTerm } from '../services/industryTerms';
 import { getContactFieldsForIndustry } from '../services/industryContactFields';
@@ -680,20 +681,27 @@ function SmartFilterBar({
   industryFilter, setIndustryFilter,
   stageFilter, setStageFilter,
   smartFilters, setSmartFilters,
+  selectedTagIds, setSelectedTagIds,
 }) {
   const [open, setOpen] = useState(false);
+  const [allTags, setAllTags] = useState([]);
   const presets = SMART_PRESETS[tab] || [];
   const groups = useMemo(() => {
     const out = {};
     for (const p of presets) (out[p.group] ||= []).push(p);
     return out;
   }, [presets]);
-  // Count active filters (primary + multi)
+  // Load tags once at mount so the chip row + popover both have names ready.
+  useEffect(() => {
+    listTags().then(setAllTags).catch(() => {});
+  }, []);
+  // Count active filters (primary + multi + tags)
   const activeCount =
     (sourceFilter ? 1 : 0) +
     (industryFilter ? 1 : 0) +
     (stageFilter ? 1 : 0) +
-    smartFilters.size;
+    smartFilters.size +
+    (selectedTagIds?.length || 0);
   const togglePreset = (key) => {
     setSmartFilters((prev) => {
       const next = new Set(prev);
@@ -701,9 +709,16 @@ function SmartFilterBar({
       return next;
     });
   };
+  const toggleTag = (id) => {
+    const next = selectedTagIds?.includes(id)
+      ? selectedTagIds.filter(x => x !== id)
+      : [...(selectedTagIds || []), id];
+    setSelectedTagIds?.(next);
+  };
   const clearAll = () => {
     setSourceFilter(''); setIndustryFilter(''); setStageFilter('');
     setSmartFilters(new Set());
+    setSelectedTagIds?.([]);
   };
   // Primary chip: Source / Industry / Stage — single-value, click to clear
   const primary = tab === 'contacts' ? sourceFilter
@@ -811,6 +826,39 @@ function SmartFilterBar({
                   </div>
                 </div>
               ))}
+              {/* Tags — kept inside the popover so the list page stays
+                  uncluttered. Multi-select: matched rows must carry ALL
+                  selected tags (AND semantics, matches filterItems). */}
+              {allTags.length > 0 && (
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 6 }}>
+                    Tags
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {allTags.map(t => {
+                      const on = (selectedTagIds || []).includes(t.id);
+                      return (
+                        <button
+                          key={t.id} type="button"
+                          onClick={() => toggleTag(t.id)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 4,
+                            padding: '2px 8px', borderRadius: 'var(--r-pill)',
+                            fontSize: 10.5, fontWeight: 600, cursor: 'pointer',
+                            color: on ? 'white' : t.color,
+                            background: on ? t.color : `color-mix(in srgb, ${t.color} 10%, transparent)`,
+                            border: `1px solid color-mix(in srgb, ${t.color} 35%, transparent)`,
+                          }}
+                        >
+                          <span style={{ width: 6, height: 6, borderRadius: '50%',
+                                          background: on ? 'white' : t.color }} />
+                          {t.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
@@ -845,6 +893,24 @@ function SmartFilterBar({
             <button onClick={() => setSmartFilters(prev => {
               const next = new Set(prev); next.delete(k); return next;
             })} aria-label="Remove filter"
+                    style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+              <X size={11} />
+            </button>
+          </span>
+        );
+      })}
+      {(selectedTagIds || []).map((id) => {
+        const t = allTags.find(x => x.id === id);
+        if (!t) return null;
+        return (
+          <span key={id} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 8px', borderRadius: 12, fontSize: 11,
+            color: 'white', background: t.color,
+          }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'white' }} />
+            {t.name}
+            <button onClick={() => toggleTag(id)} aria-label="Remove tag filter"
                     style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
               <X size={11} />
             </button>
@@ -1192,20 +1258,19 @@ export default function CRM() {
         </div>
       </div>
 
-      <div style={{ padding: '4px 24px' }}>
-        <TagFilterBar selectedIds={selectedTagIds} onChange={setSelectedTagIds} />
-      </div>
-
       {/* Smart filter pills — only render the chip for the ACTIVE
           filter, plus the "Filter" trigger button. Full multi-criteria
           panel lives in SmartFilterPanel below. This replaces the
-          earlier flat-chip-row design that became unwieldy. */}
+          earlier flat-chip-row design that became unwieldy. Tag filter
+          is folded inside the popover too — no persistent "Filter by
+          tag" strip cluttering the page. */}
       <SmartFilterBar
         tab={tab}
         sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
         industryFilter={industryFilter} setIndustryFilter={setIndustryFilter}
         stageFilter={stageFilter} setStageFilter={setStageFilter}
         smartFilters={smartFilters} setSmartFilters={setSmartFilters}
+        selectedTagIds={selectedTagIds} setSelectedTagIds={setSelectedTagIds}
       />
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
