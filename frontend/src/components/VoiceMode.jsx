@@ -208,67 +208,78 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
       const recorder = new MediaRecorder(stream, { mimeType });
       recorderRef.current = recorder;
 
+      // Always-on capture model: start recording the moment listening
+      // begins. The previous design only started the recorder AFTER VAD
+      // detected sustained loud speech — which meant quiet mics, soft
+      // speakers, or laptop room noise never tripped the threshold and
+      // the recorder never ran, so "Send now" had nothing to send.
+      //
+      // VAD here is now just two things: (1) orb animation, (2) auto-stop
+      // when sustained silence is detected. The user can also manually
+      // stop via handleFlushNow.
       const chunks = [];
-      let recordingStartedAt = 0;
+      const recordingStartedAt = performance.now();
       recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
       recorder.onstop = async () => {
         const duration = performance.now() - recordingStartedAt;
         const blob = new Blob(chunks, { type: mimeType });
         chunks.length = 0;
         if (duration < MIN_CAPTURE_MS || blob.size < 500) {
-          // Too short — keep listening instead of bothering Whisper.
-          if (stateRef.current === 'listening') return;
+          // Nothing meaningful captured — likely the user clicked stop
+          // before speaking. Stay in listening so they can try again
+          // instead of erroring out.
+          setErrorMsg('No speech detected — try speaking closer to the mic.');
+          // Reset to error so they can click to retry
+          setState('error');
+          return;
         }
         await handleUtterance(blob);
       };
 
+      // Start recording IMMEDIATELY. 250ms timeslice keeps the chunks
+      // arriving while the user speaks, so .stop() returns a populated
+      // blob even on the first frame.
+      try { recorder.start(250); } catch {}
       setState('listening');
 
-      // VAD main loop with RAF
+      // VAD loop — purely informational. Tracks RMS for orb animation
+      // and triggers auto-stop after sustained silence FOLLOWING any
+      // detected speech in the buffer.
       const timeBuf = new Uint8Array(analyser.fftSize);
-      let speechStart = 0;
+      let everSpoke = false;
       let silenceStart = 0;
-      let capturing = false;
 
       const tick = () => {
         if (stateRef.current !== 'listening') {
-          // Stop the loop when we transition out of listening
           rafRef.current = null;
           return;
         }
         analyser.getByteTimeDomainData(timeBuf);
-        // RMS over the window, scaled to 0..1
         let sum = 0;
         for (let i = 0; i < timeBuf.length; i++) {
           const v = (timeBuf[i] - 128) / 128;
           sum += v * v;
         }
         const rms = Math.sqrt(sum / timeBuf.length);
-        // Exponentially smoothed for the orb animation
         setVolume((prev) => prev * 0.75 + rms * 0.25);
 
         const now = performance.now();
+        // Hard cap: stop after MAX_CAPTURE_MS regardless of silence.
+        if (now - recordingStartedAt >= MAX_CAPTURE_MS) {
+          try { recorder.stop(); } catch {}
+          rafRef.current = null;
+          return;
+        }
         if (rms >= RMS_SPEECH) {
+          everSpoke = true;
           silenceStart = 0;
-          if (!speechStart) speechStart = now;
-          if (!capturing && now - speechStart >= SPEECH_MS) {
-            capturing = true;
-            recordingStartedAt = now;
-            try { recorder.start(100); } catch {}
-          }
-          if (capturing && now - recordingStartedAt >= MAX_CAPTURE_MS) {
-            // Hard cap to protect Whisper + network
-            capturing = false; speechStart = 0;
+        } else if (everSpoke) {
+          if (!silenceStart) silenceStart = now;
+          if (now - silenceStart >= SILENCE_MS) {
+            // Sustained silence after speech — auto-send.
             try { recorder.stop(); } catch {}
-          }
-        } else {
-          speechStart = 0;
-          if (capturing) {
-            if (!silenceStart) silenceStart = now;
-            if (now - silenceStart >= SILENCE_MS) {
-              capturing = false; silenceStart = 0;
-              try { recorder.stop(); } catch {}
-            }
+            rafRef.current = null;
+            return;
           }
         }
         rafRef.current = requestAnimationFrame(tick);
@@ -297,6 +308,10 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   // click during listening + a visible "Send now" button.
   const handleFlushNow = () => {
     if (stateRef.current !== 'listening') return;
+    // Recorder is always running during 'listening' now, so stop() will
+    // fire onstop with the captured buffer regardless of whether VAD
+    // tripped. Cancel the RAF loop so it doesn't keep ticking.
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
     if (recorderRef.current && recorderRef.current.state === 'recording') {
       try { recorderRef.current.stop(); } catch {}
     }
@@ -320,8 +335,8 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
       onClick={onClose}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(15,23,42,0.55)',
-        backdropFilter: 'blur(4px)',
+        background: 'rgba(0,0,0,0.78)',
+        backdropFilter: 'blur(8px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 20,
         animation: 'fade-in var(--dur-base) var(--ease-out)',
@@ -331,11 +346,13 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
       onClick={(e) => e.stopPropagation()}
       style={{
         width: '100%', maxWidth: 460, maxHeight: '85vh',
-        background: 'var(--color-bg-elev)',
-        border: '1px solid var(--color-border)',
+        background: 'var(--color-surface-2)',
+        border: '1px solid var(--color-border-strong)',
         borderRadius: 16,
-        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        /* Opaque — no see-through to chat behind. */
+        opacity: 1,
       }}
     >
       {/* Top bar */}
