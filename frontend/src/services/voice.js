@@ -108,6 +108,16 @@ export function stripMarkdownForSpeech(text) {
   t = t.replace(/^\s{0,3}>\s?/gm, '');            // blockquotes
   t = t.replace(/^\s{0,3}[-*+]\s+/gm, '');        // bullet markers
   t = t.replace(/^\s{0,3}\d+\.\s+/gm, '');        // ordered list markers
+  // Strip emojis — Web Speech TTS reads them as their unicode description
+  // ("smiling face with open mouth emoji"). Catches the standard emoji
+  // ranges (extended-pictographic), variation selectors, ZWJ joiners,
+  // and skin-tone modifiers.
+  t = t.replace(/\p{Extended_Pictographic}/gu, '');
+  t = t.replace(/[‍️⃣]/g, '');     // ZWJ + variation selector + keycap
+  t = t.replace(/[\u{1F3FB}-\u{1F3FF}]/gu, '');   // skin tone modifiers
+  // Also strip lone-emoji bullets / arrows / dashes that the agent uses as
+  // visual list markers — they read as "right arrow" etc.
+  t = t.replace(/[→←↑↓⇒⇐➡⬅•▪▫◦●○■□★☆※]/g, '');
   t = t.replace(/\s+/g, ' ').trim();
   return t;
 }
@@ -180,17 +190,31 @@ export async function pickVoice(language = 'en') {
     // No Hindi voice installed — fall through to English so TTS still works.
   }
 
-  const localEn = voices.filter(v => v.localService && /^en[-_]/i.test(v.lang));
   const en = voices.filter(v => /^en[-_]/i.test(v.lang));
-  const pool = localEn.length ? localEn : (en.length ? en : voices);
+  const pool = en.length ? en : voices;
 
-  const preferred = ['Zira', 'Samantha', 'Karen', 'Aria', 'Jenny'];
-  for (const name of preferred) {
+  // Microsoft / Google "Natural" (neural) voices sound human; the
+  // legacy Zira / David are clearly robotic. Prefer Natural every time,
+  // even if it's a network voice — most users have internet.
+  const naturalNames = [
+    'Aria', 'Jenny', 'Sonia', 'Natasha', 'Libby',     // MS Edge Natural
+    'Ava', 'Emma', 'Brian', 'Andrew',                 // newer MS neural
+    'Studio', 'Wavenet', 'Neural2',                   // Google neural family tokens
+  ];
+  // First pass: explicitly "Natural" / "Online" voices.
+  const naturalHit = pool.find(v => /natural|online|neural/i.test(v.name));
+  if (naturalHit) return naturalHit;
+  // Second pass: known good neural names by display label.
+  for (const name of naturalNames) {
     const hit = pool.find(v => v.name.toLowerCase().includes(name.toLowerCase()));
     if (hit) return hit;
   }
-  const female = pool.find(v => /female|woman|zira|samantha|karen|aria|jenny|eva/i.test(v.name));
-  return female || pool[0];
+  // Third pass: any female-sounding voice (still less robotic than David).
+  const female = pool.find(v => /female|woman|zira|samantha|karen|eva|google.+us english/i.test(v.name));
+  if (female) return female;
+  // Last resort: prefer local voices over remote for reliability.
+  const localEn = pool.filter(v => v.localService);
+  return localEn[0] || pool[0];
 }
 
 
@@ -216,8 +240,11 @@ export async function speakText(text, { onStart, onEnd, voice } = {}) {
   const utter = new SpeechSynthesisUtterance(spoken);
   const chosen = voice || await pickVoice();
   if (chosen) utter.voice = chosen;
-  utter.rate = 1.0;
-  utter.pitch = 1.0;
+  // Slightly faster + lower pitch reduces the robotic feel on legacy
+  // voices. Natural / Online voices ignore these subtly so it's safe
+  // either way.
+  utter.rate = 1.05;
+  utter.pitch = 0.95;
   utter.volume = 1.0;
 
   return new Promise((resolve, reject) => {

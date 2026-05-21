@@ -43,6 +43,44 @@ def _record_audio(duration: int = 5, sample_rate: int = 16000) -> Optional[str]:
 
 SUPPORTED_LANGUAGES = ("en", "hi", "auto")
 
+# Module-level model cache. The Whisper model takes ~10s to load on first
+# use (downloads weights to disk first time, then loads them into memory).
+# We were creating a fresh WhisperModel on every transcribe call — every
+# voice turn paid the full cold-load cost. Caching it here drops the
+# steady-state per-call time from ~12s to ~1s.
+_model = None
+_model_lock = None
+
+
+def _get_model():
+    global _model, _model_lock
+    if _model is not None:
+        return _model
+    # Lazy threading import — keeps module import path light at server boot.
+    import threading
+    if _model_lock is None:
+        _model_lock = threading.Lock()
+    with _model_lock:
+        if _model is not None:
+            return _model
+        from faster_whisper import WhisperModel
+        logger.info("[Listener] Loading Whisper model (base/int8)…")
+        _model = WhisperModel("base", device="cpu", compute_type="int8")
+        logger.success("[Listener] Whisper model ready")
+        return _model
+
+
+def prewarm() -> bool:
+    """Load Whisper at startup so the first voice turn isn't a 10s cold-load.
+    Safe to call from a daemon thread on boot — fails quietly if the model
+    isn't installed."""
+    try:
+        _get_model()
+        return True
+    except Exception as e:
+        logger.warning(f"[Listener] Whisper prewarm skipped: {e}")
+        return False
+
 
 def _transcribe(wav_path: str, language: str = "en") -> Optional[str]:
     """
@@ -56,8 +94,7 @@ def _transcribe(wav_path: str, language: str = "en") -> Optional[str]:
     if language not in SUPPORTED_LANGUAGES:
         language = "en"
     try:
-        from faster_whisper import WhisperModel
-        model = WhisperModel("base", device="cpu", compute_type="int8")
+        model = _get_model()
         kwargs = {"beam_size": 5}
         if language != "auto":
             kwargs["language"] = language

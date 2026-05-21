@@ -110,6 +110,17 @@ def _apply_indexes_async() -> None:
 import threading as _threading_idx
 _threading_idx.Thread(target=_apply_indexes_async, name="db-indexes-bg", daemon=True).start()
 
+# Pre-warm Whisper in the background — same pattern as db-indexes. First
+# voice turn would otherwise pay a ~10s model-load tax; with this pre-warm
+# the steady-state transcribe is ~1s.
+def _prewarm_whisper_async() -> None:
+    try:
+        from voice.listener import prewarm
+        prewarm()
+    except Exception as e:
+        logger.debug(f"[Boot/bg] Whisper prewarm skipped: {e}")
+_threading_idx.Thread(target=_prewarm_whisper_async, name="whisper-prewarm-bg", daemon=True).start()
+
 # Auto-seed Gmail IMAP + workspace SMTP from env in the background. These
 # touch network-adjacent code paths (IMAP credential checks, Fernet
 # key-derivation for encrypted storage) and were adding 5-15s to every
