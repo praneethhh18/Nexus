@@ -226,25 +226,31 @@ def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
             return result, result
         # Vox doesn't have a synchronous run-now handler because outbound
         # calls need a real contact + phone number + Twilio config to
-        # work — we can't sample-fire one safely. Return a clear 400
-        # explaining the next step rather than the generic 404 ('Unknown
-        # agent') the wizard's Step 5 was showing in red.
+        # work. Return a no-op "skipped" payload (NOT an error) so the
+        # agent card shows a helpful next-step hint instead of a red
+        # "Last run failed" badge.
         if agent_key == "outbound_caller":
-            raise HTTPException(
-                400,
-                "Vox makes real outbound calls — add a contact with a phone "
-                "number and queue a call from the Voice page to try it.",
-            )
+            return ({"skipped": "manual_run_unsupported"},
+                    {"skipped": "manual_run_unsupported"})
         raise HTTPException(404, f"Unknown agent: {agent_key}")
 
     run_id = run_log.start(business_id, agent_key, trigger="manual")
     try:
         result, detail = _do_run()
-        run_log.finish(run_id, status="success",
-                       items_produced=_count_items(result or {}))
+        # Treat 'skipped' results as a soft skip in the run log so the UI
+        # can render a yellow info chip rather than a red error.
+        if isinstance(result, dict) and result.get("skipped"):
+            run_log.finish(run_id, status="skipped",
+                           error=str(result.get("skipped")))
+        else:
+            run_log.finish(run_id, status="success",
+                           items_produced=_count_items(result or {}))
         return {"ok": True, "agent_key": agent_key, "detail": detail, "run_id": run_id}
-    except HTTPException:
-        run_log.finish(run_id, status="error", error="unknown agent")
+    except HTTPException as e:
+        # Unknown-agent (404) is the only HTTPException path left, but
+        # log it accurately rather than the previous misleading
+        # "unknown agent" string for ALL HTTP errors.
+        run_log.finish(run_id, status="error", error=str(e.detail) if hasattr(e, "detail") else "http error")
         raise
     except Exception as e:
         logger.exception(f"[AgentRun] {agent_key} failed: {e}")

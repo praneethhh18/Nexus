@@ -10,6 +10,140 @@ import IntervalPicker from '../components/IntervalPicker';
 import CustomAgentBuilder from '../components/CustomAgentBuilder';
 import CustomAgentGallery from '../components/CustomAgentGallery';
 
+// Per-agent result formatter — turns the raw `detail` from the backend into
+// a structured object the card can render clearly. Returns:
+//   { tone: 'success' | 'skip' | 'idle' | 'info',
+//     summary: 'one-line human result',
+//     details: 'optional second line',
+//     hint:    'optional fix hint (e.g. connect inbox in Settings)',
+//     link:    { label, href } | null }
+//
+// The previous implementation looked for fields that didn't exist on half
+// the agents, so the user just saw "Done." with no idea what happened.
+function formatAgentResult(agentKey, d) {
+  d = d || {};
+  // Vox has a dedicated case below — let it own its skip story.
+  if (agentKey === 'outbound_caller') {
+    return {
+      tone: 'info',
+      summary: 'Vox makes real outbound calls.',
+      hint: 'Add a contact with a phone number, then queue a call from the Vox console.',
+      link: { label: 'Open Vox', href: '/agents/vox' },
+    };
+  }
+  // Common "skipped because X isn't connected" pattern — surface the
+  // reason + a hint pointing the user at where to set it up.
+  if (d.skipped) {
+    const skipMap = {
+      'no_account':    { msg: "No email account connected yet.",
+                         hint: "Connect a Gmail/Outlook inbox in Integrations to enable email triage." },
+      'not connected': { msg: "Calendar not connected yet.",
+                         hint: "Connect Google Calendar in Integrations to enable meeting prep." },
+    };
+    const k = skipMap[d.skipped];
+    return {
+      tone: 'skip',
+      summary: k ? k.msg : `Skipped: ${d.skipped}`,
+      hint: k ? k.hint : undefined,
+      link: k ? { label: 'Open Integrations', href: '/integrations' } : null,
+    };
+  }
+
+  switch (agentKey) {
+    case 'morning_briefing': {
+      const ch = (d.delivered || []).filter(Boolean);
+      return {
+        tone: 'success',
+        summary: `Briefing ready${d.narrative_mode ? ` (${d.narrative_mode})` : ''}`,
+        details: ch.length ? `Delivered: ${ch.join(', ')}` : undefined,
+        link: { label: 'Open Inbox', href: '/inbox' },
+      };
+    }
+    case 'evening_digest': {
+      const ch = (d.delivered || []).filter(Boolean);
+      return {
+        tone: 'success',
+        summary: `Evening recap ready${d.narrative_mode ? ` (${d.narrative_mode})` : ''}`,
+        details: ch.length ? `Delivered: ${ch.join(', ')}` : undefined,
+        link: { label: 'Open Inbox', href: '/inbox' },
+      };
+    }
+    case 'invoice_reminder': {
+      const cand = Number(d.candidates || 0);
+      const queued = Number(d.queued || 0);
+      if (cand === 0 && queued === 0) {
+        return { tone: 'idle', summary: 'No invoices need chasing right now.' };
+      }
+      return {
+        tone: 'success',
+        summary: `Checked ${cand} invoice${cand === 1 ? '' : 's'} · drafted ${queued} reminder${queued === 1 ? '' : 's'}`,
+        link: queued > 0 ? { label: 'Review in Inbox', href: '/inbox' } : null,
+      };
+    }
+    case 'stale_deal_watcher': {
+      const stale = Number(d.stale_deals || 0);
+      const created = Number(d.created || 0);
+      if (stale === 0) {
+        return { tone: 'idle', summary: 'No stale deals — pipeline is healthy.' };
+      }
+      return {
+        tone: 'success',
+        summary: `Found ${stale} stale deal${stale === 1 ? '' : 's'}`,
+        details: created > 0 ? `Created ${created} follow-up task${created === 1 ? '' : 's'}` : undefined,
+        link: created > 0 ? { label: 'Open Tasks', href: '/tasks' } : null,
+      };
+    }
+    case 'meeting_prep': {
+      const pushed = Number(d.pushed || 0);
+      if (pushed === 0) {
+        return { tone: 'idle', summary: 'No upcoming meetings need prep right now.' };
+      }
+      return {
+        tone: 'success',
+        summary: `Prepped ${pushed} meeting${pushed === 1 ? '' : 's'}`,
+        link: { label: 'Open Inbox', href: '/inbox' },
+      };
+    }
+    case 'email_triage': {
+      const proc = Number(d.processed || 0);
+      if (proc === 0) {
+        return { tone: 'idle', summary: 'Inbox already clean — nothing new to triage.' };
+      }
+      return {
+        tone: 'success',
+        summary: `Triaged ${proc} email${proc === 1 ? '' : 's'}`,
+        link: { label: 'Open Inbox', href: '/inbox' },
+      };
+    }
+    case 'memory_consolidate': {
+      if (d.applied === false) {
+        return {
+          tone: 'idle',
+          summary: 'Nothing to consolidate yet.',
+          details: d.reason || 'Comes alive after a few days of conversation history.',
+        };
+      }
+      return {
+        tone: 'success',
+        summary: 'Business memory updated.',
+        details: d.entries_consolidated ? `${d.entries_consolidated} entries merged` : undefined,
+        link: { label: 'View Memory', href: '/memory' },
+      };
+    }
+    case 'outbound_caller': {
+      return {
+        tone: 'info',
+        summary: 'Vox makes real outbound calls.',
+        hint: 'Add a contact with a phone number, then queue a call from the Vox console.',
+        link: { label: 'Open Vox', href: '/agents/vox' },
+      };
+    }
+    default:
+      return { tone: 'success', summary: 'Done.' };
+  }
+}
+
+
 function formatWhen(iso) {
   if (!iso) return null;
   try {
@@ -69,7 +203,8 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [running, setRunning] = useState(false);
-  const [runMsg, setRunMsg] = useState('');
+  // Structured run result: { summary, tone, details, hint, link } | null
+  const [runResult, setRunResult] = useState(null);
   const [togglingEnabled, setTogglingEnabled] = useState(false);
 
   const enabled = persona.enabled !== false;
@@ -102,27 +237,15 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
 
   const run = async () => {
     if (running) return;
-    setRunning(true); setRunMsg(''); setErr('');
+    setRunning(true); setRunResult(null); setErr('');
     try {
       const r = await runAgent(persona.agent_key);
-      const d = r.detail || {};
-      // Compose a short human-readable result line per agent
-      const parts = [];
-      if (d.queued !== undefined)           parts.push(`${d.queued} drafted`);
-      if (d.candidates !== undefined)       parts.push(`${d.candidates} invoice${d.candidates === 1 ? '' : 's'} checked`);
-      if (d.stale_deals !== undefined)      parts.push(`${d.stale_deals} stale`);
-      if (d.created !== undefined && d.created > 0) parts.push(`${d.created} follow-up task${d.created === 1 ? '' : 's'}`);
-      if (d.processed !== undefined)        parts.push(`${d.processed} email${d.processed === 1 ? '' : 's'} triaged`);
-      if (d.narrative_mode)                 parts.push(`briefing ${d.narrative_mode}`);
-      if (d.meetings !== undefined)         parts.push(`${d.meetings} meeting${d.meetings === 1 ? '' : 's'}`);
-      if (d.consolidated !== undefined)     parts.push(`memory updated`);
-      setRunMsg(parts.length ? `Done — ${parts.join(' · ')}` : 'Done.');
+      setRunResult(formatAgentResult(persona.agent_key, r.detail || {}));
       onRanAgent?.();
     } catch (e) {
       setErr(e.message || 'Run failed');
     } finally {
       setRunning(false);
-      setTimeout(() => setRunMsg(''), 6000);
     }
   };
 
@@ -265,8 +388,57 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
             onReset={() => onIntervalChanged?.(persona.agent_key, null)}
           />
         )}
-        {runMsg && <span style={{ fontSize: 11, color: 'var(--color-ok)' }}>{runMsg}</span>}
       </div>
+
+      {runResult && (
+        <div style={{
+          marginTop: -4,
+          padding: '10px 12px',
+          borderRadius: 'var(--r-md)',
+          background: runResult.tone === 'success'
+            ? 'color-mix(in srgb, var(--color-ok) 10%, transparent)'
+            : runResult.tone === 'skip'
+              ? 'color-mix(in srgb, var(--color-warn) 10%, transparent)'
+              : 'var(--color-surface-1)',
+          border: `1px solid ${runResult.tone === 'success' ? 'color-mix(in srgb, var(--color-ok) 35%, transparent)'
+            : runResult.tone === 'skip' ? 'color-mix(in srgb, var(--color-warn) 35%, transparent)'
+              : 'var(--color-border)'}`,
+          fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5,
+          display: 'flex', alignItems: 'flex-start', gap: 8,
+        }}>
+          <span style={{ flexShrink: 0, marginTop: 1 }}>
+            {runResult.tone === 'success' ? <Check size={14} color="var(--color-ok)" />
+              : runResult.tone === 'skip'  ? <AlertTriangle size={14} color="var(--color-warn)" />
+                : <Activity size={14} color="var(--color-text-dim)" />}
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600 }}>{runResult.summary}</div>
+            {runResult.details && (
+              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
+                {runResult.details}
+              </div>
+            )}
+            {runResult.hint && (
+              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2, fontStyle: 'italic' }}>
+                {runResult.hint}
+              </div>
+            )}
+          </div>
+          {runResult.link && (
+            <button type="button" className="btn-ghost btn-sm"
+                    onClick={() => onOpenSurface(runResult.link.href)}
+                    style={{ fontSize: 11, flexShrink: 0 }}>
+              {runResult.link.label} <ExternalLink size={10} />
+            </button>
+          )}
+          <button type="button" onClick={() => setRunResult(null)}
+                  aria-label="Dismiss"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer',
+                           color: 'var(--color-text-dim)', flexShrink: 0, padding: 0 }}>
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* Activity strip */}
       <div style={{
