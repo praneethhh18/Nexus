@@ -2503,11 +2503,50 @@ function IntakeKeyCard({ flash }) {
   const activeKey = justCreated || keys.find(k => !k.revoked_at);
   const sampleSnippet = activeKey ? buildSnippet(activeKey.key || activeKey.key_prefix) : '';
 
+  const sendTestLead = async (key) => {
+    setBusy(true);
+    try {
+      const r = await fetch('/api/public/leads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          intake_key: key,
+          name: 'Test Lead',
+          email: `test+${Date.now()}@nexusagent.demo`,
+          company: 'Test Co',
+          message: 'This is a test submission from the Inbound tab.',
+        }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      flash?.('Test lead sent — refresh CRM in a moment to see it in Inbound.');
+      reload();
+    } catch (e) { flash?.(`Test failed: ${e.message || e}`); }
+    finally { setBusy(false); }
+  };
+
   return (
     <div className="panel">
       <div className="section-h" style={{ margin: '0 0 10px' }}>
         <h2>Public form keys</h2>
-        <span className="meta">drop a 5-line snippet on any website</span>
+        <span className="meta">capture leads from any website into this workspace</span>
+      </div>
+
+      {/* How it works — short, scannable, removes the "what does this even do" gap */}
+      <div style={{
+        padding: '10px 12px', marginBottom: 12,
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--r-md)',
+        fontSize: 11.5, lineHeight: 1.6, color: 'var(--color-text-muted)',
+      }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
+                      textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                      marginBottom: 6 }}>
+          How this works
+        </div>
+        <div><b style={{ color: 'var(--color-text)' }}>1.</b> Generate a key below — it's a per-workspace token (we store only its hash).</div>
+        <div><b style={{ color: 'var(--color-text)' }}>2.</b> Click <b>Show embed snippet</b> and drop the 5-line HTML form on any website (your landing page, footer, partner site).</div>
+        <div><b style={{ color: 'var(--color-text)' }}>3.</b> When someone submits, it lands here as a scored lead. Use <b>Send test lead</b> on an active key to see it work right now.</div>
       </div>
 
       {/* Just-created banner */}
@@ -2569,10 +2608,22 @@ function IntakeKeyCard({ flash }) {
               {k.revoked_at ? (
                 <span style={{ fontSize: 10, color: 'var(--color-err)', fontWeight: 600 }}>REVOKED</span>
               ) : (
-                <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }}
-                  onClick={() => handleRevoke(k.id)} title="Revoke key">
-                  <Trash2 size={10} />
-                </button>
+                <>
+                  {/* "Send test lead" only works on a just-created key (we still
+                      have the raw token). For already-listed keys we can't
+                      replay because we never stored the raw form. */}
+                  {justCreated && justCreated.id === k.id && (
+                    <button className="btn-ghost btn-sm" disabled={busy}
+                      onClick={() => sendTestLead(justCreated.key)}
+                      title="POST a fake lead to /api/public/leads using this key">
+                      Send test lead
+                    </button>
+                  )}
+                  <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }}
+                    onClick={() => handleRevoke(k.id)} title="Revoke key">
+                    <Trash2 size={10} />
+                  </button>
+                </>
               )}
             </div>
           ))}
@@ -2631,6 +2682,11 @@ function IntakeKeyCard({ flash }) {
 function buildSnippet(keyOrPlaceholder) {
   const looksRaw = keyOrPlaceholder && keyOrPlaceholder.startsWith('nx_pub_') && !keyOrPlaceholder.endsWith('…');
   const keyToken = looksRaw ? keyOrPlaceholder : 'YOUR_KEY_HERE';
+  // Use the current host so the snippet is copy-paste-ready against this
+  // NexusAgent instance. The user can swap in their production domain later.
+  const host = (typeof window !== 'undefined' && window.location && window.location.origin)
+    ? window.location.origin
+    : 'https://your-nexus-host';
   return `<!-- Drop on any website to capture leads into NexusAgent. -->
 <form id="lead-form">
   <input name="name" placeholder="Your name" required />
@@ -2644,7 +2700,7 @@ document.getElementById('lead-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const data = Object.fromEntries(new FormData(e.target));
   data.intake_key = '${keyToken}';
-  const r = await fetch('https://YOUR-NEXUS-HOST/api/public/leads', {
+  const r = await fetch('${host}/api/public/leads', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
