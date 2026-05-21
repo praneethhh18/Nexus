@@ -59,10 +59,14 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   const abortRef        = useRef(null);
   const mountedRef      = useRef(true);
   const stateRef        = useRef(state);         // always-current state for closures
+  const stopSessionRef  = useRef(false);          // set true to break the conversation loop
+  const mimeTypeRef     = useRef('audio/webm;codecs=opus');
   useEffect(() => { stateRef.current = state; }, [state]);
 
   // ── Cleanup: idempotent, always safe ──────────────────────────────────────
   const cleanup = useCallback(() => {
+    // Signal the conversation loop to exit on the next iteration.
+    stopSessionRef.current = true;
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
 
@@ -121,77 +125,113 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
     if (mountedRef.current) setter(v);
   }, []);
 
-  // ── Handle one recorded utterance end-to-end ──────────────────────────────
-  // Declared BEFORE startListening so the MediaRecorder.onstop closure picks
-  // up the real function, not a `undefined` temporal-dead-zone capture.
+  // The conversation loop runs as long as the modal is open: capture →
+  // transcribe → agent → speak → capture next. Each turn creates a
+  // fresh MediaRecorder (the previous design left the recorder stopped
+  // after turn 1 and never restarted it — that's why the 2nd turn
+  // wasn't listening). The persistent resources (stream, audioCtx,
+  // analyser) stay alive across turns; only the recorder + RAF loop
+  // are per-turn.
+
+  // Capture ONE utterance from the existing audio graph.
+  // Resolves with the blob (or null if nothing meaningful was captured).
+  const captureOneTurn = useCallback(() => new Promise((resolve) => {
+    if (!streamRef.current || !analyserRef.current) { resolve(null); return; }
+    const mimeType = mimeTypeRef.current;
+    const recorder = new MediaRecorder(streamRef.current, { mimeType });
+    recorderRef.current = recorder;
+    const chunks = [];
+    const startedAt = performance.now();
+    recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    recorder.onstop = () => {
+      const duration = performance.now() - startedAt;
+      const blob = new Blob(chunks, { type: mimeType });
+      resolve((duration < MIN_CAPTURE_MS || blob.size < 500) ? null : blob);
+    };
+    try { recorder.start(250); } catch { resolve(null); return; }
+
+    // VAD loop — orb animation + silence-after-speech auto-stop.
+    const analyser = analyserRef.current;
+    const timeBuf = new Uint8Array(analyser.fftSize);
+    let everSpoke = false;
+    let silenceStart = 0;
+    const tick = () => {
+      if (!mountedRef.current || stopSessionRef.current) {
+        try { recorder.stop(); } catch {}
+        return;
+      }
+      analyser.getByteTimeDomainData(timeBuf);
+      let sum = 0;
+      for (let i = 0; i < timeBuf.length; i++) {
+        const v = (timeBuf[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / timeBuf.length);
+      setVolume((prev) => prev * 0.75 + rms * 0.25);
+      const now = performance.now();
+      if (now - startedAt >= MAX_CAPTURE_MS) {
+        try { recorder.stop(); } catch {}
+        return;
+      }
+      if (rms >= RMS_SPEECH) {
+        everSpoke = true;
+        silenceStart = 0;
+      } else if (everSpoke) {
+        if (!silenceStart) silenceStart = now;
+        if (now - silenceStart >= SILENCE_MS) {
+          try { recorder.stop(); } catch {}
+          return;
+        }
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+  }), []);
+
+  // Process one utterance end-to-end. Returns when the agent has spoken
+  // its reply, so the outer loop can immediately start a new turn.
   const handleUtterance = useCallback(async (blob) => {
     if (!mountedRef.current) return;
     setState('thinking');
-
     const abort = new AbortController();
     abortRef.current = abort;
-
     try {
-      // 1. Transcribe
       const text = await transcribeBlob(blob, abort.signal);
       if (!mountedRef.current) return;
-      if (!text) {
-        // Whisper returned nothing — go straight back to listening instead of
-        // showing a scary error. Users frequently just paused.
-        setState('listening');
-        return;
-      }
+      if (!text) return;  // Whisper returned empty — loop to listen again
       setTranscript(text);
-
-      // Hook back into parent chat so the voice turn is persisted alongside
-      // regular typed messages.
       onTranscript?.(text);
 
-      // 2. Ask the agent (always agent mode so tool use works)
       const res = await agentChat(text, convId);
       if (!mountedRef.current) return;
       if (!convId && res.conversation_id && setConvId) setConvId(res.conversation_id);
-
       const full = res?.message?.content || '';
       setAnswer(full);
-      // Surface the full turn back to the parent chat log
       onAgentReply?.(res?.message);
 
-      // 3. Speak the short version
       setState('speaking');
-      await speakText(full, {
-        onEnd: () => {
-          if (!mountedRef.current) return;
-          // Auto-loop back to listening for the next question
-          setState('listening');
-        },
-      });
+      await speakText(full);
     } catch (e) {
-      if (!mountedRef.current) return;
-      if (e.name === 'AbortError') return;  // user exited
+      if (e.name === 'AbortError') return;
       setErrorMsg(e.message || 'Voice turn failed');
       setState('error');
+      stopSessionRef.current = true;
     } finally {
       abortRef.current = null;
     }
   }, [convId, setConvId, onTranscript, onAgentReply]);
 
-  // ── Start listening (runs once per turn) ──────────────────────────────────
+  // Top-level entry: acquire mic ONCE, then loop capture → handle until
+  // the user exits or an error stops the session.
   const startListening = useCallback(async () => {
     setErrorMsg('');
+    stopSessionRef.current = false;
     try {
-      // Acquire mic with modern constraints — echo cancel + noise suppression
-      // make VAD far more reliable.
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl:  true,
-        },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       });
       streamRef.current = stream;
 
-      // Web Audio graph for volume metering
       const AC = window.AudioContext || window.webkitAudioContext;
       const ctx = new AC();
       audioCtxRef.current = ctx;
@@ -202,89 +242,18 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      // MediaRecorder — gathers the audio during detected speech
       let mimeType = 'audio/webm;codecs=opus';
       if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      recorderRef.current = recorder;
+      mimeTypeRef.current = mimeType;
 
-      // Always-on capture model: start recording the moment listening
-      // begins. The previous design only started the recorder AFTER VAD
-      // detected sustained loud speech — which meant quiet mics, soft
-      // speakers, or laptop room noise never tripped the threshold and
-      // the recorder never ran, so "Send now" had nothing to send.
-      //
-      // VAD here is now just two things: (1) orb animation, (2) auto-stop
-      // when sustained silence is detected. The user can also manually
-      // stop via handleFlushNow.
-      const chunks = [];
-      const recordingStartedAt = performance.now();
-      recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-      recorder.onstop = async () => {
-        const duration = performance.now() - recordingStartedAt;
-        const blob = new Blob(chunks, { type: mimeType });
-        chunks.length = 0;
-        if (duration < MIN_CAPTURE_MS || blob.size < 500) {
-          // Nothing meaningful captured — likely the user clicked stop
-          // before speaking. Stay in listening so they can try again
-          // instead of erroring out.
-          setErrorMsg('No speech detected — try speaking closer to the mic.');
-          // Reset to error so they can click to retry
-          setState('error');
-          return;
-        }
-        await handleUtterance(blob);
-      };
-
-      // Start recording IMMEDIATELY. 250ms timeslice keeps the chunks
-      // arriving while the user speaks, so .stop() returns a populated
-      // blob even on the first frame.
-      try { recorder.start(250); } catch {}
-      setState('listening');
-
-      // VAD loop — purely informational. Tracks RMS for orb animation
-      // and triggers auto-stop after sustained silence FOLLOWING any
-      // detected speech in the buffer.
-      const timeBuf = new Uint8Array(analyser.fftSize);
-      let everSpoke = false;
-      let silenceStart = 0;
-
-      const tick = () => {
-        if (stateRef.current !== 'listening') {
-          rafRef.current = null;
-          return;
-        }
-        analyser.getByteTimeDomainData(timeBuf);
-        let sum = 0;
-        for (let i = 0; i < timeBuf.length; i++) {
-          const v = (timeBuf[i] - 128) / 128;
-          sum += v * v;
-        }
-        const rms = Math.sqrt(sum / timeBuf.length);
-        setVolume((prev) => prev * 0.75 + rms * 0.25);
-
-        const now = performance.now();
-        // Hard cap: stop after MAX_CAPTURE_MS regardless of silence.
-        if (now - recordingStartedAt >= MAX_CAPTURE_MS) {
-          try { recorder.stop(); } catch {}
-          rafRef.current = null;
-          return;
-        }
-        if (rms >= RMS_SPEECH) {
-          everSpoke = true;
-          silenceStart = 0;
-        } else if (everSpoke) {
-          if (!silenceStart) silenceStart = now;
-          if (now - silenceStart >= SILENCE_MS) {
-            // Sustained silence after speech — auto-send.
-            try { recorder.stop(); } catch {}
-            rafRef.current = null;
-            return;
-          }
-        }
-        rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
+      // ── Conversation loop ─────────────────────────────────────────────
+      while (mountedRef.current && !stopSessionRef.current) {
+        setState('listening');
+        const blob = await captureOneTurn();
+        if (!mountedRef.current || stopSessionRef.current) break;
+        if (!blob) continue;        // nothing meaningful captured, loop
+        await handleUtterance(blob); // transcribe → agent → speak
+      }
     } catch (e) {
       if (e.name === 'NotAllowedError') {
         safeSet(setErrorMsg)('Microphone access was blocked. Enable it for this site in your browser settings and try again.');
@@ -295,27 +264,10 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
       }
       safeSet(setState)('error');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [safeSet]);
+  }, [safeSet, captureOneTurn, handleUtterance]);
 
   // Kick off listening when the user confirms they want voice mode
   const handleStart = () => { if (state === 'idle' || state === 'error') startListening(); };
-
-  // Manual flush — forces the recorder to stop NOW and send what it has.
-  // Necessary escape hatch when VAD's silence detection is finicky
-  // (background noise, soft speaker, room echo) and the user is sitting
-  // there waiting for "Thinking..." that never comes. Tied to the orb
-  // click during listening + a visible "Send now" button.
-  const handleFlushNow = () => {
-    if (stateRef.current !== 'listening') return;
-    // Recorder is always running during 'listening' now, so stop() will
-    // fire onstop with the captured buffer regardless of whether VAD
-    // tripped. Cancel the RAF loop so it doesn't keep ticking.
-    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
-    if (recorderRef.current && recorderRef.current.state === 'recording') {
-      try { recorderRef.current.stop(); } catch {}
-    }
-  };
 
   if (!open) return null;
 
@@ -392,8 +344,8 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
           }} />
           {/* Main orb */}
           <div
-            onClick={state === 'listening' ? handleFlushNow : handleStart}
-            title={state === 'listening' ? 'Click to send now' : ''}
+            onClick={state === 'idle' || state === 'error' ? handleStart : undefined}
+            title={state === 'listening' ? 'Listening… pause when you finish' : ''}
             style={{
               position: 'absolute', inset: 0, borderRadius: '50%',
               background: 'radial-gradient(circle at 30% 30%, color-mix(in srgb, var(--color-accent) 65%, white), var(--color-accent) 55%, color-mix(in srgb, var(--color-accent) 55%, black))',
@@ -401,7 +353,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
               transition: 'transform 90ms cubic-bezier(0.3, 0.8, 0.4, 1), opacity 200ms',
               opacity: orbOpacity,
               boxShadow: `0 0 80px color-mix(in srgb, var(--color-accent) ${Math.round(orbOpacity * 45)}%, transparent)`,
-              cursor: (state === 'idle' || state === 'error' || state === 'listening') ? 'pointer' : 'default',
+              cursor: (state === 'idle' || state === 'error') ? 'pointer' : 'default',
               animation: state === 'speaking' ? 'voice-orb-breathe 1.4s ease-in-out infinite' : 'none',
             }}
           />
@@ -476,20 +428,15 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       }}>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)', flex: 1 }}>
-          {state === 'idle' && 'Click the orb to begin. Pause when done — I\'ll answer.'}
-          {state === 'listening' && 'Speak naturally. Click orb or "Send now" if I don\'t pick up the pause.'}
+          {state === 'idle' && 'Click the orb to begin.'}
+          {state === 'listening' && 'Speak naturally — I\'ll reply when you pause.'}
           {state === 'speaking'  && 'Press Exit or Esc to interrupt.'}
           {state === 'thinking'  && 'Working on it…'}
-          {state === 'error'     && 'Click to try again.'}
+          {state === 'error'     && 'Click the orb to try again.'}
         </div>
         {(state === 'idle' || state === 'error') && (
           <button className="btn-primary" onClick={handleStart}>
             <Mic size={12} /> Start
-          </button>
-        )}
-        {state === 'listening' && (
-          <button className="btn-primary" onClick={handleFlushNow}>
-            <Volume2 size={12} /> Send now
           </button>
         )}
       </div>
