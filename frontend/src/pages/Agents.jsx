@@ -714,12 +714,38 @@ function CustomAgentCard({ agent, onRan, onEdit }) {
     setRunning(true); setResult(null); setErr('');
     try {
       const r = await runCustomAgent(ca.id);
-      // Backend returns: { ok, agent_id, answer, tool_calls, run_id }
+      // Backend returns: { ok, reason?, agent_id, answer, tool_calls, run_id, budget? }
       if (r.ok === false && r.reason === 'disabled') {
         setResult({
           tone: 'skip',
           summary: 'Agent is paused.',
           hint: 'Enable the agent from its Edit panel before running.',
+          detail: r,
+        });
+      } else if (r.ok === false && r.reason === 'local_fallback_refused') {
+        // Cloud token cap hit; local Ollama fallback can't reliably do tool
+        // calling and refused. The answer text is usually a stock "I'm a
+        // text-based AI…" line — show that with the real cause.
+        const used = r.budget?.tokens_used;
+        const cap  = r.budget?.tokens_cap;
+        setResult({
+          tone: 'skip',
+          summary: 'Cloud budget exhausted — fell back to local model.',
+          details: `Today's cloud usage: ${used ? used.toLocaleString() : '?'} / ${cap ? cap.toLocaleString() : '?'} tokens. ` +
+                   `The local fallback model couldn't drive tools so the agent answered as a chatbot instead of doing its job.`,
+          hint: 'Raise the cap with the CLOUD_TOKEN_DAILY_CAP env var (set it to 0 to disable) and restart the backend. The cloud Mistral 14B handles tool-calling correctly.',
+          customAnswer: r.answer || '',
+          customTools: r.tool_calls || [],
+          detail: r,
+        });
+      } else if (r.ok === false && r.reason === 'no_tools_called') {
+        setResult({
+          tone: 'skip',
+          summary: "Agent didn't call any tools.",
+          details: 'The agent had tools available but chose not to use them. Often this means the goal prompt is too vague or the model misunderstood it.',
+          hint: "Click Edit and tighten the goal — e.g. 'Use search_knowledge with category=competitor to find pricing changes' rather than 'check competitor pricing'.",
+          customAnswer: r.answer || '',
+          customTools: r.tool_calls || [],
           detail: r,
         });
       } else if (r.ok === false) {
@@ -731,11 +757,13 @@ function CustomAgentCard({ agent, onRan, onEdit }) {
         });
       } else {
         const tools = (r.tool_calls || []).map(t => t.name || t.tool || '');
+        const fellBack = r.budget?.fell_back_to_local;
         setResult({
           tone: 'success',
           summary: `${ca.name} just ran`,
-          details: tools.length ? `Called ${tools.length} tool${tools.length === 1 ? '' : 's'}: ${tools.join(', ')}`
-                                : 'No tools needed — answered from context.',
+          details: (tools.length ? `Called ${tools.length} tool${tools.length === 1 ? '' : 's'}: ${tools.join(', ')}`
+                                 : 'No tools needed — answered from context.')
+                   + (fellBack ? ' (ran on local model — cloud budget hit)' : ''),
           link: ca.output_target === 'inbox' ? { label: 'Open Inbox', href: '/inbox' } : null,
           customAnswer: r.answer || '',
           customTools: r.tool_calls || [],

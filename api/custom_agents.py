@@ -340,6 +340,16 @@ def run_agent_now(agent_id: str, trigger: str = "manual",
     if not agent["enabled"]:
         return {"ok": False, "reason": "disabled"}
 
+    # Capture pre-run budget snapshot so we can tell the UI whether this
+    # run hit cloud or fell back to local Ollama. That distinction matters:
+    # when cloud budget is exhausted, a small local model gets the request
+    # and frequently refuses to use tools at all, producing junk answers
+    # like "I'm a text-based AI, I can't run". The UI needs to surface
+    # that as a real problem, not a vague success.
+    from config import cloud_budget
+    pre_cloud_ok = cloud_budget.should_allow_cloud(business_id)
+    pre_usage    = cloud_budget.get_today_usage(business_id)
+
     run_key = f"custom:{agent_id}"
     rid = run_log.start(business_id, run_key, trigger=trigger)
     try:
@@ -357,15 +367,64 @@ def run_agent_now(agent_id: str, trigger: str = "manual",
             system_override=system,
         )
         answer = (result or {}).get("answer", "") or ""
+        tool_calls = (result or {}).get("tool_calls") or []
+        post_usage = cloud_budget.get_today_usage(business_id)
+
+        # Heuristic: if the LLM didn't call any tools AND the answer looks
+        # like the classic "I'm just an AI assistant" refusal, the run is
+        # effectively a no-op even if it didn't crash. Surface that as a
+        # soft failure so the user knows to raise the budget / upgrade the
+        # local model.
+        refusal_patterns = (
+            "i'm a large language model",
+            "i'm a text-based ai",
+            "i don't have the ability",
+            "i cannot actually",
+            "i am unable to physically",
+            "i can't physically",
+        )
+        looks_refused = (
+            len(tool_calls) == 0
+            and any(p in (answer or "").lower() for p in refusal_patterns)
+        )
+        had_tools = bool(agent.get("tool_whitelist"))
+        fell_back_to_local = (not pre_cloud_ok) or pre_usage.get("over_budget")
+
         _post_output(business_id, agent, answer)
+
+        if looks_refused or (had_tools and len(tool_calls) == 0 and fell_back_to_local):
+            run_log.finish(rid, status="skipped",
+                           error="local_fallback_refused" if fell_back_to_local
+                                 else "no_tools_called")
+            return {
+                "ok": False,
+                "reason": "local_fallback_refused" if fell_back_to_local else "no_tools_called",
+                "agent_id": agent_id,
+                "answer": answer,
+                "tool_calls": tool_calls,
+                "run_id": rid,
+                "budget": {
+                    "tokens_used":   post_usage.get("tokens_total"),
+                    "tokens_cap":    cloud_budget.get_daily_cap(business_id),
+                    "over_budget":   post_usage.get("over_budget"),
+                    "fell_back_to_local": fell_back_to_local,
+                },
+            }
+
         run_log.finish(rid, status="success",
-                       items_produced=len((result or {}).get("tool_calls") or []))
+                       items_produced=len(tool_calls))
         return {
-            "ok": True,
-            "agent_id": agent_id,
-            "answer": answer,
-            "tool_calls": (result or {}).get("tool_calls") or [],
-            "run_id": rid,
+            "ok":          True,
+            "agent_id":    agent_id,
+            "answer":      answer,
+            "tool_calls":  tool_calls,
+            "run_id":      rid,
+            "budget": {
+                "tokens_used":   post_usage.get("tokens_total"),
+                "tokens_cap":    cloud_budget.get_daily_cap(business_id),
+                "over_budget":   post_usage.get("over_budget"),
+                "fell_back_to_local": fell_back_to_local,
+            },
         }
     except Exception as e:
         logger.exception(f"[CustomAgents] run {agent_id} failed")
