@@ -275,7 +275,11 @@ export default function Workflows() {
       const saved = await saveWorkflow(payload);
       await toggleWorkflow(saved.id, true);
       flash(`"${tmpl.name}" enabled — it will run on its schedule.`);
-      refresh();
+      // Auto-switch to My Workflows so the user SEES the new row appear,
+      // instead of staying on the templates tab and wondering whether
+      // anything actually happened.
+      await refresh();
+      setView('my');
     } catch (e) {
       flash(`Failed: ${e.message}`);
     } finally {
