@@ -73,6 +73,13 @@ export function TagPicker({ entityType, entityId, onChange }) {
 
   useEffect(() => {
     const click = (e) => {
+      // Don't close if the click was on a target that's been removed
+      // from the DOM by the time mousedown fires (happens for elements
+      // that toggle themselves out of existence — eg. a tag row the
+      // user just clicked to remove). Without this guard, removing a
+      // tag chip from within the picker also closed the picker,
+      // which felt buggy.
+      if (!e.target || !document.body.contains(e.target)) return;
       if (ref.current && !ref.current.contains(e.target)) setOpen(false);
     };
     if (open) {

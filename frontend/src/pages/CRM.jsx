@@ -77,9 +77,19 @@ function ContactQuickActions({ contact, flash, size = 11 }) {
 
 // ── Reusable modal ──────────────────────────────────────────────────────────
 function Modal({ title, onClose, children, wide = false }) {
+  // ESC to close; backdrop click does NOT close. An accidental click
+  // outside (especially common when a child popover like TagPicker
+  // overflows the modal bounds) used to wipe the user's half-written
+  // edit — TagPicker dropdowns in particular surfaced this as "the
+  // page got cracked" because the modal vanished mid-interaction.
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={(e) => e.stopPropagation()} style={{
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
         background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)', borderRadius: 12,
         padding: 20, width: wide ? 560 : 420, maxHeight: '90vh', overflow: 'auto',
         boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
@@ -520,6 +530,248 @@ function applyCrmSort(rows, key) {
 }
 
 
+// ── Smart filter presets ──────────────────────────────────────────────
+// Each preset has a key, label, group (for sectioning in the panel),
+// and a predicate (row) => bool. Predicates are pure so they can be
+// applied during render without re-fetching.
+const _now = () => Date.now();
+const _daysSince = (iso) => {
+  if (!iso) return Infinity;
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return Infinity;
+  return (_now() - t) / 86400_000;
+};
+const SMART_PRESETS = {
+  contacts: [
+    { key: 'no_email',        label: 'Missing email',          group: 'Data quality',
+      pred: (r) => !(r.email || '').trim() },
+    { key: 'no_phone',        label: 'Missing phone',          group: 'Data quality',
+      pred: (r) => !(r.phone || '').trim() },
+    { key: 'no_company',      label: 'No company linked',      group: 'Data quality',
+      pred: (r) => !r.company_id && !r.company_name },
+    { key: 'stale_30d',       label: 'Stale (>30d no contact)', group: 'Activity',
+      pred: (r) => _daysSince(r.last_contacted_at || r.last_interaction_at) > 30 },
+    { key: 'never_contacted', label: 'Never contacted',        group: 'Activity',
+      pred: (r) => !(r.last_contacted_at || r.last_interaction_at) },
+    { key: 'has_open_deals',  label: 'Has open deals',         group: 'Activity',
+      pred: (r) => Number(r.open_deals_count || 0) > 0 },
+  ],
+  companies: [
+    { key: 'no_industry',    label: 'Missing industry',         group: 'Data quality',
+      pred: (r) => !(r.industry || '').trim() },
+    { key: 'no_website',     label: 'Missing website',          group: 'Data quality',
+      pred: (r) => !(r.website || '').trim() },
+    { key: 'no_size',        label: 'Missing team size',        group: 'Data quality',
+      pred: (r) => !(r.size || '').trim() },
+    { key: 'has_open_deals', label: 'Has open deals',           group: 'Activity',
+      pred: (r) => Number(r.open_deals_count || 0) > 0 },
+    { key: 'no_deals',       label: 'No deals attached',        group: 'Activity',
+      pred: (r) => Number(r.deals_count || r.open_deals_count || 0) === 0 },
+    { key: 'no_contacts',    label: 'No contacts linked',       group: 'Activity',
+      pred: (r) => Number(r.contacts_count || 0) === 0 },
+  ],
+  deals: [
+    { key: 'stale_14d',          label: 'Stale (>14d no update)', group: 'Activity',
+      pred: (r) => _daysSince(r.updated_at) > 14 },
+    { key: 'closing_this_month', label: 'Closing this month',     group: 'Activity',
+      pred: (r) => {
+        if (!r.close_date && !r.expected_close_date) return false;
+        const d = new Date(r.close_date || r.expected_close_date);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      } },
+    { key: 'high_value',         label: 'High value (>₹1L)',       group: 'Value',
+      pred: (r) => Number(r.value || 0) >= 100_000 },
+    { key: 'low_value',          label: 'Small (<₹50k)',           group: 'Value',
+      pred: (r) => Number(r.value || 0) > 0 && Number(r.value || 0) < 50_000 },
+    { key: 'open',               label: 'Open (not won/lost)',     group: 'Stage',
+      pred: (r) => !['won', 'lost'].includes(r.stage) },
+    { key: 'no_contact',         label: 'No contact attached',     group: 'Data quality',
+      pred: (r) => !r.contact_id && !r.contact_name },
+  ],
+};
+
+function SmartFilterBar({
+  tab, sourceFilter, setSourceFilter,
+  industryFilter, setIndustryFilter,
+  stageFilter, setStageFilter,
+  smartFilters, setSmartFilters,
+}) {
+  const [open, setOpen] = useState(false);
+  const presets = SMART_PRESETS[tab] || [];
+  const groups = useMemo(() => {
+    const out = {};
+    for (const p of presets) (out[p.group] ||= []).push(p);
+    return out;
+  }, [presets]);
+  // Count active filters (primary + multi)
+  const activeCount =
+    (sourceFilter ? 1 : 0) +
+    (industryFilter ? 1 : 0) +
+    (stageFilter ? 1 : 0) +
+    smartFilters.size;
+  const togglePreset = (key) => {
+    setSmartFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearAll = () => {
+    setSourceFilter(''); setIndustryFilter(''); setStageFilter('');
+    setSmartFilters(new Set());
+  };
+  // Primary chip: Source / Industry / Stage — single-value, click to clear
+  const primary = tab === 'contacts' ? sourceFilter
+    : tab === 'companies' ? industryFilter
+    : tab === 'deals'     ? stageFilter
+    : '';
+  const primaryLabel = tab === 'contacts' ? 'Source'
+    : tab === 'companies' ? 'Industry'
+    : tab === 'deals'     ? 'Stage'
+    : '';
+  const clearPrimary = () => {
+    if (tab === 'contacts')  setSourceFilter('');
+    if (tab === 'companies') setIndustryFilter('');
+    if (tab === 'deals')     setStageFilter('');
+  };
+  return (
+    <div style={{ padding: '0 24px 8px', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center', position: 'relative' }}>
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          className={open || activeCount > 0 ? 'btn-primary' : 'btn-ghost'}
+          style={{ fontSize: 11, padding: '4px 10px', display: 'inline-flex', gap: 5, alignItems: 'center' }}
+        >
+          <Activity size={11} /> Filter
+          {activeCount > 0 && (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+              background: 'rgba(255,255,255,0.25)', color: 'inherit',
+            }}>{activeCount}</span>
+          )}
+        </button>
+        {open && (
+          <>
+            <div onClick={() => setOpen(false)}
+                 style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'transparent' }} />
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+              width: 340, maxHeight: 'min(520px, 70vh)', overflow: 'auto',
+              background: 'var(--color-bg-elev)',
+              border: '1px solid var(--color-border-strong)',
+              borderRadius: 12, zIndex: 51,
+              boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
+              padding: 12,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text)' }}>Filters</span>
+                {activeCount > 0 && (
+                  <button onClick={clearAll}
+                          style={{ fontSize: 10.5, color: 'var(--color-text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                    Clear all
+                  </button>
+                )}
+              </div>
+              {/* Primary (single-value) section */}
+              {primaryLabel && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 6 }}>
+                    {primaryLabel}
+                  </div>
+                  <select
+                    value={primary}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (tab === 'contacts')  setSourceFilter(v);
+                      if (tab === 'companies') setIndustryFilter(v);
+                      if (tab === 'deals')     setStageFilter(v);
+                    }}
+                    className="field-input"
+                    style={{ width: '100%', fontSize: 12 }}
+                  >
+                    <option value="">— any —</option>
+                    {tab === 'contacts' && ['manual', 'website', 'referral', 'outbound', 'event', 'linkedin', 'email_paste', 'import']
+                      .map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
+                    {tab === 'companies' && INDUSTRY_OPTIONS
+                      .map(v => <option key={v} value={v}>{v}</option>)}
+                    {tab === 'deals' && ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost']
+                      .map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+              )}
+              {/* Smart preset checkbox sections, grouped */}
+              {Object.entries(groups).map(([group, items]) => (
+                <div key={group} style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 6 }}>
+                    {group}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {items.map(p => {
+                      const checked = smartFilters.has(p.key);
+                      return (
+                        <label key={p.key} style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px',
+                          borderRadius: 6, cursor: 'pointer', fontSize: 12,
+                          background: checked ? 'var(--color-accent-soft)' : 'transparent',
+                          color: 'var(--color-text)',
+                        }}
+                        onMouseEnter={(e) => { if (!checked) e.currentTarget.style.background = 'var(--color-surface-1)'; }}
+                        onMouseLeave={(e) => { if (!checked) e.currentTarget.style.background = 'transparent'; }}>
+                          <input type="checkbox" checked={checked} onChange={() => togglePreset(p.key)}
+                                 style={{ cursor: 'pointer' }} />
+                          <span>{p.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Active filter chips — small dismissable pills for what's
+          currently filtering, mirroring Zoho/Linear-style. Lets the
+          user clear individual filters without reopening the panel. */}
+      {primary && (
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '3px 8px', borderRadius: 12, fontSize: 11,
+          background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+        }}>
+          {primaryLabel}: {String(primary).replace('_', ' ').replace(/ \/.+$/, '')}
+          <button onClick={clearPrimary} aria-label="Clear filter"
+                  style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+            <X size={11} />
+          </button>
+        </span>
+      )}
+      {[...smartFilters].map((k) => {
+        const p = presets.find(x => x.key === k);
+        if (!p) return null;
+        return (
+          <span key={k} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '3px 8px', borderRadius: 12, fontSize: 11,
+            background: 'var(--color-accent-soft)', color: 'var(--color-accent)',
+          }}>
+            {p.label}
+            <button onClick={() => setSmartFilters(prev => {
+              const next = new Set(prev); next.delete(k); return next;
+            })} aria-label="Remove filter"
+                    style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', padding: 0, display: 'flex' }}>
+              <X size={11} />
+            </button>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+
 export default function CRM() {
   const navigate = useNavigate();
   // Industry-aware vocabulary — same product, the user sees "Patients"
@@ -544,10 +796,16 @@ export default function CRM() {
   });
   useEffect(() => { sessionStorage.setItem('nexus_crm_sort', sortKey); }, [sortKey]);
 
-  // Smart-filter state — per tab. Reset on tab switch in switchTab().
+  // Primary single-value filters (Source / Industry / Stage) per tab.
+  // Reset on tab switch in switchTab().
   const [sourceFilter, setSourceFilter] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
   const [stageFilter, setStageFilter] = useState('');
+  // Multi-criteria smart filter set — held as a flat Set of pre-defined
+  // preset keys. Each key maps to a row-level predicate in SMART_PRESETS
+  // (defined at module scope). Example keys: "contacts:no_email",
+  // "deals:closing_this_month".
+  const [smartFilters, setSmartFilters] = useState(() => new Set());
   // Bake tab-switch sort reset into the click handler instead of a
   // separate effect — react-compiler can't memoize an effect that
   // setState's based on a piece of state it doesn't depend on.
@@ -560,6 +818,7 @@ export default function CRM() {
     setSourceFilter('');
     setIndustryFilter('');
     setStageFilter('');
+    setSmartFilters(new Set());
   }, []);
 
   // ── Export current visible tab as CSV ───────────────────────────────
@@ -653,21 +912,33 @@ export default function CRM() {
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [searchStr]);
 
-  // Filtered + sorted views. Smart-filter (source/industry/stage)
-  // applied AFTER tag filter, BEFORE sort.
+  // Compose primary single-value filter + smart preset checkbox
+  // predicates. All predicates AND together (every active filter must
+  // be true for a row to survive).
+  const smartPredicate = (tabKey) => {
+    const presets = SMART_PRESETS[tabKey] || [];
+    const active = presets.filter(p => smartFilters.has(p.key));
+    if (active.length === 0) return () => true;
+    return (r) => active.every(p => {
+      try { return p.pred(r); } catch { return false; }
+    });
+  };
   const visibleContacts  = applyCrmSort(
     filterItems(contacts, tagsByContact, selectedTagIds)
-      .filter(r => !sourceFilter || (r.source || 'manual') === sourceFilter),
+      .filter(r => !sourceFilter || (r.source || 'manual') === sourceFilter)
+      .filter(smartPredicate('contacts')),
     sortKey,
   );
   const visibleCompanies = applyCrmSort(
     filterItems(companies, tagsByCompany, selectedTagIds)
-      .filter(r => !industryFilter || (r.industry || '').toLowerCase().includes(industryFilter.toLowerCase().split(' /')[0])),
+      .filter(r => !industryFilter || (r.industry || '').toLowerCase().includes(industryFilter.toLowerCase().split(' /')[0]))
+      .filter(smartPredicate('companies')),
     sortKey,
   );
   const visibleDeals     = applyCrmSort(
     filterItems(deals, tagsByDeal, selectedTagIds)
-      .filter(r => !stageFilter || r.stage === stageFilter),
+      .filter(r => !stageFilter || r.stage === stageFilter)
+      .filter(smartPredicate('deals')),
     sortKey,
   );
 
@@ -841,50 +1112,17 @@ export default function CRM() {
         <TagFilterBar selectedIds={selectedTagIds} onChange={setSelectedTagIds} />
       </div>
 
-      {/* Smart filter chips — context-aware per tab. Chips toggle a
-          per-tab filter state; cleared by clicking "All" or selecting
-          a different value. Wired into the visibleX memos below. */}
-      <div style={{ padding: '0 24px 8px', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-        {tab === 'contacts' && (
-          <>
-            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginRight: 4 }}>Source:</span>
-            {['', 'manual', 'website', 'referral', 'outbound', 'event', 'linkedin', 'email_paste', 'import'].map(v => (
-              <button key={v || 'all'}
-                      onClick={() => setSourceFilter(v)}
-                      className={sourceFilter === v ? 'btn-primary' : 'btn-ghost'}
-                      style={{ fontSize: 10.5, padding: '3px 9px' }}>
-                {v === '' ? 'All' : v.replace('_', ' ')}
-              </button>
-            ))}
-          </>
-        )}
-        {tab === 'companies' && (
-          <>
-            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginRight: 4 }}>Industry:</span>
-            {['', ...INDUSTRY_OPTIONS.slice(0, 8)].map(v => (
-              <button key={v || 'all'}
-                      onClick={() => setIndustryFilter(v)}
-                      className={industryFilter === v ? 'btn-primary' : 'btn-ghost'}
-                      style={{ fontSize: 10.5, padding: '3px 9px' }}>
-                {v === '' ? 'All' : v.replace(/ \/.+$/, '')}
-              </button>
-            ))}
-          </>
-        )}
-        {tab === 'deals' && (
-          <>
-            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginRight: 4 }}>Stage:</span>
-            {['', 'lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'].map(v => (
-              <button key={v || 'all'}
-                      onClick={() => setStageFilter(v)}
-                      className={stageFilter === v ? 'btn-primary' : 'btn-ghost'}
-                      style={{ fontSize: 10.5, padding: '3px 9px' }}>
-                {v === '' ? 'All' : v}
-              </button>
-            ))}
-          </>
-        )}
-      </div>
+      {/* Smart filter pills — only render the chip for the ACTIVE
+          filter, plus the "Filter" trigger button. Full multi-criteria
+          panel lives in SmartFilterPanel below. This replaces the
+          earlier flat-chip-row design that became unwieldy. */}
+      <SmartFilterBar
+        tab={tab}
+        sourceFilter={sourceFilter} setSourceFilter={setSourceFilter}
+        industryFilter={industryFilter} setIndustryFilter={setIndustryFilter}
+        stageFilter={stageFilter} setStageFilter={setStageFilter}
+        smartFilters={smartFilters} setSmartFilters={setSmartFilters}
+      />
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
         {tab === 'leads' && (
