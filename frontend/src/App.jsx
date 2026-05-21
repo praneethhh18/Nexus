@@ -47,6 +47,7 @@ const WhatIf        = lazy(() => import('./pages/WhatIf'));
 const EmailTemplates = lazy(() => import('./pages/EmailTemplates'));
 const PrivacyMode   = lazy(() => import('./pages/PrivacyMode'));
 const NotFound      = lazy(() => import('./pages/NotFound'));
+const PublicLeadForm = lazy(() => import('./pages/PublicLeadForm'));
 
 
 function ProtectedRoute({ children }) {
@@ -96,6 +97,8 @@ export default function App() {
           <Route path="/reset-password" element={L(ResetPassword)} />
           <Route path="/accept-invite"  element={L(AcceptInvite)} />
           <Route path="/verify-email"   element={L(VerifyEmail)} />
+          {/* Public hosted lead form — no auth, no app chrome. */}
+          <Route path="/f/:slug"        element={L(PublicLeadForm)} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/"              element={L(Dashboard)} />
             <Route path="/chat"          element={L(Chat)} />

@@ -97,11 +97,20 @@ class PublicLeadIn(BaseModel):
     """Public form payload. Only declared fields are accepted; anything else
     is silently dropped to keep the surface small + predictable."""
     intake_key: Optional[str] = Field(None, description="Workspace key (or use X-Intake-Key header)")
+    form_slug: Optional[str] = Field(None, max_length=80,
+        description="Hosted-form slug — alternative to intake_key when posting from /f/<slug>")
+    via: Optional[str] = Field(None, max_length=40,
+        description="Channel tag (whatsapp, instagram, qr…) for attribution")
     name: str = Field(..., min_length=1, max_length=200)
     email: Optional[str] = Field(None, max_length=200)
     phone: Optional[str] = Field(None, max_length=40)
     company: Optional[str] = Field(None, max_length=200)
+    title: Optional[str] = Field(None, max_length=120)
     message: Optional[str] = Field(None, max_length=2000)
+    budget: Optional[str] = Field(None, max_length=80)
+    timeline: Optional[str] = Field(None, max_length=80)
+    city: Optional[str] = Field(None, max_length=80)
+    industry: Optional[str] = Field(None, max_length=80)
 
 
 class IntakeKeyCreate(BaseModel):
@@ -114,41 +123,61 @@ def receive_public_lead(payload: PublicLeadIn, request: Request):
     """
     Accept a lead from a public web form. Auth via a workspace intake key.
     """
+    # Two ways to authenticate this submission:
+    #   1. Hosted form path — `form_slug` resolves to a form which has an
+    #      intake_key_id we trust. The form's slug is public; the key it
+    #      points to is never exposed.
+    #   2. Direct-embed path — caller passes `intake_key` (or X-Intake-Key
+    #      header) directly. Used when a developer embeds the raw snippet.
     raw_key = (
         payload.intake_key
         or request.headers.get("X-Intake-Key")
         or ""
     ).strip()
-    if not raw_key:
-        # Generic — don't leak which header we expected, since this is a
-        # public endpoint and any introspection helps an attacker.
+
+    form_record = None
+    if not raw_key and payload.form_slug:
+        # Hosted-form route. Look up the form, find its bound key.
+        try:
+            from api.routers.lead_forms import lookup_form_by_slug
+            form_record = lookup_form_by_slug(payload.form_slug.strip())
+        except Exception as e:
+            logger.debug(f"[Intake] form lookup failed: {e}")
+        if not form_record:
+            raise HTTPException(401, "Unauthorized")
+
+    if not raw_key and not form_record:
         raise HTTPException(401, "Unauthorized")
 
     # Rate limit BEFORE the DB lookup so a flood of bad keys doesn't hammer SQLite.
     ip = (request.client.host if request.client else "unknown")[:45]
-    key_prefix_for_bucket = raw_key[:12]  # prefix is enough to bucket per-key
-    if not _rate_limit_check(ip, key_prefix_for_bucket):
+    bucket_id = raw_key[:12] if raw_key else f"form:{payload.form_slug or ''}"
+    if not _rate_limit_check(ip, bucket_id):
         raise HTTPException(429, "Too many requests")
 
-    key_hash = _hash_key(raw_key)
     conn = _conn()
     conn.row_factory = sqlite3.Row
     try:
-        row = conn.execute(
-            f"SELECT id, business_id, revoked_at FROM {INTAKE_TABLE} WHERE key_hash = ?",
-            (key_hash,),
-        ).fetchone()
-        if not row or row["revoked_at"]:
-            raise HTTPException(401, "Unauthorized")
-
-        business_id = row["business_id"]
+        if form_record:
+            # Form-mediated submission: trust the form's bound key.
+            business_id = form_record["business_id"]
+        else:
+            key_hash = _hash_key(raw_key)
+            row = conn.execute(
+                f"SELECT id, business_id, revoked_at FROM {INTAKE_TABLE} WHERE key_hash = ?",
+                (key_hash,),
+            ).fetchone()
+            if not row or row["revoked_at"]:
+                raise HTTPException(401, "Unauthorized")
+            business_id = row["business_id"]
         now = _now()
 
         # Update key usage stats — best-effort.
         try:
+            key_id_to_bump = form_record["intake_key_id"] if form_record else row["id"]
             conn.execute(
                 f"UPDATE {INTAKE_TABLE} SET last_used_at = ?, use_count = use_count + 1 WHERE id = ?",
-                (now, row["id"]),
+                (now, key_id_to_bump),
             )
             conn.commit()
         except Exception as e:
@@ -207,16 +236,36 @@ def receive_public_lead(payload: PublicLeadIn, request: Request):
     # Log the form submission as an interaction for full timeline visibility.
     try:
         summary_parts = []
+        if form_record:
+            summary_parts.append(f"Form: {form_record['title']}")
+        if payload.via:
+            summary_parts.append(f"Channel: {payload.via}")
         if payload.company: summary_parts.append(f"Company: {payload.company}")
+        if payload.title:   summary_parts.append(f"Title: {payload.title}")
+        if payload.budget:  summary_parts.append(f"Budget: {payload.budget}")
+        if payload.timeline: summary_parts.append(f"Timeline: {payload.timeline}")
+        if payload.city:    summary_parts.append(f"City: {payload.city}")
+        if payload.industry: summary_parts.append(f"Industry: {payload.industry}")
         if payload.message: summary_parts.append(f"\n{payload.message}")
+        subject = (f"Lead via {form_record['title']}" if form_record
+                   else "Public lead form submission")
         _crm.create_interaction(business_id, "system:public-form", {
             "type": "note",
-            "subject": "Public lead form submission",
-            "summary": "".join(summary_parts) or "(no message)",
+            "subject": subject,
+            "summary": "\n".join(summary_parts) or "(no message)",
             "contact_id": contact_id,
         })
     except Exception as e:
         logger.warning(f"[Intake] interaction log failed: {e}")
+
+    # Record the per-form/channel submission for attribution reporting.
+    if form_record:
+        try:
+            from api.routers.lead_forms import record_submission
+            record_submission(business_id, form_record["id"], contact_id,
+                              channel=(payload.via or "").strip())
+        except Exception as e:
+            logger.debug(f"[Intake] form submission log failed: {e}")
 
     # Auto-score this fresh lead against the workspace ICP. Best-effort —
     # if the model isn't reachable or no ICP is set, the lead still lands

@@ -571,6 +571,7 @@ from api.routers import (
     privacy_bridge     as _r_privacy_bridge,
     billing            as _r_billing,
     whatsapp_tenant    as _r_whatsapp_tenant,
+    lead_forms         as _r_lead_forms,
 )
 for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_suggestions, _r_saved_queries, _r_errors, _r_agents,
@@ -584,7 +585,8 @@ for _r in (_r_setup, _r_admin, _r_tags, _r_integrations,
            _r_lead_scoring, _r_email_paste, _r_bant, _r_crm_reply, _r_forge,
            _r_meeting_notes, _r_doc_intake, _r_smtp, _r_voice_calls,
            _r_voice_agent_tools, _r_vox, _r_waitlist, _r_email_templates,
-           _r_voice_inbound, _r_privacy_bridge, _r_billing, _r_whatsapp_tenant):
+           _r_voice_inbound, _r_privacy_bridge, _r_billing, _r_whatsapp_tenant,
+           _r_lead_forms):
     app.include_router(_r.router)
 
 

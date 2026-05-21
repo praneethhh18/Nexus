@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle, Download } from 'lucide-react';
+import { Users, Building2, Briefcase, Plus, Search, Trash2, Edit3, X, TrendingUp, DollarSign, Phone, Mail, Calendar, MessageSquare, Upload, Activity, ChevronRight, Inbox, Sparkles, Copy, Check, Loader2, AlertCircle, Download, Share2, QrCode, ExternalLink, FileText } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { listIntakeKeys, createIntakeKey, revokeIntakeKey } from '../services/tags';
+import {
+  listLeadForms, createLeadForm, updateLeadForm, archiveLeadForm,
+  formShareUrl, FORM_FIELD_CATALOGUE,
+} from '../services/leadForms';
 import { extractEmail, saveLeadFromEmail, forgeBrainstorm, forgeAccept } from '../services/crm';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
@@ -1694,8 +1698,8 @@ function LeadsTab({ contacts, navigate, flash }) {
         )}
       </div>
 
-      {/* Public form key management */}
-      <IntakeKeyCard flash={flash} />
+      {/* Hosted lead-capture forms — the user-facing way to mint a share link */}
+      <LeadFormsCard flash={flash} />
 
       {/* Future channels — placeholders that link to the doc */}
       <div className="panel" style={{ background: 'var(--color-surface-1)' }}>
@@ -2709,6 +2713,441 @@ document.getElementById('lead-form').addEventListener('submit', async (e) => {
   e.target.reset();
 });
 </script>`;
+}
+
+
+// ── Lead-capture forms — share link + simple builder ────────────────────────
+// The user-facing way to mint a lead-capture surface. Wraps the intake-key
+// primitive entirely: from this UI a workspace owner creates a Form (title +
+// chosen fields), gets back a public URL like /f/<slug>, and shares it
+// anywhere (WhatsApp, Insta bio, email signature, QR-on-flyer). Submissions
+// land in Inbound automatically — the key never enters the user's view.
+const CHANNEL_PRESETS = [
+  { key: 'whatsapp',     label: 'WhatsApp',     icon: MessageSquare },
+  { key: 'instagram',    label: 'Instagram',    icon: Sparkles },
+  { key: 'facebook',     label: 'Facebook',     icon: Sparkles },
+  { key: 'linkedin',     label: 'LinkedIn',     icon: Sparkles },
+  { key: 'email',        label: 'Email',        icon: Mail },
+  { key: 'website',      label: 'Website',      icon: ExternalLink },
+  { key: 'qr',           label: 'QR / print',   icon: QrCode },
+];
+
+function LeadFormsCard({ flash }) {
+  const [forms, setForms] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);   // form being edited (or null)
+  const [creating, setCreating] = useState(false);
+  const [sharing, setSharing] = useState(null);   // form being shared (or null)
+
+  const reload = async () => {
+    try { setForms(await listLeadForms()); }
+    catch (e) { flash?.(`Couldn't load forms: ${e.message || e}`); }
+    finally { setLoading(false); }
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { reload(); }, []);
+
+  const handleArchive = async (form) => {
+    if (!confirm(`Delete "${form.title}"? The public URL will stop working immediately.`)) return;
+    try {
+      await archiveLeadForm(form.id);
+      flash?.('Form deleted.');
+      reload();
+    } catch (e) { flash?.(`Delete failed: ${e.message || e}`); }
+  };
+
+  return (
+    <div className="panel">
+      <div className="section-h" style={{ margin: '0 0 10px' }}>
+        <h2>Lead forms</h2>
+        <span className="meta">build a form → share the link → leads land in Inbound</span>
+      </div>
+
+      {/* How it works — short, plain-language */}
+      <div style={{
+        padding: '10px 12px', marginBottom: 12,
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 'var(--r-md)',
+        fontSize: 11.5, lineHeight: 1.6, color: 'var(--color-text-muted)',
+      }}>
+        <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
+                      textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                      marginBottom: 6 }}>How this works</div>
+        <div><b style={{ color: 'var(--color-text)' }}>1.</b> Build a form below — pick the fields you want (name, phone, what they need, etc.).</div>
+        <div><b style={{ color: 'var(--color-text)' }}>2.</b> You get a share link like <code>nexusagent.in/f/your-form</code>. Drop it in your WhatsApp Status, Instagram bio, email signature, or a QR on your flyer.</div>
+        <div><b style={{ color: 'var(--color-text)' }}>3.</b> Anyone who fills it lands here as a scored lead — with the form name + channel tagged for attribution.</div>
+      </div>
+
+      {/* Form list */}
+      {loading ? (
+        <div style={{ padding: 16, color: 'var(--color-text-dim)', fontSize: 12 }}>Loading forms…</div>
+      ) : forms.length === 0 ? (
+        <div style={{
+          padding: '18px 12px', textAlign: 'center',
+          color: 'var(--color-text-muted)', fontSize: 12.5,
+        }}>
+          No forms yet. Click <b>New form</b> below to mint your first share link.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 12 }}>
+          {forms.map(f => (
+            <div key={f.id} style={{
+              padding: 12,
+              background: 'var(--color-surface-1)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 'var(--r-md)',
+              display: 'grid', gap: 8,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <FileText size={14} style={{ color: f.accent_color || 'var(--color-accent)' }} />
+                <div style={{ fontWeight: 600, color: 'var(--color-text)', fontSize: 13 }}>{f.title}</div>
+                <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+                  {f.submit_count || 0} submission{(f.submit_count || 0) === 1 ? '' : 's'}
+                </span>
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                  <button className="btn-ghost btn-sm" onClick={() => setSharing(f)} title="Get share links">
+                    <Share2 size={11} /> Share
+                  </button>
+                  <button className="btn-ghost btn-sm" onClick={() => setEditing(f)} title="Edit form">
+                    <Edit3 size={11} />
+                  </button>
+                  <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }}
+                    onClick={() => handleArchive(f)} title="Delete form">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              </div>
+              {f.description && (
+                <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)' }}>{f.description}</div>
+              )}
+              <div style={{
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                fontSize: 11, color: 'var(--color-text-dim)',
+                background: 'var(--color-bg)', border: '1px solid var(--color-border)',
+                borderRadius: 'var(--r-sm)', padding: '4px 8px',
+                wordBreak: 'break-all',
+              }}>
+                {formShareUrl(f.slug)}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <button className="btn-primary" onClick={() => setCreating(true)} style={{ fontSize: 12 }}>
+        <Plus size={12} /> New form
+      </button>
+
+      {(creating || editing) && (
+        <LeadFormBuilderModal
+          form={editing}
+          onClose={() => { setCreating(false); setEditing(null); }}
+          onSaved={() => { setCreating(false); setEditing(null); reload(); flash?.('Form saved.'); }}
+        />
+      )}
+
+      {sharing && (
+        <LeadFormShareModal form={sharing} onClose={() => setSharing(null)} flash={flash} />
+      )}
+    </div>
+  );
+}
+
+
+function LeadFormBuilderModal({ form, onClose, onSaved }) {
+  const isEdit = !!form;
+  const [title, setTitle] = useState(form?.title || '');
+  const [description, setDescription] = useState(form?.description || '');
+  const [thankYou, setThankYou] = useState(form?.thank_you || "Thanks — we'll be in touch.");
+  const [accent, setAccent] = useState(form?.accent_color || '#8b5cf6');
+  // fields state = array of {key, label, required}; key is unique
+  const [fields, setFields] = useState(() => {
+    if (form?.fields?.length) return form.fields.map(f => ({ ...f }));
+    // Sensible default: name + email + phone + message
+    return FORM_FIELD_CATALOGUE
+      .filter(c => ['name', 'email', 'phone', 'message'].includes(c.key))
+      .map(c => ({ key: c.key, label: c.label, required: c.defaultRequired }));
+  });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const toggleField = (key) => {
+    setFields((prev) => {
+      const idx = prev.findIndex(f => f.key === key);
+      if (idx >= 0) return prev.filter(f => f.key !== key);
+      const cat = FORM_FIELD_CATALOGUE.find(c => c.key === key);
+      return [...prev, { key, label: cat?.label || key, required: !!cat?.defaultRequired }];
+    });
+  };
+  const toggleRequired = (key) => {
+    setFields((prev) => prev.map(f => f.key === key ? { ...f, required: !f.required } : f));
+  };
+  const moveField = (key, dir) => {
+    setFields((prev) => {
+      const i = prev.findIndex(f => f.key === key);
+      if (i < 0) return prev;
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+  };
+
+  const handleSave = async () => {
+    setErr('');
+    if (!title.trim()) { setErr('Form title is required.'); return; }
+    if (fields.length === 0) { setErr('Pick at least one field.'); return; }
+    setBusy(true);
+    try {
+      const payload = {
+        title: title.trim(),
+        description: description.trim(),
+        thank_you: thankYou.trim(),
+        accent_color: accent,
+        fields: fields.map(f => ({ key: f.key, label: f.label, required: f.required })),
+      };
+      if (isEdit) await updateLeadForm(form.id, payload);
+      else        await createLeadForm(payload);
+      onSaved?.();
+    } catch (e) { setErr(e.message || 'Save failed'); }
+    finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+                  zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
+        borderRadius: 12, padding: 20, width: 560, maxHeight: '90vh',
+        overflow: 'auto', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
+            {isEdit ? `Edit form: ${form.title}` : 'New lead form'}
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none',
+                                              color: 'var(--color-text-dim)', cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        <Field label="Form title *">
+          <input className="field-input" autoFocus
+                 placeholder='e.g. "Talk to sales", "Diwali offer enquiry"'
+                 value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} />
+        </Field>
+
+        <Field label="Description (optional)">
+          <textarea className="field-input" rows={2}
+                    placeholder='Shown to visitors. e.g. "Tell us about your project — we usually reply within a day."'
+                    value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
+        </Field>
+
+        <Field label="Fields on this form">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {FORM_FIELD_CATALOGUE.map(cat => {
+              const active = fields.find(f => f.key === cat.key);
+              const idx = fields.findIndex(f => f.key === cat.key);
+              return (
+                <div key={cat.key} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 8px', borderRadius: 'var(--r-sm)',
+                  background: active ? 'var(--color-surface-1)' : 'transparent',
+                  border: '1px solid ' + (active ? 'var(--color-border)' : 'transparent'),
+                }}>
+                  <input type="checkbox" checked={!!active}
+                         onChange={() => toggleField(cat.key)}
+                         style={{ accentColor: 'var(--color-accent)' }} />
+                  <span style={{ fontSize: 12, color: 'var(--color-text)', flex: 1 }}>
+                    {cat.label}
+                  </span>
+                  {active && (
+                    <>
+                      <label style={{ fontSize: 10.5, color: 'var(--color-text-muted)',
+                                      display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <input type="checkbox" checked={!!active.required}
+                               onChange={() => toggleRequired(cat.key)} />
+                        Required
+                      </label>
+                      <button type="button" className="btn-ghost btn-sm"
+                              onClick={() => moveField(cat.key, -1)}
+                              disabled={idx <= 0} title="Move up">↑</button>
+                      <button type="button" className="btn-ghost btn-sm"
+                              onClick={() => moveField(cat.key, 1)}
+                              disabled={idx === fields.length - 1} title="Move down">↓</button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </Field>
+
+        <Field label="Thank-you message">
+          <textarea className="field-input" rows={2}
+                    placeholder='Shown after a successful submission.'
+                    value={thankYou} onChange={(e) => setThankYou(e.target.value)} maxLength={500} />
+        </Field>
+
+        <Field label="Accent color">
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            <input type="color" value={accent} onChange={(e) => setAccent(e.target.value)}
+                   style={{ width: 36, height: 28, padding: 0, border: 'none',
+                            background: 'transparent', cursor: 'pointer' }} />
+            <code style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{accent}</code>
+          </div>
+        </Field>
+
+        {err && (
+          <div style={{ fontSize: 11, color: 'var(--color-err)', marginBottom: 8,
+                        padding: '6px 8px', background: 'color-mix(in srgb, var(--color-err) 8%, transparent)',
+                        borderRadius: 4 }}>{err}</div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
+          <button type="button" className="btn-ghost" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn-primary" onClick={handleSave} disabled={busy}>
+            {busy ? 'Saving…' : (isEdit ? 'Save changes' : 'Create form')}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+function LeadFormShareModal({ form, onClose, flash }) {
+  const [selectedChannel, setSelectedChannel] = useState('');
+  const url = formShareUrl(form.slug, selectedChannel);
+
+  // Use a hosted QR-code generator. The URL itself isn't sensitive — it's
+  // designed to be public-facing — so a 3rd-party render service is fine.
+  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
+
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const copy = (txt) => {
+    try { navigator.clipboard.writeText(txt); flash?.('Copied to clipboard.'); }
+    catch { flash?.('Copy failed — please select manually.'); }
+  };
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+                  zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{
+        background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
+        borderRadius: 12, padding: 22, width: 540, maxHeight: '90vh',
+        overflow: 'auto', boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+          <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
+            Share &mdash; {form.title}
+          </h3>
+          <button onClick={onClose} style={{ background: 'none', border: 'none',
+                                              color: 'var(--color-text-dim)', cursor: 'pointer' }}>
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Channel picker — tags the URL with ?via=<channel> for attribution */}
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
+                        textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                        marginBottom: 6 }}>
+            Where will you share this?
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            <button
+              className={selectedChannel === '' ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+              onClick={() => setSelectedChannel('')}
+              style={{ fontSize: 11 }}
+            >
+              No tag
+            </button>
+            {CHANNEL_PRESETS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                className={selectedChannel === key ? 'btn-primary btn-sm' : 'btn-ghost btn-sm'}
+                onClick={() => setSelectedChannel(key)}
+                style={{ fontSize: 11, display: 'inline-flex', gap: 4, alignItems: 'center' }}
+              >
+                <Icon size={11} /> {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: 6 }}>
+            Each tag mints a unique link so you can see in Inbound which channel each lead came from.
+          </div>
+        </div>
+
+        {/* The URL */}
+        <div style={{
+          padding: '8px 10px', marginBottom: 10,
+          background: 'var(--color-surface-1)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--r-md)',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          fontSize: 12, color: 'var(--color-text)',
+          wordBreak: 'break-all',
+        }}>
+          {url}
+        </div>
+
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 16 }}>
+          <button className="btn-primary btn-sm" onClick={() => copy(url)}>
+            <Copy size={11} /> Copy link
+          </button>
+          <a className="btn-ghost btn-sm"
+             href={url} target="_blank" rel="noopener noreferrer"
+             style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+            <ExternalLink size={11} /> Open preview
+          </a>
+          {selectedChannel === 'whatsapp' && (
+            <a className="btn-ghost btn-sm"
+               href={`https://wa.me/?text=${encodeURIComponent(url)}`}
+               target="_blank" rel="noopener noreferrer"
+               style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}>
+              <MessageSquare size={11} /> Send on WhatsApp
+            </a>
+          )}
+        </div>
+
+        {/* QR code */}
+        <div style={{
+          padding: 12,
+          background: '#fff',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--r-md)',
+          textAlign: 'center',
+        }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
+                        textTransform: 'uppercase', color: '#666',
+                        marginBottom: 8 }}>
+            QR code &mdash; print on flyers, business cards, posters
+          </div>
+          <img src={qrSrc} alt="QR code" width={240} height={240}
+               style={{ display: 'block', margin: '0 auto' }} />
+          <a href={qrSrc} download={`${form.slug}-qr.png`} target="_blank" rel="noopener noreferrer"
+             className="btn-ghost btn-sm"
+             style={{ marginTop: 8, display: 'inline-flex', gap: 4, alignItems: 'center', fontSize: 11 }}>
+            <Download size={11} /> Download QR
+          </a>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 
