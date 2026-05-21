@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
          PanelLeftClose, PanelLeftOpen, MessageSquare, Trash2, Search, AudioLines,
-         Sun, Moon, ArrowRight, Lock, Unlock, Pencil, Check, X as XIcon } from 'lucide-react';
+         Sun, Moon, ArrowRight, Lock, Unlock, Pencil, Check, X as XIcon,
+         Paperclip } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -859,11 +860,8 @@ export default function Chat() {
               <AudioLines size={13} /> Voice chat
             </button>
           )}
-          {/* Document upload button */}
-          <label className="action-btn" style={{ cursor: 'pointer' }}>
-            <Upload size={13} /> Upload Doc
-            <input type="file" accept=".pdf,.txt,.docx" onChange={handleDocUpload} style={{ display: 'none' }} />
-          </label>
+          {/* Document upload moved inline next to the message input — uploads
+              are conversational, they belong with the input, not the header. */}
           {messages.length > 0 && (
             <>
               <div style={{ position: 'relative' }}>
@@ -1318,6 +1316,32 @@ export default function Chat() {
             }}>
             {recording ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
+          {/* Paperclip — attach a document to this conversation. Lives
+              next to the input because uploads are conversational, not a
+              page-level action. The actual file input is hidden; the
+              label wraps the icon so clicking either fires the picker. */}
+          <label
+            title={uploadingFile ? `Uploading ${uploadingFile}…` : 'Attach a document (PDF, DOCX, TXT)'}
+            style={{
+              padding: 6, borderRadius: 8, cursor: uploadingFile ? 'progress' : 'pointer',
+              display: 'flex', alignItems: 'center',
+              background: uploadingFile ? 'color-mix(in srgb, var(--color-accent) 13%, transparent)' : 'transparent',
+              color: uploadingFile ? 'var(--color-accent)' : 'var(--color-text-dim)',
+              transition: 'all 0.15s',
+              opacity: uploadingFile ? 0.85 : 1,
+            }}
+            onMouseEnter={(e) => { if (!uploadingFile) e.currentTarget.style.color = 'var(--color-text)'; }}
+            onMouseLeave={(e) => { if (!uploadingFile) e.currentTarget.style.color = 'var(--color-text-dim)'; }}
+          >
+            <Paperclip size={16} style={{ transform: 'rotate(-45deg)' }} />
+            <input
+              type="file"
+              accept=".pdf,.txt,.docx"
+              onChange={handleDocUpload}
+              disabled={!!uploadingFile}
+              style={{ display: 'none' }}
+            />
+          </label>
           <input
             ref={inputRef}
             type="text"
