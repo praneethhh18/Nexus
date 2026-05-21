@@ -1218,8 +1218,19 @@ function UploadKbModal({ state, setState, onSubmit }) {
           maxHeight: 160, overflow: 'auto',
         }}>
           {files.map((f, i) => {
-            const res = results?.results?.find(r => r.filename === f.name);
-            const status = !results ? null : (res?.ok ? 'ok' : 'failed');
+            // Safely match this file's result. Backends may sanitize filenames
+            // so also try a stem-match before bailing to undefined. Every read
+            // of `res` after this must be optional-chained — when an upload
+            // partially fails (e.g. timeout) a file can legitimately have no
+            // result entry, and `res.error` blew up the whole modal before.
+            const res = (results?.results || []).find(
+              r => r?.filename === f.name || r?.title === f.name,
+            );
+            const status = !results
+              ? null
+              : res?.ok ? 'ok'
+              : res ? 'failed'
+              : 'no-response';
             return (
               <div key={`${f.name}-${i}`} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
@@ -1239,12 +1250,17 @@ function UploadKbModal({ state, setState, onSubmit }) {
                 </span>
                 {status === 'ok' && (
                   <span style={{ fontSize: 10, color: 'var(--color-ok)' }}>
-                    ✓ {res.chunks_added} chunks
+                    ✓ {res?.chunks_added || 0} chunks
                   </span>
                 )}
                 {status === 'failed' && (
-                  <span style={{ fontSize: 10, color: 'var(--color-err)' }} title={res.error}>
+                  <span style={{ fontSize: 10, color: 'var(--color-err)' }} title={res?.error || 'failed'}>
                     ✗ failed
+                  </span>
+                )}
+                {status === 'no-response' && (
+                  <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }} title="No result returned for this file">
+                    — no response
                   </span>
                 )}
                 {!state.busy && !results && (
