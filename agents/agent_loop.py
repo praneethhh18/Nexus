@@ -291,6 +291,14 @@ def run_agent(
                 system=system,
                 max_tokens=2048,
                 temperature=0.1,
+                # Agent mode requires NATIVE tool use (Bedrock/Anthropic
+                # structured tool_calls). Without force_cloud, the
+                # complexity router classified short queries as "local"
+                # and the call fell through to Ollama's ReAct JSON-text
+                # fallback — which produces ```json{"action":...}```
+                # envelopes the user sees as broken output and which
+                # don't actually fire tools.
+                force_cloud=True,
             )
         except Exception as e:
             logger.exception("[AgentLoop] LLM invocation failed")
