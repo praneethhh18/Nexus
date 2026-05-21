@@ -126,12 +126,29 @@ function WorkflowsGuide() {
           How workflows work
         </span>
       </div>
-      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 12px', maxWidth: 720, lineHeight: 1.55 }}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 10px', maxWidth: 720, lineHeight: 1.55 }}>
         A workflow is a chain of steps that runs on its own. You wire them in this order:
         <strong style={{ color: 'var(--color-text)' }}> trigger</strong> →
         <strong style={{ color: 'var(--color-text)' }}> condition (optional)</strong> →
         <strong style={{ color: 'var(--color-text)' }}> action</strong>. Use a template, describe one in plain English, or build from scratch.
       </p>
+
+      {/* Workflows vs Agents — clear up the overlap before users wonder
+          which page to use. Two short examples beat any abstract definition. */}
+      <div style={{
+        padding: '8px 10px', marginBottom: 12,
+        background: 'color-mix(in srgb, var(--color-info) 8%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--color-info) 28%, transparent)',
+        borderRadius: 'var(--r-md)',
+        fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55,
+      }}>
+        <strong style={{ color: 'var(--color-text)' }}>Workflow vs AI Agent — which one?</strong><br />
+        Use a <strong style={{ color: 'var(--color-text)' }}>Workflow</strong> when the steps are fixed:
+        <em> "every Monday 9am → query last week's deals → email me the PDF."</em><br />
+        Use an <strong style={{ color: 'var(--color-text)' }}>AI Agent</strong> when the AI needs to think:
+        <em> "rate every new lead hot/warm/cold based on their title and industry."</em><br />
+        Rule of thumb: <strong>workflow = "I'll spell out the steps", agent = "AI, figure it out."</strong>
+      </div>
 
       <div style={{
         display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',

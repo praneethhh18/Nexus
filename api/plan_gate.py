@@ -25,16 +25,29 @@ forbidden by ACL). Frontend catches 402 → routes to /pricing.
 """
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import HTTPException
+from loguru import logger
 
 from api.routers.billing import PLANS, check_plan, plan_rank
 from api.subscriptions import get_plan, get_subscription
 
 
+def _gates_disabled() -> bool:
+    """Dev / demo escape hatch — set NEXUS_DISABLE_PLAN_GATES=1 in .env to
+    bypass all plan checks (Magic Workflows, voice minutes, privacy bridge,
+    etc.) without faking the business's subscription record. Off by default
+    so production never accidentally hands out paid features."""
+    return os.getenv("NEXUS_DISABLE_PLAN_GATES", "0").strip() == "1"
+
+
 def require_plan(business_id: str, required: str) -> None:
     """Raise HTTPException(402) if the business isn't on `required` or higher."""
+    if _gates_disabled():
+        logger.debug(f"[plan_gate] bypassed (NEXUS_DISABLE_PLAN_GATES=1) — required={required}")
+        return
     current = get_plan(business_id)
     if not check_plan(current, required):
         cur_label = (PLANS.get(current) or {}).get("label", current)
@@ -50,6 +63,8 @@ def require_plan(business_id: str, required: str) -> None:
 def allows_feature(business_id: str, feature: str) -> bool:
     """Boolean check — does the business's plan unlock this feature flag?
     Looks up `limits.<feature>` in PLANS. Truthy values count as "yes"."""
+    if _gates_disabled():
+        return True
     current = get_plan(business_id)
     plan = PLANS.get(current) or {}
     limits = plan.get("limits") or {}
