@@ -214,20 +214,29 @@ def _from_bedrock_response(resp: Dict[str, Any]) -> Dict[str, Any]:
     # occasionally emit a ```json{"action":"tool","tool":"X",...}```
     # envelope as TEXT instead of using the structured tool_calls API.
     # When that happens AND no real tool was selected, parse the
-    # envelope and synthesise a tool_call so the agent loop can still
-    # execute the intended tool.
+    # envelope and either:
+    #   - synthesise a tool_call (action:"tool", direct tool name), or
+    #   - extract the user-facing answer string (action:"final")
+    # so the user never sees the raw JSON envelope.
     if not tool_calls and joined_text:
-        synth = _parse_text_tool_envelope(joined_text)
-        if synth:
-            tool_calls = [synth]
-            assistant_content = [{
-                "type": "tool_use",
-                "id": synth["id"],
-                "name": synth["name"],
-                "input": synth["arguments"],
-            }]
-            joined_text = ""           # the envelope was the tool intent, not prose
-            stop_reason = "tool_use"
+        parsed = _parse_text_tool_envelope(joined_text)
+        if parsed:
+            if parsed["kind"] == "tool_call":
+                tool_calls = [parsed["call"]]
+                assistant_content = [{
+                    "type": "tool_use",
+                    "id": parsed["call"]["id"],
+                    "name": parsed["call"]["name"],
+                    "input": parsed["call"]["arguments"],
+                }]
+                joined_text = ""
+                stop_reason = "tool_use"
+            elif parsed["kind"] == "final":
+                # The model wrapped its prose in {"action":"final","answer":"..."}
+                # — strip the envelope so the user sees just the answer.
+                joined_text = parsed["answer"]
+                assistant_content = [{"type": "text", "text": joined_text}]
+                stop_reason = "end_turn"
 
     return {
         "stop_reason": stop_reason,
@@ -238,38 +247,61 @@ def _from_bedrock_response(resp: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _parse_text_tool_envelope(text: str) -> Optional[Dict[str, Any]]:
-    """Detect a JSON tool envelope smuggled into a model's text output.
+    """Detect a ReAct-style JSON envelope smuggled into a model's text reply.
+
+    Returns one of:
+        {"kind": "tool_call", "call": {id, name, arguments}}
+        {"kind": "final",     "answer": "<user-facing prose>"}
+        None                              (not a recognisable envelope)
 
     Recognised shapes:
-        {"action":"tool", "tool":"NAME", "arguments":{...}}
-        {"action":"NAME", "arguments":{...}}     (model dropped 'tool' key)
-        {"name":"NAME", "arguments":{...}}       (OpenAI-style leak)
+        {"action":"tool",  "tool":"NAME", "arguments":{...}}
+        {"action":"NAME",                  "arguments":{...}}   (dropped 'tool')
+        {"name":"NAME",                    "arguments":{...}}   (OpenAI-style)
+        {"action":"final", "answer":"..."}                       (final reply)
 
-    Returns a tool_call dict {id, name, arguments} or None."""
+    Defensive against the JSON-with-comments shape Ministral occasionally
+    emits — strips `// ...` and `/* ... */` before json.loads."""
     import json
     import re
     import uuid
-    # Strip markdown code fences if present
-    stripped = re.sub(r"^```(?:json)?\s*", "", text.strip(), flags=re.MULTILINE)
-    stripped = re.sub(r"\s*```$", "", stripped)
-    # Find the first JSON object
+    if not text:
+        return None
+    stripped = text.strip()
+    # Strip markdown code fences if present.
+    stripped = re.sub(r"^```(?:json)?\s*", "", stripped, flags=re.MULTILINE)
+    stripped = re.sub(r"\s*```\s*$", "", stripped)
+    # Find the first {...} block.
     m = re.search(r"\{[\s\S]*\}", stripped)
     if not m:
         return None
+    raw = m.group(0)
+    # Models sometimes inject JS-style comments inside the JSON
+    # ("due_date":"2026-05-22",  // Tomorrow") which json.loads can't
+    # handle. Strip them defensively.
+    cleaned = re.sub(r"//[^\n]*", "", raw)
+    cleaned = re.sub(r"/\*[\s\S]*?\*/", "", cleaned)
+    # Trailing commas before }/] — also illegal in strict JSON.
+    cleaned = re.sub(r",(\s*[}\]])", r"\1", cleaned)
     try:
-        obj = json.loads(m.group(0))
+        obj = json.loads(cleaned)
     except Exception:
         return None
     if not isinstance(obj, dict):
         return None
+
+    # Final-answer envelope: {"action":"final", "answer":"<prose>"}
+    if obj.get("action") == "final":
+        ans = obj.get("answer") or obj.get("text") or obj.get("response")
+        if isinstance(ans, str) and ans.strip():
+            return {"kind": "final", "answer": ans.strip()}
+        return None
+
+    # Tool-call envelope.
     args = obj.get("arguments") or obj.get("input") or obj.get("parameters") or {}
     if not isinstance(args, dict):
         return None
-    # Tool name candidates, in order of likelihood
     name = obj.get("tool") or obj.get("name") or obj.get("function")
-    # The "{action: 'tool_name', arguments: ...}" shape — only treat
-    # `action` as a tool name if it's NOT one of the literal control
-    # strings the ReAct prompt uses.
     if not name:
         action = obj.get("action")
         if isinstance(action, str) and action not in ("tool", "final"):
@@ -277,9 +309,12 @@ def _parse_text_tool_envelope(text: str) -> Optional[Dict[str, Any]]:
     if not isinstance(name, str) or not name:
         return None
     return {
-        "id": f"synth_{uuid.uuid4().hex[:8]}",
-        "name": name,
-        "arguments": args,
+        "kind": "tool_call",
+        "call": {
+            "id": f"synth_{uuid.uuid4().hex[:8]}",
+            "name": name,
+            "arguments": args,
+        },
     }
 
 
