@@ -223,6 +223,12 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setValue(persona.name); }, [persona.name]);
 
+  // Debug: log every time runResult changes — caught the case where state
+  // sets but then immediately clears.
+  useEffect(() => {
+    console.log(`[Agents] runResult changed for ${persona.agent_key}:`, runResult);
+  }, [runResult, persona.agent_key]);
+
   const save = async (newVal) => {
     if (busy) return;
     setBusy(true); setErr('');
@@ -662,11 +668,16 @@ function RunsDrawer({ persona, onClose }) {
 // deals, etc.) inline, not just a "Done." toast. For skipped agents this
 // becomes an inline setup CTA instead of a confusing dead-end.
 function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenSurface }) {
+  console.log(`[Agents] AgentResultModal MOUNTING for ${agentKey}`, { result, hasBody: !!document?.body });
   useEffect(() => {
+    console.log(`[Agents] AgentResultModal effect attached for ${agentKey}`);
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    return () => {
+      console.log(`[Agents] AgentResultModal UNMOUNTING for ${agentKey}`);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose, agentKey]);
 
   const tone = result.tone || 'success';
   const accent = tone === 'success' ? 'var(--color-ok)'
@@ -928,8 +939,14 @@ export default function Agents() {
   const [showGallery, setShowGallery] = useState(false);
   const navigate = useNavigate();
 
-  const load = useCallback(async () => {
-    setLoading(true); setErr('');
+  // `silent`: skip the loading-flag dance on background refreshes (e.g.
+  // after Run Now). Otherwise the loading flag flips to true, the
+  // {!loading && ...} render branch unmounts every PersonaCard, and any
+  // local state (including a freshly-set result modal) is wiped before
+  // the user can see it.
+  const load = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
+    setErr('');
     try {
       const [ppl, sch, ca] = await Promise.all([
         listPersonas(),
@@ -942,7 +959,7 @@ export default function Agents() {
       setScheduleByKey(byKey);
       setCustomAgentsList(ca);
     } catch (e) { setErr(e.message); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   }, []);
 
   const loadActivity = useCallback(async () => {
@@ -977,7 +994,7 @@ export default function Agents() {
     try {
       await runCustomAgent(id);
       loadActivity();
-      load();
+      load({ silent: true });
     } catch (e) {
       alert(`Run failed: ${e.message}`);
     }
@@ -1029,7 +1046,7 @@ export default function Agents() {
                 onEnabledChanged={onEnabledChanged}
                 onIntervalChanged={onIntervalChanged}
                 onOpenSurface={(path) => navigate(path)}
-                onRanAgent={() => { loadActivity(); load(); }}
+                onRanAgent={() => { loadActivity(); load({ silent: true }); }}
                 onOpenRuns={(persona) => setRunsDrawer(persona)}
               />
             ))}
