@@ -197,13 +197,25 @@ def agents_run_now(agent_key: str, ctx: dict = Depends(get_current_context)):
         if agent_key == "morning_briefing":
             from agents.briefing import run_for_business
             result = run_for_business(business_id)
-            return result, {"narrative_mode": result.get("mode"),
-                            "delivered": result.get("delivered_channels", [])}
+            # Surface the narrative text + headline data so the UI can
+            # render the briefing inline instead of just saying "Done".
+            return result, {
+                "narrative_mode": result.get("mode"),
+                "delivered":      result.get("delivered_channels", []),
+                "narrative":      result.get("narrative"),
+                "briefing_id":    result.get("id"),
+                "data":           result.get("data"),
+            }
         if agent_key == "evening_digest":
             from agents.briefing import run_evening_for_business
             result = run_evening_for_business(business_id)
-            return result, {"narrative_mode": result.get("mode"),
-                            "delivered": result.get("delivered_channels", [])}
+            return result, {
+                "narrative_mode": result.get("mode"),
+                "delivered":      result.get("delivered_channels", []),
+                "narrative":      result.get("narrative"),
+                "briefing_id":    result.get("id"),
+                "data":           result.get("data"),
+            }
         if agent_key == "invoice_reminder":
             from agents.background.invoice_reminder import run_for_business
             result = run_for_business(business_id)

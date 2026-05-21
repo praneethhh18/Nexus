@@ -240,7 +240,11 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
     setRunning(true); setRunResult(null); setErr('');
     try {
       const r = await runAgent(persona.agent_key);
-      setRunResult(formatAgentResult(persona.agent_key, r.detail || {}));
+      // Stash the raw detail too — the modal renders the actual artifact
+      // (briefing text, list of stale deals, etc.) so the user sees proof
+      // of work instead of guessing what happened.
+      const formatted = formatAgentResult(persona.agent_key, r.detail || {});
+      setRunResult({ ...formatted, detail: r.detail || {} });
       onRanAgent?.();
     } catch (e) {
       setErr(e.message || 'Run failed');
@@ -391,53 +395,14 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
       </div>
 
       {runResult && (
-        <div style={{
-          marginTop: -4,
-          padding: '10px 12px',
-          borderRadius: 'var(--r-md)',
-          background: runResult.tone === 'success'
-            ? 'color-mix(in srgb, var(--color-ok) 10%, transparent)'
-            : runResult.tone === 'skip'
-              ? 'color-mix(in srgb, var(--color-warn) 10%, transparent)'
-              : 'var(--color-surface-1)',
-          border: `1px solid ${runResult.tone === 'success' ? 'color-mix(in srgb, var(--color-ok) 35%, transparent)'
-            : runResult.tone === 'skip' ? 'color-mix(in srgb, var(--color-warn) 35%, transparent)'
-              : 'var(--color-border)'}`,
-          fontSize: 12, color: 'var(--color-text)', lineHeight: 1.5,
-          display: 'flex', alignItems: 'flex-start', gap: 8,
-        }}>
-          <span style={{ flexShrink: 0, marginTop: 1 }}>
-            {runResult.tone === 'success' ? <Check size={14} color="var(--color-ok)" />
-              : runResult.tone === 'skip'  ? <AlertTriangle size={14} color="var(--color-warn)" />
-                : <Activity size={14} color="var(--color-text-dim)" />}
-          </span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 600 }}>{runResult.summary}</div>
-            {runResult.details && (
-              <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginTop: 2 }}>
-                {runResult.details}
-              </div>
-            )}
-            {runResult.hint && (
-              <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2, fontStyle: 'italic' }}>
-                {runResult.hint}
-              </div>
-            )}
-          </div>
-          {runResult.link && (
-            <button type="button" className="btn-ghost btn-sm"
-                    onClick={() => onOpenSurface(runResult.link.href)}
-                    style={{ fontSize: 11, flexShrink: 0 }}>
-              {runResult.link.label} <ExternalLink size={10} />
-            </button>
-          )}
-          <button type="button" onClick={() => setRunResult(null)}
-                  aria-label="Dismiss"
-                  style={{ background: 'none', border: 'none', cursor: 'pointer',
-                           color: 'var(--color-text-dim)', flexShrink: 0, padding: 0 }}>
-            <X size={12} />
-          </button>
-        </div>
+        <AgentResultModal
+          agentKey={persona.agent_key}
+          agentName={persona.name}
+          emoji={persona.emoji}
+          result={runResult}
+          onClose={() => setRunResult(null)}
+          onOpenSurface={onOpenSurface}
+        />
       )}
 
       {/* Activity strip */}
@@ -675,6 +640,260 @@ function RunsDrawer({ persona, onClose }) {
     </div>
   );
 }
+
+// ── Run-result modal ─────────────────────────────────────────────────────────
+// Shown after the user clicks "Run now". The point is to give NEW USERS
+// proof-of-work — show the actual artifact (briefing text, list of stale
+// deals, etc.) inline, not just a "Done." toast. For skipped agents this
+// becomes an inline setup CTA instead of a confusing dead-end.
+function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenSurface }) {
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const tone = result.tone || 'success';
+  const accent = tone === 'success' ? 'var(--color-ok)'
+               : tone === 'skip'    ? 'var(--color-warn)'
+               : tone === 'info'    ? 'var(--color-info)'
+                                    : 'var(--color-text-dim)';
+
+  return (
+    <div onClick={onClose}
+         style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+                  zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()}
+           style={{
+             background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
+             borderRadius: 14, padding: 22, width: 640, maxWidth: '100%',
+             maxHeight: '85vh', overflow: 'auto',
+             boxShadow: '0 24px 56px rgba(0,0,0,0.55)',
+           }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+          <div style={{
+            width: 42, height: 42, borderRadius: 10,
+            background: 'color-mix(in srgb, var(--color-accent) 14%, transparent)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, flexShrink: 0,
+          }}>{emoji || <Bot size={20} />}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: 'var(--color-text-dim)', letterSpacing: 0.5,
+                          textTransform: 'uppercase', fontWeight: 700, marginBottom: 2 }}>
+              {agentName} just ran
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              {tone === 'success' && <Check size={16} color={accent} />}
+              {tone === 'skip'    && <AlertTriangle size={16} color={accent} />}
+              {tone === 'info'    && <Activity size={16} color={accent} />}
+              <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--color-text)' }}>
+                {result.summary}
+              </span>
+            </div>
+            {result.details && (
+              <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', marginTop: 4, lineHeight: 1.5 }}>
+                {result.details}
+              </div>
+            )}
+          </div>
+          <button onClick={onClose}
+                  style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)',
+                           cursor: 'pointer', flexShrink: 0 }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* The actual artifact, rendered inline */}
+        <AgentArtifact agentKey={agentKey} result={result} onOpenSurface={onOpenSurface} />
+
+        {/* Skip hint — when there's nothing to show, explain why + how to fix */}
+        {result.hint && tone !== 'success' && (
+          <div style={{
+            marginTop: 14, padding: '10px 12px',
+            background: 'color-mix(in srgb, ' + accent + ' 8%, transparent)',
+            border: '1px solid color-mix(in srgb, ' + accent + ' 30%, transparent)',
+            borderRadius: 'var(--r-md)',
+            fontSize: 12.5, color: 'var(--color-text)', lineHeight: 1.55,
+          }}>
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>What's missing</div>
+            {result.hint}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 18, flexWrap: 'wrap' }}>
+          {result.link && (
+            <button type="button" className="btn-primary"
+                    onClick={() => { onOpenSurface(result.link.href); onClose(); }}>
+              {result.link.label} <ExternalLink size={12} />
+            </button>
+          )}
+          <button type="button" className="btn-ghost" onClick={onClose} style={{ marginLeft: 'auto' }}>
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// Per-agent artifact renderer — shows the actual content the agent produced.
+// New users see proof of work inline; they don't have to hunt for the
+// briefing in another tab.
+function AgentArtifact({ agentKey, result }) {
+  const d = result.detail || {};
+
+  // Briefing-style agents — render the narrative text
+  if ((agentKey === 'morning_briefing' || agentKey === 'evening_digest') && d.narrative) {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        fontSize: 13, color: 'var(--color-text)', lineHeight: 1.6,
+        whiteSpace: 'pre-wrap',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        maxHeight: 360, overflow: 'auto',
+      }}>
+        {d.narrative}
+      </div>
+    );
+  }
+
+  // Stale-deal watcher — show how many + a "what now" line
+  if (agentKey === 'stale_deal_watcher' && Number(d.stale_deals || 0) > 0) {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        fontSize: 13, color: 'var(--color-text)', lineHeight: 1.6,
+      }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div style={{ padding: 10, borderRadius: 8, background: 'var(--color-bg)' }}>
+            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Stale deals</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-warn)' }}>{d.stale_deals}</div>
+          </div>
+          <div style={{ padding: 10, borderRadius: 8, background: 'var(--color-bg)' }}>
+            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Follow-up tasks created</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--color-ok)' }}>{d.created || 0}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Open Tasks to see the new follow-ups Arjun added for each stale deal.
+        </div>
+      </div>
+    );
+  }
+
+  // Invoice reminder — show how many were drafted
+  if (agentKey === 'invoice_reminder' && Number(d.queued || 0) > 0) {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        fontSize: 13, color: 'var(--color-text)', lineHeight: 1.6,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Invoices checked</div>
+            <div style={{ fontSize: 22, fontWeight: 700 }}>{d.candidates || 0}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--color-text-dim)', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Reminders drafted</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-accent)' }}>{d.queued}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 10, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Drafts wait for your approval in Inbox before going out.
+        </div>
+      </div>
+    );
+  }
+
+  // Email triage results — show how many got triaged
+  if (agentKey === 'email_triage' && Number(d.processed || 0) > 0) {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        fontSize: 13, color: 'var(--color-text)',
+      }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--color-ok)' }}>
+          {d.processed} email{d.processed === 1 ? '' : 's'} triaged
+        </div>
+        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Reply drafts (if any) are queued for your approval in Inbox.
+        </div>
+      </div>
+    );
+  }
+
+  // Meeting prep — show pushed count
+  if (agentKey === 'meeting_prep' && Number(d.pushed || 0) > 0) {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        fontSize: 13, color: 'var(--color-text)',
+      }}>
+        <div style={{ fontSize: 22, fontWeight: 700 }}>
+          {d.pushed} meeting brief{d.pushed === 1 ? '' : 's'} ready
+        </div>
+        <div style={{ marginTop: 4, fontSize: 12, color: 'var(--color-text-muted)' }}>
+          Each brief covers the contact's recent interactions, open deals, and suggested talking points.
+        </div>
+      </div>
+    );
+  }
+
+  // "Idle" / nothing-to-do case — show a friendly empty state
+  if (result.tone === 'idle') {
+    return (
+      <div style={{
+        padding: '24px 18px', textAlign: 'center', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px dashed var(--color-border-strong)',
+        color: 'var(--color-text-muted)',
+      }}>
+        <div style={{ fontSize: 28, marginBottom: 6 }}>🌱</div>
+        <div style={{ fontSize: 13 }}>
+          Nothing actionable right now — that's a good thing.
+          <br />
+          <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+            This agent runs on a schedule too — it'll surface work the moment something changes.
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Vox — special-cased contact-pick CTA could go here later
+  if (agentKey === 'outbound_caller') {
+    return (
+      <div style={{
+        padding: '14px 16px', borderRadius: 'var(--r-md)',
+        background: 'var(--color-surface-1)',
+        border: '1px solid var(--color-border)',
+        fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6,
+      }}>
+        Vox is your outbound caller. Once a contact has a phone number, you can
+        queue a real call from the Vox console — Vox will dial, have a short
+        conversation following a script, and file a summary on the contact.
+      </div>
+    );
+  }
+
+  // Default fallback — nothing to render beyond the header summary
+  return null;
+}
+
 
 export default function Agents() {
   const [personas, setPersonas] = useState([]);
