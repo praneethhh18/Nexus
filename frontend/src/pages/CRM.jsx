@@ -541,38 +541,85 @@ const _daysSince = (iso) => {
   if (Number.isNaN(t)) return Infinity;
   return (_now() - t) / 86400_000;
 };
+// Decision-maker title heuristic — used by the "Decision maker" contact preset.
+// Matches common Indian SMB seniority signals; case-insensitive.
+const _DECISION_MAKER_RE = /\b(founder|co[- ]?founder|ceo|cto|cfo|cmo|coo|chief|president|vp|vice\s*president|head|director|owner|partner|principal|managing\s+director|md|proprietor)\b/i;
+
+// Predicates receive `(row, tags)` where tags is the array of tag objects for
+// that row (used for the "Untagged" preset; ignored by the rest).
 const SMART_PRESETS = {
   contacts: [
+    // ── Data quality ──────────────────────────────────────────────────────
     { key: 'no_email',        label: 'Missing email',          group: 'Data quality',
       pred: (r) => !(r.email || '').trim() },
     { key: 'no_phone',        label: 'Missing phone',          group: 'Data quality',
       pred: (r) => !(r.phone || '').trim() },
     { key: 'no_company',      label: 'No company linked',      group: 'Data quality',
       pred: (r) => !r.company_id && !r.company_name },
+    { key: 'no_notes',        label: 'No notes',               group: 'Data quality',
+      pred: (r) => !(r.notes || '').trim() },
+    { key: 'untagged',        label: 'Untagged',               group: 'Data quality',
+      pred: (_r, tags) => !tags || tags.length === 0 },
+    // ── Activity ──────────────────────────────────────────────────────────
+    { key: 'recently_added',  label: 'Added in last 7d',       group: 'Activity',
+      pred: (r) => _daysSince(r.created_at) <= 7 },
+    { key: 'engaged_7d',      label: 'Engaged in last 7d',     group: 'Activity',
+      pred: (r) => _daysSince(r.last_contacted_at || r.last_interaction_at) <= 7 },
     { key: 'stale_30d',       label: 'Stale (>30d no contact)', group: 'Activity',
       pred: (r) => _daysSince(r.last_contacted_at || r.last_interaction_at) > 30 },
+    { key: 'cold_90d',        label: 'Cold (>90d no contact)', group: 'Activity',
+      pred: (r) => _daysSince(r.last_contacted_at || r.last_interaction_at) > 90 },
     { key: 'never_contacted', label: 'Never contacted',        group: 'Activity',
       pred: (r) => !(r.last_contacted_at || r.last_interaction_at) },
     { key: 'has_open_deals',  label: 'Has open deals',         group: 'Activity',
       pred: (r) => Number(r.open_deals_count || 0) > 0 },
+    // ── Importance ────────────────────────────────────────────────────────
+    { key: 'decision_maker',  label: 'Decision maker',         group: 'Importance',
+      pred: (r) => _DECISION_MAKER_RE.test(r.title || '') },
+    { key: 'has_whatsapp',    label: 'Has WhatsApp (phone)',   group: 'Importance',
+      pred: (r) => !!(r.phone || '').trim() },
   ],
   companies: [
+    // ── Data quality ──────────────────────────────────────────────────────
     { key: 'no_industry',    label: 'Missing industry',         group: 'Data quality',
       pred: (r) => !(r.industry || '').trim() },
     { key: 'no_website',     label: 'Missing website',          group: 'Data quality',
       pred: (r) => !(r.website || '').trim() },
     { key: 'no_size',        label: 'Missing team size',        group: 'Data quality',
       pred: (r) => !(r.size || '').trim() },
+    { key: 'no_notes',       label: 'No notes',                 group: 'Data quality',
+      pred: (r) => !(r.notes || '').trim() },
+    { key: 'untagged',       label: 'Untagged',                 group: 'Data quality',
+      pred: (_r, tags) => !tags || tags.length === 0 },
+    // ── Activity ──────────────────────────────────────────────────────────
+    { key: 'recently_added', label: 'Added in last 7d',         group: 'Activity',
+      pred: (r) => _daysSince(r.created_at) <= 7 },
     { key: 'has_open_deals', label: 'Has open deals',           group: 'Activity',
       pred: (r) => Number(r.open_deals_count || 0) > 0 },
     { key: 'no_deals',       label: 'No deals attached',        group: 'Activity',
       pred: (r) => Number(r.deals_count || r.open_deals_count || 0) === 0 },
     { key: 'no_contacts',    label: 'No contacts linked',       group: 'Activity',
       pred: (r) => Number(r.contacts_count || 0) === 0 },
+    { key: 'multi_contact',  label: 'Multi-contact (3+)',       group: 'Activity',
+      pred: (r) => Number(r.contacts_count || 0) >= 3 },
+    // ── Lifecycle ─────────────────────────────────────────────────────────
+    { key: 'is_customer',    label: 'Customer (has won deal)',  group: 'Lifecycle',
+      pred: (r) => Number(r.won_deals_count || 0) > 0 },
   ],
   deals: [
+    // ── Activity ──────────────────────────────────────────────────────────
+    { key: 'recently_created',   label: 'Created in last 7d',     group: 'Activity',
+      pred: (r) => _daysSince(r.created_at) <= 7 },
     { key: 'stale_14d',          label: 'Stale (>14d no update)', group: 'Activity',
       pred: (r) => _daysSince(r.updated_at) > 14 },
+    { key: 'closing_this_week',  label: 'Closing this week',      group: 'Activity',
+      pred: (r) => {
+        const iso = r.close_date || r.expected_close_date;
+        if (!iso) return false;
+        const d = new Date(iso).getTime();
+        const days = (d - _now()) / 86400_000;
+        return days >= -1 && days <= 7;
+      } },
     { key: 'closing_this_month', label: 'Closing this month',     group: 'Activity',
       pred: (r) => {
         if (!r.close_date && !r.expected_close_date) return false;
@@ -580,14 +627,47 @@ const SMART_PRESETS = {
         const now = new Date();
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
       } },
+    { key: 'overdue',            label: 'Overdue close date',     group: 'Activity',
+      pred: (r) => {
+        const iso = r.close_date || r.expected_close_date;
+        if (!iso) return false;
+        if (['won', 'lost'].includes(r.stage)) return false;
+        return new Date(iso).getTime() < _now();
+      } },
+    { key: 'won_this_month',     label: 'Won this month',         group: 'Activity',
+      pred: (r) => {
+        if (r.stage !== 'won') return false;
+        const d = new Date(r.updated_at);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      } },
+    { key: 'lost_this_month',    label: 'Lost this month',        group: 'Activity',
+      pred: (r) => {
+        if (r.stage !== 'lost') return false;
+        const d = new Date(r.updated_at);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      } },
+    // ── Value ─────────────────────────────────────────────────────────────
     { key: 'high_value',         label: 'High value (>₹1L)',       group: 'Value',
       pred: (r) => Number(r.value || 0) >= 100_000 },
     { key: 'low_value',          label: 'Small (<₹50k)',           group: 'Value',
       pred: (r) => Number(r.value || 0) > 0 && Number(r.value || 0) < 50_000 },
+    // ── Probability ───────────────────────────────────────────────────────
+    { key: 'high_confidence',    label: 'High confidence (>70%)',  group: 'Probability',
+      pred: (r) => Number(r.probability_pct || 0) > 70 },
+    { key: 'low_confidence',     label: 'Low confidence (<30%)',   group: 'Probability',
+      pred: (r) => Number(r.probability_pct || 0) > 0 && Number(r.probability_pct || 0) < 30 },
+    // ── Stage ─────────────────────────────────────────────────────────────
     { key: 'open',               label: 'Open (not won/lost)',     group: 'Stage',
       pred: (r) => !['won', 'lost'].includes(r.stage) },
+    // ── Data quality ──────────────────────────────────────────────────────
     { key: 'no_contact',         label: 'No contact attached',     group: 'Data quality',
       pred: (r) => !r.contact_id && !r.contact_name },
+    { key: 'no_close_date',      label: 'No close date set',       group: 'Data quality',
+      pred: (r) => !r.close_date && !r.expected_close_date },
+    { key: 'untagged',           label: 'Untagged',                group: 'Data quality',
+      pred: (_r, tags) => !tags || tags.length === 0 },
   ],
 };
 
@@ -915,30 +995,30 @@ export default function CRM() {
   // Compose primary single-value filter + smart preset checkbox
   // predicates. All predicates AND together (every active filter must
   // be true for a row to survive).
-  const smartPredicate = (tabKey) => {
+  const smartPredicate = (tabKey, tagsMap) => {
     const presets = SMART_PRESETS[tabKey] || [];
     const active = presets.filter(p => smartFilters.has(p.key));
     if (active.length === 0) return () => true;
     return (r) => active.every(p => {
-      try { return p.pred(r); } catch { return false; }
+      try { return p.pred(r, tagsMap?.[r.id] || []); } catch { return false; }
     });
   };
   const visibleContacts  = applyCrmSort(
     filterItems(contacts, tagsByContact, selectedTagIds)
       .filter(r => !sourceFilter || (r.source || 'manual') === sourceFilter)
-      .filter(smartPredicate('contacts')),
+      .filter(smartPredicate('contacts', tagsByContact)),
     sortKey,
   );
   const visibleCompanies = applyCrmSort(
     filterItems(companies, tagsByCompany, selectedTagIds)
       .filter(r => !industryFilter || (r.industry || '').toLowerCase().includes(industryFilter.toLowerCase().split(' /')[0]))
-      .filter(smartPredicate('companies')),
+      .filter(smartPredicate('companies', tagsByCompany)),
     sortKey,
   );
   const visibleDeals     = applyCrmSort(
     filterItems(deals, tagsByDeal, selectedTagIds)
       .filter(r => !stageFilter || r.stage === stageFilter)
-      .filter(smartPredicate('deals')),
+      .filter(smartPredicate('deals', tagsByDeal)),
     sortKey,
   );
 
