@@ -448,7 +448,7 @@ export default function Layout() {
             left: collapsed ? 64 : 14,
             width: 360,
             maxHeight: 'min(560px, 70vh)',
-            background: 'var(--color-bg-elev)',
+            background: 'var(--color-surface-2)',
             border: '1px solid var(--color-border-strong)',
             borderRadius: 14,
             zIndex: 100,

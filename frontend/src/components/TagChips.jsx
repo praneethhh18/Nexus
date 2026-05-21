@@ -5,7 +5,8 @@
  * <TagPicker entityType="task" entityId="..." onChange={...} />
  *                                         — editable: click to add, click × to remove
  */
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Tag, X, Plus } from 'lucide-react';
 import { listTags, createTag, tagsFor, setTagsFor } from '../services/tags';
 
@@ -32,7 +33,8 @@ export function TagChips({ tags, size = 'sm', onRemove = null }) {
           {t.name}
           {onRemove && (
             <button
-              onClick={(e) => { e.stopPropagation(); onRemove(t); }}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onRemove(t); }}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 padding: 0, color: t.color, opacity: 0.7, display: 'flex',
@@ -57,6 +59,8 @@ export function TagPicker({ entityType, entityId, onChange }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const ref = useRef(null);
+  const popRef = useRef(null);
+  const [popPos, setPopPos] = useState({ top: 0, left: 0, width: 220 });
 
   const load = async () => {
     try {
@@ -76,16 +80,22 @@ export function TagPicker({ entityType, entityId, onChange }) {
       // Don't close if the click was on a target that's been removed
       // from the DOM by the time mousedown fires (happens for elements
       // that toggle themselves out of existence — eg. a tag row the
-      // user just clicked to remove). Without this guard, removing a
-      // tag chip from within the picker also closed the picker,
-      // which felt buggy.
+      // user just clicked to remove).
       if (!e.target || !document.body.contains(e.target)) return;
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+      const inTrigger = ref.current && ref.current.contains(e.target);
+      const inPop = popRef.current && popRef.current.contains(e.target);
+      if (!inTrigger && !inPop) setOpen(false);
     };
     if (open) {
       window.addEventListener('mousedown', click);
       return () => window.removeEventListener('mousedown', click);
     }
+  }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open || !ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    setPopPos({ top: r.bottom + 4, left: r.left, width: Math.max(220, r.width) });
   }, [open]);
 
   const save = async (nextIds) => {
@@ -129,7 +139,8 @@ export function TagPicker({ entityType, entityId, onChange }) {
       <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
         <TagChips tags={mine} onRemove={(t) => toggle(t)} />
         <button
-          onClick={() => setOpen(o => !o)}
+          type="button"
+          onClick={(e) => { e.preventDefault(); setOpen(o => !o); }}
           className="btn-ghost"
           style={{ fontSize: 10, padding: '2px 8px', display: 'inline-flex', gap: 3, alignItems: 'center' }}
           title="Add or change tags"
@@ -138,12 +149,14 @@ export function TagPicker({ entityType, entityId, onChange }) {
         </button>
       </span>
 
-      {open && (
+      {open && createPortal((
         <div
+          ref={popRef}
           style={{
-            position: 'absolute', top: '100%', left: 0, marginTop: 4,
+            position: 'fixed', top: popPos.top, left: popPos.left,
             background: 'var(--color-bg)', border: '1px solid var(--color-surface-2)',
-            borderRadius: 'var(--r-md)', padding: 8, minWidth: 220, zIndex: 200,
+            borderRadius: 'var(--r-md)', padding: 8,
+            minWidth: popPos.width, zIndex: 500,
             boxShadow: '0 12px 32px rgba(0,0,0,0.5)',
           }}
         >
@@ -157,7 +170,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
               style={{ fontSize: 11, padding: '4px 8px', flex: 1 }}
               maxLength={40}
             />
-            <button onClick={addNew} className="btn-ghost" style={{ fontSize: 11, padding: '4px 6px' }}>
+            <button type="button" onClick={addNew} className="btn-ghost" style={{ fontSize: 11, padding: '4px 6px' }}>
               <Plus size={10} />
             </button>
           </div>
@@ -179,6 +192,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
               return (
                 <button
                   key={t.id}
+                  type="button"
                   onClick={() => toggle(t)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 6,
@@ -199,7 +213,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
             })}
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }

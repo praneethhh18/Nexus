@@ -210,7 +210,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
                           onChange={(e) => setRefineDraft({ ...refineDraft, [f.key]: e.target.value })}
                           rows={Math.min(12, Math.max(4, (v || '').split('\n').length + 1))}
                           style={{ padding: 8, borderRadius: 6, border: '1px solid var(--color-border-strong)',
-                                   background: 'var(--color-bg-elev)', color: 'var(--color-text)',
+                                   background: 'var(--color-surface-2)', color: 'var(--color-text)',
                                    fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
                         />
                       ) : (
@@ -219,7 +219,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
                           value={v}
                           onChange={(e) => setRefineDraft({ ...refineDraft, [f.key]: e.target.value })}
                           style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-strong)',
-                                   background: 'var(--color-bg-elev)', color: 'var(--color-text)',
+                                   background: 'var(--color-surface-2)', color: 'var(--color-text)',
                                    fontSize: 13, fontFamily: 'inherit' }}
                         />
                       )
@@ -227,7 +227,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
                       <div style={{ color: 'var(--color-text)',
                                     whiteSpace: f.multiline ? 'pre-wrap' : 'normal',
                                     wordBreak: 'break-word',
-                                    background: f.multiline ? 'var(--color-bg-elev)' : 'transparent',
+                                    background: f.multiline ? 'var(--color-surface-2)' : 'transparent',
                                     padding: f.multiline ? 10 : 0,
                                     borderRadius: f.multiline ? 6 : 0,
                                     border: f.multiline ? '1px solid var(--color-border)' : 'none' }}>
@@ -433,7 +433,7 @@ function SentRow({ interaction, expanded, onToggle }) {
             <div style={{ color: 'var(--color-text)' }}>{subject}</div>
             <div style={{ color: 'var(--color-text-muted)' }}>Body</div>
             <div style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap',
-                          background: 'var(--color-bg-elev)', padding: 8, borderRadius: 6,
+                          background: 'var(--color-surface-2)', padding: 8, borderRadius: 6,
                           maxHeight: 160, overflow: 'auto', fontSize: 12.5 }}>
               {body || <span style={{ color: 'var(--color-text-dim)', fontStyle: 'italic' }}>(no body preview)</span>}
             </div>

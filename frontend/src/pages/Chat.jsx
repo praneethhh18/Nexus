@@ -876,7 +876,7 @@ export default function Chat() {
                     <div style={{
                       position: 'absolute', right: 0, top: 'calc(100% + 6px)',
                       minWidth: 160, padding: 4, borderRadius: 8, zIndex: 51,
-                      background: 'var(--color-bg-elev)',
+                      background: 'var(--color-surface-2)',
                       border: '1px solid var(--color-border)',
                       boxShadow: '0 6px 24px rgba(0,0,0,0.18)',
                     }}>

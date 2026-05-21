@@ -658,7 +658,7 @@ function SmartFilterBar({
             <div style={{
               position: 'absolute', top: 'calc(100% + 6px)', left: 0,
               width: 340, maxHeight: 'min(520px, 70vh)', overflow: 'auto',
-              background: 'var(--color-bg-elev)',
+              background: 'var(--color-surface-2)',
               border: '1px solid var(--color-border-strong)',
               borderRadius: 12, zIndex: 51,
               boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
