@@ -486,15 +486,17 @@ def run_agent_now(agent_id: str, trigger: str = "manual",
 TEMPLATES: List[Dict] = [
     {
         "key":             "competitor_price_watcher",
-        "name":            "Competitor Price Watcher",
+        "name":            "Competitor Intel Watcher",
         "emoji":           "👀",
-        "description":     "Checks a competitor's pricing and reports changes.",
-        "goal":            "Search the knowledge base ONLY for documents categorised as 'competitor'. "
-                           "Use search_knowledge with category='competitor'. Look for pricing, plans, "
-                           "tiers, or discounts. Compare what you find against previous mentions and "
-                           "note any changes in 3 bullet points. If no competitor documents are "
-                           "found, say so plainly and remind the user to upload competitor PDFs "
-                           "categorised as 'competitor' in Documents.",
+        "description":     "Reads competitor docs and reports what's happening.",
+        "goal":            "Search the knowledge base for documents categorised as 'competitor' "
+                           "(use search_knowledge with category='competitor'). For each competitor "
+                           "you find, write a 3-5 bullet summary covering: company focus, revenue / "
+                           "size if mentioned, recent deals or partnerships, and any pricing / plans "
+                           "/ discounts mentioned. If pricing is missing from the docs, say so but "
+                           "still report the other intelligence. If no competitor docs are found at "
+                           "all, say so plainly and ask the user to upload competitor PDFs and tag "
+                           "them as 'competitor' in Documents.",
         "tool_whitelist":  ["search_knowledge"],
         "interval_minutes": 1440,
         "output_target":   "inbox",
