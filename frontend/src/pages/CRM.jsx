@@ -119,7 +119,8 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
 
   const [f, setF] = useState({
     first_name: '', last_name: '', email: '', phone: '', title: '',
-    company_id: '', notes: '', tags: '', ...(initial || {}),
+    company_id: '', notes: '', tags: '', source: '',
+    ...(initial || {}),
   });
   const [extras, setExtras] = useState(initialExtras);
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
@@ -142,26 +143,57 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
     <form onSubmit={submit}>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label="First name">
-          <input className="field-input" value={f.first_name} onChange={(e) => set('first_name', e.target.value)} maxLength={80} />
+          <input className="field-input" autoFocus placeholder="e.g. Praneeth"
+                 value={f.first_name} onChange={(e) => set('first_name', e.target.value)} maxLength={80} />
         </Field>
         <Field label="Last name">
-          <input className="field-input" value={f.last_name} onChange={(e) => set('last_name', e.target.value)} maxLength={80} />
+          <input className="field-input" placeholder="e.g. P K"
+                 value={f.last_name} onChange={(e) => set('last_name', e.target.value)} maxLength={80} />
         </Field>
       </div>
-      <Field label="Email">
-        <input className="field-input" type="email" value={f.email} onChange={(e) => set('email', e.target.value)} maxLength={200} />
-      </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Field label="Phone">
-          <input className="field-input" value={f.phone} onChange={(e) => set('phone', e.target.value)} maxLength={40} />
+        <Field label="Email">
+          <input className="field-input" type="email" placeholder="praneeth@company.com"
+                 value={f.email} onChange={(e) => set('email', e.target.value)} maxLength={200} />
         </Field>
-        <Field label="Title">
-          <input className="field-input" value={f.title} onChange={(e) => set('title', e.target.value)} maxLength={120} />
+        <Field label="Phone">
+          <input className="field-input" type="tel" placeholder="+91 98765 43210"
+                 value={f.phone} onChange={(e) => set('phone', e.target.value)} maxLength={40} />
+        </Field>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Role / Title">
+          <input className="field-input" list="contact-role-suggestions"
+                 placeholder="e.g. VP Engineering"
+                 value={f.title} onChange={(e) => set('title', e.target.value)} maxLength={120} />
+          <datalist id="contact-role-suggestions">
+            <option value="Founder" /><option value="Co-founder" /><option value="CEO" />
+            <option value="CTO" /><option value="VP Engineering" />
+            <option value="Head of Sales" /><option value="Sales Manager" />
+            <option value="Marketing Manager" /><option value="Product Manager" />
+            <option value="Customer Success" /><option value="Operations" />
+            <option value="Finance / CFO" /><option value="HR" />
+          </datalist>
+        </Field>
+        <Field label="Source">
+          <select className="field-select" value={f.source || ''}
+                  onChange={(e) => set('source', e.target.value)} style={{ width: '100%' }}>
+            <option value="">— manual entry —</option>
+            <option value="website">Website / Lead form</option>
+            <option value="referral">Referral</option>
+            <option value="outbound">Cold outreach</option>
+            <option value="event">Event / Conference</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="email_paste">Forwarded email</option>
+            <option value="import">CSV import</option>
+            <option value="other">Other</option>
+          </select>
         </Field>
       </div>
       <Field label="Company">
-        <select className="field-select" value={f.company_id || ''} onChange={(e) => set('company_id', e.target.value)} style={{ width: '100%' }}>
-          <option value="">— none —</option>
+        <select className="field-select" value={f.company_id || ''}
+                onChange={(e) => set('company_id', e.target.value)} style={{ width: '100%' }}>
+          <option value="">— unlinked —</option>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </Field>
@@ -231,32 +263,92 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
 }
 
 // ── Company form ────────────────────────────────────────────────────────────
+// Shared industry + size enum — used by both CompanyForm and the
+// filter dropdowns below. Tuned for Indian SMB diversity; "Other"
+// captures the long tail without forcing the LLM to invent a new
+// category.
+const INDUSTRY_OPTIONS = [
+  'SaaS / Software', 'E-commerce', 'Retail', 'Manufacturing',
+  'Healthcare', 'Education', 'Finance / Banking', 'Real Estate',
+  'Consulting', 'Marketing / Advertising', 'Media / Entertainment',
+  'Hospitality', 'Logistics / Supply Chain', 'Construction',
+  'Legal', 'Non-profit', 'Government', 'Other',
+];
+const SIZE_OPTIONS = [
+  { value: '1-10',     label: 'Solo / Tiny (1–10)' },
+  { value: '11-50',    label: 'Small (11–50)' },
+  { value: '51-200',   label: 'Growing (51–200)' },
+  { value: '201-1000', label: 'Mid-market (201–1,000)' },
+  { value: '1000+',    label: 'Enterprise (1,000+)' },
+];
+
 function CompanyForm({ initial, onSubmit, onCancel }) {
-  const [f, setF] = useState({ name: '', industry: '', website: '', size: '', notes: '', tags: '', ...(initial || {}) });
+  const [f, setF] = useState({
+    name: '', industry: '', website: '', size: '', notes: '', tags: '',
+    phone: '', email: '', country: 'India', ...(initial || {}),
+  });
   const set = (k, v) => setF((prev) => ({ ...prev, [k]: v }));
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
-      <Field label="Name *">
-        <input className="field-input" required value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={200} />
+      <Field label="Company name *">
+        <input className="field-input" required autoFocus
+               placeholder="e.g. Nimbus Analytics"
+               value={f.name} onChange={(e) => set('name', e.target.value)} maxLength={200} />
       </Field>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label="Industry">
-          <input className="field-input" value={f.industry} onChange={(e) => set('industry', e.target.value)} maxLength={80} />
+          <select className="field-select" value={f.industry}
+                  onChange={(e) => set('industry', e.target.value)}
+                  style={{ width: '100%' }}>
+            <option value="">— pick one —</option>
+            {INDUSTRY_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
+          </select>
         </Field>
-        <Field label="Size">
-          <input className="field-input" placeholder="e.g. 1-10, 50-200" value={f.size} onChange={(e) => set('size', e.target.value)} maxLength={40} />
+        <Field label="Team size">
+          <select className="field-select" value={f.size}
+                  onChange={(e) => set('size', e.target.value)}
+                  style={{ width: '100%' }}>
+            <option value="">— pick one —</option>
+            {SIZE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
         </Field>
       </div>
-      <Field label="Website">
-        <input className="field-input" value={f.website} onChange={(e) => set('website', e.target.value)} maxLength={250} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Website">
+          <input className="field-input" type="url"
+                 placeholder="https://nimbus.example.com"
+                 value={f.website} onChange={(e) => set('website', e.target.value)} maxLength={250} />
+        </Field>
+        <Field label="Country">
+          <input className="field-input" value={f.country}
+                 onChange={(e) => set('country', e.target.value)} maxLength={80} />
+        </Field>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Field label="Main phone">
+          <input className="field-input" type="tel"
+                 placeholder="+91 98765 43210"
+                 value={f.phone} onChange={(e) => set('phone', e.target.value)} maxLength={40} />
+        </Field>
+        <Field label="Main email">
+          <input className="field-input" type="email"
+                 placeholder="hello@nimbus.example.com"
+                 value={f.email} onChange={(e) => set('email', e.target.value)} maxLength={200} />
+        </Field>
+      </div>
+      <Field label="Tags">
+        <input className="field-input"
+               placeholder="comma-separated, e.g. enterprise, q4-target"
+               value={f.tags} onChange={(e) => set('tags', e.target.value)} />
       </Field>
-      <Field label="Tags"><input className="field-input" value={f.tags} onChange={(e) => set('tags', e.target.value)} /></Field>
       <Field label="Notes">
-        <textarea className="field-input" rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
+        <textarea className="field-input" rows={3}
+                  placeholder="Anything worth remembering — founder background, key contacts, deal history…"
+                  value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
-        <button type="submit" className="btn-primary">{initial ? 'Save' : 'Add Company'}</button>
+        <button type="submit" className="btn-primary">{initial ? 'Save changes' : 'Add company'}</button>
       </div>
     </form>
   );
@@ -694,7 +786,25 @@ export default function CRM() {
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-        {tab === 'leads' && <LeadsTab contacts={contacts} navigate={navigate} flash={flash} />}
+        {tab === 'leads' && (
+          <>
+            <div style={{
+              marginBottom: 14, padding: '10px 14px', borderRadius: 8,
+              background: 'var(--color-accent-soft)',
+              border: '1px solid color-mix(in srgb, var(--color-accent) 22%, transparent)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <Inbox size={14} color="var(--color-accent)" />
+              <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.45 }}>
+                <strong>{t('leads')}</strong> are contacts captured from outside
+                — public lead forms, forwarded emails, the Lead Hunter agent,
+                or website signups. Triage them here before they graduate to
+                Contacts.
+              </div>
+            </div>
+            <LeadsTab contacts={contacts} navigate={navigate} flash={flash} />
+          </>
+        )}
         {tab === 'contacts' && (
           visibleContacts.length === 0 ? (
             <EmptyState
