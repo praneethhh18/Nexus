@@ -251,9 +251,21 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
       <Field label="Notes">
         <textarea className="field-input" rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
-      <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: -6, marginBottom: 8 }}>
-        Tip: add tags from the contact&apos;s detail page (click the row after saving) — that&apos;s where the colour-coded tag chips live.
-      </div>
+      {/* Tag editor inline — only when editing an existing contact (need
+          an id to link tags). When adding a new contact, the tags can be
+          added on the second save (after the row exists). */}
+      {initial?.id ? (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                        textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                        marginBottom: 6 }}>Tags</div>
+          <TagPicker entityType="contact" entityId={initial.id} />
+        </div>
+      ) : (
+        <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: -6, marginBottom: 8 }}>
+          Save first to enable tags. You can also add tags from the contact&apos;s detail page.
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary">{initial ? 'Save' : 'Add Contact'}</button>
@@ -341,9 +353,18 @@ function CompanyForm({ initial, onSubmit, onCancel }) {
                   placeholder="Anything worth remembering — founder background, key contacts, deal history…"
                   value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
-      <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginBottom: 8 }}>
-        Tip: add tags from the company&apos;s detail page (click the row after saving) — that&apos;s where the colour-coded tag chips live.
-      </div>
+      {initial?.id ? (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                        textTransform: 'uppercase', color: 'var(--color-text-dim)',
+                        marginBottom: 6 }}>Tags</div>
+          <TagPicker entityType="company" entityId={initial.id} />
+        </div>
+      ) : (
+        <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginBottom: 8 }}>
+          Save first to enable tags. You can also add tags from the company&apos;s detail page.
+        </div>
+      )}
       <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
         <button type="button" className="btn-ghost" onClick={onCancel}>Cancel</button>
         <button type="submit" className="btn-primary">{initial ? 'Save changes' : 'Add company'}</button>
@@ -522,12 +543,23 @@ export default function CRM() {
     return saved || 'name_asc';
   });
   useEffect(() => { sessionStorage.setItem('nexus_crm_sort', sortKey); }, [sortKey]);
+
+  // Smart-filter state — per tab. Reset on tab switch in switchTab().
+  const [sourceFilter, setSourceFilter] = useState('');
+  const [industryFilter, setIndustryFilter] = useState('');
+  const [stageFilter, setStageFilter] = useState('');
   // Bake tab-switch sort reset into the click handler instead of a
   // separate effect — react-compiler can't memoize an effect that
   // setState's based on a piece of state it doesn't depend on.
   const switchTab = useCallback((next) => {
     setTab(next);
     setSortKey(next === 'deals' ? 'value_desc' : 'name_asc');
+    // Reset cross-tab smart filters so they don't bleed (e.g. an
+    // industry filter from Companies still active when user switches
+    // to Deals).
+    setSourceFilter('');
+    setIndustryFilter('');
+    setStageFilter('');
   }, []);
 
   // ── Export current visible tab as CSV ───────────────────────────────
@@ -621,10 +653,23 @@ export default function CRM() {
     } catch (e) { setMsg(`Failed to load: ${e.message}`); }
   }, [searchStr]);
 
-  // Filtered + sorted views.
-  const visibleContacts  = applyCrmSort(filterItems(contacts,  tagsByContact, selectedTagIds), sortKey);
-  const visibleCompanies = applyCrmSort(filterItems(companies, tagsByCompany, selectedTagIds), sortKey);
-  const visibleDeals     = applyCrmSort(filterItems(deals,     tagsByDeal,    selectedTagIds), sortKey);
+  // Filtered + sorted views. Smart-filter (source/industry/stage)
+  // applied AFTER tag filter, BEFORE sort.
+  const visibleContacts  = applyCrmSort(
+    filterItems(contacts, tagsByContact, selectedTagIds)
+      .filter(r => !sourceFilter || (r.source || 'manual') === sourceFilter),
+    sortKey,
+  );
+  const visibleCompanies = applyCrmSort(
+    filterItems(companies, tagsByCompany, selectedTagIds)
+      .filter(r => !industryFilter || (r.industry || '').toLowerCase().includes(industryFilter.toLowerCase().split(' /')[0])),
+    sortKey,
+  );
+  const visibleDeals     = applyCrmSort(
+    filterItems(deals, tagsByDeal, selectedTagIds)
+      .filter(r => !stageFilter || r.stage === stageFilter),
+    sortKey,
+  );
 
   // Selection is scoped per tab — easiest: re-bind on the currently visible list
   const selectionContacts  = useBulkSelection(visibleContacts);
@@ -711,8 +756,10 @@ export default function CRM() {
               value: overview.open_deals_count,
               sub: `worth ${money(overview.open_deals_value)}`,
               icon: Briefcase, color: 'var(--color-warn)' },
+            // No sub-line — the label "Won this month" already carries
+            // the time window. Adding "this month" twice looked sloppy.
             { label: t('kpi_won'), value: money(overview.won_this_month),
-              sub: 'this month',
+              sub: null,
               icon: TrendingUp, color: 'var(--color-ok)' },
           ].map(({ label, value, sub, icon: Icon, color }, i) => (
             <div key={i} className="panel" style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -792,6 +839,51 @@ export default function CRM() {
 
       <div style={{ padding: '4px 24px' }}>
         <TagFilterBar selectedIds={selectedTagIds} onChange={setSelectedTagIds} />
+      </div>
+
+      {/* Smart filter chips — context-aware per tab. Chips toggle a
+          per-tab filter state; cleared by clicking "All" or selecting
+          a different value. Wired into the visibleX memos below. */}
+      <div style={{ padding: '0 24px 8px', display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {tab === 'contacts' && (
+          <>
+            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginRight: 4 }}>Source:</span>
+            {['', 'manual', 'website', 'referral', 'outbound', 'event', 'linkedin', 'email_paste', 'import'].map(v => (
+              <button key={v || 'all'}
+                      onClick={() => setSourceFilter(v)}
+                      className={sourceFilter === v ? 'btn-primary' : 'btn-ghost'}
+                      style={{ fontSize: 10.5, padding: '3px 9px' }}>
+                {v === '' ? 'All' : v.replace('_', ' ')}
+              </button>
+            ))}
+          </>
+        )}
+        {tab === 'companies' && (
+          <>
+            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginRight: 4 }}>Industry:</span>
+            {['', ...INDUSTRY_OPTIONS.slice(0, 8)].map(v => (
+              <button key={v || 'all'}
+                      onClick={() => setIndustryFilter(v)}
+                      className={industryFilter === v ? 'btn-primary' : 'btn-ghost'}
+                      style={{ fontSize: 10.5, padding: '3px 9px' }}>
+                {v === '' ? 'All' : v.replace(/ \/.+$/, '')}
+              </button>
+            ))}
+          </>
+        )}
+        {tab === 'deals' && (
+          <>
+            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', marginRight: 4 }}>Stage:</span>
+            {['', 'lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'].map(v => (
+              <button key={v || 'all'}
+                      onClick={() => setStageFilter(v)}
+                      className={stageFilter === v ? 'btn-primary' : 'btn-ghost'}
+                      style={{ fontSize: 10.5, padding: '3px 9px' }}>
+                {v === '' ? 'All' : v}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
