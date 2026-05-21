@@ -92,8 +92,12 @@ def bulk_delete_contacts_api(body: dict, ctx: dict = Depends(get_current_context
 # ── Deals ────────────────────────────────────────────────────────────────────
 @router.get("/api/crm/deals")
 def list_deals_api(stage: Optional[str] = None, search: Optional[str] = None,
+                   company_id: Optional[str] = None, contact_id: Optional[str] = None,
                    limit: int = 200, ctx: dict = Depends(get_current_context)):
-    return _crm.list_deals(ctx["business_id"], stage=stage, search=search, limit=limit)
+    return _crm.list_deals(
+        ctx["business_id"], stage=stage, search=search,
+        company_id=company_id, contact_id=contact_id, limit=limit,
+    )
 
 
 @router.post("/api/crm/deals")
@@ -133,11 +137,13 @@ def bulk_stage_deals_api(body: dict, ctx: dict = Depends(get_current_context)):
 # ── Interactions ─────────────────────────────────────────────────────────────
 @router.get("/api/crm/interactions")
 def list_interactions_api(contact_id: Optional[str] = None, company_id: Optional[str] = None,
-                          deal_id: Optional[str] = None, limit: int = 100,
+                          deal_id: Optional[str] = None, type: Optional[str] = None,
+                          limit: int = 100,
                           ctx: dict = Depends(get_current_context)):
     return _crm.list_interactions(
         ctx["business_id"],
-        contact_id=contact_id, company_id=company_id, deal_id=deal_id, limit=limit,
+        contact_id=contact_id, company_id=company_id, deal_id=deal_id,
+        type=type, limit=limit,
     )
 
 

@@ -556,7 +556,15 @@ def create_deal(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
     return get_deal(business_id, did)
 
 
-def list_deals(business_id: str, stage: Optional[str] = None, search: Optional[str] = None, limit: int = 200) -> List[Dict]:
+def list_deals(business_id: str, stage: Optional[str] = None, search: Optional[str] = None,
+               company_id: Optional[str] = None, contact_id: Optional[str] = None,
+               limit: int = 200) -> List[Dict]:
+    """List deals scoped to this business, optionally filtered by stage,
+    free-text search, company, or contact. The company_id + contact_id
+    filters used to be silently ignored — that's why every CompanyDetail
+    page showed the SAME deals (the whole business's deal list). The
+    frontend was passing the filter as a query param but the router +
+    this function both dropped it on the floor."""
     conn = _get_conn()
     conn.row_factory = sqlite3.Row
     try:
@@ -575,6 +583,12 @@ def list_deals(business_id: str, stage: Optional[str] = None, search: Optional[s
                 raise HTTPException(400, f"Invalid stage: {stage}")
             sql += " AND d.stage = ?"
             params.append(stage)
+        if company_id:
+            sql += " AND d.company_id = ?"
+            params.append(company_id)
+        if contact_id:
+            sql += " AND d.contact_id = ?"
+            params.append(contact_id)
         if search:
             sql += " AND (d.name LIKE ? OR d.notes LIKE ?)"
             params.extend([f"%{search}%", f"%{search}%"])
@@ -752,6 +766,7 @@ def list_interactions(
     contact_id: Optional[str] = None,
     company_id: Optional[str] = None,
     deal_id: Optional[str] = None,
+    type: Optional[str] = None,
     limit: int = 100,
 ) -> List[Dict]:
     conn = _get_conn()
@@ -765,6 +780,8 @@ def list_interactions(
             sql += " AND company_id = ?"; params.append(company_id)
         if deal_id:
             sql += " AND deal_id = ?"; params.append(deal_id)
+        if type:
+            sql += " AND type = ?"; params.append(type)
         sql += " ORDER BY occurred_at DESC LIMIT ?"
         params.append(limit)
         rows = conn.execute(sql, params).fetchall()
