@@ -34,15 +34,93 @@ function WorkflowNode({ data, selected }) {
 
 const nodeTypes = { workflowNode: WorkflowNode };
 
+// Short human-friendly labels for each node type that shows up in the
+// template step preview. The full registry comes from the backend but we
+// don't always have it loaded when the gallery first paints, so we ship
+// a small static map for the common types and fall back to the raw type.
+const NODE_TYPE_LABEL = {
+  schedule_trigger: 'Schedule',
+  manual_trigger: 'Manual run',
+  anomaly_trigger: 'On anomaly',
+  webhook_trigger: 'Webhook',
+  sql_query: 'SQL query',
+  rag_search: 'Search docs',
+  web_search: 'Web search',
+  transform: 'Transform',
+  document_search: 'Search docs',
+  llm_prompt: 'AI prompt',
+  llm_condition: 'AI decision',
+  summarize: 'Summarize',
+  generate_report: 'Build PDF',
+  classify: 'AI classify',
+  value_condition: 'If check',
+  data_exists_condition: 'If has data',
+  send_email: 'Send email',
+  slack_notify: 'Post to Slack',
+  discord_notify: 'Post to Discord',
+  desktop_notify: 'Desktop alert',
+  http_request: 'HTTP call',
+  save_file: 'Save file',
+  wait: 'Wait',
+  merge: 'Merge',
+  for_each: 'For each',
+  try_fallback: 'Try / fallback',
+  trigger_agent: 'Trigger agent',
+};
+
 // ── Template card (business-user facing) ─────────────────────────────────────
+//
+// Cards now surface the actual step chain underneath the description so
+// users can see *exactly* what will run if they click Use this. Before
+// this, names like "Meeting Scheduler" let the imagination wander —
+// honest step chips kill that ambiguity.
 function TemplateCard({ tmpl, onEnable, onOpen }) {
   const tags = tmpl.tags || [];
+  const steps = tmpl.nodes || [];
   return (
     <div className="panel" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>
         <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>{tmpl.name}</p>
-        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0' }}>{tmpl.description}</p>
+        <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '4px 0 0', lineHeight: 1.5 }}>{tmpl.description}</p>
       </div>
+
+      {steps.length > 0 && (
+        <div>
+          <div style={{
+            fontSize: 9, color: 'var(--color-text-dim)',
+            textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700,
+            marginBottom: 4,
+          }}>
+            What runs ({steps.length} step{steps.length === 1 ? '' : 's'})
+          </div>
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4,
+            lineHeight: 1.6,
+          }}>
+            {steps.slice(0, 7).map((n, i) => (
+              <span key={n.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <span style={{
+                  fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 999,
+                  background: 'var(--color-surface-2)',
+                  border: '1px solid var(--color-border)',
+                  color: 'var(--color-text-muted)',
+                }} title={`${n.name} · type: ${n.type}`}>
+                  {NODE_TYPE_LABEL[n.type] || n.type}
+                </span>
+                {i < Math.min(steps.length, 7) - 1 && (
+                  <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>→</span>
+                )}
+              </span>
+            ))}
+            {steps.length > 7 && (
+              <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
+                +{steps.length - 7} more
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {tags.map((t, i) => (
           <span key={i} style={{ fontSize: 9, padding: '2px 7px', borderRadius: 4, background: 'var(--color-surface-1)', color: 'var(--color-text-dim)' }}>{t}</span>
@@ -679,7 +757,7 @@ export default function Workflows() {
           ) : (
             <div style={{ display: 'grid', gap: 10 }}>
               {workflows.map(wf => (
-                <div key={wf.id} className="panel" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div key={wf.id} className="panel" style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>{wf.name}</span>
@@ -696,6 +774,33 @@ export default function Workflows() {
                       {wf.last_run && <> · last run: {wf.last_run.substring(0, 16)} ({wf.last_status})</>}
                       {wf.run_count > 0 && <> · runs: {wf.run_count}</>}
                     </div>
+                    {/* Step chain preview — same chips as the template
+                        cards, so users see what each saved workflow
+                        actually does without opening the builder. */}
+                    {wf.nodes?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4, marginTop: 6 }}>
+                        {wf.nodes.slice(0, 6).map((n, i) => (
+                          <span key={n.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{
+                              fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 999,
+                              background: 'var(--color-surface-2)',
+                              border: '1px solid var(--color-border)',
+                              color: 'var(--color-text-muted)',
+                            }} title={`${n.name} · type: ${n.type}`}>
+                              {NODE_TYPE_LABEL[n.type] || n.type}
+                            </span>
+                            {i < Math.min(wf.nodes.length, 6) - 1 && (
+                              <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>→</span>
+                            )}
+                          </span>
+                        ))}
+                        {wf.nodes.length > 6 && (
+                          <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>
+                            +{wf.nodes.length - 6} more
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                     <button className="btn-ghost" onClick={() => handleToggleEnabled(wf.id, !wf.enabled)} title={wf.enabled ? 'Disable' : 'Enable'}>

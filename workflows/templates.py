@@ -205,12 +205,15 @@ AUTO_EMAIL_SENDER: Dict[str, Any] = {
     ],
 }
 
-# ── Template 7: Meeting Scheduler ────────────────────────────────────────────
+# ── Template 7: Weekly Meeting Agenda Drafter ────────────────────────────────
+# Renamed from "Meeting Scheduler" — that name promised calendar booking
+# which we don't actually do. This template just drafts an agenda from
+# last week's data and emails it. Name now matches the steps.
 MEETING_SCHEDULER: Dict[str, Any] = {
-    "name": "Meeting Scheduler",
-    "description": "AI analyzes data to identify issues, drafts a meeting agenda, and sends a calendar invite email.",
+    "name": "Weekly Meeting Agenda Drafter",
+    "description": "Every Monday morning: pull last week's data, have AI draft a meeting agenda from the highlights, and email it (with manual review).",
     "enabled": False,
-    "tags": ["meeting", "scheduling", "email", "ai"],
+    "tags": ["meeting", "agenda", "email", "ai"],
     "nodes": [
         _node("n1", "schedule_trigger", "Weekly Monday 08:30",
               {"mode": "weekly", "weekly_day": "Monday", "weekly_time": "08:30"}, 100, 200),
@@ -218,11 +221,11 @@ MEETING_SCHEDULER: Dict[str, Any] = {
               {"mode": "natural_language",
                "question": "Show revenue by region, top issues, and any anomalies from the past 7 days",
                "max_rows": 20}, 350, 200),
-        _node("n3", "llm_prompt", "Generate Meeting Agenda",
+        _node("n3", "llm_prompt", "Draft Agenda",
               {"prompt": "Based on this week's business data:\n\n{input}\n\nCreate a structured meeting agenda with:\n1. Key metrics review\n2. Issues requiring attention\n3. Action items\n4. Open discussion topics\n\nFormat it professionally.",
                "max_words": 300}, 600, 200),
-        _node("n4", "send_email", "Send Meeting Invite",
-              {"to": "", "subject": "Weekly Business Review — {date} | Agenda Attached",
+        _node("n4", "send_email", "Email Agenda to Team",
+              {"to": "", "subject": "Weekly Business Review — {date} | Agenda",
                "body_mode": "use_previous_output", "require_approval": True}, 900, 200),
         _node("n5", "save_file", "Archive Agenda",
               {"filename_template": "meeting_agenda_{date}", "format": "txt"}, 900, 350),
@@ -235,12 +238,15 @@ MEETING_SCHEDULER: Dict[str, Any] = {
     ],
 }
 
-# ── Template 8: Call Scheduler & Prep ────────────────────────────────────────
+# ── Template 8: Client Call Prep Brief ──────────────────────────────────────
+# Renamed from "Call Scheduler & Prep" — same reason as the meeting one,
+# we do NOT actually schedule the call. We just pull client data, search
+# docs, and email yourself a prep brief.
 CALL_SCHEDULER: Dict[str, Any] = {
-    "name": "Call Scheduler & Prep",
-    "description": "Prepare for a client call: pull their data, search docs for context, draft talking points, and send a prep email.",
+    "name": "Client Call Prep Brief",
+    "description": "Manual: pull the client's last 10 orders + relevant policy docs, have AI draft talking points, and email the brief to yourself before the call.",
     "enabled": False,
-    "tags": ["call", "scheduling", "client", "ai-prep"],
+    "tags": ["call", "prep-brief", "client", "ai-prep"],
     "nodes": [
         _node("n1", "manual_trigger", "Prep for Call",
               {"label": "Prepare Call Brief"}, 100, 200),
