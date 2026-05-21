@@ -138,7 +138,7 @@ def _simulate_from_invoices(
             SELECT
                 COALESCE(NULLIF(status, ''), 'draft') AS status,
                 COUNT(*)                              AS invoice_count,
-                ROUND(SUM(total)::numeric, 2)         AS revenue
+                ROUND(CAST(SUM(total) AS NUMERIC), 2) AS revenue
             FROM nexus_invoices
             WHERE business_id = ?
             GROUP BY status
