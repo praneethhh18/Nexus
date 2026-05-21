@@ -202,3 +202,133 @@ async def voice_agent_send_email(
     except Exception as e:
         logger.exception(f"[voice-agent-tools] send_email failed: {e}")
         raise HTTPException(500, f"could not queue email: {e}")
+
+
+# ── Tool 4: Contact context — pre-call brief for the voice agent ─────
+@router.post("/api/voice/agent/contact-context")
+async def voice_agent_contact_context(
+    request: Request,
+    x_voice_callback_secret: Optional[str] = Header(None, alias="X-Voice-Callback-Secret"),
+):
+    """
+    Returns everything the voice agent needs to sound informed at the
+    start of a call. Without this, Vox treats every caller as a cold
+    lead and produces generic, robotic dialogue.
+
+    Body: { business_id: str, contact_id: str }
+    Returns: {
+      contact: { first_name, last_name, email, phone, title, company_name, source },
+      relationship: "customer" | "lead" | "unknown",
+      open_deals: [{ name, stage, value, currency }],
+      won_deals_count: int,
+      recent_interactions: [{ type, subject, summary, when }],
+      tags: [str],
+      brief: str    # one-paragraph human-readable summary for the system prompt
+    }
+    """
+    _verify_secret(x_voice_callback_secret)
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "body must be JSON")
+
+    business_id = (body.get("business_id") or "").strip()
+    contact_id  = (body.get("contact_id") or "").strip()
+    if not business_id or not contact_id:
+        raise HTTPException(400, "business_id and contact_id are required")
+
+    # Aggregate the pieces. Each lookup is best-effort — if any one fails
+    # the agent still gets partial context rather than a hard error.
+    contact: dict = {}
+    open_deals: list[dict] = []
+    won_deals_count = 0
+    interactions: list[dict] = []
+    tags: list[str] = []
+
+    try:
+        from api import crm as _crm
+        contact = _crm.get_contact(business_id, contact_id) or {}
+    except Exception as e:
+        logger.warning(f"[contact-context] get_contact failed: {e}")
+
+    try:
+        from api import crm as _crm
+        all_deals = _crm.list_deals(business_id, contact_id=contact_id, limit=20)
+        for d in all_deals:
+            if d.get("stage") == "won":
+                won_deals_count += 1
+            else:
+                open_deals.append({
+                    "name":     d.get("name"),
+                    "stage":    d.get("stage"),
+                    "value":    d.get("value"),
+                    "currency": d.get("currency"),
+                })
+    except Exception as e:
+        logger.warning(f"[contact-context] list_deals failed: {e}")
+
+    try:
+        from api import crm as _crm
+        ints = _crm.list_interactions(business_id, contact_id=contact_id, limit=5)
+        for i in ints:
+            interactions.append({
+                "type":    i.get("type"),
+                "subject": (i.get("subject") or "")[:120],
+                "summary": (i.get("summary") or "")[:300],
+                "when":    i.get("created_at"),
+            })
+    except Exception as e:
+        logger.warning(f"[contact-context] list_interactions failed: {e}")
+
+    try:
+        from api import tags as _tg
+        tag_objs = _tg.tags_for(business_id, "contact", contact_id)
+        tags = [t.get("name") for t in tag_objs if t.get("name")]
+    except Exception as e:
+        logger.warning(f"[contact-context] tags_for failed: {e}")
+
+    relationship = "unknown"
+    if won_deals_count > 0:
+        relationship = "customer"
+    elif open_deals or interactions:
+        relationship = "lead"
+
+    # Build a one-paragraph brief the voice agent can paste into its
+    # system prompt. Kept under ~600 chars so it doesn't blow context.
+    name = (
+        f"{(contact.get('first_name') or '').strip()} "
+        f"{(contact.get('last_name') or '').strip()}"
+    ).strip() or "(unknown)"
+    parts = [f"Caller: {name}"]
+    if contact.get("title"):
+        parts.append(f"role {contact['title']}")
+    if contact.get("company_name"):
+        parts.append(f"at {contact['company_name']}")
+    parts.append(f"relationship: {relationship}")
+    if won_deals_count:
+        parts.append(f"{won_deals_count} won deal{'s' if won_deals_count != 1 else ''}")
+    if open_deals:
+        parts.append(
+            f"{len(open_deals)} open deal{'s' if len(open_deals) != 1 else ''} "
+            f"({', '.join(d['name'] or '?' for d in open_deals[:3])})"
+        )
+    if interactions:
+        last = interactions[0]
+        when = (last.get("when") or "")[:10]
+        parts.append(
+            f"last interaction: {last.get('type','note')} on {when} — "
+            f"{(last.get('subject') or last.get('summary') or '')[:80]}"
+        )
+    if tags:
+        parts.append(f"tags: {', '.join(tags[:5])}")
+    brief = " · ".join(parts)[:600]
+
+    return {
+        "contact":             contact,
+        "relationship":        relationship,
+        "open_deals":          open_deals,
+        "won_deals_count":     won_deals_count,
+        "recent_interactions": interactions,
+        "tags":                tags,
+        "brief":               brief,
+    }
