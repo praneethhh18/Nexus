@@ -69,6 +69,124 @@ def update_document_meta(document_id: str, body: dict,
     return {"ok": True, "category": new_cat}
 
 
+@router.post("/api/documents/upload")
+async def upload_document_to_kb(
+    file: UploadFile = File(...),
+    category: str = "other",
+    title: str = "",
+    ctx: dict = Depends(get_current_context),
+):
+    """
+    Upload a PDF / DOCX / TXT into the workspace's knowledge base.
+
+    Flow:
+      1. Save the file under outputs/documents/<biz>/uploads/.
+      2. Run ingest_file → chunks (PDF/DOCX/TXT all supported).
+      3. Embed the chunks (Bedrock Titan or local Ollama based on settings).
+      4. Push to ChromaDB so agents can find them via search_knowledge.
+      5. Record the doc in nexus_documents with the chosen category so the
+         category filter on search_knowledge can scope to "competitor only"
+         (or whichever bucket) at query time.
+
+    Returns the doc id + chunks added so the UI can show a success message.
+    """
+    import uuid as _uuid
+    from datetime import datetime as _dt
+    from pathlib import Path as _P
+    from config.settings import OUTPUTS_DIR
+    from config.db import get_conn
+
+    # Validate file
+    ext = _P(file.filename or "").suffix.lower()
+    if ext not in {".pdf", ".docx", ".doc", ".txt", ".md"}:
+        raise HTTPException(400, "Unsupported file. Use PDF, DOCX, or TXT.")
+
+    # Cap size — knowledge-base ingests can be larger than thumbnails but
+    # still need a ceiling so a misclick doesn't OOM the vectoriser.
+    MAX_KB_BYTES = 30 * 1024 * 1024
+    buf = bytearray()
+    while True:
+        chunk = await file.read(1024 * 64)
+        if not chunk:
+            break
+        buf.extend(chunk)
+        if len(buf) > MAX_KB_BYTES:
+            raise HTTPException(413, f"File too large (max {MAX_KB_BYTES // (1024*1024)} MB).")
+    if not buf:
+        raise HTTPException(400, "Empty file.")
+
+    biz_dir = _P(OUTPUTS_DIR) / "documents" / ctx["business_id"] / "uploads"
+    biz_dir.mkdir(parents=True, exist_ok=True)
+    name = f"{_uuid.uuid4().hex[:10]}_{file.filename}"
+    out_path = biz_dir / name
+    out_path.write_bytes(bytes(buf))
+
+    # Parse + embed + add to vector store
+    try:
+        from rag.ingestion import ingest_file
+        from rag.embedder import embed_documents
+        from rag.vector_store import add_documents
+
+        chunks = ingest_file(str(out_path))
+        if not chunks:
+            # Clean up the saved file so we don't accumulate junk on failure.
+            try: out_path.unlink()
+            except Exception: pass
+            raise HTTPException(400,
+                "Could not extract text from this file. If it's a scanned PDF, "
+                "paste the text into the Extract panel instead.")
+
+        texts = [c.page_content for c in chunks]
+        metadatas = []
+        for c in chunks:
+            meta = dict(c.metadata or {})
+            # Tag every chunk with the business + category so the retriever
+            # can filter later. The actual category filter currently happens
+            # in search_knowledge against nexus_documents, but stamping the
+            # metadata too lets us upgrade to vector-side filtering later
+            # without a re-ingest.
+            meta["business_id"] = ctx["business_id"]
+            meta["category"] = _docs._validate_category(category)
+            metadatas.append(meta)
+        embeddings = embed_documents(texts, sensitive=False)
+        added = add_documents(texts, embeddings, metadatas)
+    except HTTPException:
+        raise
+    except Exception as e:
+        try: out_path.unlink()
+        except Exception: pass
+        raise HTTPException(500, f"Ingest failed: {e}")
+
+    # Record in nexus_documents so the UI list + category filter work.
+    doc_id = f"doc-{_uuid.uuid4().hex[:10]}"
+    now = _dt.now().isoformat()
+    safe_title = (title or _P(file.filename or "Untitled").stem)[:200]
+    safe_category = _docs._validate_category(category)
+    conn = get_conn()
+    try:
+        conn.execute(
+            "INSERT INTO nexus_documents "
+            "(id, business_id, template_key, title, format, file_path, variables, "
+            " created_at, created_by, category) "
+            "VALUES (?, ?, 'uploaded', ?, ?, ?, '{}', ?, ?, ?)",
+            (doc_id, ctx["business_id"], safe_title, ext.lstrip("."),
+             str(out_path), now, ctx["user"]["id"], safe_category),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {
+        "id": doc_id,
+        "title": safe_title,
+        "file_path": str(out_path),
+        "filename": out_path.name,
+        "category": safe_category,
+        "chunks_added": int(added or 0),
+        "chunk_count": len(chunks),
+    }
+
+
 @router.post("/api/documents/upload-asset")
 async def upload_document_asset(
     file: UploadFile = File(...),

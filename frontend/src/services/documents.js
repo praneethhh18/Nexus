@@ -96,6 +96,29 @@ export const autofillTemplateFromUpload = async (template_key, file) => {
   return res.json();
 };
 
+// Upload a PDF / DOCX / TXT into the knowledge base so agents can search
+// it. Auto-categorised by the picker the user chose in the upload modal.
+export const uploadToKnowledgeBase = async (file, { category = 'other', title = '' } = {}) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  const qs = new URLSearchParams();
+  if (category) qs.set('category', category);
+  if (title) qs.set('title', title);
+  const h = headers();
+  delete h['Content-Type'];
+  const url = `${BASE}/upload${qs.toString() ? '?' + qs.toString() : ''}`;
+  const res = await fetch(url, { method: 'POST', headers: h, body: fd });
+  if (res.status === 401) { window.location.href = '/login'; throw new Error('Session expired'); }
+  if (!res.ok) {
+    const txt = await res.text();
+    let msg = txt;
+    try { msg = JSON.parse(txt).detail || txt; } catch {}
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  return res.json();
+};
+
+
 // Upload an image asset (logo / header) for embedding in generated docs.
 // Returns { path, filename } — pass `path` back into generateDocument as
 // `logo_path`.

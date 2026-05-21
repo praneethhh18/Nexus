@@ -5,6 +5,7 @@ import {
   extractDocFromText, extractDocFromUpload,
   autofillTemplateFromText, autofillTemplateFromUpload,
   uploadDocumentAsset, updateDocumentMeta, DOC_CATEGORIES,
+  uploadToKnowledgeBase,
 } from '../services/documents';
 import { Image as ImageIcon } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
@@ -639,6 +640,30 @@ export default function Documents() {
     setExtractModal({ mode: 'choose', text: '', fileName: '', busy: false, error: '', result: null });
   };
 
+  // ── Upload-to-knowledge-base flow ──────────────────────────────────────
+  // Separate from "Extract from PDF" — extract is preview-only, this one
+  // actually adds the file to the searchable knowledge base so agents can
+  // query it later (e.g. Competitor Price Watcher searches by category).
+  const [uploadModal, setUploadModal] = useState(null);   // { busy, error, file, category, title } | null
+  const openUploadModal = () => {
+    setUploadModal({ busy: false, error: '', file: null, category: 'other', title: '' });
+  };
+  const runUploadToKb = async () => {
+    if (!uploadModal?.file) return;
+    setUploadModal((m) => ({ ...m, busy: true, error: '' }));
+    try {
+      const r = await uploadToKnowledgeBase(uploadModal.file, {
+        category: uploadModal.category,
+        title:    uploadModal.title || uploadModal.file.name,
+      });
+      flash(`Uploaded "${r.title}" → ${r.chunks_added} chunks indexed (category: ${r.category})`);
+      setUploadModal(null);
+      reload();
+    } catch (e) {
+      setUploadModal((m) => ({ ...m, busy: false, error: e.message || 'Upload failed.' }));
+    }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
@@ -646,9 +671,16 @@ export default function Documents() {
           <h1>Documents</h1>
           <p>Generate from templates — or extract structured fields from a PDF / pasted text</p>
         </div>
-        <button className="btn-primary" onClick={openExtractModal} title="Drop a PDF or paste text — AI extracts fields">
-          <Sparkles size={13} /> Extract from PDF
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn-ghost" onClick={openUploadModal}
+                  title="Upload a PDF / Word / TXT into your searchable knowledge base">
+            <Upload size={13} /> Upload to knowledge base
+          </button>
+          <button className="btn-primary" onClick={openExtractModal}
+                  title="Drop a PDF or paste text — AI extracts fields (preview only, not stored)">
+            <Sparkles size={13} /> Extract from PDF
+          </button>
+        </div>
       </div>
 
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
@@ -740,6 +772,14 @@ export default function Documents() {
         <Modal title={`New ${modal.template.name}`} onClose={() => setModal(null)}>
           <GenerateForm template={modal.template} onSubmit={handleGenerate} onCancel={() => setModal(null)} />
         </Modal>
+      )}
+
+      {uploadModal && (
+        <UploadKbModal
+          state={uploadModal}
+          setState={setUploadModal}
+          onSubmit={runUploadToKb}
+        />
       )}
 
       {extractModal && (
@@ -1098,5 +1138,96 @@ function ChipRow({ label, onCopy }) {
         <Copy size={11} />
       </button>
     </div>
+  );
+}
+
+
+function UploadKbModal({ state, setState, onSubmit }) {
+  const fileRef = useRef(null);
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape' && !state.busy) setState(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setState, state.busy]);
+  return (
+    <Modal title="Upload to knowledge base" onClose={() => state.busy ? null : setState(null)}>
+      <p style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55, marginTop: 0 }}>
+        Drop a PDF, Word, or text file. We'll chunk it, embed it, and add it
+        to your searchable knowledge base. Tag it with a <b>category</b> so
+        agents can search the right bucket — e.g. the Competitor Watcher
+        only reads docs tagged "Competitor".
+      </p>
+
+      <input ref={fileRef} type="file" accept=".pdf,.docx,.doc,.txt,.md"
+             onChange={(e) => setState((s) => ({ ...s, file: e.target.files?.[0] || null, error: '' }))}
+             style={{ display: 'none' }} />
+      <button type="button" className="btn-ghost"
+              onClick={() => fileRef.current?.click()}
+              disabled={state.busy}
+              style={{
+                width: '100%', padding: 22, border: '2px dashed var(--color-border-strong)',
+                borderRadius: 'var(--r-md)', cursor: state.busy ? 'wait' : 'pointer',
+                display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center',
+                background: 'var(--color-surface-1)', marginBottom: 14,
+              }}>
+        <Upload size={26} color="var(--color-text-dim)" />
+        <div style={{ fontSize: 12, color: 'var(--color-text)' }}>
+          {state.file ? state.file.name : 'Click to choose a file'}
+        </div>
+        <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+          PDF, DOCX, or TXT &mdash; up to 30 MB
+        </div>
+      </button>
+
+      <div style={{ marginBottom: 10 }}>
+        <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
+          Title (optional)
+        </label>
+        <input className="field-input" placeholder={state.file?.name || 'Document title'}
+               value={state.title}
+               onChange={(e) => setState((s) => ({ ...s, title: e.target.value }))}
+               maxLength={200} disabled={state.busy} />
+        <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+          Defaults to the file name if blank.
+        </span>
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
+          Category *
+        </label>
+        <select className="field-select" value={state.category}
+                onChange={(e) => setState((s) => ({ ...s, category: e.target.value }))}
+                disabled={state.busy} style={{ width: '100%' }}>
+          {DOC_CATEGORIES.map(c => (
+            <option key={c.value} value={c.value}>
+              {c.label} &mdash; {c.description}
+            </option>
+          ))}
+        </select>
+        <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+          Agents search by category. Pick "Competitor" for competitor PDFs.
+        </span>
+      </div>
+
+      {state.error && (
+        <div style={{ fontSize: 11.5, color: 'var(--color-err)', marginBottom: 10,
+                      padding: '6px 10px', borderRadius: 6,
+                      background: 'color-mix(in srgb, var(--color-err) 8%, transparent)' }}>
+          {state.error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+        <button type="button" className="btn-ghost"
+                onClick={() => setState(null)} disabled={state.busy}>Cancel</button>
+        <button type="button" className="btn-primary"
+                onClick={onSubmit} disabled={!state.file || state.busy}>
+          {state.busy
+            ? <><Loader2 size={11} className="animate-spin" /> Indexing…</>
+            : <><Upload size={11} /> Upload &amp; index</>}
+        </button>
+      </div>
+    </Modal>
   );
 }
