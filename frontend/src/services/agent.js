@@ -54,6 +54,8 @@ export const getApproval = (id) => req(`/approvals/${id}`);
 export const approveAction = (id) => req(`/approvals/${id}/approve`, { method: 'POST' });
 export const rejectAction = (id, reason = '') =>
   req(`/approvals/${id}/reject`, { method: 'POST', body: JSON.stringify({ reason }) });
+export const refineAction = (id, args) =>
+  req(`/approvals/${id}/refine`, { method: 'POST', body: JSON.stringify({ args }) });
 
 // Memory
 export const listMemoryApi = (search = '', limit = 200) => {

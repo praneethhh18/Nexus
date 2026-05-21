@@ -9,14 +9,14 @@
  * Empty sections hide entirely. Each row links to the full record for
  * deeper editing, so this page stays fast to scan.
  */
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check, X, AlertTriangle, Clock, ChevronDown, ChevronRight, Inbox as InboxIcon,
-  CheckSquare, Square, Calendar as CalendarIcon, ArrowRight,
+  CheckSquare, Square, Calendar as CalendarIcon, ArrowRight, Pencil,
 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
-import { listApprovals, approveAction, rejectAction } from '../services/agent';
+import { listApprovals, approveAction, rejectAction, refineAction } from '../services/agent';
 import { listPersonas, listNudges, dismissNudge, acceptNudge } from '../services/agents';
 import { listTasks, updateTask } from '../services/tasks';
 import { calendarStatus, calendarEvents } from '../services/calendar';
@@ -78,17 +78,75 @@ function Section({ title, count, color, icon: Icon, children }) {
 }
 
 // ── Approval row ────────────────────────────────────────────────────────────
-function ApprovalRow({ action, personaByKey, expanded, onToggle, onApprove, onReject }) {
+// Map raw tool args → list of {label, value, multiline?} so the
+// expanded panel can render an email/invoice/task draft as a readable
+// preview instead of a JSON blob.
+function previewFields(toolName, args) {
+  const a = args || {};
+  if (toolName === 'send_email') {
+    return [
+      { label: 'To',      value: a.to },
+      { label: 'Subject', value: a.subject },
+      { label: 'Body',    value: a.body, multiline: true, editable: true, key: 'body' },
+    ];
+  }
+  if (toolName === 'create_task') {
+    return [
+      { label: 'Title',       value: a.title, editable: true, key: 'title' },
+      { label: 'Due',         value: a.due_date },
+      { label: 'Priority',    value: a.priority },
+      { label: 'Description', value: a.description, multiline: true, editable: true, key: 'description' },
+    ].filter(f => f.value);
+  }
+  if (toolName === 'create_invoice') {
+    return [
+      { label: 'Customer',  value: a.customer_name || a.customer_email },
+      { label: 'Items',     value: Array.isArray(a.line_items)
+                                    ? a.line_items.map(li => `${li.description || ''} × ${li.qty || 1} @ ${li.unit_price || 0}`).join('\n')
+                                    : a.line_items,
+        multiline: true },
+      { label: 'Due',       value: a.due_date },
+      { label: 'Currency',  value: a.currency || 'INR' },
+    ].filter(f => f.value);
+  }
+  if (toolName === 'create_contact') {
+    return [
+      { label: 'Name',  value: [a.first_name, a.last_name].filter(Boolean).join(' ') || a.name },
+      { label: 'Email', value: a.email },
+      { label: 'Phone', value: a.phone },
+      { label: 'Company', value: a.company_name },
+    ].filter(f => f.value);
+  }
+  // Fallback: dump every top-level field
+  return Object.entries(a).map(([k, v]) => ({
+    label: k,
+    value: typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v),
+    multiline: typeof v === 'object' || (typeof v === 'string' && v.length > 80),
+  }));
+}
+
+
+function ApprovalRow({ action, personaByKey, expanded, onToggle,
+                       confirmMode, rejectReason, setRejectReason,
+                       refineDraft, setRefineDraft, refineMode, setRefineMode,
+                       onApprove, onReject, onRefine }) {
   const color = STATUS_COLORS[action.status] || 'var(--color-text-dim)';
   const isPending = action.status === 'pending';
   const agentKey = TOOL_TO_AGENT[action.tool_name];
   const persona = agentKey ? personaByKey[agentKey] : null;
+  const fields = previewFields(action.tool_name, action.args);
+
   return (
     <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-        <button onClick={onToggle} style={{ background: 'none', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 2 }}>
+      {/* Collapsed header — clickable area reveals the draft. */}
+      <div
+        onClick={() => isPending && onToggle()}
+        style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10,
+                 cursor: isPending ? 'pointer' : 'default' }}
+      >
+        <span style={{ color: 'var(--color-text-dim)', display: 'flex', alignItems: 'center' }}>
           {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </button>
+        </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -115,23 +173,117 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle, onApprove, onRe
             {fmtWhen(action.created_at)}
           </div>
         </div>
-        {isPending && (
-          <div className="row-actions">
-            <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={() => onReject(action)}>
-              <X size={12} /> Reject
-            </button>
-            <button className="btn-primary" onClick={() => onApprove(action)}>
-              <Check size={12} /> Approve
-            </button>
-          </div>
+        {isPending && !expanded && (
+          <button
+            className="btn-primary"
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+            style={{ flexShrink: 0 }}
+          >
+            View & Approve
+          </button>
         )}
       </div>
+
+      {/* Expanded panel: human-readable preview + Approve/Refine/Reject. */}
       {expanded && (
-        <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
-          <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>Arguments</div>
-          <pre style={{ fontSize: 10, color: 'var(--color-text)', margin: 0, overflow: 'auto', maxHeight: 260, padding: 8, background: 'var(--color-bg)', borderRadius: 6 }}>
-{JSON.stringify(action.args || {}, null, 2)}
-          </pre>
+        <div style={{ padding: '12px 16px 16px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+          {fields.length === 0 ? (
+            <p style={{ fontSize: 12, color: 'var(--color-text-dim)', margin: 0 }}>
+              No preview fields for this action type.
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: '8px 14px', alignItems: 'start', fontSize: 13 }}>
+              {fields.map((f, i) => {
+                const isEditing = refineMode && f.editable;
+                const v = isEditing ? (refineDraft[f.key] ?? f.value ?? '') : f.value;
+                return (
+                  <React.Fragment key={i}>
+                    <div style={{ color: 'var(--color-text-muted)', fontSize: 11, paddingTop: f.multiline ? 6 : 2, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                      {f.label}
+                    </div>
+                    {isEditing ? (
+                      f.multiline ? (
+                        <textarea
+                          value={v}
+                          onChange={(e) => setRefineDraft({ ...refineDraft, [f.key]: e.target.value })}
+                          rows={Math.min(12, Math.max(4, (v || '').split('\n').length + 1))}
+                          style={{ padding: 8, borderRadius: 6, border: '1px solid var(--color-border-strong)',
+                                   background: 'var(--color-bg-elev)', color: 'var(--color-text)',
+                                   fontSize: 13, fontFamily: 'inherit', resize: 'vertical' }}
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          value={v}
+                          onChange={(e) => setRefineDraft({ ...refineDraft, [f.key]: e.target.value })}
+                          style={{ padding: '6px 10px', borderRadius: 6, border: '1px solid var(--color-border-strong)',
+                                   background: 'var(--color-bg-elev)', color: 'var(--color-text)',
+                                   fontSize: 13, fontFamily: 'inherit' }}
+                        />
+                      )
+                    ) : (
+                      <div style={{ color: 'var(--color-text)',
+                                    whiteSpace: f.multiline ? 'pre-wrap' : 'normal',
+                                    wordBreak: 'break-word',
+                                    background: f.multiline ? 'var(--color-bg-elev)' : 'transparent',
+                                    padding: f.multiline ? 10 : 0,
+                                    borderRadius: f.multiline ? 6 : 0,
+                                    border: f.multiline ? '1px solid var(--color-border)' : 'none' }}>
+                        {v || <span style={{ color: 'var(--color-text-dim)', fontStyle: 'italic' }}>—</span>}
+                      </div>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Action buttons — only for pending. */}
+          {isPending && !confirmMode && !refineMode && (
+            <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={() => onReject(action)}>
+                <X size={12} /> Reject
+              </button>
+              <button className="btn-ghost" onClick={() => { setRefineDraft({}); setRefineMode(true); }}>
+                <Pencil size={12} /> Refine
+              </button>
+              <button className="btn-primary" style={{ background: 'var(--color-ok)' }} onClick={() => onApprove(action)}>
+                <Check size={12} /> Approve & Send
+              </button>
+            </div>
+          )}
+
+          {/* Confirm reject inline. */}
+          {isPending && confirmMode === 'reject' && (
+            <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                value={rejectReason}
+                autoFocus
+                placeholder="Why are you rejecting? (optional)"
+                onChange={(e) => setRejectReason(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') onReject(action, true); if (e.key === 'Escape') onReject(null); }}
+                style={{ flex: 1, minWidth: 200, padding: '8px 12px', borderRadius: 6,
+                         border: '1px solid var(--color-border-strong)',
+                         background: 'var(--color-bg)', color: 'var(--color-text)',
+                         fontSize: 13, fontFamily: 'inherit' }}
+              />
+              <button className="btn-ghost" onClick={() => onReject(null)}>Cancel</button>
+              <button className="btn-primary" style={{ background: 'var(--color-err)' }} onClick={() => onReject(action, true)}>
+                <X size={12} /> Confirm reject
+              </button>
+            </div>
+          )}
+
+          {/* Refine mode — Save & Approve commits the edits then approves. */}
+          {isPending && refineMode && (
+            <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button className="btn-ghost" onClick={() => { setRefineMode(false); setRefineDraft({}); }}>Cancel edit</button>
+              <button className="btn-primary" style={{ background: 'var(--color-ok)' }} onClick={() => onRefine(action)}>
+                <Check size={12} /> Save & Approve
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -276,6 +428,14 @@ export default function Inbox() {
   const [expanded, setExpanded] = useState({});
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(true);
+  // Approval UX state. The row expands to a "review" panel; from there
+  // the user can Approve (fires immediately — review was the confirm),
+  // Refine (edit the agent's draft inline, then Save & Approve), or
+  // Reject (with optional reason inline).
+  const [rejectingId, setRejectingId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [refiningId, setRefiningId] = useState(null);
+  const [refineDraft, setRefineDraft] = useState({});
   const navigate = useNavigate();
 
   const reload = useCallback(async () => {
@@ -335,16 +495,40 @@ export default function Inbox() {
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
+  // Approve: review-then-commit. Since the row already expanded showing
+  // the full draft, clicking Approve here IS the confirmation — no
+  // second dialog. One click is the commit because the user already
+  // engaged via "View & Approve".
   const handleApprove = async (a) => {
-    if (!confirm(`Approve and execute?\n\n${a.summary}`)) return;
-    try { await approveAction(a.id); flash('Approved.'); reload(); }
+    try { await approveAction(a.id); flash('Approved — action executed.'); reload(); }
     catch (e) { flash(`Failed: ${e.message}`); }
   };
-  const handleReject = async (a) => {
-    const reason = prompt('Why are you rejecting? (optional)', '');
-    if (reason === null) return;
-    try { await rejectAction(a.id, reason); flash('Rejected.'); reload(); }
-    catch (e) { flash(`Failed: ${e.message}`); }
+
+  // Reject: two states. First call opens the inline reason input.
+  // Second call (`commit=true`) fires the API. `handleReject(null)`
+  // cancels the input.
+  const handleReject = async (a, commit = false) => {
+    if (a == null) { setRejectingId(null); setRejectReason(''); return; }
+    if (!commit) { setRejectingId(a.id); setRejectReason(''); return; }
+    try {
+      await rejectAction(a.id, rejectReason);
+      flash('Rejected.');
+      setRejectingId(null); setRejectReason('');
+      reload();
+    } catch (e) { flash(`Failed: ${e.message}`); }
+  };
+
+  // Refine: write the edited args back to the pending action, then
+  // immediately approve so the user doesn't have to click twice.
+  const handleRefine = async (a) => {
+    try {
+      const newArgs = { ...(a.args || {}), ...refineDraft };
+      await refineAction(a.id, newArgs);
+      await approveAction(a.id);
+      flash('Edited & approved.');
+      setRefiningId(null); setRefineDraft({});
+      reload();
+    } catch (e) { flash(`Failed: ${e.message}`); }
   };
   const handleToggleDone = async (t) => {
     try {
@@ -403,9 +587,22 @@ export default function Inbox() {
                   action={a}
                   personaByKey={personaByKey}
                   expanded={!!expanded[a.id]}
-                  onToggle={() => setExpanded(p => ({ ...p, [a.id]: !p[a.id] }))}
+                  onToggle={() => {
+                    // Toggling away cancels any in-progress reject/refine on this row.
+                    setExpanded(p => ({ ...p, [a.id]: !p[a.id] }));
+                    if (rejectingId === a.id) { setRejectingId(null); setRejectReason(''); }
+                    if (refiningId === a.id)  { setRefiningId(null);  setRefineDraft({}); }
+                  }}
+                  confirmMode={rejectingId === a.id ? 'reject' : null}
+                  rejectReason={rejectReason}
+                  setRejectReason={setRejectReason}
+                  refineMode={refiningId === a.id}
+                  setRefineMode={(v) => v ? setRefiningId(a.id) : (setRefiningId(null), setRefineDraft({}))}
+                  refineDraft={refineDraft}
+                  setRefineDraft={setRefineDraft}
                   onApprove={handleApprove}
                   onReject={handleReject}
+                  onRefine={handleRefine}
                 />
               ))}
             </Section>
@@ -425,6 +622,7 @@ export default function Inbox() {
           </>
         )}
       </div>
+
     </div>
   );
 }

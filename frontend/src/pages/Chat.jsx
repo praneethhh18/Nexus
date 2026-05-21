@@ -4,6 +4,7 @@ import { Send, Plus, Download, Sparkles, Mic, MicOff, Upload, BarChart3,
          Sun, Moon, ArrowRight, Lock, Unlock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import ContactPreviewLink from '../components/ContactPreviewLink';
 
 // Custom markdown component map: links to /crm/contacts/<id> render with a
@@ -338,8 +339,38 @@ export default function Chat() {
   const inputRef = useRef(null);
   const mediaRecRef = useRef(null);
   const wsRef = useRef(null);
+  // Mirror of convId so async handlers (WebSocket, REST fallback) can read
+  // the *current* active conversation without stale closures. Without this,
+  // a response that's still streaming when the user clicks a different
+  // conversation in the sidebar would leak into the new conversation's
+  // view because the closure captured the convId from the moment send()
+  // was called.
+  const convIdRef = useRef(convId);
+  useEffect(() => { convIdRef.current = convId; }, [convId]);
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading, streamingText]);
+
+  // Persist + restore active conversation across navigation. Without this
+  // the Chat component unmounts on route change (Dashboard / CRM / etc.)
+  // and remounts with empty state, so the user loses the conversation
+  // they were just in. Save the id whenever convId changes; on first
+  // mount, if there's a saved id, hydrate from the server.
+  useEffect(() => {
+    if (convId) localStorage.setItem('nexus_active_conv', convId);
+  }, [convId]);
+  useEffect(() => {
+    const saved = localStorage.getItem('nexus_active_conv');
+    if (saved && !convId) {
+      getConversation(saved)
+        .then(data => {
+          setMessages(data.messages || []);
+          setConvId(saved);
+          setConvSensitive(!!data.info?.sensitive);
+        })
+        .catch(() => localStorage.removeItem('nexus_active_conv'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Load privacy posture once for the footer label.
   useEffect(() => { privacyStatus().then(setPrivacy).catch(() => {}); }, []);
@@ -416,7 +447,7 @@ export default function Chat() {
     if (!confirm('Delete this conversation?')) return;
     await deleteConversation(id).catch(() => {});
     setConversations(c => c.filter(x => x.conversation_id !== id));
-    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); }
+    if (convId === id) { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); }
   };
 
   const filteredConvs = conversations.filter(c =>
@@ -435,6 +466,7 @@ export default function Chat() {
     const onNew = () => {
       setMessages([]); setConvId(null); setChartData(null);
       setConvSensitive(false);
+      localStorage.removeItem('nexus_active_conv');
       inputRef.current?.focus();
     };
     const onRerun = (e) => { send(e.detail); };
@@ -484,6 +516,13 @@ export default function Chat() {
     const next = !agentMode;
     setAgentMode(next);
     localStorage.setItem('nexus_agent_mode', next ? '1' : '0');
+    // OFF means "local only — no cloud" — pin the sensitive flag on the
+    // active conversation so the backend's privacy router actually
+    // enforces local routing. Without this the toggle was UI-only.
+    setConvSensitive(!next);
+    if (convId) {
+      setConversationSensitive(convId, !next).catch(() => {});
+    }
   };
 
   // Slash menu — visible when input starts with "/" and hasn't been confirmed yet.
@@ -511,6 +550,12 @@ export default function Chat() {
     setMessages(prev => [...prev, { role: 'user', content: display, tools_used: [], timestamp: ts }]);
     setLoading(true);
     setStreamingText('');
+    // Snapshot the originating conversation id so callbacks can drop
+    // updates that arrive after the user navigates to a different
+    // conversation. Without this, a still-streaming reply leaks into
+    // whichever conversation is currently active.
+    const originConvId = convId;
+    const isStillOnOrigin = () => convIdRef.current === originConvId;
 
     // Inline slash commands — bypass the agent pipeline and render a
     // structured card. Currently only /whatif. Keep this list short — the
@@ -575,10 +620,23 @@ export default function Chat() {
         const data = JSON.parse(event.data);
         if (data.type === 'ready') {
           ready = true;
-          ws.send(JSON.stringify({ query: q, conversation_id: convId }));
+          ws.send(JSON.stringify({ query: q, conversation_id: originConvId }));
         } else if (data.type === 'token') {
+          // Drop tokens if the user has switched conversations — the
+          // reply is still being saved server-side; we just don't
+          // want it bleeding into the new view.
+          if (!isStillOnOrigin()) return;
           setStreamingText(prev => prev + data.token);
         } else if (data.type === 'done') {
+          if (!isStillOnOrigin()) {
+            // Reply finished but we're elsewhere now. Close + reset
+            // loading so the user can send a new message; the message
+            // is persisted server-side and will appear when the user
+            // reopens the original conversation.
+            setLoading(false);
+            ws.close();
+            return;
+          }
           if (data.conversation_id && !convId) setConvId(data.conversation_id);
           setMessages(prev => [...prev, data.message]);
           if (data.state?.sql_results?.data?.length) setChartData(data.state.sql_results);
@@ -589,10 +647,12 @@ export default function Chat() {
           ws.close();
           if (!ready) {
             // Auth failed — fall back to REST (which will 401 → redirect to login)
-            _sendRest(q, ts);
-          } else {
+            _sendRest(q, ts, originConvId, isStillOnOrigin);
+          } else if (isStillOnOrigin()) {
             setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}`, tools_used: [], timestamp: ts }]);
             setStreamingText('');
+            setLoading(false);
+          } else {
             setLoading(false);
           }
         }
@@ -600,25 +660,35 @@ export default function Chat() {
 
       ws.onerror = () => {
         ws.close();
-        _sendRest(q, ts);
+        _sendRest(q, ts, originConvId, isStillOnOrigin);
       };
 
       ws.onclose = () => { wsRef.current = null; };
 
     } catch {
-      _sendRest(q, ts);
+      _sendRest(q, ts, originConvId, isStillOnOrigin);
     }
   };
 
-  const _sendRest = async (q, ts) => {
-    // REST fallback when WebSocket fails
+  const _sendRest = async (q, ts, originConvId = null, isStillOnOrigin = () => true) => {
+    // REST fallback when WebSocket fails. Origin-guarded so a slow REST
+    // call doesn't dump its answer into whatever conversation the user
+    // navigated to while waiting.
     try {
-      const res = await sendMessage(q, convId);
+      const res = await sendMessage(q, originConvId);
+      if (!isStillOnOrigin()) {
+        // User switched conversations — answer is persisted server-side.
+        setLoading(false);
+        setStreamingText('');
+        return;
+      }
       if (!convId && res.conversation_id) setConvId(res.conversation_id);
       setMessages(prev => [...prev, res.message]);
       if (res.state?.sql_results?.data?.length) setChartData(res.state.sql_results);
     } catch (err) {
-      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}`, tools_used: [], timestamp: ts }]);
+      if (isStillOnOrigin()) {
+        setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message}`, tools_used: [], timestamp: ts }]);
+      }
     }
     setStreamingText('');
     setLoading(false);
@@ -662,34 +732,25 @@ export default function Chat() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button
-            onClick={toggleConvSensitive}
-            title={convSensitive
-              ? 'This chat is locked to local-only LLM. Click to unlock.'
-              : 'Lock this chat to local-only LLM (no cloud calls).'}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '5px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
-              border: `1px solid ${convSensitive ? 'color-mix(in srgb, var(--color-warn) 45%, transparent)' : 'var(--color-border-strong)'}`,
-              background: convSensitive ? 'color-mix(in srgb, var(--color-warn) 10%, transparent)' : 'transparent',
-              color: convSensitive ? 'var(--color-warn)' : 'var(--color-text-muted)',
-            }}
-          >
-            {convSensitive ? <Lock size={12} /> : <Unlock size={12} />}
-            {convSensitive ? 'Local only' : 'Hybrid'}
-          </button>
+          {/* Single toggle. ON = cloud-backed agent that can take actions
+              (with approval). OFF = local Ollama only, offline-capable,
+              data never leaves the box. The old standalone Hybrid lock
+              was redundant once we made Agent OFF imply local-only. */}
           <button
             onClick={toggleAgentMode}
-            title={agentMode ? 'Switch to passive chat (answers only, no actions)' : 'Switch to agent mode (can take actions)'}
+            title={agentMode
+              ? 'Cloud-backed agent. Can read your CRM, take actions (with approval), and reason with the best model. Click to switch to local-only mode.'
+              : 'Local Ollama only — fully offline, data never leaves your machine. Limited capability and slower. Click to switch to cloud agent.'}
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               padding: '5px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
-              border: `1px solid ${agentMode ? 'color-mix(in srgb, var(--color-ok) 38%, transparent)' : 'var(--color-border-strong)'}`,
-              background: agentMode ? 'color-mix(in srgb, var(--color-ok) 8%, transparent)' : 'transparent',
-              color: agentMode ? 'var(--color-ok)' : 'var(--color-text-muted)',
+              border: `1px solid ${agentMode ? 'color-mix(in srgb, var(--color-ok) 38%, transparent)' : 'color-mix(in srgb, var(--color-warn) 45%, transparent)'}`,
+              background: agentMode ? 'color-mix(in srgb, var(--color-ok) 8%, transparent)' : 'color-mix(in srgb, var(--color-warn) 8%, transparent)',
+              color: agentMode ? 'var(--color-ok)' : 'var(--color-warn)',
             }}
           >
-            <Zap size={12} /> {agentMode ? 'Agent ON' : 'Agent OFF'}
+            {agentMode ? <Zap size={12} /> : <Lock size={12} />}
+            {agentMode ? 'Agent ON · Cloud' : 'Local only · Offline'}
           </button>
           {voiceSupported() && (
             <button
@@ -709,7 +770,7 @@ export default function Chat() {
           {messages.length > 0 && (
             <>
               <button className="action-btn" onClick={doExport}><Download size={13} /> Export</button>
-              <button className="action-btn" onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); }}><Plus size={13} /> New</button>
+              <button className="action-btn" onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); }}><Plus size={13} /> New</button>
             </>
           )}
         </div>
@@ -727,7 +788,7 @@ export default function Chat() {
           }}>
             <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--color-border)', display: 'flex', gap: 6, alignItems: 'center' }}>
               <button className="btn-primary" style={{ flex: 1, justifyContent: 'center', fontSize: 12, padding: '7px 10px' }}
-                onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); inputRef.current?.focus(); }}>
+                onClick={() => { setMessages([]); setConvId(null); setChartData(null); setConvSensitive(false); localStorage.removeItem('nexus_active_conv'); inputRef.current?.focus(); }}>
                 <Plus size={13} /> New chat
               </button>
             </div>
@@ -913,7 +974,7 @@ export default function Chat() {
             <div key={i} className={`msg-row ${msg.role === 'user' ? 'user' : ''}`}>
               {msg.role === 'assistant' && <div className="msg-avatar bot">N</div>}
               <div className={`msg-bubble ${msg.role === 'user' ? 'user' : 'bot'}`}>
-                <div className="chat-markdown"><ReactMarkdown components={MD_COMPONENTS}>{msg.content}</ReactMarkdown></div>
+                <div className="chat-markdown"><ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>{msg.content}</ReactMarkdown></div>
                 {/* Agent tool calls */}
                 {msg.tool_calls?.length > 0 && (
                   <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -969,7 +1030,12 @@ export default function Chat() {
                 )}
                 {msg.tools_used?.length > 0 && !msg.tool_calls && (
                   <div className="msg-tools">
-                    {msg.tools_used.map((t, j) => <span key={j} className={`tool-badge ${TOOL_CLASS[t] || ''}`}>{t.replace(/_/g, ' ')}</span>)}
+                    {/* Dedupe — when the agent calls the same tool multiple
+                        times in one turn (e.g. find_contacts 4x while
+                        narrowing a search), we render one badge, not four.
+                        Order-preserving so the badges still reflect the
+                        sequence of distinct tools the agent ran. */}
+                    {Array.from(new Set(msg.tools_used)).map((t, j) => <span key={j} className={`tool-badge ${TOOL_CLASS[t] || ''}`}>{t.replace(/_/g, ' ')}</span>)}
                   </div>
                 )}
                 {msg.multi_agent && msg.agents_used?.length > 0 && (
@@ -993,7 +1059,7 @@ export default function Chat() {
               <div className="msg-avatar bot">N</div>
               <div className="msg-bubble bot">
                 <div className="chat-markdown" style={{ fontSize: 13 }}>
-                  <ReactMarkdown components={MD_COMPONENTS}>{streamingText}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]} components={MD_COMPONENTS}>{streamingText}</ReactMarkdown>
                   <span style={{ display: 'inline-block', width: 6, height: 14, background: 'var(--color-accent)', marginLeft: 2, animation: 'pulse-dot 0.8s ease-in-out infinite', borderRadius: 1 }} />
                 </div>
               </div>
