@@ -13,11 +13,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Check, X, AlertTriangle, Clock, ChevronDown, ChevronRight, Inbox as InboxIcon,
-  CheckSquare, Square, Calendar as CalendarIcon, ArrowRight, Pencil,
+  CheckSquare, Square, Calendar as CalendarIcon, ArrowRight, Pencil, Sparkles, Mail,
 } from 'lucide-react';
 import EmptyState from '../components/EmptyState';
 import { listApprovals, approveAction, rejectAction, refineAction } from '../services/agent';
 import { listPersonas, listNudges, dismissNudge, acceptNudge } from '../services/agents';
+import { briefingRun, briefingLatest } from '../services/briefing';
+import { listInteractions } from '../services/crm';
 import { listTasks, updateTask } from '../services/tasks';
 import { calendarStatus, calendarEvents } from '../services/calendar';
 import { Loader2, Bot } from 'lucide-react';
@@ -389,6 +391,64 @@ function NudgeRow({ nudge, busy, onAccept, onDismiss }) {
   );
 }
 
+// ── Recently-sent email row ─────────────────────────────────────────────────
+function SentRow({ interaction, expanded, onToggle }) {
+  const subject = interaction.subject || interaction.title || '(no subject)';
+  // The interaction.summary holds the email body the agent sent (first 500
+  // chars). Bigger sends have it truncated server-side.
+  const body = interaction.summary || interaction.body || '';
+  // `to` is in metadata for agent-sent emails; fall back to contact name.
+  const meta = interaction.metadata || {};
+  const to = meta.to || interaction.contact_name || interaction.recipient || '—';
+  return (
+    <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+      <div onClick={onToggle}
+           style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+        <span style={{ color: 'var(--color-text-dim)', display: 'flex' }}>
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--color-text)',
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {subject}
+            </span>
+            <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 10,
+                            background: 'color-mix(in srgb, var(--color-ok) 12%, transparent)',
+                            color: 'var(--color-ok)', fontWeight: 600, textTransform: 'uppercase' }}>
+              Sent
+            </span>
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>
+            To {to} · {fmtWhen(interaction.created_at)}
+          </div>
+        </div>
+      </div>
+      {expanded && (
+        <div style={{ padding: '10px 16px 14px', borderTop: '1px solid var(--color-border)', background: 'var(--color-bg)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: '6px 12px', fontSize: 12 }}>
+            <div style={{ color: 'var(--color-text-muted)' }}>To</div>
+            <div style={{ color: 'var(--color-text)' }}>{to}</div>
+            <div style={{ color: 'var(--color-text-muted)' }}>Subject</div>
+            <div style={{ color: 'var(--color-text)' }}>{subject}</div>
+            <div style={{ color: 'var(--color-text-muted)' }}>Body</div>
+            <div style={{ color: 'var(--color-text)', whiteSpace: 'pre-wrap',
+                          background: 'var(--color-bg-elev)', padding: 8, borderRadius: 6,
+                          maxHeight: 160, overflow: 'auto', fontSize: 12.5 }}>
+              {body || <span style={{ color: 'var(--color-text-dim)', fontStyle: 'italic' }}>(no body preview)</span>}
+            </div>
+          </div>
+          <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--color-text-dim)' }}>
+            Read receipts and bounce tracking require a Resend account with a
+            verified domain — configure in <strong>Settings → Email</strong>.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── Calendar event row ──────────────────────────────────────────────────────
 function EventRow({ event }) {
   return (
@@ -436,22 +496,33 @@ export default function Inbox() {
   const [rejectReason, setRejectReason] = useState('');
   const [refiningId, setRefiningId] = useState(null);
   const [refineDraft, setRefineDraft] = useState({});
+  // Inline briefing surface — set when the user clicks the "Generate
+  // briefing" nudge so the result appears IN the Inbox instead of
+  // teleporting them to Dashboard.
+  const [briefingInline, setBriefingInline] = useState(null);
+  // Recently-sent emails / actions: read-only audit trail so the user
+  // can see what messages actually went out (vs queued for approval).
+  // Sourced from nexus_interactions where type='email'.
+  const [sentEmails, setSentEmails] = useState([]);
+  const [sentExpanded, setSentExpanded] = useState({});
   const navigate = useNavigate();
 
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const [approvals, overdue, today, cal, n] = await Promise.all([
+      const [approvals, overdue, today, cal, n, sent] = await Promise.all([
         listApprovals('pending').catch(() => ({ actions: [] })),
         listTasks({ due_window: 'overdue', status: 'active', limit: 20 }).catch(() => []),
         listTasks({ due_window: 'today',   status: 'active', limit: 20 }).catch(() => []),
         calendarStatus().catch(() => null),
         listNudges().catch(() => []),
+        listInteractions({ type: 'email', limit: 15 }).catch(() => []),
       ]);
       setActions(approvals.actions || []);
       setOverdueTasks(overdue || []);
       setTodayTasks(today || []);
       setNudges(n || []);
+      setSentEmails(Array.isArray(sent) ? sent : (sent?.interactions || []));
       if (cal?.connected) {
         try { setEvents(await calendarEvents(1, 10)); } catch { setEvents([]); }
       } else { setEvents([]); }
@@ -463,6 +534,25 @@ export default function Inbox() {
     if (nudgeBusy) return;
     setNudgeBusy(n.id);
     try {
+      // Special case: the "Generate briefing" nudge. The backend used to
+      // accept-then-navigate to /dashboard which felt like a teleport —
+      // user clicked a button on Inbox and ended up on a different page
+      // wondering what happened. Now we run the briefing here and show
+      // it inline at the top of the Inbox.
+      const isBriefingNudge = /brief/i.test(n.id || '') ||
+                              /brief/i.test(n.cta_label || '') ||
+                              /brief/i.test(n.title || '');
+      if (isBriefingNudge) {
+        try { await briefingRun(); } catch { /* fall through to latest */ }
+        const latest = await briefingLatest().catch(() => null);
+        if (latest?.id) setBriefingInline(latest);
+        // Tell the backend the nudge was actioned, but don't follow its
+        // navigate hint.
+        try { await acceptNudge(n.id); } catch { /* non-fatal */ }
+        setNudges(prev => prev.filter(x => x.id !== n.id));
+        reload();
+        return;
+      }
       const r = await acceptNudge(n.id);
       setNudges(r.next_nudges || []);
       if (r.result?.kind === 'navigate' && r.result.path) {
@@ -555,6 +645,47 @@ export default function Inbox() {
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
+        {/* Inline briefing — shown when the user clicked "Generate
+            briefing" from a nudge above. Stays on the Inbox page so the
+            click doesn't feel like a teleport. */}
+        {briefingInline && briefingInline.data && (
+          <div style={{
+            marginBottom: 20, padding: 16, borderRadius: 12,
+            background: 'color-mix(in srgb, var(--color-accent) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--color-accent) 25%, transparent)',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sparkles size={14} color="var(--color-accent)" />
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
+                  Today&apos;s briefing
+                </span>
+                {briefingInline.data?.date && (
+                  <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
+                    · {briefingInline.data.date}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn-ghost" onClick={() => navigate('/')}
+                        style={{ fontSize: 11 }}>
+                  Open on Dashboard
+                </button>
+                <button onClick={() => setBriefingInline(null)}
+                        title="Dismiss"
+                        style={{ background: 'none', border: 'none',
+                                 color: 'var(--color-text-dim)', cursor: 'pointer', padding: 2 }}>
+                  <X size={14} />
+                </button>
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--color-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+              {(briefingInline.data?.summary || briefingInline.data?.text || '').slice(0, 600)
+                || 'Briefing ready — open the Dashboard to read the full version.'}
+            </div>
+          </div>
+        )}
+
         {loading && totalItems === 0 ? (
           <p style={{ color: 'var(--color-text-dim)', fontSize: 12, textAlign: 'center' }}>Loading…</p>
         ) : totalItems === 0 ? (
@@ -619,6 +750,19 @@ export default function Inbox() {
               ))}
               {events.map(ev => <EventRow key={ev.id} event={ev} />)}
             </Section>
+
+            {sentEmails.length > 0 && (
+              <Section title="Recently sent" count={sentEmails.length} color="var(--color-ok)" icon={Mail}>
+                {sentEmails.map(s => (
+                  <SentRow
+                    key={s.id}
+                    interaction={s}
+                    expanded={!!sentExpanded[s.id]}
+                    onToggle={() => setSentExpanded(p => ({ ...p, [s.id]: !p[s.id] }))}
+                  />
+                ))}
+              </Section>
+            )}
           </>
         )}
       </div>

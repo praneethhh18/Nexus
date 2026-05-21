@@ -433,9 +433,31 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Notification panel */}
+      {/* Notification panel — anchored to the bell at bottom-left of the
+          sidebar so the click → panel visual relationship is obvious.
+          Previously the bell sat bottom-left but the panel slid in from
+          the right edge of the screen, which looked disconnected. */}
       {showNotifs && (
-        <div style={{ position: 'fixed', top: 0, right: 0, width: 340, height: '100vh', background: 'var(--color-bg)', borderLeft: '1px solid var(--color-surface-2)', zIndex: 100, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.4)' }}>
+        <>
+          {/* Click-outside backdrop. */}
+          <div
+            onClick={() => setShowNotifs(false)}
+            style={{ position: 'fixed', inset: 0, zIndex: 99, background: 'transparent' }}
+          />
+          <div style={{
+            position: 'fixed',
+            bottom: 56,
+            left: collapsed ? 64 : 14,
+            width: 340,
+            maxHeight: 'min(560px, 70vh)',
+            background: 'var(--color-bg-elev)',
+            border: '1px solid var(--color-border)',
+            borderRadius: 12,
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 18px 48px rgba(0,0,0,0.45)',
+          }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--color-surface-2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: 14, fontWeight: 600, color: 'white' }}>Notifications</span>
             <div style={{ display: 'flex', gap: 8 }}>
@@ -494,6 +516,7 @@ export default function Layout() {
             })}
           </div>
         </div>
+        </>
       )}
 
       {/* New Business Modal */}
