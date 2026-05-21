@@ -773,10 +773,21 @@ export default function Chat() {
 
     try {
       const data = await uploadDocument(file);
-      const ok = data && (data.chunks_added || data.success);
-      const finalContent = ok
-        ? `📎 **\`${file.name}\`** uploaded — ${data.chunks_added || 0} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`
-        : `📎 **\`${file.name}\`** uploaded but no content was extracted. Try a different file or check the format.`;
+      const chunks = (data && data.chunks_added) || 0;
+      const indexed = data && data.indexed;
+      // Three distinct outcomes — don't conflate them:
+      //   indexed=true            → searchable now
+      //   indexed=false + warning → file saved but RAG offline (warning explains why)
+      //   chunks=0 + no warning   → PDF parsed empty (scanned image, encrypted, etc.)
+      let finalContent;
+      if (indexed && chunks > 0) {
+        finalContent = `📎 **\`${file.name}\`** uploaded — ${chunks} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`;
+      } else if (data && data.warning) {
+        finalContent = `📎 **\`${file.name}\`** saved, but indexing didn't complete: ${data.warning}`;
+      } else {
+        finalContent = `📎 **\`${file.name}\`** uploaded but no text was extracted. The PDF may be a scan (image-only) or encrypted — try a text-based version.`;
+      }
+      const ok = indexed && chunks > 0;
       setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
         ...m, _uploadPlaceholder: false, content: finalContent,
       } : m));

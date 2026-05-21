@@ -7,16 +7,31 @@ from agents.tool_registry import register_tool
 
 
 def _search_knowledge(ctx, args):
+    """retrieve() returns a dict {results, low_confidence, warning, query}.
+    Earlier this function iterated the dict directly — iterating yields
+    keys (strings), so r.get(...) blew up with 'str' has no attribute
+    'get'. Unwrap properly and surface the warning when present."""
     from rag.retriever import retrieve
-    results = retrieve(args["query"], top_k=int(args.get("top_k", 5)))
-    return [
+    resp = retrieve(args["query"], top_k=int(args.get("top_k", 5)))
+    if not isinstance(resp, dict):
+        return {"results": [], "warning": "Retriever returned unexpected shape"}
+    items = resp.get("results") or []
+    out_results = [
         {
-            "source": r.get("source", ""),
-            "text": (r.get("text") or r.get("page_content", ""))[:1000],
-            "score": r.get("score"),
+            "source": (r.get("source") if isinstance(r, dict) else "") or "",
+            "page":   (r.get("page")   if isinstance(r, dict) else "") or "",
+            "text":   ((r.get("text") if isinstance(r, dict) else "") or
+                       (r.get("page_content") if isinstance(r, dict) else "") or "")[:1000],
+            "confidence": (r.get("confidence") if isinstance(r, dict) else None),
         }
-        for r in (results or [])
+        for r in items
     ]
+    return {
+        "results": out_results,
+        "low_confidence": bool(resp.get("low_confidence")),
+        "warning": resp.get("warning"),
+        "query": resp.get("query") or args.get("query"),
+    }
 
 
 register_tool(
