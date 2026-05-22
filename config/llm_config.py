@@ -94,19 +94,60 @@ def _pick_fast_model() -> str:
     return OLLAMA_FALLBACK_MODEL
 
 
-def get_llm(temperature: float = 0.1) -> Ollama:
-    """Return the POWER model (8B) for SQL, RAG, reports, synthesis."""
+class _CloudLLMShim:
+    """Drop-in stand-in for an Ollama LangChain LLM when Ollama is down.
+
+    Exposes the two methods callers actually use (`.invoke(prompt)` and
+    `__call__(prompt)`), and dispatches to `config.llm_provider.invoke`
+    which already knows how to talk to Bedrock / NIM / Groq with the
+    same fallback budget. Without this shim, every code path that
+    requires `get_llm()` (PlannerAgent, RAG synthesizer, report
+    generation, what-if, memory deep-learn, workflow AI nodes) hard-
+    crashes the moment Ollama isn't running locally."""
+    __slots__ = ("_temperature",)
+
+    def __init__(self, temperature: float):
+        self._temperature = temperature
+
+    def _call(self, prompt: str) -> str:
+        from config.llm_provider import invoke as _provider_invoke
+        return _provider_invoke(
+            prompt, system="", max_tokens=1024,
+            temperature=self._temperature, fast=False,
+        )
+
+    def invoke(self, prompt: str) -> str:
+        return self._call(prompt)
+
+    def __call__(self, prompt: str) -> str:
+        return self._call(prompt)
+
+
+def get_llm(temperature: float = 0.1):
+    """Return the POWER model (8B) for SQL, RAG, reports, synthesis.
+
+    Tries local Ollama first (faster + free); falls back to a cloud
+    shim that hits whatever provider is configured (Bedrock / NIM /
+    Groq) when Ollama isn't running. Previously raised RuntimeError
+    when Ollama was down, which 500'd every report/synthesis path."""
     global _power_llm
     if _power_llm is not None:
         return _power_llm
 
     healthy, _ = health_check(force=True)
     if not healthy:
-        # One retry
-        time.sleep(2)
+        # One retry, then fall back to the cloud provider rather than
+        # crashing every caller. Cloud is what the chat flow already
+        # uses successfully, so reports/RAG/etc. should follow suit.
+        time.sleep(1)
         healthy, _ = health_check(force=True)
         if not healthy:
-            raise RuntimeError("Cannot connect to Ollama. Run: ollama serve")
+            logger.warning(
+                "[LLM] Ollama not reachable, falling back to cloud "
+                "provider via llm_provider.invoke (Bedrock/NIM/Groq)."
+            )
+            _power_llm = _CloudLLMShim(temperature)
+            return _power_llm
 
     chosen = OLLAMA_MODEL
     if not _model_available(OLLAMA_MODEL):
@@ -118,10 +159,26 @@ def get_llm(temperature: float = 0.1) -> Ollama:
     return _power_llm
 
 
-def get_fast_llm(temperature: float = 0.1) -> Ollama:
-    """Return the FAST model (1.5-3B) for chat, classification, intent detection."""
+def get_fast_llm(temperature: float = 0.1):
+    """Return the FAST model (1.5-3B) for chat, classification, intent detection.
+    Same Ollama-then-cloud fallback as get_llm()."""
     global _fast_llm
     if _fast_llm is not None:
+        return _fast_llm
+
+    healthy, _ = health_check(force=True)
+    if not healthy:
+        logger.warning(
+            "[LLM] Ollama not reachable for fast model, using cloud "
+            "shim (Bedrock fast tier / Nova Lite)."
+        )
+        # Use the same shim, but the underlying invoke can prefer fast tier.
+        class _FastShim(_CloudLLMShim):
+            def _call(self, prompt: str) -> str:
+                from config.llm_provider import invoke as _pi
+                return _pi(prompt, system="", max_tokens=512,
+                           temperature=self._temperature, fast=True)
+        _fast_llm = _FastShim(temperature)
         return _fast_llm
 
     fast_model = _pick_fast_model()

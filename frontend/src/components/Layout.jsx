@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, MessageSquare, Database, TrendingUp, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail, X } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Database, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail, X } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
 import { markNotificationRead, deleteNotification, getOnboardingState } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
@@ -38,11 +38,14 @@ const NAV_PRIMARY = [
   { to: '/chat',            icon: MessageSquare,   label: 'Chat with AI' },
 ];
 
+// Analytics is intentionally NOT in the sidebar, it lives as a tab on
+// the Home dashboard (Overview / Analytics toggle). Having it in both
+// places was a duplicate surface that confused users about where to
+// go for the same charts.
 const NAV_MORE = [
   { to: '/agents',          icon: Bot,             label: 'AI Agents' },
   { to: '/workflows',       icon: GitBranch,       label: 'Workflows' },
   { to: '/reports',         icon: FileText,        label: 'Reports' },
-  { to: '/analytics',       icon: TrendingUp,      label: 'Analytics' },
   { to: '/integrations',    icon: Plug,            label: 'Integrations' },
   { to: '/email-templates', icon: Mail,            label: 'Email templates' },
 ];

@@ -409,9 +409,10 @@ class SynthesisAgent:
         context_parts = []
         for step in plan.steps:
             result = results.get(step.step_id)
-            if result and result.status == "success":
+            # AgentResult has no `status` field, success == no error.
+            if result and not result.error:
                 context_parts.append(
-                    f"### {result.agent_name.upper()} — Step {step.step_id}: {step.description}\n"
+                    f"### {result.agent_name.upper()} - Step {step.step_id}: {step.description}\n"
                     f"{result.result}"
                 )
             elif result and result.error:
@@ -495,7 +496,7 @@ class MultiAgentOrchestrator:
 
         duration_ms = int((time.time() - start) * 1000)
         agents_used = list(set(
-            r.agent_name for r in all_results.values() if r.status == "success"
+            r.agent_name for r in all_results.values() if not r.error
         ))
 
         logger.info(
@@ -527,7 +528,7 @@ class MultiAgentOrchestrator:
             input_context = ""
             for dep_id in step.depends_on:
                 dep_result = completed.get(dep_id)
-                if dep_result and dep_result.status == "success":
+                if dep_result and not dep_result.error:
                     input_context += f"\n[Step {dep_id} result: {dep_result.result[:500]}]"
 
             # Execute
