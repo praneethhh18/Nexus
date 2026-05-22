@@ -71,7 +71,24 @@ export default function AcceptInvite() {
             </p>
             <div style={{ padding: 12, background: 'var(--color-surface-2)', borderRadius: 8, fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 16 }}>
               <div>Email: <strong style={{ color: 'var(--color-text)' }}>{preview.email}</strong></div>
-              <div>Role: <strong style={{ color: 'var(--color-text)' }}>{preview.role}</strong></div>
+              <div>Role: <strong style={{ color: 'var(--color-text)' }}>{
+                ({
+                  owner: 'Owner',
+                  admin: 'Manager',
+                  member: 'Employee',
+                  viewer: 'Read-only / Contractor',
+                })[preview.role] || preview.role
+              }</strong></div>
+              {preview.role && (
+                <div style={{ marginTop: 6, fontSize: 11, fontStyle: 'italic' }}>
+                  {{
+                    owner: 'Full access including billing.',
+                    admin: 'Same access as the owner except billing. Can invite teammates, run workflows, edit company data.',
+                    member: 'Your own work + tasks assigned to you. Read-only on company data like Customers and Documents.',
+                    viewer: 'Browse-only access. Cannot edit or delete.',
+                  }[preview.role] || ''}
+                </div>
+              )}
             </div>
             <button onClick={handleAccept} className="btn-primary" disabled={loading}
               style={{ width: '100%', justifyContent: 'center', padding: '10px 0', fontSize: 14 }}>

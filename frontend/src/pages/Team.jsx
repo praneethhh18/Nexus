@@ -4,7 +4,27 @@ import { listInvites, createInvite, revokeInvite, activityFeed } from '../servic
 import { getBusiness } from '../services/api';
 import { getCurrentBusiness } from '../services/auth';
 
-const ROLE_OPTIONS = ['member', 'admin', 'viewer'];
+// Roles use product-voice labels in the dropdown so a non-technical
+// manager understands what they're picking. The DB still stores the
+// short slug ("member"/"admin"/"viewer"); the UI shows the friendly
+// label + a one-line description below the picker.
+const ROLE_OPTIONS = [
+  {
+    slug: 'member',
+    label: 'Employee',
+    description: 'Their own work + tasks you assign them. Read-only on Customers/Documents. Default for new hires.',
+  },
+  {
+    slug: 'admin',
+    label: 'Manager',
+    description: 'Same as you minus billing. Can invite teammates, run workflows + reports, edit company data.',
+  },
+  {
+    slug: 'viewer',
+    label: 'Read-only / Contractor',
+    description: 'Browse but cannot edit. Good for an accountant or auditor.',
+  },
+];
 
 function formatWhen(iso) {
   if (!iso) return '';
@@ -129,7 +149,14 @@ export default function Team() {
                         padding: '2px 8px', borderRadius: 10,
                         background: m.role === 'owner' ? 'color-mix(in srgb, var(--color-warn) 13%, transparent)' : m.role === 'admin' ? 'color-mix(in srgb, var(--color-accent) 13%, transparent)' : 'color-mix(in srgb, var(--color-border-strong) 13%, transparent)',
                         color: m.role === 'owner' ? 'var(--color-warn)' : m.role === 'admin' ? 'var(--color-info)' : 'var(--color-text-muted)',
-                      }}>{m.role}</span>
+                      }} title={`role: ${m.role}`}>
+                        {{
+                          owner: 'Owner',
+                          admin: 'Manager',
+                          member: 'Employee',
+                          viewer: 'Read-only',
+                        }[m.role] || m.role}
+                      </span>
                     </td>
                     <td>{formatWhen(m.joined_at)}</td>
                   </tr>
@@ -224,19 +251,49 @@ export default function Team() {
       {showInvite && (
         <Modal title="Invite a teammate" onClose={() => setShowInvite(false)}>
           <form onSubmit={handleInvite}>
+            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: '0 0 14px', lineHeight: 1.5 }}>
+              They'll get a link to join <strong style={{ color: 'var(--color-text)' }}>{current?.name}</strong> on
+              NexusAgent. They sign up (or log in) on the same site, then
+              land in their role's view automatically. You can change
+              their role later from this page.
+            </p>
+
             <div style={{ marginBottom: 10 }}>
               <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Email *</label>
-              <input className="field-input" type="email" required autoFocus value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              <input className="field-input" type="email" required autoFocus
+                     placeholder="teammate@company.com"
+                     value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
             </div>
-            <div style={{ marginBottom: 10 }}>
-              <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Role</label>
-              <select className="field-select" value={newRole} onChange={(e) => setNewRole(e.target.value)} style={{ width: '100%' }}>
-                {ROLE_OPTIONS.map(r => <option key={r}>{r}</option>)}
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>
+                Role they'll have in this workspace
+              </label>
+              <select
+                className="field-select"
+                value={newRole}
+                onChange={(e) => setNewRole(e.target.value)}
+                style={{ width: '100%' }}
+              >
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r.slug} value={r.slug}>{r.label}</option>
+                ))}
               </select>
-              <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 4 }}>
-                viewer = read-only · member = normal access · admin = can invite others and manage business
+              {/* One-line description of the chosen role, so the manager
+                  knows exactly what they're giving access to before
+                  they click Send. */}
+              <p style={{
+                fontSize: 11, color: 'var(--color-text-muted)',
+                marginTop: 6, lineHeight: 1.4,
+                padding: '6px 10px',
+                background: 'var(--color-surface-1)',
+                borderRadius: 6,
+                borderLeft: '2px solid var(--color-accent)',
+              }}>
+                {(ROLE_OPTIONS.find(r => r.slug === newRole) || ROLE_OPTIONS[0]).description}
               </p>
             </div>
+
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 14 }}>
               <button type="button" className="btn-ghost" onClick={() => setShowInvite(false)}>Cancel</button>
               <button type="submit" className="btn-primary">Send invite</button>
