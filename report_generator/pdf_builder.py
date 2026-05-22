@@ -41,16 +41,67 @@ def _footer(canvas, doc):
     canvas.restoreState()
 
 
+def _indian_comma(n: float) -> str:
+    """Format with Indian-style lakh/crore commas: 17,70,000 not 1,770,000."""
+    sign = "-" if n < 0 else ""
+    n = abs(n)
+    integer = int(n)
+    fraction = n - integer
+    s = str(integer)
+    if len(s) <= 3:
+        out = s
+    else:
+        last3 = s[-3:]
+        rest = s[:-3]
+        # Group the rest in pairs from the right.
+        rest_grouped = ",".join(
+            [rest[max(0, i - 2):i] for i in range(len(rest), 0, -2)][::-1]
+        )
+        out = f"{rest_grouped},{last3}"
+    if fraction and round(fraction, 2) != 0:
+        out += f".{int(round(fraction, 2) * 100):02d}"
+    return sign + out
+
+
+def _looks_like_money(colname: str) -> bool:
+    name = colname.lower()
+    return any(k in name for k in (
+        "amount", "total", "revenue", "value", "price", "cost",
+        "spend", "billed", "paid", "balance", "due", "subtotal", "tax",
+    ))
+
+
+def _fmt_cell(col: str, v) -> str:
+    """Format a single cell. Numbers get Indian commas; money columns
+    get the rupee prefix; everything else is plain str()."""
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return ""
+    if isinstance(v, (int, float)):
+        if _looks_like_money(col):
+            return f"INR {_indian_comma(float(v))}"
+        # Plain numeric: still nicer with commas if integer-ish and big.
+        if abs(v) >= 1000:
+            return _indian_comma(float(v))
+        # Small numbers stay as is, but drop the .0 on whole floats.
+        if isinstance(v, float) and v.is_integer():
+            return str(int(v))
+        return str(v)
+    return str(v)
+
+
 def _df_to_table_data(df: pd.DataFrame, max_rows: int = 25) -> list:
-    """Convert DataFrame to ReportLab table data."""
+    """Convert DataFrame to ReportLab table data with money-aware
+    formatting (Indian lakh commas + rupee prefix on money columns)."""
     if df.empty:
         return [["No data available"]]
     display_df = df.head(max_rows)
     headers = list(display_df.columns)
     rows = []
     for _, row in display_df.iterrows():
-        rows.append([str(v) for v in row.values])
-    return [headers] + rows
+        rows.append([_fmt_cell(col, v) for col, v in zip(headers, row.values)])
+    # Prettify the header labels too: snake_case -> Title Case.
+    pretty_headers = [h.replace("_", " ").title() for h in headers]
+    return [pretty_headers] + rows
 
 
 def build_pdf(

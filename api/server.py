@@ -1105,22 +1105,33 @@ def generate_report(req: ReportRequest, ctx: dict = Depends(get_current_context)
         logger.warning(f"[reports] narrative failed: {e}")
         narrative = {"narrative": "", "aggregates": {"row_count": len(df)}, "mode": "error"}
 
-    # Split the narrative into a 1-paragraph executive summary + bullet
-    # insights. Heuristic: first paragraph is the exec summary; later
-    # bulleted lines become key insights.
-    narrative_text = (narrative.get("narrative") or "").strip()
-    parts = [p.strip() for p in narrative_text.split("\n\n") if p.strip()]
-    executive_summary = parts[0] if parts else (
-        f"This report covers {len(df)} records across {len(df.columns)} fields."
-    )
+    # Pull the four narrative sections that the generator already
+    # parsed: summary / metrics / breakdown / recommendation. Falling
+    # back to a synthetic summary when the model didn't follow format.
+    sections = narrative.get("sections") or {}
+    executive_summary = (sections.get("summary") or "").strip()
+    if not executive_summary:
+        executive_summary = (
+            f"This report covers {len(df)} records across {len(df.columns)} fields."
+        )
+
     key_insights: list[str] = []
-    for chunk in parts[1:]:
-        for line in chunk.split("\n"):
-            line = line.lstrip("-•* ").strip()
-            if line:
-                key_insights.append(line)
-    if not key_insights and len(parts) > 1:
-        key_insights = parts[1:6]
+    for m in sections.get("metrics") or []:
+        if m and m.strip():
+            key_insights.append(m.strip())
+    # If the model put recommendations as its own section, append them
+    # so the user sees the 'so what' at the bottom of the insights list.
+    rec = (sections.get("recommendation") or "").strip()
+    if rec:
+        for ln in rec.split("\n"):
+            ln = ln.lstrip("- ").strip()
+            if ln:
+                key_insights.append(ln)
+    # Breakdown joins the exec summary if present, since the PDF only has
+    # one prose slot today.
+    breakdown = (sections.get("breakdown") or "").strip()
+    if breakdown:
+        executive_summary = (executive_summary + "\n\n" + breakdown).strip()
 
     # 4) Build the PDF.
     try:
