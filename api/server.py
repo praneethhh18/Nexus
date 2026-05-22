@@ -1030,12 +1030,105 @@ def entity_import_commit(body: dict, ctx: dict = Depends(get_current_context)):
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.post("/api/reports/generate")
 def generate_report(req: ReportRequest, ctx: dict = Depends(get_current_context)):
-    from orchestrator.graph import run
-    result = run(f"Generate a report: {req.query}", user_id=ctx["user"]["id"])
-    pdf_path = result.get("report_path", "")
-    if pdf_path and Path(pdf_path).exists():
-        return {"path": pdf_path, "filename": Path(pdf_path).name}
-    raise HTTPException(500, "Report generation failed")
+    """Direct report pipeline: NL -> SQL -> dataframe -> chart -> narrative -> PDF.
+
+    We bypass the orchestrator graph here because the multi-agent path
+    routes through PlannerAgent/RAG-synthesizer which adds 60-90s of
+    LLM overhead and brittle Ollama deps that don't add anything for
+    a 'top N rows + chart' style report. The narrative step still uses
+    the unified llm_provider so it works whether Ollama is up or not.
+    """
+    from sql_agent.executor import execute_query
+    from report_generator.narrative import generate_narrative
+    from report_generator.chart_selector import select_chart_type
+    from report_generator.chart_builder import build_chart
+    from report_generator.pdf_builder import build_pdf
+    import re
+
+    question = (req.query or "").strip()
+    if not question:
+        raise HTTPException(400, "query is required")
+
+    # 1) NL -> SQL -> dataframe. execute_query already self-corrects on
+    # invalid SQL up to MAX_SQL_RETRIES, so we just trust its verdict.
+    try:
+        sql_result = execute_query(question)
+    except Exception as e:
+        logger.exception(f"[reports] SQL execution failed: {e}")
+        raise HTTPException(500, f"Could not query the data: {e}")
+
+    df = sql_result.get("dataframe")
+    if df is None or getattr(df, "empty", True):
+        raise HTTPException(
+            422,
+            "I couldn't find any data to report on for that question. "
+            "Try a different timeframe or entity (e.g. 'top 5 customers by revenue this quarter').",
+        )
+
+    # 2) Build a short, human title from the question. Drop the verb
+    # prefix so it reads like a headline, not a command.
+    title = re.sub(
+        r"^(generate|show|build|create|give|make)\s+(me\s+)?(a\s+|an\s+|the\s+)?(report\s+(on|of|about|for)\s+)?",
+        "",
+        question,
+        flags=re.IGNORECASE,
+    ).strip().capitalize()[:80] or "Custom report"
+
+    # 3) Chart + narrative in parallel-ish (both are fast). Each step
+    # is best-effort, the PDF still ships if a step degrades.
+    try:
+        chart_type, _reason = select_chart_type(df, question)
+    except Exception as e:
+        logger.warning(f"[reports] chart selection failed: {e}")
+        chart_type = "table"
+
+    chart_path = None
+    if chart_type != "table":
+        try:
+            _fig, chart_path = build_chart(df, chart_type, title=title, save=True)
+        except Exception as e:
+            logger.warning(f"[reports] chart build failed: {e}")
+
+    try:
+        narrative = generate_narrative(question, df)
+    except Exception as e:
+        logger.warning(f"[reports] narrative failed: {e}")
+        narrative = {"narrative": "", "aggregates": {"row_count": len(df)}, "mode": "error"}
+
+    # Split the narrative into a 1-paragraph executive summary + bullet
+    # insights. Heuristic: first paragraph is the exec summary; later
+    # bulleted lines become key insights.
+    narrative_text = (narrative.get("narrative") or "").strip()
+    parts = [p.strip() for p in narrative_text.split("\n\n") if p.strip()]
+    executive_summary = parts[0] if parts else (
+        f"This report covers {len(df)} records across {len(df.columns)} fields."
+    )
+    key_insights: list[str] = []
+    for chunk in parts[1:]:
+        for line in chunk.split("\n"):
+            line = line.lstrip("-•* ").strip()
+            if line:
+                key_insights.append(line)
+    if not key_insights and len(parts) > 1:
+        key_insights = parts[1:6]
+
+    # 4) Build the PDF.
+    try:
+        pdf_path = build_pdf(
+            title=title,
+            executive_summary=executive_summary,
+            dataframe=df,
+            chart_image_path=chart_path,
+            key_insights=key_insights[:8],
+            subtitle=f"Generated from: {question[:120]}",
+        )
+    except Exception as e:
+        logger.exception(f"[reports] PDF build failed: {e}")
+        raise HTTPException(500, f"Could not assemble the PDF: {e}")
+
+    if not pdf_path or not Path(pdf_path).exists():
+        raise HTTPException(500, "Report generation failed")
+    return {"path": pdf_path, "filename": Path(pdf_path).name}
 
 
 @app.get("/api/reports")
