@@ -33,6 +33,9 @@ class BusinessUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=120)
     industry: Optional[str] = None
     description: Optional[str] = None
+    # Language the Vox phone agent uses on this business's calls.
+    # Validated against the languages.py catalog in update_business().
+    voice_language: Optional[str] = None
 
 
 class MemberAdd(BaseModel):

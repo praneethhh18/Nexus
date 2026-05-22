@@ -37,6 +37,12 @@ export default function Settings() {
   const [bizName, setBizName] = useState('');
   const [bizIndustry, setBizIndustry] = useState('');
   const [bizDescription, setBizDescription] = useState('');
+  // Vox phone-agent language. Defaults to English; the picker is
+  // rendered alongside the basic biz fields below.
+  const [bizVoiceLang, setBizVoiceLang] = useState('en');
+  const [voiceLanguages, setVoiceLanguages] = useState([
+    { code: 'en', display_name: 'English' },
+  ]);
   const [calStatus, setCalStatus] = useState(null);
   const [etAccount, setEtAccount] = useState(null);
   const [etForm, setEtForm] = useState({ imap_host: 'imap.gmail.com', imap_port: 993, username: '', password: '', folder: 'INBOX', enabled: true, auto_draft_reply: true });
@@ -66,6 +72,16 @@ export default function Settings() {
     calendarStatus().then(setCalStatus).catch(() => {});
   }, []);
 
+  // Vox language catalog: GET /api/voice/languages so the dropdown
+  // doesn't hardcode the list and a backend-only addition (Bengali,
+  // Punjabi later) lights up the UI without a frontend deploy.
+  useEffect(() => {
+    fetch('/api/voice/languages')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (Array.isArray(d) && d.length) setVoiceLanguages(d); })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     getSettings().then(setS).catch(() => {});
     if (current) {
@@ -74,6 +90,7 @@ export default function Settings() {
         setBizName(b.name || '');
         setBizIndustry(b.industry || '');
         setBizDescription(b.description || '');
+        setBizVoiceLang(b.voice_language || 'en');
       }).catch(() => {});
     }
   }, [current?.id]);
@@ -95,6 +112,7 @@ export default function Settings() {
         name: bizName,
         industry: bizIndustry,
         description: bizDescription,
+        voice_language: bizVoiceLang,
       });
       setBizDetail(updated);
       flash('Business saved.');
@@ -191,6 +209,25 @@ export default function Settings() {
               <div>
                 <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>Description</label>
                 <textarea className="field-input" rows={2} value={bizDescription} onChange={(e) => setBizDescription(e.target.value)} disabled={!canEditBiz} maxLength={500} />
+              </div>
+              <div>
+                <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>
+                  Vox voice language
+                </label>
+                <select
+                  className="field-select"
+                  value={bizVoiceLang}
+                  onChange={(e) => setBizVoiceLang(e.target.value)}
+                  disabled={!canEditBiz}
+                  style={{ width: '100%' }}
+                >
+                  {voiceLanguages.map((l) => (
+                    <option key={l.code} value={l.code}>{l.display_name}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 4 }}>
+                  Language Vox will speak in on calls. Affects greeting, voice, and conversation style. Per-call override is available via the dial API.
+                </p>
               </div>
               {canEditBiz && (
                 <div style={{ display: 'flex', gap: 8 }}>

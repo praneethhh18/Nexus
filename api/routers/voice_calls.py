@@ -35,6 +35,24 @@ from config.db import get_conn
 router = APIRouter(tags=["voice_calls"])
 
 
+# Static language catalog so the frontend Settings picker doesn't have
+# to hardcode the list. Source of truth is the lab's
+# voice_agent/languages.py; we mirror just the user-facing fields here
+# to avoid a runtime dependency on the lab repo for a settings page.
+_VOICE_LANGUAGES = [
+    {"code": "en", "display_name": "English"},
+    {"code": "hi", "display_name": "हिन्दी (Hindi)"},
+    {"code": "ta", "display_name": "தமிழ் (Tamil)"},
+    {"code": "mr", "display_name": "मराठी (Marathi)"},
+]
+
+
+@router.get("/api/voice/languages")
+def list_voice_languages():
+    """Languages Vox can speak. Drives the Settings > Voice dropdown."""
+    return _VOICE_LANGUAGES
+
+
 def _lab_url() -> str:
     """Internal server-to-server URL (e.g. http://vox-server:8765 in Docker)."""
     url = (os.getenv("LAB_URL") or os.getenv("VOX_LAB_URL") or "").rstrip("/")
@@ -101,9 +119,12 @@ def _build_payload_for_contact(business_id: str, contact_id: str,
         or "there"
     )
 
-    # Pull the business profile for the agent's pitch context.
+    # Pull the business profile for the agent's pitch context + the
+    # voice language (Hindi/Tamil/Marathi/English). The language picker
+    # lives in Settings > Voice; defaults to English.
     business_name = "Nexus"
     business_blurb = "We help businesses run smarter operations."
+    voice_language = "en"
     try:
         from api.businesses import get_business
         biz = get_business(business_id) or {}
@@ -112,8 +133,13 @@ def _build_payload_for_contact(business_id: str, contact_id: str,
             if biz.get(k):
                 business_blurb = biz[k].strip()
                 break
+        voice_language = (biz.get("voice_language") or "en").strip().lower()
     except Exception as e:
         logger.debug(f"[voice/dial] could not fetch business {business_id}: {e}")
+
+    # Per-call override wins over biz default, so an English-default
+    # business can dial a Hindi-speaking lead in Hindi via the API.
+    voice_language = (body.get("language") or voice_language or "en").strip().lower()
 
     return {
         "phone":           phone,
@@ -124,6 +150,7 @@ def _build_payload_for_contact(business_id: str, contact_id: str,
         "business_blurb":  business_blurb,
         "agent_name":      os.getenv("VOX_AGENT_NAME", "Vox"),
         "purpose":         (body.get("purpose") or "a quick check-in").strip(),
+        "language":        voice_language,
         "callback_url":    _public_callback_url(),
     }
 

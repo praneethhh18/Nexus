@@ -161,7 +161,17 @@ def update_business(business_id: str, user_id: str, updates: Dict) -> Dict:
     if role not in ("owner", "admin"):
         raise HTTPException(403, "Only owner/admin can edit this business")
 
-    allowed = {"name", "industry", "description"}
+    # voice_language: the BCP-47ish code the Vox phone agent will
+    # speak in when calling this business's contacts. Picker lives in
+    # Settings > Voice. See voice_agent/languages.py for the catalog.
+    allowed = {"name", "industry", "description", "voice_language"}
+    # Validate the language code if present to a known-good list so
+    # we don't ship a typo all the way down to the LiveKit worker.
+    if "voice_language" in updates:
+        v = (updates.get("voice_language") or "en").strip().lower()
+        if v not in ("en", "hi", "ta", "mr"):
+            raise HTTPException(400, f"Unsupported language: {v}")
+        updates["voice_language"] = v
     fields = {k: v for k, v in updates.items() if k in allowed}
     if not fields:
         raise HTTPException(400, "No editable fields provided")
