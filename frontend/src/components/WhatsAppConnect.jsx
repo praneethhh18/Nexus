@@ -25,7 +25,7 @@ import {
 const POLL_MS = 2000;
 const MAX_POLL_TIME_MS = 5 * 60 * 1000;   // give up after 5 min
 
-// Status pill — declared at module scope (not inside the parent component)
+// Status pill, declared at module scope (not inside the parent component)
 // so React's static-components rule passes and we don't recreate the
 // component on every render. Stateless, takes `status` as a prop.
 const STATUS_MAP = {
@@ -62,7 +62,7 @@ export default function WhatsAppConnect() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
 
-  // Refs for cleanup — poll timer + start time. Setting state inside the
+  // Refs for cleanup, poll timer + start time. Setting state inside the
   // poll wouldn't auto-stop the interval; we manage it imperatively.
   const pollTimer = useRef(null);
   const pollStarted = useRef(0);
@@ -103,7 +103,7 @@ export default function WhatsAppConnect() {
         const snap = await getWhatsAppStatus();
         applySnapshot(snap);
       } catch {
-        // Network blip — keep polling silently. The next successful poll
+        // Network blip, keep polling silently. The next successful poll
         // will refresh the UI; flashing transient errors is just noise.
       }
     }, POLL_MS);
@@ -118,7 +118,7 @@ export default function WhatsAppConnect() {
         const snap = await getWhatsAppStatus();
         if (!cancelled) applySnapshot(snap);
       } catch {
-        // Bridge not running, plan-gated, etc. — silent; user can click
+        // Bridge not running, plan-gated, etc., silent; user can click
         // Connect and we'll surface the real error then.
       }
     })();

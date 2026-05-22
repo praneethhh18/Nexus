@@ -1,10 +1,10 @@
 /**
- * Audit log — the privacy-first product's most demo-worthy page.
+ * Audit log, the privacy-first product's most demo-worthy page.
  *
  * Two tabs:
- *   1. Actions   — every tool call by the agent or a user (the existing
+ *   1. Actions  , every tool call by the agent or a user (the existing
  *                  `/api/audit` feed). Useful for "what did Atlas actually do?"
- *   2. Cloud LLM — every prompt that left the machine. Provider, model,
+ *   2. Cloud LLM, every prompt that left the machine. Provider, model,
  *                  redaction count + kinds, payload SHA-256 fingerprint,
  *                  timestamp. Backed by `/api/privacy/audit`.
  *
@@ -12,7 +12,7 @@
  * trust posture: "12,847 actions logged · 348 cloud calls · 4,212 PII values
  * redacted before any of them left the machine."
  *
- * Design intent — buyers' CTOs spend 30 seconds on this page deciding whether
+ * Design intent, buyers' CTOs spend 30 seconds on this page deciding whether
  * to forward the product to procurement. Make those 30 seconds count.
  */
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -37,7 +37,7 @@ const KIND_TONE = {
 
 
 function formatWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     return new Date(iso).toLocaleString([], {
       month: 'short', day: 'numeric',
@@ -47,12 +47,12 @@ function formatWhen(iso) {
 }
 
 function formatTs(ts) {
-  if (!ts) return '—';
+  if (!ts) return ', ';
   try {
     return new Date(Number(ts) * 1000).toLocaleString([], {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
     });
-  } catch { return '—'; }
+  } catch { return ', '; }
 }
 
 function fmtBytes(n) {
@@ -147,7 +147,7 @@ export default function AuditLog() {
   const cloudTotal = stats.total || 0;
   const redactionTotal = stats.total_redactions || 0;
   const cloud24h = stats.last_24h || 0;
-  const actionsTotal = rows.length;  // partial — full count only via export
+  const actionsTotal = rows.length;  // partial, full count only via export
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -256,7 +256,7 @@ export default function AuditLog() {
               <EmptyState
                 icon={Activity}
                 title="No actions match those filters"
-                description="Every tool call by the AI shows up here — approvals, emails, SQL queries, report generation. Clear filters or wait for the next action."
+                description="Every tool call by the AI shows up here, approvals, emails, SQL queries, report generation. Clear filters or wait for the next action."
               />
             ) : (
               <div className="table-panel">
@@ -277,7 +277,7 @@ export default function AuditLog() {
                       <tr key={r.event_id}>
                         <td style={{ fontSize: 10.5, color: 'var(--color-text-muted)' }}>{formatWhen(r.timestamp)}</td>
                         <td><code style={{ fontSize: 10.5 }}>{r.tool_name}</code></td>
-                        <td style={{ fontSize: 11 }}>{r.actor_name || '—'}</td>
+                        <td style={{ fontSize: 11 }}>{r.actor_name || ', '}</td>
                         <td
                           style={{ fontSize: 11, maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                           title={r.input_summary}
@@ -341,7 +341,7 @@ function CloudTab({ loading, stats, entries, privacy, showFingerprint, onToggleF
     );
   }
 
-  // Honest "nothing here" state — common in privacy-first deployments because
+  // Honest "nothing here" state, common in privacy-first deployments because
   // ALLOW_CLOUD_LLM is off, and the empty log is the *good* answer.
   const emptyReason = (() => {
     if ((entries || []).length > 0) return null;
@@ -392,12 +392,12 @@ function CloudTab({ loading, stats, entries, privacy, showFingerprint, onToggleF
         </div>
       )}
 
-      {/* Empty state — most common in production with cloud off */}
+      {/* Empty state, most common in production with cloud off */}
       {emptyReason && (
         <EmptyCloud reason={emptyReason} privacy={privacy} />
       )}
 
-      {/* Entries — newest first */}
+      {/* Entries, newest first */}
       {entries && entries.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {entries.map((e, i) => (
@@ -414,7 +414,7 @@ function CloudCallCard({ entry, showFingerprint }) {
   const kinds = entry.kinds || {};
   const kindEntries = Object.entries(kinds).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
   const provider = entry.provider || 'unknown';
-  const model = entry.model || '—';
+  const model = entry.model || ', ';
   const sha = entry.sha256 || entry.sha || '';
   const redactions = entry.redactions || 0;
   const promptChars = entry.prompt_chars || 0;
@@ -438,7 +438,7 @@ function CloudCallCard({ entry, showFingerprint }) {
         <code style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>{model}</code>
         <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{mode}</span>
         {sensitive && (
-          <span className="pill-base pill-warn" title="This call was marked sensitive — should have been forced local">
+          <span className="pill-base pill-warn" title="This call was marked sensitive, should have been forced local">
             sensitive
           </span>
         )}
@@ -479,7 +479,7 @@ function CloudCallCard({ entry, showFingerprint }) {
         </div>
       )}
 
-      {/* SHA fingerprint — collapsible */}
+      {/* SHA fingerprint, collapsible */}
       {showFingerprint && sha && (
         <div style={{
           padding: '6px 10px',
@@ -515,7 +515,7 @@ function EmptyCloud({ reason, privacy }) {
           Cloud kill-switch is OFF
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.55 }}>
-          <code>ALLOW_CLOUD_LLM=false</code> is set. Every prompt — chat, reports, briefings — runs on the local model. Nothing leaves the machine, so this log stays empty by design.
+          <code>ALLOW_CLOUD_LLM=false</code> is set. Every prompt, chat, reports, briefings, runs on the local model. Nothing leaves the machine, so this log stays empty by design.
         </div>
       </div>
     );
@@ -534,12 +534,12 @@ function EmptyCloud({ reason, privacy }) {
           No cloud LLM configured
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.55 }}>
-          You haven't set up Anthropic Claude or AWS Bedrock. The product is running on local Ollama only — which is fine, you just won't see entries here. Configure a cloud provider in <code>.env</code> if you want polished prose on aggregates.
+          You haven't set up Anthropic Claude or AWS Bedrock. The product is running on local Ollama only, which is fine, you just won't see entries here. Configure a cloud provider in <code>.env</code> if you want polished prose on aggregates.
         </div>
       </div>
     );
   }
-  // no-traffic — cloud is on but nothing has fired yet
+  // no-traffic, cloud is on but nothing has fired yet
   return (
     <div style={{
       padding: 24,
@@ -553,7 +553,7 @@ function EmptyCloud({ reason, privacy }) {
         No cloud calls yet
       </div>
       <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.55 }}>
-        Cloud is enabled on <strong>{privacy?.cloud_model || privacy?.provider || 'your configured provider'}</strong>, but nothing has fired since the audit log was last cleared. Ask the AI to summarise something or generate a report — entries will appear here.
+        Cloud is enabled on <strong>{privacy?.cloud_model || privacy?.provider || 'your configured provider'}</strong>, but nothing has fired since the audit log was last cleared. Ask the AI to summarise something or generate a report, entries will appear here.
       </div>
     </div>
   );

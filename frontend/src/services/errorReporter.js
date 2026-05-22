@@ -1,5 +1,5 @@
 /**
- * Client-side error reporter — provider-agnostic hook.
+ * Client-side error reporter, provider-agnostic hook.
  *
  * Wires into three sources:
  *   1. React ErrorBoundary (renders fall back → reports the caught error)
@@ -12,14 +12,14 @@
  *   - If an endpoint URL is configured: POST each report there.
  *   - If a Sentry-compatible DSN is configured AND window.Sentry is loaded:
  *     forward to window.Sentry.captureException. We never ship the Sentry
- *     SDK ourselves — the integrator loads it via a script tag if they
+ *     SDK ourselves, the integrator loads it via a script tag if they
  *     want full Sentry features.
  *   - Otherwise: store in an in-memory ring buffer + call
  *     window.nexusReportError so the ErrorBoundary's docs contract keeps
  *     working for self-hosted installs that don't wire anything up.
  *
  * Every report is tagged with user_id + business_id when available, build
- * version, current URL, and a truncated user-agent — enough to diagnose
+ * version, current URL, and a truncated user-agent, enough to diagnose
  * without shipping PII.
  */
 import { getUser, getBusinessId } from './auth';
@@ -32,7 +32,7 @@ const ENDPOINT = import.meta.env?.VITE_ERROR_REPORTER_ENDPOINT || '';
 const DSN      = import.meta.env?.VITE_ERROR_REPORTER_DSN      || '';
 const RELEASE  = import.meta.env?.VITE_APP_VERSION             || 'dev';
 
-// Console spam guard — don't hammer the network during a render loop that
+// Console spam guard, don't hammer the network during a render loop that
 // triggers the same error 60 times per second.
 let _lastSignature = '';
 let _lastSentAt = 0;
@@ -82,7 +82,7 @@ export function reportError(error, context = {}) {
     _lastSignature = sig;
     _lastSentAt = now;
 
-    // 1. Sentry bridge — only if the integrator loaded their own Sentry SDK.
+    // 1. Sentry bridge, only if the integrator loaded their own Sentry SDK.
     if (DSN && typeof window !== 'undefined' && window.Sentry?.captureException) {
       try { window.Sentry.captureException(error, { extra: context }); } catch { /* ignore */ }
     }
@@ -99,7 +99,7 @@ export function reportError(error, context = {}) {
       } catch { /* ignore */ }
     }
 
-    // 3. Compatibility hook — older code might read window.nexusReportError.
+    // 3. Compatibility hook, older code might read window.nexusReportError.
     if (typeof window !== 'undefined') {
       try { window.nexusReportError?.(report); } catch { /* ignore */ }
     }

@@ -18,13 +18,13 @@ import { prefetchData } from '../services/dataPrefetch';
 // chart:
 //
 //   Tier 1 (daily): 7 high-traffic items the SMB owner uses every login.
-//   Tier 2 (weekly): grouped under a quiet "More" label — power features
+//   Tier 2 (weekly): grouped under a quiet "More" label, power features
 //     that aren't part of the daily flow but should stay one click away.
-//   Tier 3 (admin): grouped under "Workspace" — settings, billing, help.
+//   Tier 3 (admin): grouped under "Workspace", settings, billing, help.
 //     Most live INSIDE the new /settings hub page; the sidebar only shows
 //     the top-level entry plus billing + help for direct access.
 //
-// Every existing route URL is preserved — only the visual grouping and a
+// Every existing route URL is preserved, only the visual grouping and a
 // few labels change. Industry-aware terminology already runs through every
 // page header via useTerm(), so renaming "CRM" → "Customers" here is the
 // universal default for businesses without a specific industry override.
@@ -60,7 +60,7 @@ const NAV_DEV = [
 ];
 
 // Items moved INTO the /settings hub (their URLs still work directly for
-// muscle-memory + deep links — only the sidebar entry is gone).
+// muscle-memory + deep links, only the sidebar entry is gone).
 // Documented here so future maintainers don't think they're missing.
 //   - /team             → Settings → Workspace → Team
 //   - /memory           → Settings → Account → Memory
@@ -86,7 +86,7 @@ export default function Layout() {
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding());
   const [pendingApprovals, setPendingApprovals] = useState(0);
   const bizRef = useRef(null);
-  // Hover-intent debounce for sidebar prefetch — a 250ms threshold filters
+  // Hover-intent debounce for sidebar prefetch, a 250ms threshold filters
   // out "brushing past" the sidebar while still firing ahead of a real click
   // (humans take 300-500ms between hover and click). Prevents firing 20
   // route+data prefetches as the cursor drags over the nav column.
@@ -96,7 +96,7 @@ export default function Layout() {
   const current = getCurrentBusiness();
 
   const onNavHover = useCallback((to) => {
-    // Route chunks fire immediately — they're idempotent + de-duped and the
+    // Route chunks fire immediately, they're idempotent + de-duped and the
     // Vite compile is the slow part, so earlier is better.
     prefetchRoute(to);
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
@@ -119,11 +119,11 @@ export default function Layout() {
   // after Layout mounts. This is local CPU + network work; doesn't touch
   // the API, so it's safe to fire eagerly.
   //
-  // DATA prefetching is deliberately *not* eagerly scheduled here — firing
+  // DATA prefetching is deliberately *not* eagerly scheduled here, firing
   // ~11 extra API calls right when the dashboard is making its own 10 calls
   // overloaded a backend with no connection pool (each request opened a
   // fresh PG connection ~150ms; the pool saturated, tier-2 endpoints sat in
-  // queue for minutes). Data prefetch now fires on hover intent only — that
+  // queue for minutes). Data prefetch now fires on hover intent only, that
   // way it never overlaps with the cold-start API storm.
   useEffect(() => { prefetchAllRoutesIdle(); }, []);
 
@@ -199,7 +199,7 @@ export default function Layout() {
     }
   };
 
-  // Keyboard shortcuts — owned here. Cmd+K is handled by CommandPalette,
+  // Keyboard shortcuts, owned here. Cmd+K is handled by CommandPalette,
   // `?` is handled by KeyboardShortcutsModal. Everything else lives below.
   useEffect(() => {
     const handler = (e) => {
@@ -342,7 +342,7 @@ export default function Layout() {
         <TrialPill collapsed={collapsed} />
 
         <nav className="nav-section">
-          {/* Tier 1 — daily, no group label (these are the obvious ones) */}
+          {/* Tier 1, daily, no group label (these are the obvious ones) */}
           {NAV_PRIMARY.map((item) => (
             <SidebarItem
               key={item.to} item={item} collapsed={collapsed}
@@ -351,7 +351,7 @@ export default function Layout() {
             />
           ))}
 
-          {/* Tier 2 — weekly tools. Group label visually separates without
+          {/* Tier 2, weekly tools. Group label visually separates without
               hiding. On collapsed sidebar the label disappears but the
               divider stays so the visual rhythm is preserved. */}
           <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
@@ -366,7 +366,7 @@ export default function Layout() {
             ))}
           </div>
 
-          {/* Tier 3 — workspace admin. Settings + Plan & billing only;
+          {/* Tier 3, workspace admin. Settings + Plan & billing only;
               Team / Memory / Security / Privacy / Audit / Metrics / History
               live INSIDE the Settings hub page instead of cluttering the
               sidebar. Their direct URLs still work for deep links. */}
@@ -382,7 +382,7 @@ export default function Layout() {
             ))}
           </div>
 
-          {/* Dev mode — only when explicitly toggled. Power tools that the
+          {/* Dev mode, only when explicitly toggled. Power tools that the
               SMB owner should never see by default. */}
           {devMode && (
             <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
@@ -433,7 +433,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* Notification panel — anchored next to the bell. Designed with
+      {/* Notification panel, anchored next to the bell. Designed with
           consistent app tokens (no hardcoded 'white' text, no scratch
           spacing) so it feels like a first-class part of the UI. */}
       {showNotifs && (
@@ -656,7 +656,7 @@ export default function Layout() {
 
       {/* Main */}
       <main className="main-content">
-        {/* Trial countdown — renders as a strip above the route content
+        {/* Trial countdown, renders as a strip above the route content
             when status='trial'. Self-hides for paid + free users. */}
         <TrialBanner />
         <Outlet />

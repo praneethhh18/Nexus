@@ -5,7 +5,7 @@
  *   - Global: requires owner/admin role; shows DAU/WAU/MAU + top tenants.
  *   - Tenant: available to any logged-in user; their own business only.
  *
- * Numbers-first layout — KPI tiles at the top, event totals table,
+ * Numbers-first layout, KPI tiles at the top, event totals table,
  * day-by-day mini-bar chart for API calls + agent runs (no charting lib,
  * a row of flex'd bars is enough for a snapshot).
  */
@@ -55,7 +55,7 @@ function Sparkbars({ series, color }) {
         return (
           <div
             key={d.day}
-            title={`${d.day} — ${d.count}`}
+            title={`${d.day}, ${d.count}`}
             style={{
               flex: 1,
               height: h,
@@ -114,7 +114,7 @@ export default function AdminMetrics() {
             className={scope === 'global' ? 'btn-primary' : 'btn-ghost'}
             onClick={() => setScope('global')}
             style={{ fontSize: 12 }}
-            title="Admin only — aggregates every tenant"
+            title="Admin only, aggregates every tenant"
           >
             <Globe size={11} /> Global
           </button>
@@ -143,7 +143,7 @@ export default function AdminMetrics() {
       <div className="page-body">
         {err && (
           <div className="panel" style={{ color: 'var(--color-err)', fontSize: 12 }}>
-            {err}{scope === 'global' && ' — global metrics need owner/admin.'}
+            {err}{scope === 'global' && ', global metrics need owner/admin.'}
           </div>
         )}
 

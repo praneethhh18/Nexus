@@ -4,11 +4,11 @@
  * Lives at `/setup` and is reachable without auth. Walks a first-time user
  * through:
  *
- *   1. Platform check  — OS / RAM / disk / Python
- *   2. Ollama reachable  — if not, show the install link + re-check
- *   3. Pick a model  — recommended default based on detected RAM
- *   4. Pull the model  — Ollama's cold pull can take minutes; we poll status
- *   5. Finish  — marks setup complete, redirects to /login
+ *   1. Platform check , OS / RAM / disk / Python
+ *   2. Ollama reachable , if not, show the install link + re-check
+ *   3. Pick a model , recommended default based on detected RAM
+ *   4. Pull the model , Ollama's cold pull can take minutes; we poll status
+ *   5. Finish , marks setup complete, redirects to /login
  *
  * Each step is a pure function of the `status` snapshot; re-polling after
  * every action keeps the UI honest without bespoke state choreography.
@@ -124,7 +124,7 @@ export default function Setup() {
       )}
 
       {completed && (
-        <Step kind="ok" title="Setup complete — redirecting to sign in…">
+        <Step kind="ok" title="Setup complete, redirecting to sign in…">
           If you're not taken there in a moment, <a href="/login" style={{ color: 'var(--color-info)' }}>click here</a>.
         </Step>
       )}
@@ -225,7 +225,7 @@ export default function Setup() {
           </div>
           {pulling && (
             <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 8 }}>
-              The first pull can take several minutes depending on your connection. You can keep this page open — it will refresh automatically.
+              The first pull can take several minutes depending on your connection. You can keep this page open, it will refresh automatically.
             </p>
           )}
         </Step>

@@ -22,13 +22,32 @@ _REPLY_KEYS = ("answer", "message", "text", "reply", "response", "content")
 _FENCE_RE = re.compile(r"^```(?:json)?\s*\n?(.*?)\n?```$", re.DOTALL)
 
 
+def _strip_em_dashes(s: str) -> str:
+    """LLMs sprinkle em (—) and en (–) dashes everywhere; the product
+    voice should read like a person typed it, not an essay. Replace
+    em/en dashes used as separators with a comma + space, collapse any
+    double-spaces that creates. Hyphens (`-`) are left alone since they
+    are legitimate in 'follow-up', 'in-progress', and dates."""
+    if not s:
+        return s
+    s = s.replace(" — ", ", ").replace(" – ", ", ")
+    # Catch the no-space variants too (some models drop the spaces).
+    s = s.replace("—", ", ").replace("–", ", ")
+    # Tidy any ", ," runs created by adjacent dashes.
+    while ", ," in s:
+        s = s.replace(", ,", ",")
+    return s
+
+
 def unwrap_llm_reply(raw: str) -> str:
-    """Return `raw` with any outer JSON envelope removed.
+    """Return `raw` with any outer JSON envelope removed and em/en
+    dashes normalized to commas.
 
     Handles:
       - {"message": "Hello!"}            -> Hello!
       - {"answer": ["a", "b"]}           -> a\n- b
       - ```json\n{"answer": "..."}\n```  -> ...
+      - "X — Y"                          -> "X, Y"
       - plain text                       -> unchanged
     """
     if not isinstance(raw, str):
@@ -46,15 +65,15 @@ def unwrap_llm_reply(raw: str) -> str:
     # Must look like a JSON object before we attempt to parse — avoid
     # touching anything else.
     if not (s.startswith("{") and s.endswith("}")):
-        return raw
+        return _strip_em_dashes(raw)
 
     try:
         obj = json.loads(s)
     except (json.JSONDecodeError, ValueError):
-        return raw
+        return _strip_em_dashes(raw)
 
     if not isinstance(obj, dict):
-        return raw
+        return _strip_em_dashes(raw)
 
     # Find the first reply-shaped key with a usable value.
     for k in _REPLY_KEYS:
@@ -62,14 +81,12 @@ def unwrap_llm_reply(raw: str) -> str:
             continue
         val = obj[k]
         if isinstance(val, str) and val.strip():
-            return val.strip()
+            return _strip_em_dashes(val.strip())
         if isinstance(val, list) and val:
-            # Render lists as bullet lines — matches how Bedrock's
-            # envelope sometimes returns multi-point answers.
             lines = [str(x).strip() for x in val if str(x).strip()]
             if lines:
-                return "\n".join(f"- {line}" for line in lines)
+                return _strip_em_dashes("\n".join(f"- {line}" for line in lines))
 
     # Envelope-shaped but no recognizable reply field — return the
     # original so we don't accidentally hide the model's output.
-    return raw
+    return _strip_em_dashes(raw)

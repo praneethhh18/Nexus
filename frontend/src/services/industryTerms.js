@@ -2,8 +2,8 @@
  * Industry-aware terminology layer.
  *
  * Same product, different vocabulary per industry. A real-estate broker
- * doesn't say "Deal" — they say "Listing." A doctor doesn't say "Contact"
- * — they say "Patient." Wrapping every label with `t('deal')` instead of
+ * doesn't say "Deal", they say "Listing." A doctor doesn't say "Contact"
+ *, they say "Patient." Wrapping every label with `t('deal')` instead of
  * hardcoding "Deal" lets the workspace speak the user's language without
  * forking the product into 11 separate apps.
  *
@@ -13,7 +13,7 @@
  *   <h2>{t('deals')}</h2>          // "Listings" for real estate, "Appointments" for healthcare
  *
  * If a key is missing for a given industry, falls back to the generic
- * default — so adding a new industry never breaks any page.
+ * default, so adding a new industry never breaks any page.
  *
  * Resolution order on lookup:
  *   1. industry-specific map for the active business
@@ -22,7 +22,7 @@
  */
 import { getCurrentBusiness } from './auth';
 
-// ── Defaults — the generic CRM vocabulary ────────────────────────────────
+// ── Defaults, the generic CRM vocabulary ────────────────────────────────
 // Singular + plural for every noun. Verb forms only when they differ
 // meaningfully ("call lead" vs "call patient").
 const DEFAULT_TERMS = {
@@ -471,7 +471,7 @@ const INDUSTRY_TERMS = {
 
 // Build a case-insensitive lookup once. Without this, an industry stored
 // as 'healthcare' (lowercase) or 'Healthcare ' (trailing space) would
-// silently fall through to defaults — same shape of bug we just patched
+// silently fall through to defaults, same shape of bug we just patched
 // in api/industry_kpis.py. Backend normalise_industry() is the source of
 // truth; this mirrors its behaviour on the JS side.
 const _INDUSTRY_TERMS_CI = {};
@@ -479,7 +479,7 @@ for (const k of Object.keys(INDUSTRY_TERMS)) {
   _INDUSTRY_TERMS_CI[k.toLowerCase()] = INDUSTRY_TERMS[k];
 }
 
-// Shared resolver — pure, no React. Both the hook and the standalone
+// Shared resolver, pure, no React. Both the hook and the standalone
 // helper delegate here so there's one code path for lookup logic.
 function _resolve(industry, key) {
   const map = _INDUSTRY_TERMS_CI[(industry || '').trim().toLowerCase()] || {};
@@ -510,7 +510,7 @@ export function useTerm() {
 /**
  * Non-hook variant for callers outside React (services, helpers).
  * Resolves against the current business at call time. Safe to call from
- * anywhere — doesn't touch React state.
+ * anywhere, doesn't touch React state.
  */
 export function term(key) {
   const biz = getCurrentBusiness();
@@ -518,7 +518,7 @@ export function term(key) {
 }
 
 /**
- * Test/inspection helper — returns the full vocabulary the UI will
+ * Test/inspection helper, returns the full vocabulary the UI will
  * present for a given industry. Used by the onboarding preview step
  * and any future "what will my workspace look like?" screen.
  */

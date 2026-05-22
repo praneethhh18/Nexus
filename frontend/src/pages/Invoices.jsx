@@ -19,7 +19,7 @@ const STATUS_COLORS = {
   overdue: 'var(--color-err)', cancelled: 'var(--color-text-dim)',
 };
 
-// INR + en-IN default — `cur` is respected when an invoice row carries
+// INR + en-IN default, `cur` is respected when an invoice row carries
 // its own currency (e.g. a USD export invoice for an overseas customer).
 const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR' }).format(v || 0);
 
@@ -58,7 +58,7 @@ function Field({ label, required, helper, children, span }) {
   );
 }
 
-// INR first — most invoices on this workspace are Indian. Other currencies
+// INR first, most invoices on this workspace are Indian. Other currencies
 // remain available for export customers.
 const COMMON_CURRENCIES = ['INR', 'USD', 'EUR', 'GBP', 'AED', 'SGD', 'AUD', 'CAD'];
 
@@ -88,7 +88,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
   const addLine = () => setF((p) => ({ ...p, line_items: [...p.line_items, { description: '', quantity: 1, unit_price: '' }] }));
   const removeLine = (idx) => setF((p) => ({ ...p, line_items: p.line_items.filter((_, i) => i !== idx) }));
 
-  // Auto-fill from CRM picks — the user shouldn't have to retype data.
+  // Auto-fill from CRM picks, the user shouldn't have to retype data.
   const onPickCompany = (id) => {
     set('customer_company_id', id);
     if (!id) return;
@@ -117,7 +117,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(f); }}>
-      {/* First-time hint — only on a fresh form. */}
+      {/* First-time hint, only on a fresh form. */}
       {!initial && (
         <div style={{
           padding: '8px 12px', marginBottom: 14,
@@ -143,13 +143,13 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <Field label="From CRM company" helper="Optional. Auto-fills name, email, address.">
             <select className="field-select" value={f.customer_company_id || ''} onChange={(e) => onPickCompany(e.target.value)} style={{ width: '100%' }}>
-              <option value="">— none —</option>
+              <option value="">,  none , </option>
               {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
           <Field label="From CRM contact" helper="Optional. Auto-fills name and email.">
             <select className="field-select" value={f.customer_contact_id || ''} onChange={(e) => onPickContact(e.target.value)} style={{ width: '100%' }}>
-              <option value="">— none —</option>
+              <option value="">,  none , </option>
               {contacts.map((c) => <option key={c.id} value={c.id}>{(c.first_name + ' ' + c.last_name).trim()}</option>)}
             </select>
           </Field>
@@ -162,12 +162,12 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
             <input className="field-input" type="email" value={f.customer_email} onChange={(e) => set('customer_email', e.target.value)} maxLength={200} placeholder="billing@acme.com" />
           </Field>
         </div>
-        <Field label="Billing address" helper="Free-form — newlines are kept as-is in the PDF.">
+        <Field label="Billing address" helper="Free-form, newlines are kept as-is in the PDF.">
           <textarea className="field-input" rows={2} value={f.customer_address} onChange={(e) => set('customer_address', e.target.value)} maxLength={500} placeholder={'2nd Floor, Building 9\nKoramangala, Bangalore 560034\nIndia'} />
         </Field>
       </div>
 
-      {/* Dates + Currency. Status is intentionally NOT user-editable here —
+      {/* Dates + Currency. Status is intentionally NOT user-editable here , 
           new invoices always start as draft, and the lifecycle (Draft →
           Sent → Paid / Cancelled) is driven by the dedicated action
           buttons on each row. Otherwise users freely click between
@@ -187,7 +187,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
         </Field>
       </div>
 
-      {/* Line items — works for products (Qty × Unit price) and services
+      {/* Line items, works for products (Qty × Unit price) and services
           (Hours × Rate, or just one line with Qty=1 + flat fee in Rate). */}
       <div className="divider-h">Line items</div>
       <div style={{
@@ -198,7 +198,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
         Billing hourly? Qty = hours, Rate = hourly rate.
       </div>
       <div style={{ marginBottom: 14 }}>
-        {/* Header row — column labels so the per-line inputs stay slim. */}
+        {/* Header row, column labels so the per-line inputs stay slim. */}
         <div style={{
           display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px',
           gap: 6, marginBottom: 4,
@@ -213,7 +213,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
         </div>
         {f.line_items.map((it, i) => (
           <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px', gap: 6, marginBottom: 6 }}>
-            <input className="field-input" placeholder="e.g. Q1 retainer — strategy" value={it.description} onChange={(e) => setLine(i, 'description', e.target.value)} maxLength={400} required />
+            <input className="field-input" placeholder="e.g. Q1 retainer, strategy" value={it.description} onChange={(e) => setLine(i, 'description', e.target.value)} maxLength={400} required />
             <input className="field-input" type="number" step="0.01" min={0} placeholder="1"
                    value={it.quantity === 0 ? '' : it.quantity}
                    onChange={(e) => setLine(i, 'quantity', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))} />
@@ -240,7 +240,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
       {/* Totals + notes */}
       <div className="divider-h">Notes &amp; totals</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 220px', gap: 12, alignItems: 'start', marginBottom: 14 }}>
-        <Field label="Notes" helper="Payment terms, bank details, thank-you message — appears at the bottom of the PDF.">
+        <Field label="Notes" helper="Payment terms, bank details, thank-you message, appears at the bottom of the PDF.">
           <textarea
             className="field-input"
             rows={4}
@@ -327,7 +327,7 @@ export default function Invoices() {
         listInvoices(opts), invoiceSummary(), listContacts(), listCompanies(),
       ]);
       setInvoices(list); setSummary(s); setContacts(cts); setCompanies(cos);
-      // Only cache the unfiltered view — filtered lists are user-specific and
+      // Only cache the unfiltered view, filtered lists are user-specific and
       // would pollute the cache with views the next mount probably won't want.
       if (!filter) {
         setCached(keyFor(INV_CACHE_KEY), {
@@ -460,8 +460,8 @@ export default function Invoices() {
                       <div style={{ fontWeight: 500, color: 'var(--color-text)' }}>{inv.customer_name}</div>
                       {inv.customer_email && <div style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{inv.customer_email}</div>}
                     </td>
-                    <td>{inv.issue_date || '—'}</td>
-                    <td>{inv.due_date || '—'}</td>
+                    <td>{inv.issue_date || ', '}</td>
+                    <td>{inv.due_date || ', '}</td>
                     <td style={{ textAlign: 'right', fontWeight: 500 }}>{money(inv.total, inv.currency)}</td>
                     <td>
                       <span style={{ fontSize: 9, padding: '2px 8px', borderRadius: 10, fontWeight: 600, background: `${STATUS_COLORS[inv.status]}22`, color: STATUS_COLORS[inv.status] }}>{inv.status}</span>

@@ -4,7 +4,7 @@
  * <SuggestionPanel entityType="contact" entityId="..." />
  *
  * Loads suggestions once on mount and renders them as dismissable cards.
- * Empty state: renders nothing — keeps record pages clean when there's no nudge.
+ * Empty state: renders nothing, keeps record pages clean when there's no nudge.
  */
 import { useEffect, useState, useCallback } from 'react';
 import { Lightbulb, X } from 'lucide-react';
@@ -90,7 +90,7 @@ export default function SuggestionPanel({ entityType, entityId, compact = false 
               onClick={() => hide(s.id)}
               className="btn-ghost"
               style={{ padding: 4, color: 'var(--color-text-dim)' }}
-              title="Dismiss — won't show again for this record"
+              title="Dismiss, won't show again for this record"
             >
               <X size={11} />
             </button>

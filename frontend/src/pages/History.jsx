@@ -1,5 +1,5 @@
 /**
- * Query history — every question asked in chat, searchable + re-runnable.
+ * Query history, every question asked in chat, searchable + re-runnable.
  *
  * The backend tracks: query text, intent classification, tools used, an
  * answer preview, success flag, duration, timestamp, starred bit. We expose
@@ -40,7 +40,7 @@ function inWindow(iso, win) {
 }
 
 function formatWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     const d = new Date(iso);
     const now = new Date();
@@ -91,7 +91,7 @@ export default function History() {
     return () => window.removeEventListener('nexus-business-changed', h);
   }, [load]);
 
-  // Client-side date filter — backend doesn't accept a window arg yet.
+  // Client-side date filter, backend doesn't accept a window arg yet.
   const visible = useMemo(
     () => (data.queries || []).filter(q => inWindow(q.timestamp, dateWindow)),
     [data.queries, dateWindow],
@@ -108,7 +108,7 @@ export default function History() {
   const handleRerun = (q) => {
     // Send the user to chat with the query pre-staged so they can edit
     // before sending. The Chat page listens for nexus-rerun and fills the
-    // input box; Chat doesn't auto-send — keeps the user in control.
+    // input box; Chat doesn't auto-send, keeps the user in control.
     navigate('/chat');
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('nexus-rerun', { detail: q.query }));
@@ -148,7 +148,7 @@ export default function History() {
       <div className="page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
         <div>
           <h1>Query history</h1>
-          <p>Every question you've asked in chat — searchable, starrable, re-runnable.</p>
+          <p>Every question you've asked in chat, searchable, starrable, re-runnable.</p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn-ghost btn-sm" onClick={load}><RefreshCw size={11} /> Refresh</button>

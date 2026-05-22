@@ -1,5 +1,5 @@
 /**
- * Company detail page — every contact, deal, and invoice tied to one company,
+ * Company detail page, every contact, deal, and invoice tied to one company,
  * plus quick actions to extend the relationship: add a contact, log a deal,
  * draft an invoice.
  */
@@ -191,7 +191,7 @@ export default function CompanyDetail() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {contacts.map(c => {
-                  const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ') || '—';
+                  const fullName = [c.first_name, c.last_name].filter(Boolean).join(' ') || ', ';
                   return (
                     <Link
                       key={c.id} to={`/crm/contacts/${c.id}`}
@@ -207,7 +207,7 @@ export default function CompanyDetail() {
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 13, fontWeight: 500 }}>{fullName}</div>
                         <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-                          {c.title || '—'}{c.email ? ` · ${c.email}` : ''}
+                          {c.title || ', '}{c.email ? ` · ${c.email}` : ''}
                         </div>
                       </div>
                       {c.email && <Mail size={12} color="var(--color-text-dim)" />}
@@ -322,7 +322,7 @@ export default function CompanyDetail() {
 }
 
 
-// Shared bits used across detail pages — kept inline for now since the
+// Shared bits used across detail pages, kept inline for now since the
 // pages diverge on layout. Could be hoisted to a `components/` later.
 function CenterSpinner() {
   return (

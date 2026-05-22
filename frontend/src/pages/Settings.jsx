@@ -85,7 +85,7 @@ export default function Settings() {
     setDevMode(next);
     localStorage.setItem('nexus_dev_mode', next ? '1' : '0');
     window.dispatchEvent(new Event('nexus-devmode-changed'));
-    flash(next ? 'Developer Mode enabled — SQL Editor & Database Explorer are now visible.' : 'Developer Mode disabled.');
+    flash(next ? 'Developer Mode enabled, SQL Editor & Database Explorer are now visible.' : 'Developer Mode disabled.');
   };
 
   const saveBiz = async () => {
@@ -126,7 +126,7 @@ export default function Settings() {
       <div className="page-body">
         {msg && <div className="panel" style={{ color: 'var(--color-info)', marginBottom: 12 }}>{msg}</div>}
 
-        {/* Hub — navigation grid to every settings sub-area. Replaces the
+        {/* Hub, navigation grid to every settings sub-area. Replaces the
             old flat sidebar items (Team, Memory, Security, Privacy Mode,
             Audit log, Metrics, History, Plan & billing) with a discoverable
             index. All direct URLs still work; this is just the front door. */}
@@ -140,7 +140,7 @@ export default function Settings() {
         {isAdmin && <BackupPanel flash={flash} />}
         {isAdmin && <RestorePanel flash={flash} />}
 
-        {/* Developer Mode — moved to top as the master toggle */}
+        {/* Developer Mode, moved to top as the master toggle */}
         <div className="panel" style={{ borderColor: devMode ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)' : 'var(--color-border)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -149,7 +149,7 @@ export default function Settings() {
                 <div style={{ fontSize: 13, color: 'var(--color-text)', fontWeight: 600 }}>Developer mode</div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
                   {devMode
-                    ? 'Showing advanced configuration — LLM, system info, email triage, SQL editor.'
+                    ? 'Showing advanced configuration, LLM, system info, email triage, SQL editor.'
                     : 'Showing the essentials. Turn this on to access advanced system configuration.'}
                 </div>
               </div>
@@ -219,13 +219,13 @@ export default function Settings() {
           </div>
         )}
 
-        {/* WhatsApp — multi-tenant: connect THIS business's own number via QR.
+        {/* WhatsApp, multi-tenant: connect THIS business's own number via QR.
             This is the customer-facing flow. The legacy "text 6-char code"
             block below is for personal phone linking on the founder's shared
             bridge (dev/single-tenant deployments). */}
         <WhatsAppConnect />
 
-        {/* WhatsApp — legacy single-tenant link flow (kept for dev) */}
+        {/* WhatsApp, legacy single-tenant link flow (kept for dev) */}
         <div className="panel" style={{ marginTop: 16 }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <MessageCircle size={16} color="#25D366" /> WhatsApp (legacy single-tenant)
@@ -262,7 +262,7 @@ export default function Settings() {
               <ol style={{ fontSize: 11, color: 'var(--color-text-muted)', marginLeft: 18, lineHeight: 1.7 }}>
                 <li>Click <em>Generate link code</em> below</li>
                 <li>Text the 6-character code to the WhatsApp number running your bridge</li>
-                <li>You're linked — ask the bot anything</li>
+                <li>You're linked, ask the bot anything</li>
               </ol>
 
               {waCode ? (
@@ -280,7 +280,7 @@ export default function Settings() {
                   </button>
                   <button className="btn-ghost" style={{ marginTop: 8, marginLeft: 6 }} onClick={async () => {
                     await loadWaAccount();
-                    flash(waAccount?.phone ? 'Linked!' : 'Not linked yet — send the code on WhatsApp.');
+                    flash(waAccount?.phone ? 'Linked!' : 'Not linked yet, send the code on WhatsApp.');
                   }}>
                     Check status
                   </button>
@@ -332,7 +332,7 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Email triage — advanced IMAP config, dev-only */}
+        {/* Email triage, advanced IMAP config, dev-only */}
         {devMode && <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}>📬 Email Triage Agent</h3>
           <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 10 }}>
@@ -466,7 +466,7 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Models — dev-only */}
+        {/* Models, dev-only */}
         {devMode && <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Cpu size={16} color="var(--color-info)" /> LLM Configuration</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
@@ -479,7 +479,7 @@ export default function Settings() {
           </div>
         </div>}
 
-        {/* Available Models — dev-only */}
+        {/* Available Models, dev-only */}
         {devMode && s.available_models?.length > 0 && (
           <div className="panel">
             <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Server size={16} color="#a78bfa" /> Available Ollama Models</h3>
@@ -495,7 +495,7 @@ export default function Settings() {
           </div>
         )}
 
-        {/* System Info — dev-only */}
+        {/* System Info, dev-only */}
         {devMode && <div className="panel">
           <h3 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><HardDrive size={16} color="#22d3ee" /> System Information</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -630,7 +630,7 @@ const EVENT_LABELS = {
   meeting_soon:       { label: 'Meeting in 30 minutes',       description: 'Heads-up when a meeting is approaching' },
   document_processed: { label: 'Document processed',          description: 'A document finished ingestion into the knowledge base' },
   workflow_completed: { label: 'Workflow completed',          description: 'A workflow finished its run' },
-  email_sent:         { label: 'Email sent',                  description: 'Quieter by default — noisy for heavy email users' },
+  email_sent:         { label: 'Email sent',                  description: 'Quieter by default, noisy for heavy email users' },
 };
 
 function NotificationPrefsPanel() {
@@ -658,7 +658,7 @@ function NotificationPrefsPanel() {
         <div>
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>Notifications</div>
           <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-            Pick which events ring the bell. Muted events still happen — they just stay out of your way.
+            Pick which events ring the bell. Muted events still happen, they just stay out of your way.
           </div>
         </div>
       </div>
@@ -721,7 +721,7 @@ function ExportPanel({ flash }) {
           Export my data
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-          Downloads a ZIP of every record owned by this business — contacts, tasks, invoices, documents, briefings, agent runs, and more. Your backup copy, portable anywhere.
+          Downloads a ZIP of every record owned by this business, contacts, tasks, invoices, documents, briefings, agent runs, and more. Your backup copy, portable anywhere.
         </div>
       </div>
       <button onClick={run} disabled={busy} className="btn-ghost" style={{ fontSize: 12 }}>
@@ -746,7 +746,7 @@ function BackupPanel({ flash }) {
   }, []);
 
   const fmtBytes = (n) => {
-    if (!n) return '—';
+    if (!n) return ', ';
     const u = ['B', 'KB', 'MB', 'GB'];
     let i = 0; let v = n;
     while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
@@ -835,7 +835,7 @@ function BackupPanel({ flash }) {
               display: 'flex', alignItems: 'center', gap: 6,
             }}>
               <AlertTriangle size={11} />
-              Large workspace — the backup may take 30+ seconds to build.
+              Large workspace, the backup may take 30+ seconds to build.
             </div>
           )}
 
@@ -881,7 +881,7 @@ function OnboardingReopenPanel() {
           Replay setup guide
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-          Brings back the onboarding checklist on the dashboard — useful after dismissing it too early.
+          Brings back the onboarding checklist on the dashboard, useful after dismissing it too early.
         </div>
       </div>
       <button onClick={reopen} className="btn-ghost" style={{ fontSize: 12 }}>
@@ -901,7 +901,7 @@ function OnboardingReopenPanel() {
 //   3. Server restart instruction surfaces clearly post-swap.
 //
 // Bad zips, manifest mismatches, schema mismatches, future-format
-// backups — all rejected at step 1 before anything is at risk.
+// backups, all rejected at step 1 before anything is at risk.
 function RestorePanel({ flash }) {
   const [file, setFile] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -939,7 +939,7 @@ function RestorePanel({ flash }) {
     try {
       const r = await restoreBackup(file, { dryRun: false });
       setDone(r);
-      flash?.('Restore complete — restart the server to finish.');
+      flash?.('Restore complete, restart the server to finish.');
     } catch (e) {
       setError(e.message || 'Restore failed.');
     }
@@ -947,7 +947,7 @@ function RestorePanel({ flash }) {
   };
 
   const fmtBytes = (n) => {
-    if (!n) return '—';
+    if (!n) return ', ';
     const u = ['B', 'KB', 'MB', 'GB'];
     let i = 0; let v = n;
     while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
@@ -1018,7 +1018,7 @@ function RestorePanel({ flash }) {
                 }}>
                   <div style={{ fontWeight: 600, color: 'var(--color-accent)', marginBottom: 6 }}>
                     <Check size={11} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-                    Validation passed — preview before you swap
+                    Validation passed, preview before you swap
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
                     <Stat label="Format version" value={`v${preview.manifest?.version ?? '?'}`} />
@@ -1104,7 +1104,7 @@ function Stat({ label, value }) {
 }
 
 
-// ── SMTP — workspace outbound email ─────────────────────────────────────────
+// ── SMTP, workspace outbound email ─────────────────────────────────────────
 // Plug in the workspace's own SMTP credentials so AI-drafted outreach can
 // actually send (rather than dumping the user into their mail client via
 // mailto:). Per-workspace by design: each tenant sends from their own
@@ -1138,7 +1138,7 @@ function SmtpPanel({ flash }) {
         setUpdatedAt(r.updated_at || null);
       }
     } catch {
-      // Don't error-out the page if endpoint is unreachable — just show "not configured".
+      // Don't error-out the page if endpoint is unreachable, just show "not configured".
       setConfigured(false);
     }
     setLoading(false);
@@ -1310,7 +1310,7 @@ function SmtpPanel({ flash }) {
           display: 'flex', alignItems: 'flex-start', gap: 6,
         }}>
           {testResult.ok ? <Check size={13} /> : <AlertTriangle size={13} style={{ marginTop: 1, flexShrink: 0 }} />}
-          <span>{testResult.ok ? 'Connection successful — credentials are valid.' : testResult.error}</span>
+          <span>{testResult.ok ? 'Connection successful, credentials are valid.' : testResult.error}</span>
         </div>
       )}
     </div>
@@ -1318,9 +1318,9 @@ function SmtpPanel({ flash }) {
 }
 
 
-// ── Ideal Customer Profile (ICP) — for AI lead scoring ──────────────────────
+// ── Ideal Customer Profile (ICP), for AI lead scoring ──────────────────────
 // One short paragraph describing who buys from you. The scorer uses this
-// against every inbound lead — high-fit ones get flagged in the CRM Leads
+// against every inbound lead, high-fit ones get flagged in the CRM Leads
 // tab so the user spends time on the right people. Without an ICP set,
 // scoring stays inert and tells the user how to fix that.
 function IcpPanel({ flash }) {
@@ -1371,7 +1371,7 @@ function IcpPanel({ flash }) {
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55, marginBottom: 10 }}>
             Two or three sentences describing who buys from you. New inbound leads are scored
-            against this on the way in — high-fit ones get flagged in the CRM Leads tab so you
+            against this on the way in, high-fit ones get flagged in the CRM Leads tab so you
             spend time on the right people.
           </div>
 

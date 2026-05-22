@@ -1,5 +1,5 @@
 /**
- * Reusable filter popover — Filter button + grouped sections, with active
+ * Reusable filter popover, Filter button + grouped sections, with active
  * filters rendered as dismissable chips next to the button. Mirrors the
  * pattern established in CRM.jsx so Tasks/Invoices/Documents share the
  * same UX.

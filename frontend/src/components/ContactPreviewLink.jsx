@@ -1,12 +1,12 @@
 /**
- * ContactPreviewLink — markdown link augmented with a hover/click preview card.
+ * ContactPreviewLink, markdown link augmented with a hover/click preview card.
  *
  * When ReactMarkdown renders a link whose href matches /crm/contacts/<id>
  * we substitute this component instead of a plain <a>. Hover for ~250ms (or
  * focus via keyboard) → lazily fetch the contact + render a mini card with
  * name, title, phone, email, lead-score tag, and quick action buttons.
  *
- * Used in Chat.jsx + Inbox.jsx — anywhere ReactMarkdown is rendered.
+ * Used in Chat.jsx + Inbox.jsx, anywhere ReactMarkdown is rendered.
  */
 import { useState, useRef, useCallback } from 'react';
 import { Phone, Mail, MessageSquare, ExternalLink, Loader2 } from 'lucide-react';
@@ -16,7 +16,7 @@ import { prepareDialForContact } from '../services/voice_calls';
 
 const HOVER_DELAY_MS = 250;
 // In-memory cache so re-rendering the same chat scroll doesn't refetch
-// the same contact 5 times. Module-scoped — wipes on full reload.
+// the same contact 5 times. Module-scoped, wipes on full reload.
 const _cache = new Map();
 
 function extractContactId(href) {
@@ -27,7 +27,7 @@ function extractContactId(href) {
 }
 
 export default function ContactPreviewLink({ href, children, ...rest }) {
-  // All hooks must be called unconditionally — React hooks rules forbid
+  // All hooks must be called unconditionally, React hooks rules forbid
   // early-returning before subsequent hook calls. cid drives behavior, not
   // hook ordering.
   const cid = extractContactId(href);
@@ -53,7 +53,7 @@ export default function ContactPreviewLink({ href, children, ...rest }) {
     }
   }, [cid, contact, loading]);
 
-  // Plain markdown link if it's not a contact URL — passthrough. Safe to
+  // Plain markdown link if it's not a contact URL, passthrough. Safe to
   // early-return here because all hooks above ran unconditionally.
   if (!cid) {
     return <a href={href} {...rest}>{children}</a>;

@@ -79,13 +79,13 @@ def _row_contact(r) -> str:
     bits = [name]
     if r["title"]:  bits.append(r["title"])
     if r["email"]:  bits.append(r["email"])
-    return " — ".join(bits)
+    return " · ".join(bits)
 
 
 def _row_company(r) -> str:
     bits = [r["name"] or "(unnamed company)"]
     if r["industry"]: bits.append(r["industry"])
-    return " — ".join(bits)
+    return " · ".join(bits)
 
 
 def _row_deal(r) -> str:
@@ -97,14 +97,14 @@ def _row_deal(r) -> str:
             bits.append(f"₹{int(r['value']):,}")
         except Exception:
             pass
-    return " — ".join(bits)
+    return " · ".join(bits)
 
 
 def _row_task(r) -> str:
     bits = [r["title"] or "(untitled task)"]
     if r["status"]:   bits.append(r["status"])
     if r["due_date"]: bits.append(f"due {r['due_date']}")
-    return " — ".join(bits)
+    return " · ".join(bits)
 
 
 def _row_invoice(r) -> str:
@@ -117,7 +117,7 @@ def _row_invoice(r) -> str:
             bits.append(f"₹{int(r['total']):,}")
         except Exception:
             pass
-    return " — ".join(bits)
+    return " · ".join(bits)
 
 
 ENTITIES = {
@@ -342,7 +342,7 @@ def _try_ordinal(question: str, business_id: str, entity_key: str) -> Optional[s
                      limit=1, offset=max(0, n - 1))
         if not rows:
             total = _count(business_id, e["table"])
-            return (f"You only have {total} {e['plural']} — there's no #{n} to show. "
+            return (f"You only have {total} {e['plural']}, so there's no #{n} to show. "
                     f"Add more from the {e['plural'].title()} page.")
         ordinal_label = (
             "1st" if n == 1 else "2nd" if n == 2 else "3rd" if n == 3
@@ -417,7 +417,7 @@ def _try_fields(question: str, business_id: str, entity_key: str) -> Optional[st
         name = " ".join(filter(None, [(r["first_name"] or "").strip(),
                                        (r["last_name"] or "").strip()])).strip() or "(no name)"
         val = (r.get(col) or "").strip() if isinstance(r, dict) else (r[col] or "").strip()
-        lines.append(f"{i + 1}. {name} — {val or '(no ' + col + ' on file)'}")
+        lines.append(f"{i + 1}. {name} · {val or '(no ' + col + ' on file)'}")
     return f"{label}s for your {len(rows)} {e['plural']}:\n\n" + "\n".join(lines)
 
 

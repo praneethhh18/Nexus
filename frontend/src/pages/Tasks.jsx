@@ -83,7 +83,7 @@ function TaskForm({ initial, onSubmit, onCancel }) {
       </div>
       <div style={{ marginBottom: 12 }}>
         <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>
-          Details &mdash; the "why" + "what done looks like"
+          Details , the "why" + "what done looks like"
         </label>
         <textarea className="field-input" rows={3}
                   placeholder={'Context: client asked for revised pricing on the discovery call.\nDone when: PDF sent + reply received + logged in CRM.'}
@@ -123,7 +123,7 @@ function TaskForm({ initial, onSubmit, onCancel }) {
         </div>
       </div>
 
-      {/* CRM linkage — so the task is hooked into the right account /
+      {/* CRM linkage, so the task is hooked into the right account /
           deal and the briefing/voice agents can find it later. */}
       <div className="divider-h">Linked to (optional)</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 12 }}>
@@ -131,7 +131,7 @@ function TaskForm({ initial, onSubmit, onCancel }) {
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Contact</label>
           <select className="field-select" value={f.contact_id || ''}
                   onChange={(e) => set('contact_id', e.target.value)} style={{ width: '100%' }}>
-            <option value="">— none —</option>
+            <option value="">No selection</option>
             {contacts.map(c => (
               <option key={c.id} value={c.id}>
                 {`${c.first_name || ''} ${c.last_name || ''}`.trim() || c.email || '(unnamed)'}
@@ -143,7 +143,7 @@ function TaskForm({ initial, onSubmit, onCancel }) {
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Company</label>
           <select className="field-select" value={f.company_id || ''}
                   onChange={(e) => set('company_id', e.target.value)} style={{ width: '100%' }}>
-            <option value="">— none —</option>
+            <option value="">No selection</option>
             {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
@@ -151,7 +151,7 @@ function TaskForm({ initial, onSubmit, onCancel }) {
           <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>Deal</label>
           <select className="field-select" value={f.deal_id || ''}
                   onChange={(e) => set('deal_id', e.target.value)} style={{ width: '100%' }}>
-            <option value="">— none —</option>
+            <option value="">No selection</option>
             {deals.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </div>
@@ -191,7 +191,7 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
         background: selected ? 'color-mix(in srgb, var(--color-accent) 6%, var(--color-surface-2))' : undefined,
       }}
     >
-      {/* "Mark done" toggle — round, with a faint check ghost-icon in
+      {/* "Mark done" toggle, round, with a faint check ghost-icon in
           idle state so it's unmistakably a "tick off the task" affordance
           and not a selection checkbox. Bulk-select lives on the far right
           of the row (near the action buttons) so the two never sit
@@ -252,7 +252,7 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
 }
 
 // Stale-while-revalidate cache key for the default (active / no due-window)
-// view. Filtered views are not cached — the next visit may want the default
+// view. Filtered views are not cached, the next visit may want the default
 // view back so we don't pollute the cache with whatever filter was last set.
 const TASKS_CACHE_KEY = 'tasks:page';
 
@@ -268,7 +268,7 @@ export default function Tasks() {
   const [undoToast, setUndoToast] = useState(null);
   const undoTimerRef = useRef(null);
   // "From notes" modal: { notes, busy, error, extracted, summary, picked, creating }
-  // — extracted is the items array from the LLM, picked is a Set of indices
+  //, extracted is the items array from the LLM, picked is a Set of indices
   // the user has chosen to commit. Stays null until the user opens the modal.
   const [notesModal, setNotesModal] = useState(null);
 
@@ -328,7 +328,7 @@ export default function Tasks() {
   const handleDelete = async (t) => {
     if (!confirm(`Delete "${t.title}"?`)) return;
     // Snapshot every editable field so undo can re-create the task with the
-    // same data — same pattern as doBulkDelete just below.
+    // same data, same pattern as doBulkDelete just below.
     const snapshot = { ...t };
     try {
       await deleteTask(t.id);
@@ -405,7 +405,7 @@ export default function Tasks() {
     setNotesModal((m) => ({ ...m, busy: true, error: '', extracted: null }));
     try {
       const r = await extractFromNotes(notesModal.notes);
-      // Pre-pick everything — user unchecks items they don't want.
+      // Pre-pick everything, user unchecks items they don't want.
       const picked = new Set((r.items || []).map((_, i) => i));
       setNotesModal((m) => ({
         ...m, busy: false, error: '',
@@ -471,7 +471,7 @@ export default function Tasks() {
           <button
             className="btn-ghost"
             onClick={() => setNotesModal({ notes: '', busy: false, error: '', extracted: null, summary: '', picked: new Set(), creating: false })}
-            title="Paste meeting notes — AI extracts action items"
+            title="Paste meeting notes, AI extracts action items"
           >
             <Sparkles size={13} /> From notes
           </button>
@@ -508,7 +508,7 @@ export default function Tasks() {
         </div>
       )}
 
-      {/* Filters — single popover instead of a long row of pill buttons. */}
+      {/* Filters, single popover instead of a long row of pill buttons. */}
       <div style={{ padding: '0 24px 10px', borderBottom: '1px solid var(--color-surface-2)' }}>
         <FilterPopover
           values={{ status: filter === 'active' ? '' : filter, due: dueWindow }}
@@ -532,7 +532,7 @@ export default function Tasks() {
         />
       </div>
 
-      {/* Select-all strip — only appears when bulk mode is active (something
+      {/* Select-all strip, only appears when bulk mode is active (something
           already selected). Keeps the chrome clean for first-time users who
           don't know about bulk yet. */}
       {tasks.length > 0 && selection.any && (
@@ -688,7 +688,7 @@ function FromNotesModal({ state, onChangeNotes, onRun, onTogglePicked, onEditIte
               Extract action items from notes
             </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-              Paste a meeting transcript or rough notes — runs locally on Ollama
+              Paste a meeting transcript or rough notes, runs locally on Ollama
             </div>
           </div>
           <button
@@ -720,7 +720,7 @@ function FromNotesModal({ state, onChangeNotes, onRun, onTogglePicked, onEditIte
             rows={hasItems ? 4 : 12}
             value={state.notes}
             onChange={(e) => onChangeNotes(e.target.value)}
-            placeholder="Paste meeting notes or transcript here. Works for sales calls, standups, client check-ins, vendor meetings — anything with concrete next steps."
+            placeholder="Paste meeting notes or transcript here. Works for sales calls, standups, client check-ins, vendor meetings, anything with concrete next steps."
             style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55 }}
             disabled={state.busy || state.creating}
           />
@@ -820,7 +820,7 @@ function FromNotesModal({ state, onChangeNotes, onRun, onTogglePicked, onEditIte
               borderRadius: 'var(--r-sm)',
               fontSize: 12.5, color: 'var(--color-text-muted)',
             }}>
-              No clear action items in those notes. Try fuller text — or maybe this meeting really was just a status update.
+              No clear action items in those notes. Try fuller text, or maybe this meeting really was just a status update.
             </div>
           )}
         </div>

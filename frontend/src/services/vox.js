@@ -1,5 +1,5 @@
 /**
- * Vox API client — talks to /api/vox/* and the slice of /api/approvals/* that
+ * Vox API client, talks to /api/vox/* and the slice of /api/approvals/* that
  * filters to tool_name="vox_dial".
  *
  * Distinct from `services/voice_calls.js` which targets /api/voice/* (the

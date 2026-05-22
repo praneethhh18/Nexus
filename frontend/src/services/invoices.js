@@ -36,7 +36,7 @@ export const deleteInvoice = (id) => req(`/${id}`, { method: 'DELETE' });
 export const renderInvoicePdf = (id) => req(`/${id}/render`, { method: 'POST' });
 export const invoiceSummary = () => req('/summary');
 
-// PDF download requires auth headers, so it can't be a plain <a href> — the
+// PDF download requires auth headers, so it can't be a plain <a href>, the
 // browser won't attach the bearer token. Callers should `await` this to get
 // a Blob, then create an object URL from it for download or viewing.
 export const fetchInvoicePdfBlob = async (id) => {
@@ -53,7 +53,7 @@ export const fetchInvoicePdfBlob = async (id) => {
   }
   const blob = await res.blob();
   // Guard against the dev server returning index.html on a misconfigured
-  // route — verify the response actually looks like a PDF.
+  // route, verify the response actually looks like a PDF.
   if (!blob.type.includes('pdf') && blob.type.startsWith('text/')) {
     throw new Error('Server did not return a PDF. Try Regenerate first.');
   }

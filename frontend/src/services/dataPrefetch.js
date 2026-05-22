@@ -6,7 +6,7 @@
  *     instant.
  *   - routePrefetch.js warms the JS chunks so the page's CODE is ready.
  *   - This file warms the page's DATA so the first time the user clicks
- *     "Invoices" or "Documents", the cache is already filled — no API
+ *     "Invoices" or "Documents", the cache is already filled, no API
  *     round-trip blocking the paint.
  *
  * Strategy:
@@ -14,7 +14,7 @@
  *     fire a background fetch for every heavy page's data in idle slices.
  *   - Each fetcher writes to the same cache key its page reads from on
  *     mount. The page restores synchronously from cache → instant.
- *   - All fetches are wrapped in catch — a failed prefetch must never
+ *   - All fetches are wrapped in catch, a failed prefetch must never
  *     surface an error or break navigation.
  *
  * Why per-route fetchers (not "fetch everything")?
@@ -55,7 +55,7 @@ async function _prefetchDashboard() {
     tasksMod.listTasks({ due_window: 'today', status: 'active', limit: 5 }).catch(() => []),
     invMod.invoiceSummary().catch(() => null),
   ]);
-  // Partial prime — the page's reload() will fill the rest. Enough for
+  // Partial prime, the page's reload() will fill the rest. Enough for
   // TodaysFocus to render the right state instead of the skeleton.
   setCached(keyFor(KEY), {
     notifs: (ns.notifications || []).slice(0, 5),
@@ -114,7 +114,7 @@ async function _prefetchDocuments() {
 
 
 // ── Registry ────────────────────────────────────────────────────────────
-// Add more pages here as we wire SWR into them. The key is the URL path —
+// Add more pages here as we wire SWR into them. The key is the URL path , 
 // matches what Layout.jsx hover handlers and Idle scheduler will see.
 
 const REGISTRY = {

@@ -4,7 +4,7 @@
  * Usage anywhere in the app:
  *   import { toast } from './components/ToastHost';
  *   toast.success('Saved');
- *   toast.error('Network blip — retry?');
+ *   toast.error('Network blip, retry?');
  *   toast.info('Atlas wrote your briefing');
  *
  * The host component subscribes to a module-scoped event bus so any file

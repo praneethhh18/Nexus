@@ -111,9 +111,9 @@ export function BulkActionBar({ count, onCancel, children }) {
 
 
 /**
- * Toast with an undo button — shown after a bulk action.
+ * Toast with an undo button, shown after a bulk action.
  * The action fires immediately; user has `timeoutMs` to hit Undo.
- * Undo isn't truly transactional — it's the caller's responsibility to
+ * Undo isn't truly transactional, it's the caller's responsibility to
  * provide an `onUndo` that re-creates or re-enables the affected rows.
  */
 export function UndoToast({ message, onUndo, onClose, timeoutMs = 5000 }) {

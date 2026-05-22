@@ -5,7 +5,7 @@ import './index.css'
 import App from './App.jsx'
 import { initGlobalErrorHandlers } from './services/errorReporter';
 
-// ── Sentry — production error reporting ────────────────────────────────
+// ── Sentry, production error reporting ────────────────────────────────
 // Vite exposes only env vars prefixed with VITE_ to the client bundle. The
 // DSN is safe-ish to ship (frontend Sentry DSNs are designed to be visible),
 // but we still gate init on its presence so dev builds without the env var
@@ -16,7 +16,7 @@ if (SENTRY_DSN) {
     dsn: SENTRY_DSN,
     environment: import.meta.env.VITE_SENTRY_ENV || import.meta.env.MODE,
     release: import.meta.env.VITE_APP_VERSION,
-    // 10% of transactions traced — keeps spans well under the 5M/mo
+    // 10% of transactions traced, keeps spans well under the 5M/mo
     // Education quota at expected SMB SaaS volume.
     tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES_RATE || 0.1),
     // Capture 10% of sessions for replay; jump to 100% on errors so you
@@ -45,7 +45,7 @@ try {
   if (saved === 'light' || saved === 'dark') {
     document.documentElement.setAttribute('data-theme', saved);
   }
-} catch { /* localStorage disabled — fall back to default dark */ }
+} catch { /* localStorage disabled, fall back to default dark */ }
 
 // Catch uncaught errors + unhandled promise rejections before React mounts.
 initGlobalErrorHandlers();

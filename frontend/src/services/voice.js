@@ -1,13 +1,13 @@
 /**
- * Voice service — pure helpers for the Voice Mode feature.
+ * Voice service, pure helpers for the Voice Mode feature.
  *
  * Responsibilities (and non-responsibilities):
  *   ✓ Transcribe an audio blob via the authenticated backend endpoint.
  *   ✓ Pick a good TTS voice from the browser (prefers local-only voices).
  *   ✓ Speak text using the browser's native speechSynthesis API.
  *   ✓ Sanitise LLM markdown output before it becomes speech.
- *   ✗ No UI state — components own that.
- *   ✗ No mic capture — that lives in the VoiceMode component so it can
+ *   ✗ No UI state, components own that.
+ *   ✗ No mic capture, that lives in the VoiceMode component so it can
  *     bind cleanup to React lifecycle and avoid orphaned streams.
  *
  * Privacy / security notes:
@@ -108,7 +108,7 @@ export function stripMarkdownForSpeech(text) {
   t = t.replace(/^\s{0,3}>\s?/gm, '');            // blockquotes
   t = t.replace(/^\s{0,3}[-*+]\s+/gm, '');        // bullet markers
   t = t.replace(/^\s{0,3}\d+\.\s+/gm, '');        // ordered list markers
-  // Strip emojis — Web Speech TTS reads them as their unicode description
+  // Strip emojis, Web Speech TTS reads them as their unicode description
   // ("smiling face with open mouth emoji"). Catches the standard emoji
   // ranges (extended-pictographic), variation selectors, ZWJ joiners,
   // and skin-tone modifiers.
@@ -122,7 +122,7 @@ export function stripMarkdownForSpeech(text) {
   t = t.replace(/️/g, '');
   t = t.replace(/⃣/g, '');
   // Also strip lone-emoji bullets / arrows / dashes that the agent uses as
-  // visual list markers — they read as "right arrow" etc.
+  // visual list markers, they read as "right arrow" etc.
   t = t.replace(/[→←↑↓⇒⇐➡⬅•▪▫◦●○■□★☆※]/g, '');
   t = t.replace(/\s+/g, ' ').trim();
   return t;
@@ -183,7 +183,7 @@ export async function pickVoice(language = 'en') {
   const voices = await _waitForVoices();
   if (!voices.length) return null;
 
-  // Hindi branch — search for hi-IN voices the OS ships.
+  // Hindi branch, search for hi-IN voices the OS ships.
   if (language === 'hi') {
     const localHi = voices.filter(v => v.localService && /^hi[-_]/i.test(v.lang));
     const hi = voices.filter(v => /^hi[-_]/i.test(v.lang));
@@ -193,7 +193,7 @@ export async function pickVoice(language = 'en') {
       const female = pool.find(v => /female|woman|swara|madhur|heera|kalpana/i.test(v.name));
       return female || pool[0];
     }
-    // No Hindi voice installed — fall through to English so TTS still works.
+    // No Hindi voice installed, fall through to English so TTS still works.
   }
 
   const en = voices.filter(v => /^en[-_]/i.test(v.lang));
@@ -201,7 +201,7 @@ export async function pickVoice(language = 'en') {
 
   // Microsoft / Google "Natural" (neural) voices sound human; the
   // legacy Zira / David are clearly robotic. Prefer Natural every time,
-  // even if it's a network voice — most users have internet.
+  // even if it's a network voice, most users have internet.
   const naturalNames = [
     'Aria', 'Jenny', 'Sonia', 'Natasha', 'Libby',     // MS Edge Natural
     'Ava', 'Emma', 'Brian', 'Andrew',                 // newer MS neural

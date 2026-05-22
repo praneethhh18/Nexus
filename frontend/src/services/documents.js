@@ -32,7 +32,7 @@ export const deleteDocument = (id) => req(`/${id}`, { method: 'DELETE' });
 export const updateDocumentMeta = (id, body) =>
   req(`/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
 
-// Categories an uploaded doc can be tagged with — used to filter
+// Categories an uploaded doc can be tagged with, used to filter
 // knowledge-base searches so e.g. the Competitor Watcher only reads
 // competitor PDFs, not our own.
 export const DOC_CATEGORIES = [
@@ -44,8 +44,8 @@ export const DOC_CATEGORIES = [
   { value: 'other',      label: 'Other',      description: 'Anything that doesn\'t fit above' },
 ];
 
-// AI document intake — extract structured fields from pasted text or an
-// uploaded file. Preview-only — does not persist anything.
+// AI document intake, extract structured fields from pasted text or an
+// uploaded file. Preview-only, does not persist anything.
 // Returns { doc_type, summary, parties, dates, amounts, line_items, key_terms,
 //           source_chars, truncated }.
 export const extractDocFromText = (text) =>
@@ -54,7 +54,7 @@ export const extractDocFromText = (text) =>
 export const extractDocFromUpload = async (file) => {
   const fd = new FormData();
   fd.append('file', file);
-  // Don't set Content-Type — browser fills in the multipart boundary.
+  // Don't set Content-Type, browser fills in the multipart boundary.
   const h = headers();
   delete h['Content-Type'];
   const res = await fetch(`${BASE}/extract-upload`, {
@@ -70,7 +70,7 @@ export const extractDocFromUpload = async (file) => {
   return res.json();
 };
 
-// Template autofill — given a reference PDF / text, the model maps content
+// Template autofill, given a reference PDF / text, the model maps content
 // onto this template's variables so the user doesn't have to re-type.
 // Returns { variables: { name: value, ... }, filled_count, source_chars,
 //           truncated }.
@@ -142,7 +142,7 @@ export const uploadBatchToKnowledgeBase = async (files, { category = 'other' } =
 
 
 // Upload an image asset (logo / header) for embedding in generated docs.
-// Returns { path, filename } — pass `path` back into generateDocument as
+// Returns { path, filename }, pass `path` back into generateDocument as
 // `logo_path`.
 export const uploadDocumentAsset = async (file) => {
   const fd = new FormData();

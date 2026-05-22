@@ -5,13 +5,13 @@
  * users with a "Coming soon" badge so:
  *   1. They know what's on the roadmap without us oversleeping our
  *      development commitments
- *   2. They can email/WhatsApp early interest — gives us a demand signal
+ *   2. They can email/WhatsApp early interest, gives us a demand signal
  *      for which features to actually prioritise
  *   3. We don't have to lie in the marketing copy (e.g. listing "LR
  *      tracking" as if it ships today when v1 doesn't have it)
  *
  * Each entry:
- *   id          stable key — used by tracking later
+ *   id          stable key, used by tracking later
  *   title       short label shown on the badge / list
  *   eta         human label for when, e.g. "Q1 2026" or "Next version"
  *   industries  which workspaces should see this teaser
@@ -31,7 +31,7 @@ export const COMING_SOON_FEATURES = [
     title: 'Driver smartphone app',
     eta: 'Next version',
     industries: ['Logistics / transport', 'Travel / tour operator', 'Local services'],
-    blurb: 'Drivers log in, accept jobs, post GPS pings — no hardware needed.',
+    blurb: 'Drivers log in, accept jobs, post GPS pings, no hardware needed.',
   },
   {
     id: 'route-optimisation',
@@ -60,7 +60,7 @@ export const COMING_SOON_FEATURES = [
  * Get coming-soon features that should be teased to the current workspace.
  * Returns [] for industries with nothing planned.
  *
- * Industry matching is case-insensitive — mirrors the backend
+ * Industry matching is case-insensitive, mirrors the backend
  * normalize_industry() so 'healthcare' / 'HEALTHCARE' / 'Healthcare '
  * all resolve to the same canonical industry key. Without this, a
  * workspace whose industry got stored with non-canonical casing would

@@ -41,7 +41,7 @@ function StrengthBar({ password }) {
   if (!password) return null;
   const s = pwScore(password);
   const clr = ['', '#ef4444', '#f59e0b', '#10b981'][s];
-  const lbl = ['', 'Weak — add numbers and symbols', 'Fair — getting better', 'Strong password'][s];
+  const lbl = ['', 'Weak, add numbers and symbols', 'Fair, getting better', 'Strong password'][s];
   return (
     <div style={{ marginTop: 7 }}>
       <div style={{ display: 'flex', gap: 4 }}>
@@ -60,7 +60,7 @@ function StrengthBar({ password }) {
 
 // ── Shared pieces ────────────────────────────────────────────────────────────
 const FEATS = [
-  { icon: '▸', text: '8 AI agents — CRM, voice calls, WhatsApp & email' },
+  { icon: '▸', text: '8 AI agents, CRM, voice calls, WhatsApp & email' },
   { icon: '▸', text: 'Auto follow-ups with smart deal pipeline' },
   { icon: '▸', text: 'Invoice reminders & meeting prep notes' },
   { icon: '▸', text: 'Privacy-first: your data stays on-device' },
@@ -117,7 +117,7 @@ function LeftPanel() {
           }}>always on duty</span>
         </h2>
         <p style={{ fontSize: 13.5, color: '#6b7280', lineHeight: 1.65, marginBottom: 36 }}>
-          8 specialised agents that handle your CRM,<br />outbound calls, WhatsApp, and email — 24/7.
+          8 specialised agents that handle your CRM,<br />outbound calls, WhatsApp, and email, 24/7.
         </p>
 
         {/* Features */}
@@ -139,7 +139,7 @@ function LeftPanel() {
           <p style={{ fontSize: 13, color: '#6b7280', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 9 }}>
             "NexusAgent handles our follow-ups automatically. We saved 3 hours every single day."
           </p>
-          <p style={{ fontSize: 11, color: '#3d4459' }}>— Vikram S., Founder · Mumbai</p>
+          <p style={{ fontSize: 11, color: '#3d4459' }}>,  Vikram S., Founder · Mumbai</p>
         </div>
       </div>
     </div>
@@ -177,7 +177,7 @@ const baseInput = {
 
 // ── Main component ───────────────────────────────────────────────────────────
 export default function Login() {
-  // Respect ?view=signup on the URL — landing-page Subscribe/Trial buttons
+  // Respect ?view=signup on the URL, landing-page Subscribe/Trial buttons
   // deeplink here with view=signup so new visitors don't have to click the
   // tab themselves. Default to 'login' for direct /login visits.
   const initialView = (() => {
@@ -187,7 +187,7 @@ export default function Login() {
   })();
   // Trial-mode = arrived from /trial (next contains plan=pro). When true we
   // render a tailored "start your 14-day Pro trial" layout instead of the
-  // generic Sign In / Sign Up tabs — the user just chose a trial, they don't
+  // generic Sign In / Sign Up tabs, the user just chose a trial, they don't
   // need to be re-asked whether they want to sign in.
   const trialMode = (() => {
     if (typeof window === 'undefined') return false;
@@ -215,7 +215,7 @@ export default function Login() {
       navigate(`/accept-invite?token=${pendingInvite}`);
       return;
     }
-    // ?next=/some/path support — used by the public landing page to deeplink
+    // ?next=/some/path support, used by the public landing page to deeplink
     // visitors into a specific in-app destination after auth (e.g. the pricing
     // page with a chosen plan). Only allow same-origin paths so the URL can't
     // be weaponised into an open redirect to phishing pages.
@@ -236,7 +236,7 @@ export default function Login() {
     try {
       if (view === 'signup') {
         const res = await signup(email, name, password);
-        // Production: email verification required — show the "check your
+        // Production: email verification required, show the "check your
         // inbox" screen. The trial activates only when they click the link.
         if (res.verification_required) {
           setView('check_inbox');
@@ -332,7 +332,7 @@ export default function Login() {
 
   // ── View: post-signup check inbox ─────────────────────────────────────────
   // Shown after a successful signup when REQUIRE_EMAIL_VERIFICATION is on.
-  // The user has an account but no auth tokens yet — the verify-email page
+  // The user has an account but no auth tokens yet, the verify-email page
   // is what hands out the tokens (and activates the 14-day Pro trial).
   if (view === 'check_inbox') {
     const onResend = async () => {
@@ -377,7 +377,7 @@ export default function Login() {
             </p>
             <p style={{ fontSize: 13, color: 'var(--color-text-dim)', lineHeight: 1.65, marginBottom: 26 }}>
               Click the link in that email to activate your <strong>14-day Pro trial</strong>{' '}
-              — all 8 AI agents, no credit card.<br/>
+             , all 8 AI agents, no credit card.<br/>
               The link is valid for 48 hours.
             </p>
 
@@ -575,7 +575,7 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit}>
-            {/* Name — signup only */}
+            {/* Name, signup only */}
             {view === 'signup' && (
               <div style={{ marginBottom: 14 }}>
                 <Label>Full Name</Label>

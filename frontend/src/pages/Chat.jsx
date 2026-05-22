@@ -30,7 +30,7 @@ const TOOL_CLASS = { rag: 'tool-rag', sql: 'tool-sql', action: 'tool-action', re
 // ── Slash commands ──────────────────────────────────────────────────────────
 // Each command maps a terse shortcut to a natural-language request the agent
 // already knows how to execute via its existing tool registry. Nothing new
-// server-side — just a speed layer on top of agent mode.
+// server-side, just a speed layer on top of agent mode.
 const SLASH_COMMANDS = [
   { cmd: '/remind',  args: '<customer>',        desc: 'Draft an invoice reminder email',
     rewrite: (a) => `Draft an invoice reminder email for ${a || 'the most overdue invoice'}.` },
@@ -47,7 +47,7 @@ const SLASH_COMMANDS = [
   { cmd: '/triage',  args: '',                  desc: 'Run email triage now',
     rewrite: () => `Run email triage on the inbox now.` },
   { cmd: '/whatif',  args: '<scenario>',         desc: 'Run a what-if simulation',
-    // Marker only — actually handled inline by `runWhatIfInline` so we get
+    // Marker only, actually handled inline by `runWhatIfInline` so we get
     // a structured before/after card instead of a free-text agent reply.
     inline: 'whatif',
     rewrite: (a) => `What if ${a || 'revenue drops 10%'}?` },
@@ -66,7 +66,7 @@ function parseSlash(input) {
 // ── /whatif renderer ────────────────────────────────────────────────────────
 // Convert the structured what-if response into a markdown card so the
 // existing message renderer can show it without a new component. Keeps the
-// inline rendering pipeline simple — same path as every other reply.
+// inline rendering pipeline simple, same path as every other reply.
 function renderWhatIfMarkdown(scenarioText, r) {
   if (!r || r.error) {
     return [
@@ -77,7 +77,7 @@ function renderWhatIfMarkdown(scenarioText, r) {
   }
 
   // Currency comes from the simulator (most-common currency on this
-  // workspace's invoices). Defaults to INR — NexusAgent is built for
+  // workspace's invoices). Defaults to INR, NexusAgent is built for
   // Indian SMBs; USD/EUR/GBP only surface when a row explicitly carries them.
   const currency = r.currency || 'INR';
   const sym = currency === 'INR' ? '₹'
@@ -86,7 +86,7 @@ function renderWhatIfMarkdown(scenarioText, r) {
             : currency === 'GBP' ? '£'
             : `${currency} `;
   const locale = currency === 'INR' ? 'en-IN' : 'en-US';
-  const fmt = (n) => Number.isFinite(n) ? `${sym}${Math.round(n).toLocaleString(locale)}` : '—';
+  const fmt = (n) => Number.isFinite(n) ? `${sym}${Math.round(n).toLocaleString(locale)}` : ', ';
   const before = r.before_total_revenue;
   const after  = r.after_total_revenue;
   const pct    = r.net_impact_pct;
@@ -99,10 +99,10 @@ function renderWhatIfMarkdown(scenarioText, r) {
     `|---|---:|---:|---:|`,
     `| Revenue | ${fmt(before)} | ${fmt(after)} | ${arrow} ${(pct ?? 0).toFixed(1)}% |`,
     ``,
-    `**Net impact:** ${r.net_impact || '—'}`,
+    `**Net impact:** ${r.net_impact || ', '}`,
   ];
 
-  // Data-source disclosure. When we have real invoice data, say so —
+  // Data-source disclosure. When we have real invoice data, say so , 
   // builds trust. When we fell back to demo data, be honest about it.
   if (r.data_source === 'your_invoices' && r.invoice_count) {
     lines.push(
@@ -112,7 +112,7 @@ function renderWhatIfMarkdown(scenarioText, r) {
   } else if (r.data_source === 'sample_dataset') {
     lines.push(
       '',
-      '> _Heads up — this workspace has no invoices yet, so the simulation ran on the bundled demo dataset. Add invoices and re-run to see numbers from your real data._',
+      '> _Heads up, this workspace has no invoices yet, so the simulation ran on the bundled demo dataset. Add invoices and re-run to see numbers from your real data._',
     );
   }
 
@@ -392,7 +392,7 @@ export default function Chat() {
     }
   }, []);
 
-  // Conversation history — loaded here, not in the app sidebar
+  // Conversation history, loaded here, not in the app sidebar
   const loadConversations = useCallback(() => {
     getConversations().then(setConversations).catch(() => {});
   }, []);
@@ -540,7 +540,7 @@ export default function Chat() {
     const next = !agentMode;
     setAgentMode(next);
     localStorage.setItem('nexus_agent_mode', next ? '1' : '0');
-    // OFF means "local only — no cloud" — pin the sensitive flag on the
+    // OFF means "local only, no cloud", pin the sensitive flag on the
     // active conversation so the backend's privacy router actually
     // enforces local routing. Without this the toggle was UI-only.
     setConvSensitive(!next);
@@ -549,7 +549,7 @@ export default function Chat() {
     }
   };
 
-  // Slash menu — visible when input starts with "/" and hasn't been confirmed yet.
+  // Slash menu, visible when input starts with "/" and hasn't been confirmed yet.
   const slashHead = input.trimStart().split(/\s+/)[0];
   const slashMatches = input.trimStart().startsWith('/') && !input.includes(' ')
     ? SLASH_COMMANDS.filter(c => c.cmd.startsWith(slashHead.toLowerCase()))
@@ -581,8 +581,8 @@ export default function Chat() {
     const originConvId = convId;
     const isStillOnOrigin = () => convIdRef.current === originConvId;
 
-    // Inline slash commands — bypass the agent pipeline and render a
-    // structured card. Currently only /whatif. Keep this list short — the
+    // Inline slash commands, bypass the agent pipeline and render a
+    // structured card. Currently only /whatif. Keep this list short, the
     // default slash path is "rewrite to natural language and run as agent."
     if (slash?.match.inline === 'whatif') {
       try {
@@ -603,10 +603,10 @@ export default function Chat() {
       return;
     }
 
-    // Slash commands imply agent mode — force it on so the tools actually run.
+    // Slash commands imply agent mode, force it on so the tools actually run.
     const useAgentForThisTurn = agentMode || !!slash;
 
-    // Agent mode — tool-using (no streaming, returns complete turn)
+    // Agent mode, tool-using (no streaming, returns complete turn)
     if (useAgentForThisTurn) {
       try {
         const res = await agentChat(q, convId);
@@ -646,7 +646,7 @@ export default function Chat() {
           ready = true;
           ws.send(JSON.stringify({ query: q, conversation_id: originConvId }));
         } else if (data.type === 'token') {
-          // Drop tokens if the user has switched conversations — the
+          // Drop tokens if the user has switched conversations, the
           // reply is still being saved server-side; we just don't
           // want it bleeding into the new view.
           if (!isStillOnOrigin()) return;
@@ -670,7 +670,7 @@ export default function Chat() {
         } else if (data.type === 'error') {
           ws.close();
           if (!ready) {
-            // Auth failed — fall back to REST (which will 401 → redirect to login)
+            // Auth failed, fall back to REST (which will 401 → redirect to login)
             _sendRest(q, ts, originConvId, isStillOnOrigin);
           } else if (isStillOnOrigin()) {
             setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${data.error}`, tools_used: [], timestamp: ts }]);
@@ -701,7 +701,7 @@ export default function Chat() {
     try {
       const res = await sendMessage(q, originConvId);
       if (!isStillOnOrigin()) {
-        // User switched conversations — answer is persisted server-side.
+        // User switched conversations, answer is persisted server-side.
         setLoading(false);
         setStreamingText('');
         return;
@@ -741,9 +741,9 @@ export default function Chat() {
   // ── Document Upload ────────────────────────────────────────────────────────
   // Show progress in the chat thread itself, NEVER auto-send a fake user
   // message. Two messages get appended:
-  //   1. "📎 filename.pdf — uploading…" (assistant role, replaced on done)
+  //   1. "📎 filename.pdf, uploading…" (assistant role, replaced on done)
   //   2. The success/error result, with a hint to ask a follow-up question
-  // The user types their own question afterwards — they know what they
+  // The user types their own question afterwards, they know what they
   // want better than we do.
   const [uploadingFile, setUploadingFile] = useState(null);
   const handleDocUpload = async (e) => {
@@ -769,24 +769,24 @@ export default function Chat() {
         const c = await createConversation();
         activeConvId = c?.conversation_id || null;
         if (activeConvId) setConvId(activeConvId);
-      } catch { /* non-fatal — we'll still upload */ }
+      } catch { /* non-fatal, we'll still upload */ }
     }
 
     try {
       const data = await uploadDocument(file);
       const chunks = (data && data.chunks_added) || 0;
       const indexed = data && data.indexed;
-      // Three distinct outcomes — don't conflate them:
+      // Three distinct outcomes, don't conflate them:
       //   indexed=true            → searchable now
       //   indexed=false + warning → file saved but RAG offline (warning explains why)
       //   chunks=0 + no warning   → PDF parsed empty (scanned image, encrypted, etc.)
       let finalContent;
       if (indexed && chunks > 0) {
-        finalContent = `📎 **\`${file.name}\`** uploaded — ${chunks} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`;
+        finalContent = `📎 **\`${file.name}\`** uploaded, ${chunks} chunks indexed. Ask me a question about it (e.g. _"summarize this"_, _"what's the total?"_).`;
       } else if (data && data.warning) {
         finalContent = `📎 **\`${file.name}\`** saved, but indexing didn't complete: ${data.warning}`;
       } else {
-        finalContent = `📎 **\`${file.name}\`** uploaded but no text was extracted. The PDF may be a scan (image-only) or encrypted — try a text-based version.`;
+        finalContent = `📎 **\`${file.name}\`** uploaded but no text was extracted. The PDF may be a scan (image-only) or encrypted, try a text-based version.`;
       }
       const ok = indexed && chunks > 0;
       setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
@@ -808,7 +808,7 @@ export default function Chat() {
     } catch (err) {
       setMessages(prev => prev.map(m => m._uploadPlaceholder ? {
         ...m, _uploadPlaceholder: false,
-        content: `📎 **Upload failed** — ${err.message || 'unknown error'}.`,
+        content: `📎 **Upload failed**, ${err.message || 'unknown error'}.`,
       } : m));
     } finally {
       setUploadingFile(null);
@@ -826,7 +826,7 @@ export default function Chat() {
           </button>
           <div>
             <h1>Chat {agentMode && <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--color-ok)', background: 'color-mix(in srgb, var(--color-ok) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-ok) 25%, transparent)', padding: '2px 8px', borderRadius: 10, verticalAlign: 'middle', marginLeft: 8 }}>AGENT</span>}</h1>
-            <p>{agentMode ? 'Ask me to do things — create tasks, add contacts, draft invoices, send emails (with approval)' : 'Ask about your business data, documents, or operations'}</p>
+            <p>{agentMode ? 'Ask me to do things like create tasks, add contacts, draft invoices, or send emails (with approval)' : 'Ask about your business data, documents, or operations'}</p>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -838,7 +838,7 @@ export default function Chat() {
             onClick={toggleAgentMode}
             title={agentMode
               ? 'Cloud-backed agent. Can read your CRM, take actions (with approval), and reason with the best model. Click to switch to local-only mode.'
-              : 'Local Ollama only — fully offline, data never leaves your machine. Limited capability and slower. Click to switch to cloud agent.'}
+              : 'Local Ollama only, fully offline, data never leaves your machine. Limited capability and slower. Click to switch to cloud agent.'}
             style={{
               display: 'flex', alignItems: 'center', gap: 4,
               padding: '5px 10px', fontSize: 11, borderRadius: 6, cursor: 'pointer',
@@ -860,7 +860,7 @@ export default function Chat() {
               <AudioLines size={13} /> Voice chat
             </button>
           )}
-          {/* Document upload moved inline next to the message input — uploads
+          {/* Document upload moved inline next to the message input, uploads
               are conversational, they belong with the input, not the header. */}
           {messages.length > 0 && (
             <>
@@ -1157,8 +1157,8 @@ export default function Chat() {
                         }}>
                           {tc.pending_approval ? '⏸ ' : tc.error ? '✗ ' : '✓ '}
                           <code style={{ fontSize: 10 }}>{tc.name}</code>
-                          {tc.pending_approval && <span> — waiting for your approval</span>}
-                          {tc.error && <span> — {tc.error}</span>}
+                          {tc.pending_approval && <span> · waiting for your approval</span>}
+                          {tc.error && <span>: {tc.error}</span>}
                           {tc.summary && <span style={{ color: 'var(--color-text-muted)' }}> · {tc.summary}</span>}
                         </div>
                         {/* Downloadable files produced by this tool */}
@@ -1199,7 +1199,7 @@ export default function Chat() {
                 )}
                 {msg.tools_used?.length > 0 && !msg.tool_calls && (
                   <div className="msg-tools">
-                    {/* Dedupe — when the agent calls the same tool multiple
+                    {/* Dedupe, when the agent calls the same tool multiple
                         times in one turn (e.g. find_contacts 4x while
                         narrowing a search), we render one badge, not four.
                         Order-preserving so the badges still reflect the
@@ -1222,7 +1222,7 @@ export default function Chat() {
             </div>
           ))}
 
-          {/* Streaming response — tokens appear live */}
+          {/* Streaming response, tokens appear live */}
           {streamingText && (
             <div className="msg-row">
               <div className="msg-avatar bot">N</div>
@@ -1250,7 +1250,7 @@ export default function Chat() {
           <div ref={bottomRef} />
         </div>
 
-        {/* Right panel — Chart */}
+        {/* Right panel, Chart */}
         {chartData && (
           <div style={{ width: 320, borderLeft: '1px solid var(--color-surface-2)', padding: 12, overflow: 'auto', flexShrink: 0 }}>
             <DataChart sqlData={chartData} />
@@ -1316,7 +1316,7 @@ export default function Chat() {
             }}>
             {recording ? <MicOff size={16} /> : <Mic size={16} />}
           </button>
-          {/* Paperclip — attach a document to this conversation. Lives
+          {/* Paperclip, attach a document to this conversation. Lives
               next to the input because uploads are conversational, not a
               page-level action. The actual file input is hidden; the
               label wraps the icon so clicking either fires the picker. */}

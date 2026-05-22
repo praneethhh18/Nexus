@@ -1,5 +1,5 @@
 // Unauthenticated setup wizard client.
-// Deliberately skips headers() — at install time no user exists yet.
+// Deliberately skips headers(), at install time no user exists yet.
 
 async function req(path, opts = {}) {
   const res = await fetch(path, {

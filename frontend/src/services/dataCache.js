@@ -16,7 +16,7 @@
  * Not used: a request cache (e.g. de-duping in-flight fetches). That's a
  * separate concern; keep this minimal.
  *
- * Tab close / hard refresh clears everything — that's fine, it's a perf
+ * Tab close / hard refresh clears everything, that's fine, it's a perf
  * hint, not a source of truth. The DB is the source of truth.
  *
  * Business scoping: every key MUST be namespaced by business_id so switching

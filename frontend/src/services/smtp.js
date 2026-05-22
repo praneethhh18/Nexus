@@ -21,7 +21,7 @@ async function req(path, opts = {}) {
   return res.json();
 }
 
-// Workspace SMTP config — only the configured flag + sender info is visible
+// Workspace SMTP config, only the configured flag + sender info is visible
 // to non-admins. Full host/port/username only returned to admins.
 export const readSmtp = () => req('/api/workspace/smtp');
 export const saveSmtp = (cfg) => req('/api/workspace/smtp', { method: 'PUT', body: JSON.stringify(cfg) });
@@ -30,7 +30,7 @@ export const testSmtp = (cfg = null) =>
   req('/api/workspace/smtp/test', { method: 'POST', body: JSON.stringify(cfg) });
 
 // Send a real email via the workspace's configured SMTP. Throws if SMTP
-// isn't configured — callers should fall back to mailto in that case.
+// isn't configured, callers should fall back to mailto in that case.
 export const sendEmail = (to, subject, body, extras = {}) =>
   req('/api/email/send', {
     method: 'POST',

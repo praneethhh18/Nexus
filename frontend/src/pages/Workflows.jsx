@@ -72,7 +72,7 @@ const NODE_TYPE_LABEL = {
 //
 // Cards now surface the actual step chain underneath the description so
 // users can see *exactly* what will run if they click Use this. Before
-// this, names like "Meeting Scheduler" let the imagination wander —
+// this, names like "Meeting Scheduler" let the imagination wander , 
 // honest step chips kill that ambiguity.
 function TemplateCard({ tmpl, onEnable, onOpen }) {
   const tags = tmpl.tags || [];
@@ -211,7 +211,7 @@ function WorkflowsGuide() {
         <strong style={{ color: 'var(--color-text)' }}> action</strong>. Use a template, describe one in plain English, or build from scratch.
       </p>
 
-      {/* Workflows vs Agents — clear up the overlap before users wonder
+      {/* Workflows vs Agents, clear up the overlap before users wonder
           which page to use. Two short examples beat any abstract definition. */}
       <div style={{
         padding: '8px 10px', marginBottom: 12,
@@ -220,7 +220,7 @@ function WorkflowsGuide() {
         borderRadius: 'var(--r-md)',
         fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55,
       }}>
-        <strong style={{ color: 'var(--color-text)' }}>Workflow vs AI Agent — which one?</strong><br />
+        <strong style={{ color: 'var(--color-text)' }}>Workflow vs AI Agent, which one?</strong><br />
         Use a <strong style={{ color: 'var(--color-text)' }}>Workflow</strong> when the steps are fixed:
         <em> "every Monday 9am → query last week's deals → email me the PDF."</em><br />
         Use an <strong style={{ color: 'var(--color-text)' }}>AI Agent</strong> when the AI needs to think:
@@ -296,7 +296,7 @@ export default function Workflows() {
   const [wfEnabled, setWfEnabled] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
-  // Monotonic counter — bumped every time we (re)open the builder. Used
+  // Monotonic counter, bumped every time we (re)open the builder. Used
   // as part of ReactFlow's `key` so the canvas fully remounts even when
   // the workflow id is null (e.g. opening two different templates in a
   // row via Customize).
@@ -323,7 +323,7 @@ export default function Workflows() {
   // Magic Workflows: one-shot generate from natural-language description.
   // Backend returns the draft (not saved); we drop the user into the
   // canvas builder so they can review + tweak + Save explicitly.
-  // Errors map to friendly messages — 402 = upgrade prompt, others = raw.
+  // Errors map to friendly messages, 402 = upgrade prompt, others = raw.
   const runGenerate = async () => {
     const prompt = nlPrompt.trim();
     if (!prompt || nlBusy) return;
@@ -335,8 +335,8 @@ export default function Workflows() {
       const warningCount = wf?._validation?.errors?.length || 0;
       flash(
         warningCount
-          ? `Generated with ${warningCount} warning(s) — review the canvas.`
-          : 'Generated — review and save.',
+          ? `Generated with ${warningCount} warning(s), review the canvas.`
+          : 'Generated, review and save.',
       );
     } catch (err) {
       const msg = String(err?.message || err);
@@ -361,7 +361,7 @@ export default function Workflows() {
       delete payload.id;
       const saved = await saveWorkflow(payload);
       await toggleWorkflow(saved.id, true);
-      flash(`"${tmpl.name}" enabled — it will run on its schedule.`);
+      flash(`"${tmpl.name}" enabled, it will run on its schedule.`);
       // Auto-switch to My Workflows so the user SEES the new row appear,
       // instead of staying on the templates tab and wondering whether
       // anything actually happened.
@@ -385,7 +385,7 @@ export default function Workflows() {
   // Map a stored workflow's nodes/edges into the React Flow shape.
   //
   // Every template uses the same internal IDs ("n1", "n2", ...) for its
-  // nodes. React Flow keys nodes by id internally — if we feed it two
+  // nodes. React Flow keys nodes by id internally, if we feed it two
   // different workflows back-to-back, ID collisions made the canvas show
   // the FIRST workflow's data for the second one (every edit looked the
   // same). Fix: namespace IDs with the workflow id so the IDs are unique
@@ -420,7 +420,7 @@ export default function Workflows() {
 
   // Strip the per-workflow ID namespace that wfToRf added, so we save
   // clean short IDs (n1/n2/...) back to disk. `origId` was stashed in
-  // data — fall back to the prefixed id if it's missing (newly added
+  // data, fall back to the prefixed id if it's missing (newly added
   // nodes won't have origId).
   const rfToWf = () => {
     const stripNs = (id) => {
@@ -604,7 +604,7 @@ export default function Workflows() {
             <button
               className="btn-ghost"
               onClick={() => {
-                // If there are unsaved edits, warn before discarding —
+                // If there are unsaved edits, warn before discarding , 
                 // the user already lost work once today and we don't
                 // want a stray Back click to ruin a long edit session.
                 if (dirty && !confirm('You have unsaved changes. Leave the builder?')) return;
@@ -646,17 +646,17 @@ export default function Workflows() {
       {/* GALLERY */}
       {view === 'gallery' && (
         <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-          {/* How-to guide — first-timer onboarding. Dismissible & persisted. */}
+          {/* How-to guide, first-timer onboarding. Dismissible & persisted. */}
           <WorkflowsGuide />
 
-          {/* AI-assisted builder — "Magic Workflows".
+          {/* AI-assisted builder, "Magic Workflows".
               Plan-gated to Pro+ on the backend; we surface the upgrade CTA
               when a 402 comes back. */}
           <div className="panel" style={{ padding: 16, marginBottom: 16, background: 'linear-gradient(135deg, var(--color-bg), var(--color-surface-2))', border: '1px solid color-mix(in srgb, var(--color-ok) 19%, transparent)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
               <Sparkles size={16} color="var(--color-ok)" />
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)' }}>
-                Magic Workflows — describe what you want, AI builds it
+                Magic Workflows, describe what you want, AI builds it
               </span>
             </div>
             <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: '0 0 10px', lineHeight: 1.5 }}>
@@ -664,7 +664,7 @@ export default function Workflows() {
               + steps + conditions and shows you the visual graph to review.
             </p>
 
-            {/* One-click example chips — fill the textarea, user clicks Generate. */}
+            {/* One-click example chips, fill the textarea, user clicks Generate. */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
               {[
                 "Every Monday at 9am, summarise last week's deals and email it to me",
@@ -774,7 +774,7 @@ export default function Workflows() {
                       {wf.last_run && <> · last run: {wf.last_run.substring(0, 16)} ({wf.last_status})</>}
                       {wf.run_count > 0 && <> · runs: {wf.run_count}</>}
                     </div>
-                    {/* Step chain preview — same chips as the template
+                    {/* Step chain preview, same chips as the template
                         cards, so users see what each saved workflow
                         actually does without opening the builder. */}
                     {wf.nodes?.length > 0 && (
@@ -942,7 +942,7 @@ export default function Workflows() {
             {runResult && (
               <div style={{ padding: '8px 16px', borderTop: '1px solid var(--color-surface-2)', background: 'var(--color-bg)', maxHeight: 150, overflow: 'auto' }}>
                 <div style={{ fontSize: 11, fontWeight: 600, color: runResult.status === 'success' ? 'var(--color-ok)' : 'var(--color-err)', marginBottom: 4 }}>
-                  Run: {runResult.status?.toUpperCase()} — {runResult.duration_ms}ms
+                  Run: {runResult.status?.toUpperCase()}, {runResult.duration_ms}ms
                 </div>
                 {runResult.steps?.map((s, i) => (
                   <div key={i} style={{ display: 'flex', gap: 10, fontSize: 10, padding: '2px 0', color: 'var(--color-text-muted)' }}>

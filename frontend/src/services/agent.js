@@ -23,7 +23,7 @@ async function req(path, opts = {}) {
   if (!res.ok) {
     const txt = await res.text();
     if (contentType.includes('text/html')) {
-      throw new Error(`Backend not reachable on ${BASE}${path} (got HTML — check that uvicorn is running on :8000).`);
+      throw new Error(`Backend not reachable on ${BASE}${path} (got HTML, check that uvicorn is running on :8000).`);
     }
     let msg = txt;
     try { msg = JSON.parse(txt).detail || txt; } catch {}

@@ -1,9 +1,9 @@
 /**
  * Tag chips + picker.
  *
- * <TagChips tags={[...]} />                — display-only, compact pill row
+ * <TagChips tags={[...]} />               , display-only, compact pill row
  * <TagPicker entityType="task" entityId="..." onChange={...} />
- *                                         — editable: click to add, click × to remove
+ *                                        , editable: click to add, click × to remove
  */
 import { useState, useEffect, useRef, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -79,7 +79,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
     const click = (e) => {
       // Don't close if the click was on a target that's been removed
       // from the DOM by the time mousedown fires (happens for elements
-      // that toggle themselves out of existence — eg. a tag row the
+      // that toggle themselves out of existence, eg. a tag row the
       // user just clicked to remove).
       if (!e.target || !document.body.contains(e.target)) return;
       const inTrigger = ref.current && ref.current.contains(e.target);
@@ -107,7 +107,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
       setMine(fresh);
       onChange?.(fresh);
     } catch (e) {
-      // Errors used to be swallowed silently — user clicked Add and
+      // Errors used to be swallowed silently, user clicked Add and
       // nothing happened. Now surface the reason so they can act.
       setErr(e.message || 'Failed to save tag');
     } finally { setBusy(false); }
@@ -184,7 +184,7 @@ export function TagPicker({ entityType, entityId, onChange }) {
           <div style={{ maxHeight: 180, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
             {all.length === 0 && (
               <span style={{ fontSize: 10, color: 'var(--color-text-dim)', padding: 4 }}>
-                No tags yet — type a name above and press Enter.
+                No tags yet, type a name above and press Enter.
               </span>
             )}
             {all.map(t => {

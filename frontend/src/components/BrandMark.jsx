@@ -1,12 +1,12 @@
 /**
- * BrandMark — the single source of truth for the NexusAgent logo across
+ * BrandMark, the single source of truth for the NexusAgent logo across
  * the entire app. Mirrors the SVG used on the landing page (LogoMark in
  * landing/src/App.jsx) so users see the exact same identity on
  * marketing, signup, onboarding, and inside the product.
  *
  * Why a shared component instead of inlining the SVG everywhere:
  *   - When we tweak the logo (color, stroke weight, motion), one file
- *     changes — not 8.
+ *     changes, not 8.
  *   - Catches the bug where the wizard rail used a placeholder "N" tile
  *     while the landing showed the real logo. Visitors saw two different
  *     brands in the same session.

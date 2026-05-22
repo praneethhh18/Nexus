@@ -43,10 +43,10 @@ async function readAuthError(res) {
 
   // Vite dev proxy returns 502/503/504 with an HTML body when the FastAPI
   // backend is restarting or hasn't booted yet. The raw "HTTP 502" the user
-  // sees on the signup page is alarming and unhelpful — surface a clear,
+  // sees on the signup page is alarming and unhelpful, surface a clear,
   // actionable hint instead.
   if (res.status === 502 || res.status === 503 || res.status === 504) {
-    return "Couldn't reach the server. The API may be restarting — wait a few seconds and try again.";
+    return "Couldn't reach the server. The API may be restarting, wait a few seconds and try again.";
   }
 
   if (!text) return `HTTP ${res.status}`;
@@ -57,7 +57,7 @@ async function readAuthError(res) {
     if (typeof data.message === 'string') return data.message;
     return JSON.stringify(data);
   } catch {
-    // Plain-text or HTML error bodies (typical for proxy errors) — don't dump
+    // Plain-text or HTML error bodies (typical for proxy errors), don't dump
     // the raw response into the UI.
     if (text.length > 200 || text.includes('<')) return `Server error (HTTP ${res.status}). Please try again.`;
     return text;
@@ -92,14 +92,14 @@ async function authRequest(path, body) {
 }
 
 // Browser-local flags that gate first-run UX. A fresh signup or verify
-// must reset them — otherwise the onboarding wizard skips itself for a
+// must reset them, otherwise the onboarding wizard skips itself for a
 // brand-new account because a PREVIOUS account on this browser already
 // completed it. Same browser, same localStorage, different user.
 function _resetFirstRunFlags() {
   try {
     localStorage.removeItem('nexus_onboarding_done');
     sessionStorage.removeItem('nexus_pending_welcome');
-  } catch { /* private mode — safe to ignore */ }
+  } catch { /* private mode, safe to ignore */ }
 }
 
 export async function signup(email, name, password) {
@@ -115,7 +115,7 @@ export async function signup(email, name, password) {
 export async function verifyEmail(token) {
   const data = await authRequest('/verify-email', { token });
   _resetFirstRunFlags();
-  setSession(data);   // verify returns full tokens — log the user straight in
+  setSession(data);   // verify returns full tokens, log the user straight in
   return data;
 }
 
@@ -128,7 +128,7 @@ export async function login(email, password, totpCode = null) {
   if (totpCode) body.totp_code = totpCode;
   const data = await authRequest('/login', body);
   if (data.requires_2fa) {
-    // Don't call setSession — no token yet. Caller shows 2FA prompt.
+    // Don't call setSession, no token yet. Caller shows 2FA prompt.
     return data;
   }
   setSession(data);

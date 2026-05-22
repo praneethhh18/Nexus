@@ -1,5 +1,5 @@
 /**
- * Desktop bridge — no-op in the browser, native in Electron.
+ * Desktop bridge, no-op in the browser, native in Electron.
  *
  * The Electron preload exposes a tiny `window.nexus` surface; these helpers
  * check for it before calling so the same code runs cleanly in a regular
@@ -20,7 +20,7 @@ export async function nativeNotify({ title, body, urgent = false } = {}) {
     try { return await window.nexus.notify({ title, body, urgent }); }
     catch (e) { return { ok: false, error: String(e.message || e) }; }
   }
-  // Web fallback — requires the user to have granted notification permission.
+  // Web fallback, requires the user to have granted notification permission.
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     try { new Notification(title || 'NexusAgent', { body }); return { ok: true }; }
     catch (e) { return { ok: false, error: String(e.message || e) }; }

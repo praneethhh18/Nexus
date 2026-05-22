@@ -7,7 +7,7 @@
  * pre-filled subject so the team can take payment manually.
  *
  * Source of truth for the tier data is duplicated with landing/src/App.jsx
- * deliberately — the landing site is a separate Vite app and we don't want
+ * deliberately, the landing site is a separate Vite app and we don't want
  * to share a build dependency for one constant.
  */
 import { useState, useEffect, useRef } from 'react';
@@ -28,7 +28,7 @@ const RZP_PLAN_FOR_TIER = {
   privacy: 'privacy',
 };
 
-// Reverse map — backend plan key → in-app tier id. Used by the
+// Reverse map, backend plan key → in-app tier id. Used by the
 // `?plan=X` deeplink path (visitor came from the public landing page
 // pricing section). Lets us auto-trigger checkout for the right tier.
 const TIER_FOR_RZP_PLAN = Object.fromEntries(
@@ -78,7 +78,7 @@ const TIERS = [
     name: 'Pro',
     price: '₹5,999',
     cadence: '/ month',
-    desc: 'All 8 agents + cloud LLM for a 5-person team — the obvious one.',
+    desc: 'All 8 agents + cloud LLM for a 5-person team, the obvious one.',
     items: [
       'Up to 5 users',
       'All 8 AI agents',
@@ -130,11 +130,11 @@ const TIERS = [
 const FAQS = [
   {
     q: 'Do I need my own AWS / Anthropic API key?',
-    a: 'No. NexusAgent is an independent product and the cloud-LLM compute is provided from our end — included in your subscription. The only exception is the Self-hosted plan, where you run the whole stack and can bring your own keys if you want cloud polish on top of the local model.',
+    a: 'No. NexusAgent is an independent product and the cloud-LLM compute is provided from our end, included in your subscription. The only exception is the Self-hosted plan, where you run the whole stack and can bring your own keys if you want cloud polish on top of the local model.',
   },
   {
     q: 'Can I change plans later?',
-    a: 'Yes. Upgrade or downgrade anytime — proration is handled automatically. Self-hosted is a one-time purchase, not a subscription.',
+    a: 'Yes. Upgrade or downgrade anytime, proration is handled automatically. Self-hosted is a one-time purchase, not a subscription.',
   },
   {
     q: 'What payment methods do you accept?',
@@ -142,11 +142,11 @@ const FAQS = [
   },
   {
     q: 'Is there a free trial of Pro?',
-    a: '14 days. No card required. We email you a reminder two days before it ends — you can cancel from this page in one click.',
+    a: '14 days. No card required. We email you a reminder two days before it ends, you can cancel from this page in one click.',
   },
   {
     q: 'What happens to my data if I cancel?',
-    a: 'You stay on the Free tier with full data access. If you exceed Free limits, features lock until you re-upgrade or export — but nothing is ever deleted automatically.',
+    a: 'You stay on the Free tier with full data access. If you exceed Free limits, features lock until you re-upgrade or export, but nothing is ever deleted automatically.',
   },
 ];
 
@@ -156,7 +156,7 @@ export default function Pricing() {
   const business = getCurrentBusiness();
   const currentTier = (business?.plan || 'free').toLowerCase();
 
-  // Razorpay checkout state — `paying` is the tier id currently in flight,
+  // Razorpay checkout state, `paying` is the tier id currently in flight,
   // null when nothing is in-flight. Used to disable other CTAs + show spinner.
   const [paying, setPaying]     = useState(null);
   const [payMsg, setPayMsg]     = useState('');
@@ -165,11 +165,11 @@ export default function Pricing() {
   const autoCheckoutFired       = useRef(false);
 
   const subjectFor = (tier) => encodeURIComponent(
-    `[NexusAgent] Upgrade to ${tier.name} — ${business?.name || 'my workspace'}`,
+    `[NexusAgent] Upgrade to ${tier.name}, ${business?.name || 'my workspace'}`,
   );
   const bodyFor = (tier) => encodeURIComponent(
     `Hi,\n\nI'd like to upgrade my workspace to ${tier.name}.\n\n` +
-    `Workspace: ${business?.name || '—'}\nUser: ${user?.email || '—'}\n\n` +
+    `Workspace: ${business?.name || ', '}\nUser: ${user?.email || ', '}\n\n` +
     `Please send the next steps.\n\nThanks.`,
   );
   const mailtoFor = (tier) =>
@@ -201,7 +201,7 @@ export default function Pricing() {
           }, 1200);
           return result;
         } catch (e) {
-          // Cancelled by user is not an error — silent dismiss.
+          // Cancelled by user is not an error, silent dismiss.
           if (/cancel/i.test(String(e?.message || ''))) {
             setPayMsg('');
           } else {
@@ -306,7 +306,7 @@ function Header({ currentTier }) {
       </h1>
       <p style={{ fontSize: 14, color: 'var(--color-text-muted)', maxWidth: 720, lineHeight: 1.6 }}>
         Free for one person, forever. Pay only when your team grows or when you
-        want a license you own outright. All prices in ₹ — USD pricing
+        want a license you own outright. All prices in ₹, USD pricing
         available at checkout.
       </p>
     </div>
@@ -339,7 +339,7 @@ function Tiers({ currentTier, ctaFor, payingTierId }) {
 function TierCard({ tier, isCurrent, cta, isPaying, anyPaying }) {
   const Icon = tier.icon;
   // cta is either a string (href / mailto), a function (Razorpay handler),
-  // or null (no action — current plan or not purchasable from here).
+  // or null (no action, current plan or not purchasable from here).
   const isFn   = typeof cta === 'function';
   const isHref = typeof cta === 'string' && cta.length > 0;
   return (
@@ -502,16 +502,16 @@ function ServiceModel() {
       </div>
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--color-text)', marginBottom: 4 }}>
-          How the service works — what you pay for, what we cover
+          How the service works, what you pay for, what we cover
         </div>
         <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.65 }}>
           NexusAgent is an independent product, built and operated by us. Your
-          subscription is for the product itself — features, support, and
+          subscription is for the product itself, features, support, and
           updates. The cloud-LLM compute that powers polish-layer writing
           (Bedrock&nbsp;/ Anthropic) is provided <strong>from our end</strong>;
           you don't bring or pay for your own API keys. Local AI on your
           machine (Ollama) is and always will be free. The Self-hosted plan
-          is the one exception — there you run the whole stack on your
+          is the one exception, there you run the whole stack on your
           infrastructure and bring your own keys if you want cloud polish.
         </div>
       </div>
@@ -650,7 +650,7 @@ function ContactStrip() {
         <ExternalLink size={13} /> Source on GitHub
       </a>
       <span style={{ marginLeft: 'auto', alignSelf: 'center', fontSize: 11.5, color: 'var(--color-text-dim)' }}>
-        Need a custom plan? Reply to any email — we read everything.
+        Need a custom plan? Reply to any email, we read everything.
       </span>
     </div>
   );

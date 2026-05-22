@@ -121,7 +121,7 @@ export default function Team() {
               <tbody>
                 {members.map(m => (
                   <tr key={m.user_id}>
-                    <td style={{ fontWeight: 500 }}>{m.name || '—'}</td>
+                    <td style={{ fontWeight: 500 }}>{m.name || ', '}</td>
                     <td>{m.email}</td>
                     <td>
                       <span style={{

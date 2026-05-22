@@ -1,5 +1,5 @@
 /**
- * VoiceMode — fullscreen hands-free voice conversation with the agent.
+ * VoiceMode, fullscreen hands-free voice conversation with the agent.
  *
  * Flow (one turn):
  *   idle       → user just opened the modal, mic permission not yet granted
@@ -14,7 +14,7 @@
  *
  * Privacy & security:
  *   - Audio is uploaded to our own authenticated endpoint only.
- *   - No cloud STT or TTS services are used — Whisper runs on the server,
+ *   - No cloud STT or TTS services are used, Whisper runs on the server,
  *     speechSynthesis uses the OS voice engine in the browser.
  *   - Every AudioContext / MediaStream / MediaRecorder / fetch is cleaned
  *     up on unmount or ESC via a single `cleanup()` function so we never
@@ -26,7 +26,7 @@ import ReactMarkdown from 'react-markdown';
 import { agentChat } from '../services/agent';
 import { transcribeBlob, speakText, cancelSpeech, pickVoice } from '../services/voice';
 
-// VAD (voice activity detection) thresholds — tuned on quiet room + laptop mic
+// VAD (voice activity detection) thresholds, tuned on quiet room + laptop mic
 const RMS_SPEECH    = 0.022;   // above this, treat as speech
 const SPEECH_MS     = 220;     // sustained speech to start capture
 const SILENCE_MS    = 850;     // sustained silence to end capture
@@ -50,7 +50,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   const [errorMsg, setErrorMsg]         = useState('');
 
   // Refs for all mutable audio / network / RAF resources. We never render
-  // from these — they're for cleanup and the main loop only.
+  // from these, they're for cleanup and the main loop only.
   const streamRef       = useRef(null);
   const audioCtxRef     = useRef(null);
   const analyserRef     = useRef(null);
@@ -128,7 +128,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
   // The conversation loop runs as long as the modal is open: capture →
   // transcribe → agent → speak → capture next. Each turn creates a
   // fresh MediaRecorder (the previous design left the recorder stopped
-  // after turn 1 and never restarted it — that's why the 2nd turn
+  // after turn 1 and never restarted it, that's why the 2nd turn
   // wasn't listening). The persistent resources (stream, audioCtx,
   // analyser) stay alive across turns; only the recorder + RAF loop
   // are per-turn.
@@ -150,7 +150,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
     };
     try { recorder.start(250); } catch { resolve(null); return; }
 
-    // VAD loop — orb animation + silence-after-speech auto-stop.
+    // VAD loop, orb animation + silence-after-speech auto-stop.
     const analyser = analyserRef.current;
     const timeBuf = new Uint8Array(analyser.fftSize);
     let everSpoke = false;
@@ -198,7 +198,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
     try {
       const text = await transcribeBlob(blob, abort.signal);
       if (!mountedRef.current) return;
-      if (!text) return;  // Whisper returned empty — loop to listen again
+      if (!text) return;  // Whisper returned empty, loop to listen again
       setTranscript(text);
       onTranscript?.(text);
 
@@ -273,7 +273,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
 
   const isActive = state === 'listening' || state === 'speaking';
   // Orb scale: 1.0 baseline, bumps up with volume while listening, gentle
-  // pulse while speaking (visual only — actual TTS handled in speakText).
+  // pulse while speaking (visual only, actual TTS handled in speakText).
   const orbScale = state === 'listening'
     ? 1 + Math.min(0.45, volume * 5)
     : state === 'speaking' ? 1.15 : 1;
@@ -303,7 +303,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
         borderRadius: 16,
         boxShadow: '0 24px 80px rgba(0,0,0,0.55)',
         display: 'flex', flexDirection: 'column', overflow: 'hidden',
-        /* Opaque — no see-through to chat behind. */
+        /* Opaque, no see-through to chat behind. */
         opacity: 1,
       }}
     >
@@ -328,7 +328,7 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
         </button>
       </div>
 
-      {/* Main area — orb + captions */}
+      {/* Main area, orb + captions */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
@@ -422,14 +422,14 @@ export default function VoiceMode({ open, onClose, onTranscript, onAgentReply, c
         </div>
       </div>
 
-      {/* Footer — hints + start/retry */}
+      {/* Footer, hints + start/retry */}
       <div style={{
         padding: '14px 24px', borderTop: '1px solid var(--color-border)',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
       }}>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)', flex: 1 }}>
           {state === 'idle' && 'Click the orb to begin.'}
-          {state === 'listening' && 'Speak naturally — I\'ll reply when you pause.'}
+          {state === 'listening' && 'Speak naturally, I\'ll reply when you pause.'}
           {state === 'speaking'  && 'Press Exit or Esc to interrupt.'}
           {state === 'thinking'  && 'Working on it…'}
           {state === 'error'     && 'Click the orb to try again.'}

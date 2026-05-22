@@ -1,5 +1,5 @@
 /**
- * Invoice detail page — view, edit, generate PDF, mark sent / paid.
+ * Invoice detail page, view, edit, generate PDF, mark sent / paid.
  *
  * The "render PDF" call regenerates the file each time so any edits to
  * line items or notes are reflected. Status changes are one-click and
@@ -28,7 +28,7 @@ const STATUS_TONE = {
 
 
 function formatDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     return new Date(iso + 'T00:00:00').toLocaleDateString([], {
       month: 'short', day: 'numeric', year: 'numeric',
@@ -37,7 +37,7 @@ function formatDate(iso) {
 }
 
 function formatWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     return new Date(iso).toLocaleString([], {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -379,7 +379,7 @@ export default function InvoiceDetail() {
                     a.click();
                     URL.revokeObjectURL(a.href);
                   } catch (e) {
-                    flash(`Download failed: ${e.message || 'No PDF yet — render first.'}`);
+                    flash(`Download failed: ${e.message || 'No PDF yet, render first.'}`);
                   }
                 }}
               />
@@ -428,7 +428,7 @@ export default function InvoiceDetail() {
 }
 
 
-// ── Bits (intentionally duplicated across detail pages — see DealDetail) ────
+// ── Bits (intentionally duplicated across detail pages, see DealDetail) ────
 function CenterSpinner() {
   return (
     <div className="page-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>

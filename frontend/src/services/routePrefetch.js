@@ -2,7 +2,7 @@
  * Route prefetch registry.
  *
  * Why: every page in App.jsx is `lazy(() => import('./pages/X'))`. The chunk
- * for a page isn't downloaded until the user actually navigates — and in dev,
+ * for a page isn't downloaded until the user actually navigates, and in dev,
  * Vite compiles each chunk on the first request, so clicks have a visible
  * 1-3s lag. In prod, chunks are pre-built but still cost a network round-trip
  * + parse on first visit.
@@ -12,7 +12,7 @@
  * module cache and the page mounts instantly.
  *
  * The keys MUST match the route paths in App.jsx. Each value is a function
- * that returns the same dynamic import as the App.jsx `lazy(...)` wrapper —
+ * that returns the same dynamic import as the App.jsx `lazy(...)` wrapper , 
  * so the bundler de-duplicates and we don't end up with two chunks for the
  * same page.
  */
@@ -57,7 +57,7 @@ export function prefetchRoute(path) {
   const loader = REGISTRY[path];
   if (!loader) return;
   STARTED.add(path);
-  // Fire-and-forget. Swallow rejections — a failed prefetch shouldn't surface
+  // Fire-and-forget. Swallow rejections, a failed prefetch shouldn't surface
   // an error to the user; if the click happens, the lazy() boundary will
   // catch + retry anyway.
   loader().catch(() => STARTED.delete(path));

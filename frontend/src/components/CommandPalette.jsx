@@ -1,5 +1,5 @@
 /**
- * Global search command palette — opens with Ctrl+K / Cmd+K from anywhere.
+ * Global search command palette, opens with Ctrl+K / Cmd+K from anywhere.
  * Searches across contacts, companies, deals, tasks, invoices, documents,
  * memory, and recent conversations. Keyboard navigable.
  *
@@ -24,7 +24,7 @@ const KIND_META = {
 };
 
 // Slash commands the palette recognises. Each entry produces a synthetic
-// search-result item the user can fire with Enter — same nav model as a real
+// search-result item the user can fire with Enter, same nav model as a real
 // search hit, no parallel UI to maintain.
 const COMMANDS = [
   { trigger: '/call',     icon: Phone,        title: 'Call …',          description: 'Vox: outbound voice call to a contact', route: '/crm?action=call' },
@@ -47,7 +47,7 @@ export default function CommandPalette() {
   const inputRef = useRef(null);
   const navigate = useNavigate();
 
-  // Hotkey handler — Ctrl+K / Cmd+K
+  // Hotkey handler, Ctrl+K / Cmd+K
   useEffect(() => {
     const handler = (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
@@ -73,12 +73,12 @@ export default function CommandPalette() {
     }
   }, [open]);
 
-  // Debounced search — handles both slash commands and free-text search
+  // Debounced search, handles both slash commands and free-text search
   useEffect(() => {
     if (!open) return;
     const q = query.trim();
 
-    // Slash commands take precedence — they don't need a 2-char minimum.
+    // Slash commands take precedence, they don't need a 2-char minimum.
     if (q.startsWith('/')) {
       const matches = COMMANDS
         .filter((c) => c.trigger.startsWith(q.toLowerCase()) || c.trigger.startsWith('/' + q.toLowerCase().slice(1)))

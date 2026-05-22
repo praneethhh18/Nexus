@@ -69,7 +69,7 @@ export function formShareUrl(slug, via = '') {
   return via ? `${u}?via=${encodeURIComponent(via)}` : u;
 }
 
-// ── Field catalogue — used by the builder UI ─────────────────────────────
+// ── Field catalogue, used by the builder UI ─────────────────────────────
 // Mirrors api/routers/lead_forms.py ALLOWED_FIELD_KEYS. Keeping it client-
 // side means the builder doesn't have to round-trip to know what's allowed.
 export const FORM_FIELD_CATALOGUE = [

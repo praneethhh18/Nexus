@@ -5,7 +5,7 @@
  *   <SkeletonText lines={3} />                        // stacked text lines
  *   <SkeletonCard />                                  // card placeholder
  *
- * Uses a CSS keyframe gradient sweep — no JS animation cost. Respects the
+ * Uses a CSS keyframe gradient sweep, no JS animation cost. Respects the
  * theme tokens so skeletons blend into both dark and light modes.
  */
 import { useEffect } from 'react';

@@ -1,5 +1,5 @@
 /**
- * Vox outbound-calls API client — talks to NexusAgent's /api/voice/* routes.
+ * Vox outbound-calls API client, talks to NexusAgent's /api/voice/* routes.
  *
  * The audio bridge runs in the lab (nexuscaller-lab); we never call the lab
  * directly from the browser. NexusAgent's server forwards the dial request

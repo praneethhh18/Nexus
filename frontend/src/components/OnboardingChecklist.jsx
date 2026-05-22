@@ -1,5 +1,5 @@
 /**
- * Dashboard checklist widget — shows remaining onboarding steps with a CTA
+ * Dashboard checklist widget, shows remaining onboarding steps with a CTA
  * for each one, and hides itself once all steps are done or the user has
  * explicitly skipped.
  */
@@ -21,7 +21,7 @@ export default function OnboardingChecklist() {
 
   useEffect(() => {
     load();
-    // Refresh when the user returns to the tab — they may have just completed
+    // Refresh when the user returns to the tab, they may have just completed
     // a step elsewhere in the app.
     const onFocus = () => load();
     window.addEventListener('focus', onFocus);

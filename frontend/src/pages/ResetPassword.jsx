@@ -42,7 +42,7 @@ function StrengthBar({ password }) {
   if (!password) return null;
   const s = pwScore(password);
   const clr = ['', '#ef4444', '#f59e0b', '#10b981'][s];
-  const lbl = ['', 'Weak — add numbers and symbols', 'Fair — getting better', 'Strong password'][s];
+  const lbl = ['', 'Weak, add numbers and symbols', 'Fair, getting better', 'Strong password'][s];
   return (
     <div style={{ marginTop: 7 }}>
       <div style={{ display: 'flex', gap: 4 }}>
@@ -61,7 +61,7 @@ function StrengthBar({ password }) {
 
 // ── Left branding panel (identical to Login) ─────────────────────────────────
 const FEATS = [
-  { icon: '▸', text: '8 AI agents — CRM, voice calls, WhatsApp & email' },
+  { icon: '▸', text: '8 AI agents, CRM, voice calls, WhatsApp & email' },
   { icon: '▸', text: 'Auto follow-ups with smart deal pipeline' },
   { icon: '▸', text: 'Invoice reminders & meeting prep notes' },
   { icon: '▸', text: 'Privacy-first: your data stays on-device' },
@@ -110,7 +110,7 @@ function LeftPanel() {
           }}>always on duty</span>
         </h2>
         <p style={{ fontSize: 13.5, color: '#6b7280', lineHeight: 1.65, marginBottom: 36 }}>
-          8 specialised agents that handle your CRM,<br />outbound calls, WhatsApp, and email — 24/7.
+          8 specialised agents that handle your CRM,<br />outbound calls, WhatsApp, and email, 24/7.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 44 }}>
@@ -130,7 +130,7 @@ function LeftPanel() {
           <p style={{ fontSize: 13, color: '#6b7280', fontStyle: 'italic', lineHeight: 1.6, marginBottom: 9 }}>
             "NexusAgent handles our follow-ups automatically. We saved 3 hours every single day."
           </p>
-          <p style={{ fontSize: 11, color: '#3d4459' }}>— Vikram S., Founder · Mumbai</p>
+          <p style={{ fontSize: 11, color: '#3d4459' }}>,  Vikram S., Founder · Mumbai</p>
         </div>
       </div>
     </div>

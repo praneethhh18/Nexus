@@ -1,5 +1,5 @@
 /**
- * Reports — natural-language → PDF.
+ * Reports, natural-language → PDF.
  *
  * The backend is currently synchronous (5–15 s, sometimes longer on a cold
  * cloud LLM call). Without progress feedback the spinner feels broken, so
@@ -57,7 +57,7 @@ export default function Reports() {
   };
 
   // Walk the user through the stages on a fixed schedule. The real backend
-  // doesn't stream progress yet — this is honest in the sense that these
+  // doesn't stream progress yet, this is honest in the sense that these
   // stages do happen, just we don't know exact timing. Better than a static
   // spinner.
   const startStageWalk = () => {
@@ -95,7 +95,7 @@ export default function Reports() {
     } catch (e) {
       const msg = e.message === 'TIMEOUT'
         ? `The backend didn't respond within ${TIMEOUT_MS / 1000} seconds. ` +
-          'It may still be working — refresh the list in a minute, or try a simpler query.'
+          'It may still be working, refresh the list in a minute, or try a simpler query.'
         : (e.message || 'Unknown error');
       setError(msg);
     } finally {
@@ -138,7 +138,7 @@ export default function Reports() {
             </button>
           </div>
 
-          {/* Sample queries — only when idle */}
+          {/* Sample queries, only when idle */}
           {!loading && !error && (
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 6, fontWeight: 600, letterSpacing: 0.5, textTransform: 'uppercase' }}>
@@ -158,7 +158,7 @@ export default function Reports() {
             </div>
           )}
 
-          {/* Stage walker — honest progress */}
+          {/* Stage walker, honest progress */}
           {loading && (
             <div style={{
               marginTop: 14, padding: 14,
@@ -227,7 +227,7 @@ export default function Reports() {
           <EmptyState
             icon={FileText}
             title="No reports yet"
-            description="Type a request above — totals, trends, comparisons — and a narrated PDF appears here. Click a sample to try without typing."
+            description="Type a request above, totals, trends, comparisons, and a narrated PDF appears here. Click a sample to try without typing."
             size="sm"
             minHeight={180}
           />

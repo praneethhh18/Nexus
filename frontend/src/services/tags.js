@@ -81,7 +81,7 @@ export async function downloadFullExport() {
 
 
 // ── Disaster-recovery backup (admin-only) ─────────────────────────────────
-// Different from `downloadFullExport` — this includes the raw SQLite DB
+// Different from `downloadFullExport`, this includes the raw SQLite DB
 // + ChromaDB so the result is restorable on a new machine, not just
 // human-readable.
 export async function downloadFullBackup() {
@@ -117,7 +117,7 @@ export async function getBackupInfo() {
 export async function restoreBackup(file, { dryRun = true } = {}) {
   const form = new FormData();
   form.append('file', file);
-  // Don't set Content-Type — the browser computes the multipart boundary.
+  // Don't set Content-Type, the browser computes the multipart boundary.
   const headers = {};
   const t = getToken(); if (t) headers.Authorization = `Bearer ${t}`;
   const b = getBusinessId(); if (b) headers['X-Business-Id'] = b;

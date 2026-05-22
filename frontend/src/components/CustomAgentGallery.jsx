@@ -1,5 +1,5 @@
 /**
- * Template gallery — shows the starter agents the user can clone.
+ * Template gallery, shows the starter agents the user can clone.
  * One click creates a configured custom agent ready to enable.
  */
 import { useState, useEffect } from 'react';
@@ -50,7 +50,7 @@ export default function CustomAgentGallery({ onClose, onCreated }) {
           <div>
             <h3 style={{ margin: 0, fontSize: 16, color: 'var(--color-text)' }}>Agent templates</h3>
             <p style={{ margin: '4px 0 0', fontSize: 11, color: 'var(--color-text-dim)' }}>
-              Clone one to get a ready-to-run agent — edit anything before enabling.
+              Clone one to get a ready-to-run agent, edit anything before enabling.
             </p>
           </div>
           <button onClick={onClose} className="btn-ghost"><X size={14} /></button>

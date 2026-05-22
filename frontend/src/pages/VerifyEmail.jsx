@@ -79,7 +79,7 @@ export default function VerifyEmail() {
           <span className="ve-rail-grad">always on duty</span>
         </h1>
         <p className="ve-rail-p">
-          We're verifying your email and activating the trial. Takes a few seconds —
+          We're verifying your email and activating the trial. Takes a few seconds , 
           no card, no commitment.
         </p>
         <ul className="ve-rail-list">
@@ -155,7 +155,7 @@ export default function VerifyEmail() {
             </p>
             <p style={{ ...p, marginTop: 14, fontSize: 13 }}>
               Already verified your account? Just{' '}
-              <Link to="/login" style={a}>sign in</Link>{' '}— no link needed.
+              <Link to="/login" style={a}>sign in</Link>{' '},  no link needed.
             </p>
           </>
         )}

@@ -62,7 +62,7 @@ export default class ErrorBoundary extends Component {
 
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>Something broke</h1>
           <p style={{ marginTop: 8, fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
-            Your data is safe. This page hit an unexpected error while rendering — try refreshing
+            Your data is safe. This page hit an unexpected error while rendering, try refreshing
             or go back home. If it keeps happening, the detail block below has what you'd paste
             into an issue.
           </p>

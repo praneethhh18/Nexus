@@ -24,7 +24,7 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-// Shared helper for multipart requests (file uploads) — must also send auth + business headers
+// Shared helper for multipart requests (file uploads), must also send auth + business headers
 async function formRequest(path, form) {
   const token = getToken();
   const headers = {};

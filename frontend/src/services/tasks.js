@@ -37,7 +37,7 @@ export const taskSummary = (mine = false) => req(`/summary${mine ? '?mine=true' 
 
 // Extract action items from pasted meeting notes / transcript.
 // Returns { items: [{title, description, priority, due_hint, owner_hint}], summary, raw_count }.
-// Preview-only — caller still needs to POST /api/tasks per accepted item.
+// Preview-only, caller still needs to POST /api/tasks per accepted item.
 export const extractFromNotes = (notes) =>
   req('/extract-from-notes', { method: 'POST', body: JSON.stringify({ notes }) });
 

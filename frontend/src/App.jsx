@@ -56,7 +56,7 @@ function ProtectedRoute({ children }) {
 
 
 // Shown while a route chunk is in flight. Uses the same skeleton primitives
-// pages render — feels like the page is already there, not like it broke.
+// pages render, feels like the page is already there, not like it broke.
 function RouteFallback() {
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -97,7 +97,7 @@ export default function App() {
           <Route path="/reset-password" element={L(ResetPassword)} />
           <Route path="/accept-invite"  element={L(AcceptInvite)} />
           <Route path="/verify-email"   element={L(VerifyEmail)} />
-          {/* Public hosted lead form — no auth, no app chrome. */}
+          {/* Public hosted lead form, no auth, no app chrome. */}
           <Route path="/f/:slug"        element={L(PublicLeadForm)} />
           <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
             <Route path="/"              element={L(Dashboard)} />
@@ -127,7 +127,7 @@ export default function App() {
             <Route path="/admin/metrics" element={L(AdminMetrics)} />
             <Route path="/settings"      element={L(Settings)} />
             <Route path="/pricing"       element={L(Pricing)} />
-            {/* Dev-mode pages — still routable even when hidden from nav */}
+            {/* Dev-mode pages, still routable even when hidden from nav */}
             <Route path="/database"      element={L(Database)} />
             <Route path="/sql"           element={L(SQLEditor)} />
             <Route path="/whatif"        element={L(WhatIf)} />

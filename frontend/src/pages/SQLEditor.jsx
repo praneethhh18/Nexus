@@ -1,5 +1,5 @@
 /**
- * SQL Editor — direct query runner against the local SQLite DB.
+ * SQL Editor, direct query runner against the local SQLite DB.
  *
  * Uses the proper /api/sql/execute endpoint (auth + business-id + safety
  * guards). Defaults to SELECT-only; the "Allow writes" toggle has to be
@@ -73,7 +73,7 @@ export default function SQLEditor() {
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div className="page-header">
         <h1>SQL Editor</h1>
-        <p>Direct query runner. Read-only by default — flip "Allow writes" to mutate data. <code>nexus_*</code> tables are always protected.</p>
+        <p>Direct query runner. Read-only by default, flip "Allow writes" to mutate data. <code>nexus_*</code> tables are always protected.</p>
       </div>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

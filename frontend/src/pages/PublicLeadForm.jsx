@@ -5,7 +5,7 @@
  * fields the workspace chose, and posts back to /api/public/leads with the
  * slug + an optional ?via=<channel> attribution tag.
  *
- * Standalone — no app chrome, no auth, no business context. Anyone with the
+ * Standalone, no app chrome, no auth, no business context. Anyone with the
  * URL can submit.
  */
 import { useEffect, useState } from 'react';
@@ -52,14 +52,14 @@ export default function PublicLeadForm() {
     e.preventDefault();
     setBusy(true); setErr('');
     try {
-      // Public endpoint requires `name` — synthesize from first available
+      // Public endpoint requires `name`, synthesize from first available
       // human-name field if the form didn't include one explicitly.
       const payload = { ...values };
       if (!payload.name) payload.name = (payload.email || payload.phone || 'Anonymous').slice(0, 200);
       await submitPublicForm(slug, payload, via);
       setSubmitted(true);
     } catch (e2) {
-      setErr(e2.message || 'Submission failed — please try again.');
+      setErr(e2.message || 'Submission failed, please try again.');
     } finally {
       setBusy(false);
     }
@@ -67,7 +67,7 @@ export default function PublicLeadForm() {
 
   const accent = schema?.accent_color || '#8b5cf6';
 
-  // ── Theme — light, minimal, single-color accent ─────────────────────────
+  // ── Theme, light, minimal, single-color accent ─────────────────────────
   const page = {
     minHeight: '100vh',
     background: `radial-gradient(1200px 600px at 20% -10%, ${accent}18, transparent 60%), #fafaff`,
@@ -127,7 +127,7 @@ export default function PublicLeadForm() {
           <CheckCircle2 size={32} style={{ color: accent }} />
           <h2 style={{ fontSize: 20, fontWeight: 700, margin: '12px 0 8px' }}>Thank you</h2>
           <p style={{ fontSize: 14, color: '#444', lineHeight: 1.5, margin: 0 }}>
-            {schema.thank_you || 'We received your details — we’ll be in touch soon.'}
+            {schema.thank_you || 'We received your details, we’ll be in touch soon.'}
           </p>
         </div>
       </div>

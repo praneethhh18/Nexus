@@ -1,5 +1,5 @@
 /**
- * Keyboard shortcut reference — opens on `?`. Single source of truth for
+ * Keyboard shortcut reference, opens on `?`. Single source of truth for
  * which shortcuts actually work in the app. If you add a new shortcut, add
  * a row here too so it stays discoverable.
  */

@@ -21,11 +21,11 @@ import { useTerm } from '../services/industryTerms';
 import { getIndustryKPIs } from '../services/onboarding';
 
 // Cache key for the full dashboard payload (namespaced by current business
-// id inside keyFor()). 60s TTL — quick enough to feel fresh, long enough to
+// id inside keyFor()). 60s TTL, quick enough to feel fresh, long enough to
 // kill the "skeleton flash on every back-navigation" problem.
 const DASH_CACHE_KEY = 'dashboard:overview';
 
-// Default to INR + en-IN — NexusAgent is built for Indian SMBs and the
+// Default to INR + en-IN, NexusAgent is built for Indian SMBs and the
 // pipeline / invoice totals stored in the DB are already in rupees. The
 // `cur` arg is kept for forward-compat if a workspace ever switches to USD.
 const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0 }).format(v || 0);
@@ -72,7 +72,7 @@ export default function Dashboard() {
   // module-level cache so navigating BACK to the dashboard renders the real
   // numbers instantly instead of flashing skeleton → ₹0 KPIs → real data.
   // The background reload() below still fires and replaces anything stale.
-  // Industry-aware KPI labels — Healthcare sees "Upcoming appointments",
+  // Industry-aware KPI labels, Healthcare sees "Upcoming appointments",
   // Real estate sees "Active listings", etc. Falls through to generic CRM
   // labels for businesses without an industry set.
   const t = useTerm();
@@ -98,7 +98,7 @@ export default function Dashboard() {
   const [evening, setEvening] = useState(_cached.evening ?? null);
   const [eveningBusy, setEveningBusy] = useState(false);
   const [eveningError, setEveningError] = useState('');
-  // First-load flag — until the initial reload() completes, we treat zero
+  // First-load flag, until the initial reload() completes, we treat zero
   // counts as "unknown" not "clean". Without this, the dashboard flashes a
   // misleading "Inbox clean, no overdue invoices" green banner for ~2s
   // before the real overdue / approval data arrives.
@@ -121,7 +121,7 @@ export default function Dashboard() {
     //      block the strip on slow secondary calls (CRM pipeline, calendar,
     //      etc. were extending the skeleton to 6-7s).
     //   2. SECONDARY = everything else (KPI cards, pipeline, calendar). These
-    //      fire in parallel but their results paint independently — each KPI
+    //      fire in parallel but their results paint independently, each KPI
     //      can sit at "0" until its own data lands without misleading anyone.
     // Each call has its own .catch so a single slow/dead endpoint can't take
     // the whole dashboard hostage.
@@ -172,7 +172,7 @@ export default function Dashboard() {
     // off the setters' closures via a microtask so we capture the post-update
     // state rather than the stale values at start-of-reload.
     queueMicrotask(() => {
-      // We re-read state values from refs via getters that were set above —
+      // We re-read state values from refs via getters that were set above , 
       // but React state isn't reflected in closures, so we read from the
       // most-recent fetched results we captured locally. The setX(...) calls
       // happened above, so the cache write below uses those resolved values.
@@ -183,7 +183,7 @@ export default function Dashboard() {
   // single snapshot. Cheaper than threading the values through reload(),
   // and naturally picks up the briefing/evening loaders too.
   // Fetch industry KPIs in parallel with the dashboard's tier-2 data.
-  // Treated as additive — if it 4xx/5xx (e.g. business has no industry,
+  // Treated as additive, if it 4xx/5xx (e.g. business has no industry,
   // or endpoint not deployed), dashboard renders the legacy KPI cards
   // unchanged.
   useEffect(() => {
@@ -226,7 +226,7 @@ export default function Dashboard() {
         setBriefing(b);
       } else {
         // Show the last known briefing (marked stale) so something is on the
-        // page. Auto-generation moved BEHIND a user click — the LLM call
+        // page. Auto-generation moved BEHIND a user click, the LLM call
         // takes 5-10s and was pinning the dashboard mid-load on every visit.
         // The backend scheduler still produces a fresh briefing at 8 AM IST
         // (agents/background/scheduler.py), so most days users land on a
@@ -234,7 +234,7 @@ export default function Dashboard() {
         if (b?.id) setBriefing({ ...b, _stale: true });
         else setBriefing(null);
       }
-    } catch { /* ignore — non-critical */ }
+    } catch { /* ignore, non-critical */ }
     try {
       const all = await listPersonas();
       setBriefingAgent(all.find(p => p.agent_key === 'morning_briefing') || null);
@@ -244,7 +244,7 @@ export default function Dashboard() {
   useEffect(() => { loadBriefing(); }, [loadBriefing]);
 
 
-  // Evening digest — surfaces only after 4 PM local. Auto-generates on first
+  // Evening digest, surfaces only after 4 PM local. Auto-generates on first
   // afternoon load if today's doesn't exist yet, mirroring the morning briefing.
   const loadEvening = useCallback(async () => {
     if (new Date().getHours() < 16) return;
@@ -260,7 +260,7 @@ export default function Dashboard() {
         try {
           const fresh = await eveningRun();
           if (fresh?.id) setEvening(fresh);
-        } catch { /* silent — manual button still works */ }
+        } catch { /* silent, manual button still works */ }
         finally { setEveningBusy(false); }
       }
     } catch { /* ignore */ }
@@ -302,7 +302,7 @@ export default function Dashboard() {
       ((pipe.by_stage?.won?.total || 0) + (pipe.by_stage?.lost?.total || 0))
     : 0;
 
-  // Detect "fresh business" — nothing created yet
+  // Detect "fresh business", nothing created yet
   const isEmptyBusiness =
     crm && tasks && invoices &&
     (crm.contacts || 0) === 0 &&
@@ -329,7 +329,7 @@ export default function Dashboard() {
   const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
-  // Tab state — Overview is the default Dashboard; Analytics shows the
+  // Tab state, Overview is the default Dashboard; Analytics shows the
   // pipeline velocity / forecast / agent impact / churn risk panels that
   // used to live on a separate sidebar page. Persist the choice across
   // refreshes so a user who lives in Analytics doesn't get bounced back.
@@ -338,7 +338,7 @@ export default function Dashboard() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Fires only when /?welcome=<plan> is in the URL — set by /pricing
+      {/* Fires only when /?welcome=<plan> is in the URL, set by /pricing
           after a verified Razorpay payment. Self-managed: closes itself
           and strips the query param. */}
       <PlanWelcomeModal />
@@ -347,7 +347,7 @@ export default function Dashboard() {
           <h1>{greeting}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}</h1>
           <p>Overview for <strong style={{ color: 'var(--color-text)' }}>{current?.name || 'your business'}</strong></p>
         </div>
-        {/* Tabs — Overview / Analytics. Pill-style; matches our token system. */}
+        {/* Tabs, Overview / Analytics. Pill-style; matches our token system. */}
         <div style={{
           display: 'inline-flex', gap: 4,
           padding: 3,
@@ -389,12 +389,12 @@ export default function Dashboard() {
 
       {view === 'overview' && (
       <div className="page-body">
-        {/* Onboarding checklist — self-hides when complete or skipped */}
+        {/* Onboarding checklist, self-hides when complete or skipped */}
         <div style={{ marginBottom: 14 }}>
           <OnboardingChecklist />
         </div>
 
-        {/* Today's focus — first-look value strip. We pass `loaded` so the
+        {/* Today's focus, first-look value strip. We pass `loaded` so the
             component can show a skeleton instead of the misleading clean-desk
             banner while the API calls are still in flight. */}
         {!isEmptyBusiness && (
@@ -408,7 +408,7 @@ export default function Dashboard() {
           />
         )}
 
-        {/* Morning briefing card — the daily-use moment */}
+        {/* Morning briefing card, the daily-use moment */}
         {!isEmptyBusiness && (
           <div className="panel" style={{
             marginBottom: 14,
@@ -449,7 +449,7 @@ export default function Dashboard() {
                       ? <>Generated {new Date(briefing.created_at + 'Z').toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })} · <span style={{ color: briefing.narrative_mode === 'cloud' ? 'var(--color-info)' : 'var(--color-text-dim)' }}>{briefing.narrative_mode === 'cloud' ? 'cloud narrative' : 'local'}</span></>
                       : briefingBusy
                         ? 'Generating today\'s briefing…'
-                        : 'Not generated yet today — runs automatically each morning at 08:00 UTC.'}
+                        : 'Not generated yet today, runs automatically each morning at 08:00 UTC.'}
                     {briefing?._stale && (
                       <span style={{
                         padding: '1px 6px', borderRadius: 'var(--r-pill)',
@@ -487,7 +487,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Evening digest — shown after 4 PM local; auto-generates on first afternoon load */}
+        {/* Evening digest, shown after 4 PM local; auto-generates on first afternoon load */}
         {!isEmptyBusiness && (evening || eveningBusy || new Date().getHours() >= 16) && (
           <div className="panel" style={{
             marginBottom: 14,
@@ -542,7 +542,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Empty-state banner — gives a one-click path to a working demo */}
+        {/* Empty-state banner, gives a one-click path to a working demo */}
         {isEmptyBusiness && (
           <div style={{
             padding: '18px 20px', marginBottom: 14,
@@ -564,7 +564,7 @@ export default function Dashboard() {
                 Your workspace is empty
               </div>
               <div style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-                Load sample data to see NexusAgent in action — companies, deals across the pipeline, tasks,
+                Load sample data to see NexusAgent in action, companies, deals across the pipeline, tasks,
                 invoices, plus AI lead scores, a BANT-qualified contact, a Forge candidate awaiting verification,
                 interaction history, an ICP, and an intake key. Nothing leaves your machine.
               </div>
@@ -581,10 +581,10 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Top KPI row — the numbers that matter */}
+        {/* Top KPI row, the numbers that matter */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 14 }}>
           {industryKpis?.tiles?.length === 4 ? (
-            // Industry-aware tiles — values match labels (Healthcare shows
+            // Industry-aware tiles, values match labels (Healthcare shows
             // a COUNT of appointments, not a ₹ pipeline). Tile.tone maps
             // to the colour CSS var. Click routes to the most relevant
             // section by tone (warn→crm, ok→crm, info→invoices, err→tasks).
@@ -853,13 +853,13 @@ export default function Dashboard() {
 }
 
 
-// ── Today's focus — first-look value strip ─────────────────────────────────
+// ── Today's focus, first-look value strip ─────────────────────────────────
 // Renders only when there's actual focus to surface. Each tile self-hides
 // when its count is zero, so the strip never shows a sea of "0"s.
 function TodaysFocus({ loaded, pendingApprovals, todayTasksCount, overdueInvoiceCount, overdueInvoiceTotal, navigate }) {
   // While the parent's first reload() is still in flight, render a skeleton
   // strip. Without this gate the component sees zero counts and renders the
-  // misleading "Inbox clean, no overdue invoices" banner — then flips to
+  // misleading "Inbox clean, no overdue invoices" banner, then flips to
   // "₹4.5L overdue" two seconds later. Looks like the data was fabricated.
   if (!loaded) {
     return (
@@ -906,7 +906,7 @@ function TodaysFocus({ loaded, pendingApprovals, todayTasksCount, overdueInvoice
   }
 
   if (tiles.length === 0) {
-    // The clean-desk state — show a brief reassurance instead of a blank.
+    // The clean-desk state, show a brief reassurance instead of a blank.
     return (
       <div className="panel" style={{
         marginBottom: 14, padding: 14,

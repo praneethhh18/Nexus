@@ -1,5 +1,5 @@
 /**
- * Email Templates — manage reusable subject/body presets with {{variable}}
+ * Email Templates, manage reusable subject/body presets with {{variable}}
  * substitution. Pairs with the send_email_from_template agent tool so the
  * same templates work whether you compose by chat or by hand.
  */
@@ -233,7 +233,7 @@ function EditorModal({ initial, onClose, onSave }) {
   return (
     <Modal title={initial.id ? 'Edit template' : 'New email template'} onClose={onClose} wide>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <Field label="Name (internal — what you'll search by)">
+        <Field label="Name (internal, what you'll search by)">
           <input
             className="field-input" value={name}
             onChange={(e) => setName(e.target.value)}
@@ -245,7 +245,7 @@ function EditorModal({ initial, onClose, onSave }) {
           <input
             className="field-input" value={subject}
             onChange={(e) => setSubj(e.target.value)}
-            placeholder="e.g. Invoice {{invoice_id}} overdue — Rs.{{amount}}"
+            placeholder="e.g. Invoice {{invoice_id}} overdue, Rs.{{amount}}"
             maxLength={200}
           />
         </Field>

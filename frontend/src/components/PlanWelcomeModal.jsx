@@ -1,5 +1,5 @@
 /**
- * Plan welcome modal — fires on /?welcome=<plan> after a verified trial
+ * Plan welcome modal, fires on /?welcome=<plan> after a verified trial
  * activation or paid checkout.
  *
  * Design intent: this is the customer's first impression of the product
@@ -7,8 +7,8 @@
  *   - Real brand mark (not a celebratory emoji)
  *   - Subtle eyebrow + confident headline (not a "🎉 TRIAL ACTIVATED" pill)
  *   - Stats row that says something specific about THIS plan (8 agents,
- *     500 WhatsApp, 100 voice min) — not a generic 6-bullet checklist
- *   - One primary CTA — the wizard already activated the agents and
+ *     500 WhatsApp, 100 voice min), not a generic 6-bullet checklist
+ *   - One primary CTA, the wizard already activated the agents and
  *     invites belong in Settings, so duplicating those CTAs here just
  *     creates a "now what?" moment
  *   - One quiet line of fine print
@@ -88,7 +88,7 @@ export default function PlanWelcomeModal() {
       <ModalStyles />
       <div className="pwm-backdrop" onClick={close} role="dialog" aria-modal="true">
         <div className="pwm-card" onClick={(e) => e.stopPropagation()}>
-          {/* Decorative top ribbon — a single thin gradient line that anchors
+          {/* Decorative top ribbon, a single thin gradient line that anchors
               the brand colors without being a hero band. */}
           <div className="pwm-ribbon" aria-hidden />
 
@@ -112,7 +112,7 @@ export default function PlanWelcomeModal() {
               {isTrial
                 ? 'Full access to every agent. No card on file. Cancel anytime from Settings.'
                 : (price !== null && price > 0
-                    ? `₹${price.toLocaleString('en-IN')} ${period} — your account is now active.`
+                    ? `₹${price.toLocaleString('en-IN')} ${period}, your account is now active.`
                     : 'Your account is now active.')}
             </p>
 

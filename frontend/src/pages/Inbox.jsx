@@ -1,10 +1,10 @@
 /**
- * Inbox — one page for "what needs me right now".
+ * Inbox, one page for "what needs me right now".
  *
  * Unifies three streams into a single triage view:
- *   1. Needs your approval  — agent-drafted actions awaiting decision
- *   2. Your overdue items   — tasks past their due date
- *   3. Today                — tasks due today + calendar events today
+ *   1. Needs your approval , agent-drafted actions awaiting decision
+ *   2. Your overdue items  , tasks past their due date
+ *   3. Today               , tasks due today + calendar events today
  *
  * Empty sections hide entirely. Each row links to the full record for
  * deeper editing, so this page stays fast to scan.
@@ -140,7 +140,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
 
   return (
     <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Collapsed header — clickable area reveals the draft. */}
+      {/* Collapsed header, clickable area reveals the draft. */}
       <div
         onClick={() => isPending && onToggle()}
         style={{ padding: 12, display: 'flex', alignItems: 'center', gap: 10,
@@ -231,7 +231,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
                                     padding: f.multiline ? 10 : 0,
                                     borderRadius: f.multiline ? 6 : 0,
                                     border: f.multiline ? '1px solid var(--color-border)' : 'none' }}>
-                        {v || <span style={{ color: 'var(--color-text-dim)', fontStyle: 'italic' }}>—</span>}
+                        {v || <span style={{ color: 'var(--color-text-dim)', fontStyle: 'italic' }}>, </span>}
                       </div>
                     )}
                   </React.Fragment>
@@ -240,7 +240,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
             </div>
           )}
 
-          {/* Action buttons — only for pending. */}
+          {/* Action buttons, only for pending. */}
           {isPending && !confirmMode && !refineMode && (
             <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button className="btn-ghost" style={{ color: 'var(--color-err)' }} onClick={() => onReject(action)}>
@@ -277,7 +277,7 @@ function ApprovalRow({ action, personaByKey, expanded, onToggle,
             </div>
           )}
 
-          {/* Refine mode — Save & Approve commits the edits then approves. */}
+          {/* Refine mode, Save & Approve commits the edits then approves. */}
           {isPending && refineMode && (
             <div style={{ marginTop: 14, display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button className="btn-ghost" onClick={() => { setRefineMode(false); setRefineDraft({}); }}>Cancel edit</button>
@@ -399,7 +399,7 @@ function SentRow({ interaction, expanded, onToggle }) {
   const body = interaction.summary || interaction.body || '';
   // `to` is in metadata for agent-sent emails; fall back to contact name.
   const meta = interaction.metadata || {};
-  const to = meta.to || interaction.contact_name || interaction.recipient || '—';
+  const to = meta.to || interaction.contact_name || interaction.recipient || ', ';
   return (
     <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
       <div onClick={onToggle}
@@ -440,7 +440,7 @@ function SentRow({ interaction, expanded, onToggle }) {
           </div>
           <div style={{ marginTop: 8, fontSize: 10.5, color: 'var(--color-text-dim)' }}>
             Read receipts and bounce tracking require a Resend account with a
-            verified domain — configure in <strong>Settings → Email</strong>.
+            verified domain, configure in <strong>Settings → Email</strong>.
           </div>
         </div>
       )}
@@ -489,14 +489,14 @@ export default function Inbox() {
   const [msg, setMsg] = useState('');
   const [loading, setLoading] = useState(true);
   // Approval UX state. The row expands to a "review" panel; from there
-  // the user can Approve (fires immediately — review was the confirm),
+  // the user can Approve (fires immediately, review was the confirm),
   // Refine (edit the agent's draft inline, then Save & Approve), or
   // Reject (with optional reason inline).
   const [rejectingId, setRejectingId] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [refiningId, setRefiningId] = useState(null);
   const [refineDraft, setRefineDraft] = useState({});
-  // Inline briefing surface — set when the user clicks the "Generate
+  // Inline briefing surface, set when the user clicks the "Generate
   // briefing" nudge so the result appears IN the Inbox instead of
   // teleporting them to Dashboard.
   const [briefingInline, setBriefingInline] = useState(null);
@@ -535,7 +535,7 @@ export default function Inbox() {
     setNudgeBusy(n.id);
     try {
       // Special case: the "Generate briefing" nudge. The backend used to
-      // accept-then-navigate to /dashboard which felt like a teleport —
+      // accept-then-navigate to /dashboard which felt like a teleport , 
       // user clicked a button on Inbox and ended up on a different page
       // wondering what happened. Now we run the briefing here and show
       // it inline at the top of the Inbox.
@@ -586,11 +586,11 @@ export default function Inbox() {
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
   // Approve: review-then-commit. Since the row already expanded showing
-  // the full draft, clicking Approve here IS the confirmation — no
+  // the full draft, clicking Approve here IS the confirmation, no
   // second dialog. One click is the commit because the user already
   // engaged via "View & Approve".
   const handleApprove = async (a) => {
-    try { await approveAction(a.id); flash('Approved — action executed.'); reload(); }
+    try { await approveAction(a.id); flash('Approved, action executed.'); reload(); }
     catch (e) { flash(`Failed: ${e.message}`); }
   };
 
@@ -634,7 +634,7 @@ export default function Inbox() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>Inbox</h1>
-          <p>Everything that wants your attention right now — approvals, overdue items, today's meetings</p>
+          <p>Everything that wants your attention right now, approvals, overdue items, today's meetings</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <InboxIcon size={16} color="var(--color-accent)" />
@@ -645,7 +645,7 @@ export default function Inbox() {
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}
 
       <div style={{ flex: 1, overflow: 'auto', padding: 20 }}>
-        {/* Inline briefing — shown when the user clicked "Generate
+        {/* Inline briefing, shown when the user clicked "Generate
             briefing" from a nudge above. Stays on the Inbox page so the
             click doesn't feel like a teleport. */}
         {briefingInline && briefingInline.data && (
@@ -681,7 +681,7 @@ export default function Inbox() {
             </div>
             <div style={{ fontSize: 13, color: 'var(--color-text)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
               {(briefingInline.data?.summary || briefingInline.data?.text || '').slice(0, 600)
-                || 'Briefing ready — open the Dashboard to read the full version.'}
+                || 'Briefing ready, open the Dashboard to read the full version.'}
             </div>
           </div>
         )}

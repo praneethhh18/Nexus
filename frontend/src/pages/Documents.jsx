@@ -67,11 +67,11 @@ const VAR_HINTS = {
   recipient_email:    { type: 'email',  placeholder: 'priya@acme.com' },
   // Long-form
   summary:            { type: 'long',   placeholder: 'Two or three sentences describing the engagement.',                           required: true },
-  scope:              { type: 'long',   placeholder: 'What is in scope. Be specific — vague scope causes scope creep.',             required: true },
+  scope:              { type: 'long',   placeholder: 'What is in scope. Be specific, vague scope causes scope creep.',             required: true },
   out_of_scope:       { type: 'long',   placeholder: 'What is explicitly NOT included. Equally important to write.' },
   objectives:         { type: 'long',   placeholder: 'One per line.\n• Cut response time by 30%\n• Cover top 5 use cases' },
   deliverables:       { type: 'long',   placeholder: 'One per line.\n• Discovery report\n• Working prototype\n• Final handoff doc' },
-  milestones:         { type: 'long',   placeholder: 'One per line. Include rough dates.\n• Kickoff — Mon 5 May\n• Mid-review — Mon 19 May' },
+  milestones:         { type: 'long',   placeholder: 'One per line. Include rough dates.\n• Kickoff, Mon 5 May\n• Mid-review, Mon 19 May' },
   acceptance:         { type: 'long',   placeholder: 'How the client decides the work is complete.' },
   acceptance_criteria:{ type: 'long',   placeholder: 'How the client decides the work is complete.' },
   payment_terms:      { type: 'long',   placeholder: 'e.g. 50% on signing, 50% on delivery. Net-30. Bank: HDFC ··· 1234.',           required: true },
@@ -94,7 +94,7 @@ function varLabel(v) {
 function hintFor(varName) {
   const exact = VAR_HINTS[varName];
   if (exact) return exact;
-  // Fuzzy match — find the first key that's a substring of the variable.
+  // Fuzzy match, find the first key that's a substring of the variable.
   const lower = varName.toLowerCase();
   for (const k of Object.keys(VAR_HINTS)) {
     if (lower.includes(k)) return VAR_HINTS[k];
@@ -115,10 +115,10 @@ function GenerateForm({ template, onSubmit, onCancel }) {
   const [vars, setVars] = useState(() => Object.fromEntries(template.variables.map((v) => [v, ''])));
   const [busy, setBusy] = useState(false);
   const [showAll, setShowAll] = useState(false);
-  // Autofill state — the upload-a-PDF-and-fill-the-form flow.
+  // Autofill state, the upload-a-PDF-and-fill-the-form flow.
   const [autofill, setAutofill] = useState({ open: false, busy: false, error: '',
                                               pastedText: '', mode: 'choose' });
-  // Knowledge-base category — controls which "bucket" the doc lives in
+  // Knowledge-base category, controls which "bucket" the doc lives in
   // so agents can filter their searches (e.g. competitor-only).
   const [category, setCategory] = useState('other');
   // Logo: { path, filename, previewUrl } once uploaded.
@@ -143,7 +143,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
     if (logo?.previewUrl) URL.revokeObjectURL(logo.previewUrl);
     setLogo(null);
   };
-  // Set of variable keys the AI filled in this session — used to show
+  // Set of variable keys the AI filled in this session, used to show
   // a small "AI" badge that fades once the user types over the field.
   const [aiFilled, setAiFilled] = useState(new Set());
 
@@ -227,7 +227,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
 
   return (
     <form onSubmit={submit}>
-      {/* Description block — explains what this template does. */}
+      {/* Description block, explains what this template does. */}
       <div style={{
         padding: '10px 12px', marginBottom: 14,
         background: 'var(--color-surface-1)',
@@ -248,7 +248,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
           <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500 }}>
             Document title <span style={{ color: 'var(--color-err)' }}>*</span>
           </label>
-          <input className="field-input" autoFocus required value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`e.g. Acme — ${template.name}`} maxLength={200} />
+          <input className="field-input" autoFocus required value={title} onChange={(e) => setTitle(e.target.value)} placeholder={`e.g. Acme, ${template.name}`} maxLength={200} />
           <span style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>Used as the file name.</span>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -270,7 +270,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
         </div>
       </div>
 
-      {/* Logo / branding — optional image embedded at the top of the
+      {/* Logo / branding, optional image embedded at the top of the
           generated document. Most SMB users want their company logo on
           proposals + contracts; this is the path of least resistance. */}
       <div className="divider-h">Branding (optional)</div>
@@ -327,7 +327,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
                 Add your company logo
               </div>
               <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)' }}>
-                PNG / JPG / WEBP &mdash; embedded at the top of the document. Max 5 MB.
+                PNG / JPG / WEBP , embedded at the top of the document. Max 5 MB.
               </div>
               {logoErr && (
                 <div style={{ fontSize: 10.5, color: 'var(--color-err)', marginTop: 4 }}>
@@ -346,7 +346,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
         )}
       </div>
 
-      {/* Auto-fill from a reference doc — saves the user from typing
+      {/* Auto-fill from a reference doc, saves the user from typing
           every field. Drops a PDF or text from a past contract /
           proposal / offer and the AI maps it onto our template variables. */}
       <div style={{
@@ -358,7 +358,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
       }}>
         <Sparkles size={14} color="var(--color-accent)" />
         <div style={{ flex: 1, fontSize: 12, color: 'var(--color-text)' }}>
-          <b>Tired of typing?</b> Drop a past PDF / Word doc / paste any text — AI
+          <b>Tired of typing?</b> Drop a past PDF / Word doc / paste any text, AI
           will auto-fill the fields below. Edit anything you want before generating.
         </div>
         <button type="button" className="btn-primary" style={{ fontSize: 11 }}
@@ -367,7 +367,7 @@ function GenerateForm({ template, onSubmit, onCancel }) {
         </button>
       </div>
 
-      {/* Template variables — grouped by required first, then optional */}
+      {/* Template variables, grouped by required first, then optional */}
       <div className="divider-h">Fill in the template</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         {visibleVars.map((v) => {
@@ -475,7 +475,7 @@ function AutofillModal({ state, setState, onFile, onText }) {
 
         <p style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.5, marginTop: 0 }}>
           Upload a similar document (e.g. your last contract) or paste any text.
-          The AI reads it and fills in the form fields below — you can edit anything before generating.
+          The AI reads it and fills in the form fields below, you can edit anything before generating.
         </p>
 
         {/* Mode toggle */}
@@ -514,7 +514,7 @@ function AutofillModal({ state, setState, onFile, onText }) {
               ) : (
                 <><Upload size={28} color="var(--color-text-dim)" />
                   <div style={{ fontSize: 12, color: 'var(--color-text)' }}>Click to choose a file</div>
-                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>PDF, TXT, or MD &mdash; up to 25 MB</div>
+                  <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>PDF, TXT, or MD , up to 25 MB</div>
                 </>
               )}
             </button>
@@ -526,7 +526,7 @@ function AutofillModal({ state, setState, onFile, onText }) {
             <textarea
               className="field-input"
               rows={9}
-              placeholder='Paste the full text of your reference document here — e.g. last year&apos;s contract, an offer letter, an old proposal. The AI will pull out the relevant fields.'
+              placeholder='Paste the full text of your reference document here, e.g. last year&apos;s contract, an offer letter, an old proposal. The AI will pull out the relevant fields.'
               value={state.pastedText || ''}
               onChange={(e) => setState({ ...state, pastedText: e.target.value })}
               maxLength={200_000}
@@ -565,7 +565,7 @@ export default function Documents() {
   const [documents, setDocuments] = useState(_cached.documents ?? []);
   const [modal, setModal] = useState(null);
   const [msg, setMsg] = useState('');
-  // Extract modal state — null when closed.
+  // Extract modal state, null when closed.
   // { mode: 'choose' | 'pasting', text, fileName, busy, error, result }
   const [extractModal, setExtractModal] = useState(null);
 
@@ -641,10 +641,10 @@ export default function Documents() {
   };
 
   // ── Upload-to-knowledge-base flow ──────────────────────────────────────
-  // Separate from "Extract from PDF" — extract is preview-only, this one
+  // Separate from "Extract from PDF", extract is preview-only, this one
   // actually adds files to the searchable knowledge base so agents can
   // query them later (e.g. Competitor Price Watcher searches by category).
-  // Supports multi-file upload — pick a category once, drop many PDFs in
+  // Supports multi-file upload, pick a category once, drop many PDFs in
   // one go, agent indexes them all under that bucket.
   const [uploadModal, setUploadModal] = useState(null);
   const openUploadModal = () => {
@@ -657,7 +657,7 @@ export default function Documents() {
       const r = await uploadBatchToKnowledgeBase(uploadModal.files, {
         category: uploadModal.category,
       });
-      // Show per-file outcome inside the modal — keeps the user oriented
+      // Show per-file outcome inside the modal, keeps the user oriented
       // when one of the files is a scanned PDF (and so fails to ingest).
       setUploadModal((m) => ({ ...m, busy: false, results: r }));
       const tag = uploadModal.category;
@@ -676,7 +676,7 @@ export default function Documents() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
           <h1>Documents</h1>
-          <p>Generate from templates — or extract structured fields from a PDF / pasted text</p>
+          <p>Generate from templates, or extract structured fields from a PDF / pasted text</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button className="btn-ghost" onClick={openUploadModal}
@@ -684,7 +684,7 @@ export default function Documents() {
             <Upload size={13} /> Upload to knowledge base
           </button>
           <button className="btn-primary" onClick={openExtractModal}
-                  title="Drop a PDF or paste text — AI extracts fields (preview only, not stored)">
+                  title="Drop a PDF or paste text, AI extracts fields (preview only, not stored)">
             <Sparkles size={13} /> Extract from PDF
           </button>
         </div>
@@ -865,7 +865,7 @@ function ExtractModal({ state, onChangeText, onUpload, onRunText, onReset, onClo
               Extract fields from document
             </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-              Invoices, contracts, POs, receipts — runs locally on Ollama
+              Invoices, contracts, POs, receipts, runs locally on Ollama
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }} aria-label="Close">
@@ -919,7 +919,7 @@ function ExtractModal({ state, onChangeText, onUpload, onRunText, onReset, onClo
                     : 'Drop a PDF here or click to choose a file'}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 4 }}>
-                  PDF or .txt · max 25 MB · scanned PDFs need OCR — paste the text instead
+                  PDF or .txt · max 25 MB · scanned PDFs need OCR, paste the text instead
                 </div>
               </div>
 
@@ -962,7 +962,7 @@ function ExtractModal({ state, onChangeText, onUpload, onRunText, onReset, onClo
                   {result.summary || <em style={{ color: 'var(--color-text-dim)' }}>(no summary)</em>}
                 </span>
                 {result.truncated && (
-                  <span title={`Source was ${result.source_chars.toLocaleString()} chars — clipped to fit the model context`} style={{ fontSize: 10.5, color: 'var(--color-warn)' }}>
+                  <span title={`Source was ${result.source_chars.toLocaleString()} chars, clipped to fit the model context`} style={{ fontSize: 10.5, color: 'var(--color-warn)' }}>
                     Truncated input
                   </span>
                 )}
@@ -1010,8 +1010,8 @@ function ExtractModal({ state, onChangeText, onUpload, onRunText, onReset, onClo
                         {result.line_items.map((li, i) => (
                           <tr key={i} style={{ borderTop: '1px solid var(--color-border)' }}>
                             <td style={{ padding: '6px 10px' }}>{li.description}</td>
-                            <td style={{ padding: '6px 10px', color: 'var(--color-text-muted)' }}>{li.quantity || '—'}</td>
-                            <td style={{ padding: '6px 10px', color: 'var(--color-text)', fontFeatureSettings: '"tnum"' }}>{li.amount || '—'}</td>
+                            <td style={{ padding: '6px 10px', color: 'var(--color-text-muted)' }}>{li.quantity || ', '}</td>
+                            <td style={{ padding: '6px 10px', color: 'var(--color-text)', fontFeatureSettings: '"tnum"' }}>{li.amount || ', '}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1204,10 +1204,10 @@ function UploadKbModal({ state, setState, onSubmit }) {
         <div style={{ fontSize: 12, color: 'var(--color-text)' }}>
           {files.length === 0
             ? 'Click or drag files here'
-            : `${files.length} file${files.length === 1 ? '' : 's'} selected — click to add more`}
+            : `${files.length} file${files.length === 1 ? '' : 's'} selected, click to add more`}
         </div>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-          PDF, DOCX, or TXT &mdash; up to 30 MB each
+          PDF, DOCX, or TXT , up to 30 MB each
         </div>
       </div>
 
@@ -1220,7 +1220,7 @@ function UploadKbModal({ state, setState, onSubmit }) {
           {files.map((f, i) => {
             // Safely match this file's result. Backends may sanitize filenames
             // so also try a stem-match before bailing to undefined. Every read
-            // of `res` after this must be optional-chained — when an upload
+            // of `res` after this must be optional-chained, when an upload
             // partially fails (e.g. timeout) a file can legitimately have no
             // result entry, and `res.error` blew up the whole modal before.
             const res = (results?.results || []).find(
@@ -1260,7 +1260,7 @@ function UploadKbModal({ state, setState, onSubmit }) {
                 )}
                 {status === 'no-response' && (
                   <span style={{ fontSize: 10, color: 'var(--color-text-dim)' }} title="No result returned for this file">
-                    — no response
+                   , no response
                   </span>
                 )}
                 {!state.busy && !results && (
@@ -1277,7 +1277,7 @@ function UploadKbModal({ state, setState, onSubmit }) {
         </div>
       )}
 
-      {/* Category — picked once for the whole batch */}
+      {/* Category, picked once for the whole batch */}
       <div style={{ marginBottom: 14 }}>
         <label style={{ fontSize: 11, color: 'var(--color-text-muted)', fontWeight: 500, marginBottom: 4, display: 'block' }}>
           Category * (applies to all selected files)
@@ -1287,7 +1287,7 @@ function UploadKbModal({ state, setState, onSubmit }) {
                 disabled={state.busy || !!results} style={{ width: '100%' }}>
           {DOC_CATEGORIES.map(c => (
             <option key={c.value} value={c.value}>
-              {c.label} &mdash; {c.description}
+              {c.label} , {c.description}
             </option>
           ))}
         </select>

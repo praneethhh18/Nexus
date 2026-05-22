@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { BarChart3, TrendingUp, Zap, AlertTriangle, Activity, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { pipelineVelocity, revenueForecast, agentImpact, churnRisk } from '../services/analytics';
 
-// INR + en-IN — NexusAgent is built for Indian SMBs. `cur` arg respected
+// INR + en-IN, NexusAgent is built for Indian SMBs. `cur` arg respected
 // when the row carries a different currency.
 const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0,
@@ -32,14 +32,14 @@ function Panel({ icon: Icon, title, action, children, color = 'var(--color-info)
 function Velocity({ data }) {
   if (!data) return <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>Loading…</p>;
   if (data.total_deals_tracked === 0) {
-    return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No deals tracked yet — create some to see velocity.</p>;
+    return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No deals tracked yet, create some to see velocity.</p>;
   }
   const stages = ['lead', 'qualified', 'proposal', 'negotiation', 'won', 'lost'];
   const maxDays = Math.max(1, ...stages.map(s => data.by_stage[s]?.avg_days || 0));
   return (
     <div>
       <div style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 10 }}>
-        Overall lead → won rate: <strong style={{ color: 'var(--color-ok)' }}>{data.overall_win_rate_pct ?? '—'}%</strong>
+        Overall lead → won rate: <strong style={{ color: 'var(--color-ok)' }}>{data.overall_win_rate_pct ?? ', '}%</strong>
         {' · '}{data.total_deals_tracked} deals tracked
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -55,7 +55,7 @@ function Velocity({ data }) {
                     <> · {row.win_rate_pct}% reach won</>}
                 </span>
                 <span style={{ color: STAGE_COLORS[s], fontWeight: 600 }}>
-                  {row.avg_days === null || row.avg_days === undefined ? '—' : `${row.avg_days}d avg`}
+                  {row.avg_days === null || row.avg_days === undefined ? ', ' : `${row.avg_days}d avg`}
                 </span>
               </div>
               <div style={{ height: 5, background: 'var(--color-surface-1)', borderRadius: 3, overflow: 'hidden' }}>
@@ -71,7 +71,7 @@ function Velocity({ data }) {
 
 function Forecast({ data }) {
   if (!data) return <p style={{ color: 'var(--color-text-dim)', fontSize: 11 }}>Loading…</p>;
-  if (!data.months?.length) return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No upcoming forecast data — add expected-close dates to your deals.</p>;
+  if (!data.months?.length) return <p style={{ color: 'var(--color-text-dim)', fontSize: 12 }}>No upcoming forecast data, add expected-close dates to your deals.</p>;
   const maxW = Math.max(1, ...data.months.map(m => m.weighted));
   return (
     <div>

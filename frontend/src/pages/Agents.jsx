@@ -11,7 +11,7 @@ import IntervalPicker from '../components/IntervalPicker';
 import CustomAgentBuilder from '../components/CustomAgentBuilder';
 import CustomAgentGallery from '../components/CustomAgentGallery';
 
-// Per-agent profiles shown in the IDLE state of the run-result modal —
+// Per-agent profiles shown in the IDLE state of the run-result modal , 
 // so a new user on an empty workspace sees concretely what the agent WILL
 // do once there's data, instead of a vague "nothing happened" feeling.
 const IDLE_PROFILES = {
@@ -58,7 +58,7 @@ const IDLE_PROFILES = {
 };
 
 
-// Per-agent result formatter — turns the raw `detail` from the backend into
+// Per-agent result formatter, turns the raw `detail` from the backend into
 // a structured object the card can render clearly. Returns:
 //   { tone: 'success' | 'skip' | 'idle' | 'info',
 //     summary: 'one-line human result',
@@ -70,7 +70,7 @@ const IDLE_PROFILES = {
 // the agents, so the user just saw "Done." with no idea what happened.
 function formatAgentResult(agentKey, d) {
   d = d || {};
-  // Vox has a dedicated case below — let it own its skip story.
+  // Vox has a dedicated case below, let it own its skip story.
   if (agentKey === 'outbound_caller') {
     return {
       tone: 'info',
@@ -79,7 +79,7 @@ function formatAgentResult(agentKey, d) {
       link: { label: 'Open Vox', href: '/agents/vox' },
     };
   }
-  // Common "skipped because X isn't connected" pattern — surface the
+  // Common "skipped because X isn't connected" pattern, surface the
   // reason + a hint pointing the user at where to set it up.
   if (d.skipped) {
     const skipMap = {
@@ -132,7 +132,7 @@ function formatAgentResult(agentKey, d) {
       const stale = Number(d.stale_deals || 0);
       const created = Number(d.created || 0);
       if (stale === 0) {
-        return { tone: 'idle', summary: 'No stale deals — pipeline is healthy.' };
+        return { tone: 'idle', summary: 'No stale deals, pipeline is healthy.' };
       }
       return {
         tone: 'success',
@@ -155,7 +155,7 @@ function formatAgentResult(agentKey, d) {
     case 'email_triage': {
       const proc = Number(d.processed || 0);
       if (proc === 0) {
-        return { tone: 'idle', summary: 'Inbox already clean — nothing new to triage.' };
+        return { tone: 'idle', summary: 'Inbox already clean, nothing new to triage.' };
       }
       return {
         tone: 'success',
@@ -288,7 +288,7 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
     setRunning(true); setRunResult(null); setErr('');
     try {
       const r = await runAgent(persona.agent_key);
-      // Stash the raw detail too — the modal renders the actual artifact
+      // Stash the raw detail too, the modal renders the actual artifact
       // (briefing text, list of stale deals, etc.) so the user sees proof
       // of work instead of guessing what happened.
       const formatted = formatAgentResult(persona.agent_key, r.detail || {});
@@ -296,13 +296,13 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
       onRanAgent?.();
     } catch (e) {
       console.error(`[Agents] ${persona.agent_key} failed:`, e);
-      // Show the error as a result modal too — so the user always gets a
+      // Show the error as a result modal too, so the user always gets a
       // visible response, never just a silent flash-and-disappear.
       setRunResult({
         tone: 'skip',
         summary: 'Run failed',
         details: e.message || 'The agent could not complete. See console for details.',
-        hint: 'If this keeps happening, the backend may be down or your session expired — try logging out and back in.',
+        hint: 'If this keeps happening, the backend may be down or your session expired, try logging out and back in.',
         detail: {},
       });
       setErr(e.message || 'Run failed');
@@ -319,7 +319,7 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
       opacity: enabled ? 1 : 0.7,
       borderStyle: enabled ? 'solid' : 'dashed',
     }}>
-      {/* Header — avatar + name + role */}
+      {/* Header, avatar + name + role */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
         <div style={{
           width: 44, height: 44, borderRadius: 'var(--r-md)',
@@ -387,7 +387,7 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
             </div>
           )}
           <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>
-            {persona.is_custom && <>You renamed — default is <em>{persona.default_name}</em> · </>}
+            {persona.is_custom && <>You renamed, default is <em>{persona.default_name}</em> · </>}
             <code style={{ fontSize: 10 }}>{persona.agent_key}</code>
           </div>
           {err && <div style={{ fontSize: 11, color: 'var(--color-err)', marginTop: 4 }}>{err}</div>}
@@ -436,7 +436,7 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
             onClick={() => onOpenSurface('/agents/vox')}
             className="btn-ghost"
             style={{ fontSize: 11, padding: '6px 10px' }}
-            title="Open Vox console — pending dials, usage, recent calls"
+            title="Open Vox console, pending dials, usage, recent calls"
           >
             <ExternalLink size={11} /> View
           </button>
@@ -500,16 +500,16 @@ function PersonaCard({ persona, schedule, onRenamed, onEnabledChanged, onInterva
 }
 
 // Parse a backend ISO timestamp robustly. Backend sends a mix of:
-//   "2026-05-03T19:23:45.123456"        (naive — assume UTC, append Z)
-//   "2026-05-03T19:23:45.123456+00:00"  (explicit offset — leave alone)
-//   "2026-05-03T19:23:45Z"              (Zulu — leave alone)
+//   "2026-05-03T19:23:45.123456"        (naive, assume UTC, append Z)
+//   "2026-05-03T19:23:45.123456+00:00"  (explicit offset, leave alone)
+//   "2026-05-03T19:23:45Z"              (Zulu, leave alone)
 // Old code blindly appended Z to the second form which produced the
 // notorious "Invalid Date" rendering on the activity feed.
 function parseTs(ts) {
   if (!ts) return '';
   // Already has explicit timezone info? Use as-is.
   if (/Z$|[+-]\d{2}:?\d{2}$/.test(ts)) return ts;
-  // Naive ISO — treat as UTC.
+  // Naive ISO, treat as UTC.
   return ts + 'Z';
 }
 
@@ -613,7 +613,7 @@ function RunsDrawer({ persona, onClose }) {
     return () => { cancelled = true; };
   }, [persona.agent_key]);
 
-  const fmt = (iso) => iso ? new Date(parseTs(iso)).toLocaleString() : '—';
+  const fmt = (iso) => iso ? new Date(parseTs(iso)).toLocaleString() : ', ';
   const dur = (r) => {
     if (!r.started_at || !r.finished_at) return '';
     const ms = new Date(r.finished_at + (r.finished_at.endsWith('Z') ? '' : 'Z')) -
@@ -646,7 +646,7 @@ function RunsDrawer({ persona, onClose }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div>
             <h3 style={{ margin: 0, fontSize: 15, color: 'var(--color-text)' }}>
-              {persona.name} — run history
+              {persona.name}, run history
             </h3>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>
               Last 50 runs, newest first
@@ -725,12 +725,12 @@ function CustomAgentCard({ agent, onRan, onEdit }) {
       } else if (r.ok === false && r.reason === 'local_fallback_refused') {
         // Cloud token cap hit; local Ollama fallback can't reliably do tool
         // calling and refused. The answer text is usually a stock "I'm a
-        // text-based AI…" line — show that with the real cause.
+        // text-based AI…" line, show that with the real cause.
         const used = r.budget?.tokens_used;
         const cap  = r.budget?.tokens_cap;
         setResult({
           tone: 'skip',
-          summary: 'Cloud budget exhausted — fell back to local model.',
+          summary: 'Cloud budget exhausted, fell back to local model.',
           details: `Today's cloud usage: ${used ? used.toLocaleString() : '?'} / ${cap ? cap.toLocaleString() : '?'} tokens. ` +
                    `The local fallback model couldn't drive tools so the agent answered as a chatbot instead of doing its job.`,
           hint: 'Raise the cap with the CLOUD_TOKEN_DAILY_CAP env var (set it to 0 to disable) and restart the backend. The cloud Mistral 14B handles tool-calling correctly.',
@@ -743,7 +743,7 @@ function CustomAgentCard({ agent, onRan, onEdit }) {
           tone: 'skip',
           summary: "Agent didn't call any tools.",
           details: 'The agent had tools available but chose not to use them. Often this means the goal prompt is too vague or the model misunderstood it.',
-          hint: "Click Edit and tighten the goal — e.g. 'Use search_knowledge with category=competitor to find pricing changes' rather than 'check competitor pricing'.",
+          hint: "Click Edit and tighten the goal, e.g. 'Use search_knowledge with category=competitor to find pricing changes' rather than 'check competitor pricing'.",
           customAnswer: r.answer || '',
           customTools: r.tool_calls || [],
           detail: r,
@@ -762,8 +762,8 @@ function CustomAgentCard({ agent, onRan, onEdit }) {
           tone: 'success',
           summary: `${ca.name} just ran`,
           details: (tools.length ? `Called ${tools.length} tool${tools.length === 1 ? '' : 's'}: ${tools.join(', ')}`
-                                 : 'No tools needed — answered from context.')
-                   + (fellBack ? ' (ran on local model — cloud budget hit)' : ''),
+                                 : 'No tools needed, answered from context.')
+                   + (fellBack ? ' (ran on local model, cloud budget hit)' : ''),
           link: ca.output_target === 'inbox' ? { label: 'Open Inbox', href: '/inbox' } : null,
           customAnswer: r.answer || '',
           customTools: r.tool_calls || [],
@@ -845,7 +845,7 @@ function CustomAgentCard({ agent, onRan, onEdit }) {
 
 // ── Run-result modal ─────────────────────────────────────────────────────────
 // Shown after the user clicks "Run now". The point is to give NEW USERS
-// proof-of-work — show the actual artifact (briefing text, list of stale
+// proof-of-work, show the actual artifact (briefing text, list of stale
 // deals, etc.) inline, not just a "Done." toast. For skipped agents this
 // becomes an inline setup CTA instead of a confusing dead-end.
 function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenSurface }) {
@@ -914,7 +914,7 @@ function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenS
         {/* The actual artifact, rendered inline */}
         <AgentArtifact agentKey={agentKey} result={result} onOpenSurface={onOpenSurface} />
 
-        {/* Skip hint — when there's nothing to show, explain why + how to fix */}
+        {/* Skip hint, when there's nothing to show, explain why + how to fix */}
         {result.hint && tone !== 'success' && (
           <div style={{
             marginTop: 14, padding: '10px 12px',
@@ -946,13 +946,13 @@ function AgentResultModal({ agentKey, agentName, emoji, result, onClose, onOpenS
 }
 
 
-// Per-agent artifact renderer — shows the actual content the agent produced.
+// Per-agent artifact renderer, shows the actual content the agent produced.
 // New users see proof of work inline; they don't have to hunt for the
 // briefing in another tab.
 function AgentArtifact({ agentKey, result }) {
   const d = result.detail || {};
 
-  // Custom-agent answer — render the LLM's reply + which tools it called
+  // Custom-agent answer, render the LLM's reply + which tools it called
   // so the user can see exactly what the agent did.
   if (agentKey?.startsWith?.('custom:') && result.customAnswer) {
     return (
@@ -997,7 +997,7 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // Briefing-style agents — render the narrative text
+  // Briefing-style agents, render the narrative text
   if ((agentKey === 'morning_briefing' || agentKey === 'evening_digest') && d.narrative) {
     return (
       <div style={{
@@ -1014,7 +1014,7 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // Stale-deal watcher — show how many + a "what now" line
+  // Stale-deal watcher, show how many + a "what now" line
   if (agentKey === 'stale_deal_watcher' && Number(d.stale_deals || 0) > 0) {
     return (
       <div style={{
@@ -1040,7 +1040,7 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // Invoice reminder — show how many were drafted
+  // Invoice reminder, show how many were drafted
   if (agentKey === 'invoice_reminder' && Number(d.queued || 0) > 0) {
     return (
       <div style={{
@@ -1066,7 +1066,7 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // Email triage results — show how many got triaged
+  // Email triage results, show how many got triaged
   if (agentKey === 'email_triage' && Number(d.processed || 0) > 0) {
     return (
       <div style={{
@@ -1085,7 +1085,7 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // Meeting prep — show pushed count
+  // Meeting prep, show pushed count
   if (agentKey === 'meeting_prep' && Number(d.pushed || 0) > 0) {
     return (
       <div style={{
@@ -1104,14 +1104,14 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // "Idle" / nothing-to-do case — explain what the agent WATCHES for and
+  // "Idle" / nothing-to-do case, explain what the agent WATCHES for and
   // what it'll DO when it finds something, so new users on an empty
   // workspace see real value rather than a hollow "nothing happened".
   if (result.tone === 'idle') {
     const profile = IDLE_PROFILES[agentKey] || {
       watches: 'changes in your workspace',
       produces: 'a tagged item in the relevant queue',
-      example: '—',
+      example: ', ',
     };
     return (
       <div style={{
@@ -1122,7 +1122,7 @@ function AgentArtifact({ agentKey, result }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
           <div style={{ fontSize: 26 }}>🌱</div>
           <div style={{ fontSize: 12.5, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
-            Nothing to act on right now — that's healthy.
+            Nothing to act on right now, that's healthy.
             This agent runs on a schedule and will surface work the moment something changes.
           </div>
         </div>
@@ -1166,7 +1166,7 @@ function AgentArtifact({ agentKey, result }) {
     );
   }
 
-  // Vox — special-cased contact-pick CTA could go here later
+  // Vox, special-cased contact-pick CTA could go here later
   if (agentKey === 'outbound_caller') {
     return (
       <div style={{
@@ -1176,13 +1176,13 @@ function AgentArtifact({ agentKey, result }) {
         fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.6,
       }}>
         Vox is your outbound caller. Once a contact has a phone number, you can
-        queue a real call from the Vox console — Vox will dial, have a short
+        queue a real call from the Vox console, Vox will dial, have a short
         conversation following a script, and file a summary on the contact.
       </div>
     );
   }
 
-  // Default fallback — nothing to render beyond the header summary
+  // Default fallback, nothing to render beyond the header summary
   return null;
 }
 
@@ -1268,7 +1268,7 @@ export default function Agents() {
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1>Agents</h1>
-          <p>Your autonomous team — each agent has a name, a role, and a shift. Rename them anything you like.</p>
+          <p>Your autonomous team, each agent has a name, a role, and a shift. Rename them anything you like.</p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button className="btn-ghost" onClick={() => setShowGallery(true)} title="Start from a template">
@@ -1355,7 +1355,7 @@ export default function Agents() {
 
           {!activityLoading && activity.length === 0 && (
             <div className="panel" style={{ fontSize: 12, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
-              No activity in the last 48 hours. Agents will appear here as they run — Atlas writes the
+              No activity in the last 48 hours. Agents will appear here as they run, Atlas writes the
               briefing each morning, Iris triages email every 15 minutes, Kira and Arjun run daily.
             </div>
           )}
@@ -1391,7 +1391,7 @@ export default function Agents() {
           Each agent runs on its own schedule in the background. Anywhere in NexusAgent where
           you see "<span style={{ color: 'var(--color-accent)' }}>Atlas · Chief of staff</span>" or
           similar, it means that specific agent took the action. Rename any of them to match your
-          team's vocabulary — they'll keep their role and behaviour, just wear the new name.
+          team's vocabulary, they'll keep their role and behaviour, just wear the new name.
         </div>
       </div>
 

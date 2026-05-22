@@ -1,5 +1,5 @@
 /**
- * Billing — Razorpay Standard Checkout integration.
+ * Billing, Razorpay Standard Checkout integration.
  *
  * Frontend never sees the Razorpay KEY_SECRET. We POST {plan} to
  * /api/billing/create-order; the backend returns an order_id + the public
@@ -58,7 +58,7 @@ export const verifyPayment = (payload) =>
 /**
  * Lazy-load the Razorpay Checkout script. Returns the global Razorpay
  * constructor. We don't import this from a bundle because Razorpay updates
- * checkout.js out-of-band — we always want the latest.
+ * checkout.js out-of-band, we always want the latest.
  */
 function loadRazorpayScript() {
   return new Promise((resolve, reject) => {
@@ -85,7 +85,7 @@ function loadRazorpayScript() {
  * @param {object} opts
  * @param {string} opts.plan      Plan key ("starter" | "pro" | "privacy")
  * @param {string} opts.email     Prefill in checkout form
- * @param {string} opts.name      Prefill — customer / business name
+ * @param {string} opts.name      Prefill, customer / business name
  * @param {string} opts.contact   Prefill phone (E.164 ideally)
  * @param {string} opts.theme     Hex color for the modal accent (default brand purple)
  */
@@ -95,7 +95,7 @@ export async function openRazorpayCheckout({
 } = {}) {
   if (!plan) throw new Error('plan is required');
 
-  // 1. Mint a Razorpay order on our backend (server-side amount lookup —
+  // 1. Mint a Razorpay order on our backend (server-side amount lookup , 
   //    we do NOT trust client-supplied amounts).
   const order = await createOrder(plan);
 
@@ -110,7 +110,7 @@ export async function openRazorpayCheckout({
       amount:       order.amount,
       currency:     order.currency,
       name:         'NexusAgent',
-      description:  `Subscription — ${plan}`,
+      description:  `Subscription, ${plan}`,
       image:        '/logo.svg',              // optional, falls back gracefully
       prefill:      { email, name, contact },
       notes:        { plan },

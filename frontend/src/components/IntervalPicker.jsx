@@ -1,5 +1,5 @@
 /**
- * Dropdown interval picker — pick from presets or type a custom value in minutes.
+ * Dropdown interval picker, pick from presets or type a custom value in minutes.
  *
  * <IntervalPicker value={15} presets={[5,10,15,30,60,180,...]} onChange={fn} />
  *
@@ -79,7 +79,7 @@ export default function IntervalPicker({
             ? 'color-mix(in srgb, var(--color-accent) 35%, transparent)'
             : 'var(--color-border)'}`,
         }}
-        title={isCustom ? 'Custom interval — click to change' : 'Click to change schedule'}
+        title={isCustom ? 'Custom interval, click to change' : 'Click to change schedule'}
       >
         <Clock size={11} color={isCustom ? 'var(--color-accent)' : 'var(--color-text-dim)'} />
         <span>{humanLabel(value)}</span>

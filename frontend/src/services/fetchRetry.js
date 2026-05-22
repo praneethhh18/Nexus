@@ -1,5 +1,5 @@
 /**
- * fetchWithRetry — drop-in replacement for `fetch` that retries transient
+ * fetchWithRetry, drop-in replacement for `fetch` that retries transient
  * network failures with exponential backoff.
  *
  * Retries on:
@@ -8,7 +8,7 @@
  *   - HTTP 429 (honors Retry-After header)
  *
  * Does NOT retry on:
- *   - 4xx other than 429 (user error — retrying is pointless)
+ *   - 4xx other than 429 (user error, retrying is pointless)
  *   - AbortSignal-triggered aborts (user cancelled)
  *
  * Defaults: 3 attempts total, 300ms base with ×2 backoff + jitter.
@@ -34,7 +34,7 @@ export async function fetchWithRetry(url, options = {}, retryOpts = {}) {
         const retryAfter = Number(res.headers.get('Retry-After')) || 2;
         // Cap at 15s so one angry server doesn't hang the UI forever.
         await _sleep(Math.min(retryAfter * 1000, 15_000));
-        lastErr = new Error(`HTTP 429 — rate limited`);
+        lastErr = new Error(`HTTP 429, rate limited`);
         continue;
       }
       if (RETRYABLE_STATUSES.has(res.status)) {
@@ -42,7 +42,7 @@ export async function fetchWithRetry(url, options = {}, retryOpts = {}) {
         await _sleep(_backoff(attempt, baseMs));
         continue;
       }
-      // Non-retryable — return the response so the caller handles it.
+      // Non-retryable, return the response so the caller handles it.
       return res;
     } catch (err) {
       if (err.name === 'AbortError') throw err;

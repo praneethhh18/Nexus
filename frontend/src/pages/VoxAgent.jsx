@@ -2,11 +2,11 @@
  * Vox agent page · /agents/vox
  *
  * Three sections, top→bottom:
- *   1. Pending dials queue   — /api/approvals filtered to tool_name=vox_dial
+ *   1. Pending dials queue  , /api/approvals filtered to tool_name=vox_dial
  *      with Approve / Deny buttons.
- *   2. Today's usage strip   — /api/vox/usage; minutes used / cap, calls today.
+ *   2. Today's usage strip  , /api/vox/usage; minutes used / cap, calls today.
  *      Yellow warning when ≥80% of cap.
- *   3. Recent calls          — /api/vox/calls; expand to view transcript.
+ *   3. Recent calls         , /api/vox/calls; expand to view transcript.
  */
 import { useState, useEffect, useCallback } from 'react';
 import {
@@ -32,7 +32,7 @@ function formatWhen(iso) {
 }
 
 function formatDuration(sec) {
-  if (sec == null) return '—';
+  if (sec == null) return ', ';
   if (sec < 60) return `${sec}s`;
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -52,7 +52,7 @@ const OUTCOME_TONES = {
 
 
 function OutcomeBadge({ outcome }) {
-  const t = OUTCOME_TONES[outcome] || { color: 'var(--color-text-dim)', label: outcome || '—' };
+  const t = OUTCOME_TONES[outcome] || { color: 'var(--color-text-dim)', label: outcome || ', ' };
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -99,7 +99,7 @@ function PendingDialsQueue({ pending, onAction, busy }) {
                 </span>
               </div>
               <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-                Queued {formatWhen(a.created_at)} · purpose: {args.purpose || '—'}
+                Queued {formatWhen(a.created_at)} · purpose: {args.purpose || ', '}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 6 }}>

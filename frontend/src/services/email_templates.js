@@ -1,5 +1,5 @@
 /**
- * Email templates client — talks to /api/email-templates routes.
+ * Email templates client, talks to /api/email-templates routes.
  * Pairs with the agent-facing tools (list/create/render/send_email_from_template)
  * but exposes the same surface for direct UI users who don't want to chat.
  */

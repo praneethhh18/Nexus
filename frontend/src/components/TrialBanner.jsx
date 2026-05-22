@@ -1,5 +1,5 @@
 /**
- * Trial banner — persistent strip at the top of the app showing how many
+ * Trial banner, persistent strip at the top of the app showing how many
  * days are left on the current trial + a CTA to upgrade.
  *
  * Renders nothing when:
@@ -49,7 +49,7 @@ export default function TrialBanner() {
   useEffect(() => {
     if (!isLoggedIn()) return;
 
-    // Check dismissed-until — user clicked the X today, leave them alone
+    // Check dismissed-until, user clicked the X today, leave them alone
     // until tomorrow morning.
     try {
       const until = sessionStorage.getItem(DISMISS_KEY);
@@ -83,7 +83,7 @@ export default function TrialBanner() {
 
   const handleDismiss = () => {
     setDismissed(true);
-    // Snooze for 24h — banner reappears tomorrow.
+    // Snooze for 24h, banner reappears tomorrow.
     try {
       sessionStorage.setItem(DISMISS_KEY, String(Date.now() + 24 * 60 * 60 * 1000));
     } catch { /* full storage */ }
@@ -119,7 +119,7 @@ export default function TrialBanner() {
       <span style={{ flex: 1 }}>
         <strong>{planLabel} trial</strong> ends {dayLabel}.{' '}
         <span style={{ opacity: 0.9 }}>
-          Subscribe now and your remaining trial days are added on top —
+          Subscribe now and your remaining trial days are added on top , 
           you don't lose them.
         </span>
       </span>

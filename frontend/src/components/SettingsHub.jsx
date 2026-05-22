@@ -1,5 +1,5 @@
 /**
- * Settings hub — top-of-page navigation grid that surfaces every admin /
+ * Settings hub, top-of-page navigation grid that surfaces every admin /
  * workspace area in one place.
  *
  * Why: the old sidebar had 22 flat items, half of which were settings-y
@@ -7,7 +7,7 @@
  * Privacy Mode, Audit log, Metrics, History). They all moved into this
  * hub so the daily sidebar shrunk to 7 + 6 + 2 visible items.
  *
- * Every card links to an EXISTING route URL — no new pages were created.
+ * Every card links to an EXISTING route URL, no new pages were created.
  * Direct deep-links (bookmarks, support emails) keep working. The hub is
  * just a discoverable index.
  *
@@ -26,7 +26,7 @@ import {
 const SECTIONS = [
   {
     title: 'Account',
-    description: 'Profile, notifications, memory — scoped to you.',
+    description: 'Profile, notifications, memory, scoped to you.',
     items: [
       { to: '#profile',        icon: Briefcase, label: 'Business profile',     blurb: 'Name, industry, type, size, goal' },
       { to: '#notifications',  icon: Bell,      label: 'Notifications',        blurb: 'Email + in-app alert preferences' },

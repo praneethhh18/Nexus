@@ -8,13 +8,13 @@ import {
 } from '../services/security';
 
 function formatWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
   catch { return iso.substring(0, 16); }
 }
 
 function formatAgo(ts) {
-  if (!ts) return '—';
+  if (!ts) return ', ';
   const s = Math.max(0, Math.floor(Date.now() / 1000 - Number(ts)));
   if (s < 60) return `${s}s ago`;
   if (s < 3600) return `${Math.floor(s / 60)}m ago`;
@@ -86,7 +86,7 @@ export default function Security() {
       setPrivacy(st);
       setPrivacyLog(log);
     } catch (e) {
-      // non-admins get 403 on the audit log — still show status
+      // non-admins get 403 on the audit log, still show status
       try { setPrivacy(await privacyStatus()); } catch {}
     } finally {
       setPrivacyLoading(false);
@@ -140,7 +140,7 @@ export default function Security() {
   };
 
   const handleRevoke = async (s) => {
-    if (s.is_current) { flash("That's your current session — log out from here instead."); return; }
+    if (s.is_current) { flash("That's your current session, log out from here instead."); return; }
     if (!confirm(`Revoke this session from ${humanUserAgent(s.user_agent)}?`)) return;
     try { await revokeSession(s.jti); flash('Revoked.'); reload(); }
     catch (e) { flash(`Failed: ${e.message}`); }
@@ -162,7 +162,7 @@ export default function Security() {
   };
 
   const handleClearAudit = async () => {
-    if (!confirm('Clear the cloud audit log? This only removes the local record — it cannot undo calls that already happened.')) return;
+    if (!confirm('Clear the cloud audit log? This only removes the local record, it cannot undo calls that already happened.')) return;
     try {
       await privacyAuditClear();
       flash('Audit log cleared.');
@@ -254,7 +254,7 @@ export default function Security() {
                 <strong style={{ color: 'var(--color-accent)' }}>What this log shows:</strong>{' '}
                 every time NexusAgent talks to a cloud LLM, we record the timestamp, provider, model,
                 a SHA-256 fingerprint of the (already-redacted) payload, and how many PII tokens were
-                scrubbed. <strong>The raw prompt is never stored</strong> — the log itself can't leak
+                scrubbed. <strong>The raw prompt is never stored</strong>, the log itself can't leak
                 what it's protecting. Raw database rows, email bodies, and customer records never
                 enter this list because those paths are forced to local Ollama.
               </div>
@@ -323,7 +323,7 @@ export default function Security() {
               ) : (
                 <p style={{ fontSize: 12, color: 'var(--color-text-dim)', padding: '12px 0' }}>
                   {!privacy.cloud_configured
-                    ? 'No cloud provider is configured — every LLM call runs on local Ollama. Nothing has left this machine.'
+                    ? 'No cloud provider is configured, every LLM call runs on local Ollama. Nothing has left this machine.'
                     : privacyLog?.stats?.total === 0
                     ? 'No cloud calls recorded yet. This log populates the first time the app sends an aggregate or non-sensitive prompt to the cloud.'
                     : 'Audit log access is restricted to admin/owner accounts.'}
@@ -334,7 +334,7 @@ export default function Security() {
         </div>
 
         {/* ── Voice providers ──────────────────────────────────────────────────
-            Voice calls placed by Vox cross the network boundary — Twilio carries
+            Voice calls placed by Vox cross the network boundary, Twilio carries
             the PSTN audio, Groq does STT + LLM, ElevenLabs does TTS. Listed
             explicitly here because the rest of NexusAgent's privacy story is
             "nothing leaves the box" and voice is the carve-out.
@@ -477,7 +477,7 @@ export default function Security() {
             <div style={{ marginTop: 14, padding: 12, background: 'color-mix(in srgb, var(--color-warn) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--color-warn) 25%, transparent)', borderRadius: 8 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <AlertTriangle size={14} color="var(--color-warn)" />
-                <strong style={{ fontSize: 12, color: 'var(--color-warn)' }}>Recovery codes — shown ONCE</strong>
+                <strong style={{ fontSize: 12, color: 'var(--color-warn)' }}>Recovery codes, shown ONCE</strong>
               </div>
               <p style={{ fontSize: 11, color: 'var(--color-text-muted)', marginBottom: 8 }}>
                 Save these somewhere safe. You can use any of them to log in if you lose your phone. Each one works once.
@@ -542,7 +542,7 @@ export default function Security() {
             </div>
           )}
           <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 10 }}>
-            Revoking a session immediately invalidates its login token — the other device will have to sign in again.
+            Revoking a session immediately invalidates its login token, the other device will have to sign in again.
           </p>
         </div>
       </div>

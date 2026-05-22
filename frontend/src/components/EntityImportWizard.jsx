@@ -197,7 +197,7 @@ export default function EntityImportWizard({ defaultEntityType = 'contact', onCl
           <>
             <div style={{ fontSize: 12, color: 'var(--color-text-muted)', marginBottom: 10 }}>
               Detected <strong>{preview.total_rows}</strong> row{preview.total_rows === 1 ? '' : 's'} across
-              {' '}<strong>{preview.source_columns.length}</strong> columns. Map each target field to a column in your file — we pre-filled best guesses.
+              {' '}<strong>{preview.source_columns.length}</strong> columns. Map each target field to a column in your file, we pre-filled best guesses.
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
@@ -223,7 +223,7 @@ export default function EntityImportWizard({ defaultEntityType = 'contact', onCl
                     onChange={(e) => setMapping(m => ({ ...m, [target]: e.target.value }))}
                     style={{ fontSize: 11 }}
                   >
-                    <option value="">— skip —</option>
+                    <option value="">,  skip , </option>
                     {preview.source_columns.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}

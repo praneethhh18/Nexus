@@ -45,7 +45,7 @@ const INDUSTRIES = [
   'Hospitality',
   'Local services',
   'Consulting',
-  // Indian SMB additions — common business types we encountered
+  // Indian SMB additions, common business types we encountered
   // most often in early customer conversations
   'Tutoring / coaching',
   'Restaurant / cafe',
@@ -215,7 +215,7 @@ export default function OnboardingWizard({ onClose }) {
       setErr('No active business found. Sign in again and retry.');
       return;
     }
-    // Inline validation — show per-field error, not a single banner.
+    // Inline validation, show per-field error, not a single banner.
     const validation = {};
     if (!profile.name.trim())     validation.name         = 'Enter the business name your customers know.';
     if (!profile.businessType)    validation.businessType = 'Pick the closest match.';
@@ -238,7 +238,7 @@ export default function OnboardingWizard({ onClose }) {
       // anywhere in the product that already parses it. The structured
       // version lives in settings.profile via saveProfileExtras below.
       const goalForSave = profile.primaryGoal === 'Other'
-        ? `Other — ${profile.customGoal.trim()}`
+        ? `Other, ${profile.customGoal.trim()}`
         : profile.primaryGoal;
       const description = [
         `Business type: ${profile.businessType}`,
@@ -251,7 +251,7 @@ export default function OnboardingWizard({ onClose }) {
         description,
       });
       // Write the structured fields. Failure here MUST NOT block the
-      // wizard — they're enrichment, not load-bearing for first-run.
+      // wizard, they're enrichment, not load-bearing for first-run.
       try {
         await saveProfileExtras({
           business_type: profile.businessType,
@@ -313,7 +313,7 @@ export default function OnboardingWizard({ onClose }) {
     navigate(route);
   };
 
-  // Step 3 inline upload — parse the CSV in-browser and create contacts via
+  // Step 3 inline upload, parse the CSV in-browser and create contacts via
   // the proper contacts API. We CAN'T use /api/database/import because that
   // endpoint blocks writes to nexus_* "system" tables; instead we map known
   // columns to contact fields and stash every extra column inside
@@ -327,7 +327,7 @@ export default function OnboardingWizard({ onClose }) {
       const text = await file.text();
       const rows = parseCsv(text);
       if (rows.length === 0) {
-        throw new Error('That CSV looks empty — make sure the first row has column headers.');
+        throw new Error('That CSV looks empty, make sure the first row has column headers.');
       }
       const KNOWN = new Set(['first_name', 'last_name', 'email', 'phone', 'title', 'notes', 'tags', 'company']);
       // Canonicalise headers: lower, snake_case, common aliases collapse to
@@ -346,7 +346,7 @@ export default function OnboardingWizard({ onClose }) {
           if (!v) continue;
           if (KNOWN.has(h.canon)) {
             if (h.canon === 'company') {
-              // No company column on contacts table — surface in custom_fields.
+              // No company column on contacts table, surface in custom_fields.
               extras.company = v;
             } else {
               body[h.canon] = v;
@@ -370,13 +370,13 @@ export default function OnboardingWizard({ onClose }) {
       setCsvRows(ok);
       await completeOnboardingStep('data_source');
       // Refresh state so the timeline / nav button reflect `done`, but
-      // DON'T auto-jump to the next step. The user just dropped a file —
+      // DON'T auto-jump to the next step. The user just dropped a file , 
       // they need to see the green "Imported N rows from foo.csv"
       // confirmation before they're moved on, or they'll think nothing
       // happened. The Continue button picks it up from here.
       await refreshState();
     } catch (e) {
-      setErr(e.message || 'Could not import this CSV — check the column headers.');
+      setErr(e.message || 'Could not import this CSV, check the column headers.');
     } finally {
       setBusy(false);
     }
@@ -385,9 +385,9 @@ export default function OnboardingWizard({ onClose }) {
   // Step 5 inline persona load + run.
   //
   // Some agents can't be safely sample-run from the wizard:
-  //   - outbound_caller (Vox) — places real phone calls; needs a contact
+  //   - outbound_caller (Vox), places real phone calls; needs a contact
   //     with a phone number + Twilio setup before it can do anything
-  //   - memory_consolidate (Memory) — a weekly digest job, nothing
+  //   - memory_consolidate (Memory), a weekly digest job, nothing
   //     interesting to show on a brand-new workspace with no history
   // Filter them out so the picker only offers agents that produce a
   // meaningful sample result inline.
@@ -413,11 +413,11 @@ export default function OnboardingWizard({ onClose }) {
     setRunResult(null);
     try {
       const res = await runAgent(key);
-      setRunResult({ key, summary: res?.summary || res?.output || 'Agent finished — check the dashboard for output.' });
+      setRunResult({ key, summary: res?.summary || res?.output || 'Agent finished, check the dashboard for output.' });
       await completeOnboardingStep('first_run');
       const fresh = await refreshState();
       const next = fresh.steps.findIndex(s => !s.done);
-      // Don't auto-advance — let the user see the run result for a moment.
+      // Don't auto-advance, let the user see the run result for a moment.
       // The "Continue" button on the right will move on.
       setRunningKey('');
       if (next === -1) {
@@ -454,7 +454,7 @@ export default function OnboardingWizard({ onClose }) {
   }
   // While the initial onboarding state is being fetched, render the
   // full-screen shell with skeleton content. We MUST cover the dashboard
-  // immediately — returning null here used to let the half-loaded sidebar
+  // immediately, returning null here used to let the half-loaded sidebar
   // + greeting + KPIs flash through behind the future wizard, which is
   // what the user was seeing on the left after email verification.
   if (!state || !currentStep) {
@@ -518,7 +518,7 @@ export default function OnboardingWizard({ onClose }) {
             </div>
           )}
 
-          {/* Step body — keyed on currentKey so React unmounts/remounts on
+          {/* Step body, keyed on currentKey so React unmounts/remounts on
               step change. The CSS keyframe on .onb-step-body then replays
               the fade+slide-in animation, giving every step a calm entry. */}
           <div key={currentKey} className="onb-step-body">
@@ -645,7 +645,7 @@ export default function OnboardingWizard({ onClose }) {
 }
 
 // ── Industry auto-detection from the business name ───────────────────────
-// Lightweight heuristic. Doesn't replace the user's choice — only suggests
+// Lightweight heuristic. Doesn't replace the user's choice, only suggests
 // when the dropdown is still on "Choose industry". Keywords were picked
 // from common business-name patterns in the seed data.
 const INDUSTRY_HINTS = [
@@ -682,7 +682,7 @@ function detectIndustryFromName(name) {
 function ProfileStep({ profile, setProfile, errors }) {
   const update = (key, value) => setProfile((p) => ({ ...p, [key]: value }));
   // Industry hint based on what the user typed. Only shown when the
-  // industry dropdown hasn't been chosen yet — never overrides the user.
+  // industry dropdown hasn't been chosen yet, never overrides the user.
   const detected = detectIndustryFromName(profile.name);
   const showHint = !!detected && !profile.industry;
 
@@ -690,7 +690,7 @@ function ProfileStep({ profile, setProfile, errors }) {
 
   return (
     <div style={{ display: 'grid', gap: 12 }}>
-      {/* Responsive grid — 2 cols on tablet+, 1 col on phones */}
+      {/* Responsive grid, 2 cols on tablet+, 1 col on phones */}
       <div className="onb-grid-2col">
         <Field label="Business name" hint="The trading name your customers know you by." error={errors?.name}>
           <input
@@ -723,7 +723,7 @@ function ProfileStep({ profile, setProfile, errors }) {
             </div>
           )}
         </Field>
-        <Field label="Business type" hint="Single founder, agency, enterprise team — used to tune feature defaults." error={errors?.businessType}>
+        <Field label="Business type" hint="Single founder, agency, enterprise team, used to tune feature defaults." error={errors?.businessType}>
           <select className="field-select" value={profile.businessType} onChange={(e) => update('businessType', e.target.value)}>
             <option value="">Choose type</option>
             {BUSINESS_TYPES.map(x => <option key={x} value={x}>{x}</option>)}
@@ -742,7 +742,7 @@ function ProfileStep({ profile, setProfile, errors }) {
           </select>
         </Field>
       </div>
-      <Field label="Main goal" hint="What you want NexusAgent to focus on first — we'll pin those agents to the top of your sidebar." error={errors?.primaryGoal}>
+      <Field label="Main goal" hint="What you want NexusAgent to focus on first, we'll pin those agents to the top of your sidebar." error={errors?.primaryGoal}>
         <select className="field-select" value={profile.primaryGoal} onChange={(e) => update('primaryGoal', e.target.value)}>
           <option value="">What should NexusAgent help with first?</option>
           {GOALS.map(x => <option key={x} value={x}>{x}</option>)}
@@ -777,7 +777,7 @@ function ProfileStep({ profile, setProfile, errors }) {
 
 // Goal → agent emphasis. Used to call out which agents the user's chosen
 // goal will surface in the first-run experience. Keeps the wizard
-// honest — the inputs collected on the profile step actually shape the
+// honest, the inputs collected on the profile step actually shape the
 // step that follows.
 const GOAL_AGENT_HIGHLIGHTS = {
   'Sales and CRM':              { focus: 'Atlas + Vox + Stale-deal watcher', why: 'so leads never go cold and outbound calls go out daily' },
@@ -790,7 +790,7 @@ const GOAL_AGENT_HIGHLIGHTS = {
 
 function IndustryStep({ industry, preset, primaryGoal, companySize }) {
   const goalHighlight = GOAL_AGENT_HIGHLIGHTS[primaryGoal];
-  // Roadmap teaser — only renders for industries with at least one
+  // Roadmap teaser, only renders for industries with at least one
   // planned feature (Logistics, Travel, Real-estate broker, Local
   // services, Auto repair). Sets honest expectations + collects demand
   // signal without us shipping vapourware.
@@ -798,9 +798,9 @@ function IndustryStep({ industry, preset, primaryGoal, companySize }) {
   // For very small teams (1-5) we don't want to overpromise enterprise
   // features. For larger teams (51+) we explicitly call out SSO + roles.
   const sizeBand = companySize === '1-5'
-    ? "Single-founder workspace — team-invite prompts hidden until you grow."
+    ? "Single-founder workspace, team-invite prompts hidden until you grow."
     : companySize && ['51-200','201-500','500+'].includes(companySize)
-      ? "Team workspace — SSO, roles, and audit log surfaced for compliance."
+      ? "Team workspace, SSO, roles, and audit log surfaced for compliance."
       : null;
 
   return (
@@ -897,13 +897,13 @@ function IndustryStep({ industry, preset, primaryGoal, companySize }) {
                   color: 'var(--color-warn)', whiteSpace: 'nowrap', marginTop: 1,
                 }}>{f.eta}</span>
                 <span>
-                  <strong>{f.title}</strong> — {f.blurb}
+                  <strong>{f.title}</strong>, {f.blurb}
                 </span>
               </div>
             ))}
           </div>
           <div style={{ marginTop: 8, fontSize: 11, color: 'var(--color-text-dim)' }}>
-            Reply to any onboarding email to register early interest — we ship to interested workspaces first.
+            Reply to any onboarding email to register early interest, we ship to interested workspaces first.
           </div>
         </div>
       )}
@@ -981,7 +981,7 @@ function FirstRunStep({ personas, runningKey, runResult, busy, onRun }) {
   if (personas.length === 0) {
     return (
       <div className="onb-info-card">
-        We couldn't load your agent presets right now — you can skip this step and start an agent from the Agents page after setup.
+        We couldn't load your agent presets right now, you can skip this step and start an agent from the Agents page after setup.
       </div>
     );
   }
@@ -1112,7 +1112,7 @@ function DocumentStep({ busy, uploadedName, done, onUpload }) {
         </div>
       </label>
       <div className="onb-info-card" style={{ fontSize: 12 }}>
-        Optional but recommended — one company doc is enough to seed the AI with safe context. You can upload more later from the Documents page.
+        Optional but recommended, one company doc is enough to seed the AI with safe context. You can upload more later from the Documents page.
       </div>
     </div>
   );
@@ -1121,7 +1121,7 @@ function DocumentStep({ busy, uploadedName, done, onUpload }) {
 function Field({ label, children, hint, error }) {
   // Label + tooltip helper. `hint` is the explanatory text shown muted
   // below the label; appears whenever the user is looking at this field.
-  // `error` is the inline validation message — shown ONLY when set, in
+  // `error` is the inline validation message, shown ONLY when set, in
   // red, replacing the hint. Keeps the form chrome stable as the user
   // types (the row height doesn't jump between hint and error).
   return (
@@ -1150,14 +1150,14 @@ function Field({ label, children, hint, error }) {
 //
 // Layout: left rail (brand + vertical step timeline) + right pane (the
 // step content). The styles live next to the component as an injected
-// <style> tag so this file stays self-contained — no app-wide CSS edits.
+// <style> tag so this file stays self-contained, no app-wide CSS edits.
 
 function FullScreenShell({ children, onSkip }) {
   return (
     <>
       <OnboardingStyles />
       <div className="onb-shell" role="dialog" aria-modal="true" aria-label="Workspace setup">
-        {/* Ambient gradient orbs in the background — pure CSS, no JS. */}
+        {/* Ambient gradient orbs in the background, pure CSS, no JS. */}
         <div className="onb-orb onb-orb-1" aria-hidden />
         <div className="onb-orb onb-orb-2" aria-hidden />
 
@@ -1165,7 +1165,7 @@ function FullScreenShell({ children, onSkip }) {
           <button
             className="onb-skip"
             onClick={onSkip}
-            title="Skip the rest of setup — you can finish later from Settings"
+            title="Skip the rest of setup, you can finish later from Settings"
           >
             Skip for now <X size={13} />
           </button>
@@ -1177,7 +1177,7 @@ function FullScreenShell({ children, onSkip }) {
   );
 }
 
-// Left rail — brand + vertical step timeline. Clicking a step jumps to it
+// Left rail, brand + vertical step timeline. Clicking a step jumps to it
 // (the wizard already supported step skipping; we just reuse the handler).
 function LeftRail({ steps, currentIndex, currentKey, selectedIndustry, canJump, onJump }) {
   return (
@@ -1218,20 +1218,20 @@ function LeftRail({ steps, currentIndex, currentKey, selectedIndustry, canJump, 
       <div className="onb-rail-foot">
         <div className="onb-rail-tip">
           {currentKey === 'profile' && (
-            <>Your answers tune sample data, agent priorities and email templates — pick what's true today, you can refine later.</>
+            <>Your answers tune sample data, agent priorities and email templates, pick what's true today, you can refine later.</>
           )}
           {currentKey === 'agents' && (
             <>We pre-shape the workspace for <strong>{selectedIndustry.toLowerCase()}</strong>. Every other agent stays one click away in the sidebar.</>
           )}
           {currentKey === 'document' && (
-            <>One company doc is enough to start. The AI uses it as safe context for first answers — no hallucinated specs.</>
+            <>One company doc is enough to start. The AI uses it as safe context for first answers, no hallucinated specs.</>
           )}
           {currentKey === 'celebrated' && (
             <>You're all set. Your dashboard, agents and sample data are waiting on the next click.</>
           )}
           {currentKey !== 'profile' && currentKey !== 'agents'
             && currentKey !== 'document' && currentKey !== 'celebrated' && (
-            <>Quick step — most teams take under 2 minutes to finish setup.</>
+            <>Quick step, most teams take under 2 minutes to finish setup.</>
           )}
         </div>
       </div>
@@ -1247,7 +1247,7 @@ function CelebrationBlock({ industry }) {
       </div>
       <h3 className="onb-celebrate-h3">Your NexusAgent workspace is ready.</h3>
       <p className="onb-celebrate-sub">
-        Tuned for {industry.toLowerCase()} — your sidebar, sample data and agent priorities reflect what your day actually looks like.
+        Tuned for {industry.toLowerCase()}, your sidebar, sample data and agent priorities reflect what your day actually looks like.
       </p>
     </div>
   );
@@ -1438,7 +1438,7 @@ function OnboardingStyles() {
         color: var(--color-err); font-size: 12.5px; line-height: 1.5;
       }
 
-      /* Step body — replays the fade+slide entrance on every step switch
+      /* Step body, replays the fade+slide entrance on every step switch
          because the parent component remounts it via the React key prop. */
       .onb-step-body { animation: onb-step-enter 320ms cubic-bezier(.2,.7,.3,1); }
       @keyframes onb-step-enter {
@@ -1584,7 +1584,7 @@ function OnboardingStyles() {
 
 // ── CSV helpers (kept tiny, no dependency) ──────────────────────────────────
 // Handles quoted fields, escaped quotes ("" inside ""), and CRLF/LF newlines.
-// We intentionally don't pull in PapaParse for this — onboarding ships a
+// We intentionally don't pull in PapaParse for this, onboarding ships a
 // minimal contact import, power users can use the full Database page later.
 function parseCsv(text) {
   const rows = [];
@@ -1659,7 +1659,7 @@ export function shouldShowOnboarding() {
 
 export function markOnboardingSeen() {
   localStorage.setItem(`${ONBOARDING_KEY}:${_bizKey()}`, '1');
-  // Keep the legacy key set too — harmless, prevents flapping if a
+  // Keep the legacy key set too, harmless, prevents flapping if a
   // caller reads the un-suffixed key directly.
   localStorage.setItem(ONBOARDING_KEY, '1');
 }

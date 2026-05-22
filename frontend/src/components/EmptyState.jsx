@@ -1,5 +1,5 @@
 /**
- * Illustrated empty state — rendered on every list page when there's no data.
+ * Illustrated empty state, rendered on every list page when there's no data.
  * The shape is deliberately opinionated: a soft-coloured icon tile, a concise
  * title, a one-line explanation of what the page is for, a primary CTA, and
  * an optional secondary link. Keeps every empty page feeling intentional

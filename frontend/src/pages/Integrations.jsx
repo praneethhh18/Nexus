@@ -1,5 +1,5 @@
 /**
- * Integrations marketplace — browse, connect, disconnect, health-check.
+ * Integrations marketplace, browse, connect, disconnect, health-check.
  *
  * Shows every shipped provider grouped by category. Connected providers
  * display their health status (green/red dot) + config preview + disconnect.
@@ -256,7 +256,7 @@ function ProviderCard({ provider, connection, onConnected, onDisconnected }) {
           <div style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 2 }}>
             {isConnected
               ? (healthOk === 1 ? 'Connected · healthy'
-                 : healthOk === 0 ? 'Connected · error — check health'
+                 : healthOk === 0 ? 'Connected · error, check health'
                  : 'Connected · not yet pinged')
               : statusMeta.label}
           </div>
@@ -445,7 +445,7 @@ export default function Integrations() {
             <strong style={{ color: 'var(--color-text)' }}>Privacy note.</strong>{' '}
             Credentials you paste here are stored in your local SQLite database and sent only
             to the provider you enable. Inbound webhooks arrive at <code>/api/webhooks/{'{provider}'}</code>{' '}
-            and are HMAC-verified against your shared secret — unsigned payloads are rejected.
+            and are HMAC-verified against your shared secret, unsigned payloads are rejected.
           </div>
         </div>
       </div>

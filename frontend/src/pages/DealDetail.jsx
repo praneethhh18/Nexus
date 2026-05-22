@@ -1,5 +1,5 @@
 /**
- * Deal detail page — pipeline-stage management plus full context.
+ * Deal detail page, pipeline-stage management plus full context.
  *
  * The most useful thing this page does is the stage-advance bar at the top:
  * one click moves a deal forward without opening a modal. Combined with
@@ -34,7 +34,7 @@ const STAGE_TONE = {
 const INTERACTION_ICONS = { call: Phone, email: Mail, meeting: Calendar, note: MessageSquare };
 
 function formatWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     return new Date(iso).toLocaleString([], {
       month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -43,7 +43,7 @@ function formatWhen(iso) {
 }
 
 function formatDate(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     return new Date(iso + 'T00:00:00').toLocaleDateString([], {
       month: 'short', day: 'numeric', year: 'numeric',
@@ -293,7 +293,7 @@ export default function DealDetail() {
                 {contact && (
                   <DetailRow icon={<User size={13} />} label="Contact">
                     <Link to={`/crm/contacts/${contact.id}`} style={{ color: 'var(--color-accent)' }}>
-                      {[contact.first_name, contact.last_name].filter(Boolean).join(' ') || '—'}
+                      {[contact.first_name, contact.last_name].filter(Boolean).join(' ') || ', '}
                     </Link>
                     {contact.email && <span style={{ color: 'var(--color-text-dim)', marginLeft: 8 }}>· {contact.email}</span>}
                   </DetailRow>
@@ -435,7 +435,7 @@ export default function DealDetail() {
 }
 
 
-// Shared bits (intentional dupe across detail pages — keeps each file
+// Shared bits (intentional dupe across detail pages, keeps each file
 // self-contained for now; promote to components/ once the pattern stabilises).
 function CenterSpinner() {
   return (

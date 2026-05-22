@@ -36,7 +36,7 @@ const STAGE_COLORS = {
   negotiation: '#ec4899', won: 'var(--color-ok)', lost: 'var(--color-text-dim)',
 };
 
-// INR + en-IN by default — NexusAgent is built for Indian SMBs. `cur` arg
+// INR + en-IN by default, NexusAgent is built for Indian SMBs. `cur` arg
 // kept for forward-compat if a deal explicitly carries USD/EUR/etc.
 const money = (v, cur = 'INR') => new Intl.NumberFormat('en-IN', { style: 'currency', currency: cur || 'INR', maximumFractionDigits: 0 }).format(v || 0);
 
@@ -51,7 +51,7 @@ function ContactQuickActions({ contact, flash, size = 11 }) {
     try {
       const r = await prepareDialForContact({ contact_id: contact.id, purpose: 'a quick check-in' });
       if (r?.precall_url) window.open(r.precall_url, '_blank', 'noopener');
-      else flash?.('Could not start call — no precall URL returned');
+      else flash?.('Could not start call, no precall URL returned');
     } catch (err) {
       flash?.(`Vox call failed: ${err.message}`);
     }
@@ -69,7 +69,7 @@ function ContactQuickActions({ contact, flash, size = 11 }) {
         className="btn-ghost"
         style={{ padding: 4, opacity: contact.phone ? 1 : 0.35 }}
         onClick={onCall}
-        title={contact.phone ? `Call ${contact.phone} via Vox` : 'No phone — add one to call'}
+        title={contact.phone ? `Call ${contact.phone} via Vox` : 'No phone, add one to call'}
         disabled={!contact.phone}
       >
         <Phone size={size} />
@@ -85,7 +85,7 @@ function Modal({ title, onClose, children, wide = false }) {
   // ESC to close; backdrop click does NOT close. An accidental click
   // outside (especially common when a child popover like TagPicker
   // overflows the modal bounds) used to wipe the user's half-written
-  // edit — TagPicker dropdowns in particular surfaced this as "the
+  // edit, TagPicker dropdowns in particular surfaced this as "the
   // page got cracked" because the modal vanished mid-interaction.
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose?.(); };
@@ -143,7 +143,7 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
 
   const submit = (e) => {
     e.preventDefault();
-    // Send custom_fields as an object — backend handles JSON serialisation
+    // Send custom_fields as an object, backend handles JSON serialisation
     // + normalisation. Skip empties so we don't write '{}' for everyone.
     const cleanExtras = Object.fromEntries(
       Object.entries(extras).filter(([, v]) => v !== '' && v != null)
@@ -193,7 +193,7 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
         <Field label="Source">
           <select className="field-select" value={f.source || ''}
                   onChange={(e) => set('source', e.target.value)} style={{ width: '100%' }}>
-            <option value="">— manual entry —</option>
+            <option value="">,  manual entry , </option>
             <option value="website">Website / Lead form</option>
             <option value="referral">Referral</option>
             <option value="outbound">Cold outreach</option>
@@ -208,12 +208,12 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
       <Field label="Company">
         <select className="field-select" value={f.company_id || ''}
                 onChange={(e) => set('company_id', e.target.value)} style={{ width: '100%' }}>
-          <option value="">— unlinked —</option>
+          <option value="">,  unlinked , </option>
           {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
       </Field>
 
-      {/* Industry-specific extras — only renders when the workspace's
+      {/* Industry-specific extras, only renders when the workspace's
           industry has a schema in industryContactFields.js. Falls through
           silently for industries we haven't tuned. */}
       {extraFields.length > 0 && (
@@ -239,7 +239,7 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
                     onChange={(e) => setExtra(spec.key, e.target.value)}
                   >
                     {(spec.options || []).map((opt) => (
-                      <option key={opt} value={opt}>{opt || '— select —'}</option>
+                      <option key={opt} value={opt}>{opt || ',  select , '}</option>
                     ))}
                   </select>
                 ) : (
@@ -266,7 +266,7 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
       <Field label="Notes">
         <textarea className="field-input" rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
-      {/* Tag editor inline — only when editing an existing contact (need
+      {/* Tag editor inline, only when editing an existing contact (need
           an id to link tags). When adding a new contact, the tags can be
           added on the second save (after the row exists). */}
       {initial?.id ? (
@@ -290,7 +290,7 @@ function ContactForm({ initial, companies, industry, onSubmit, onCancel }) {
 }
 
 // ── Company form ────────────────────────────────────────────────────────────
-// Shared industry + size enum — used by both CompanyForm and the
+// Shared industry + size enum, used by both CompanyForm and the
 // filter dropdowns below. Tuned for Indian SMB diversity; "Other"
 // captures the long tail without forcing the LLM to invent a new
 // category.
@@ -327,7 +327,7 @@ function CompanyForm({ initial, onSubmit, onCancel }) {
           <select className="field-select" value={f.industry}
                   onChange={(e) => set('industry', e.target.value)}
                   style={{ width: '100%' }}>
-            <option value="">— pick one —</option>
+            <option value="">,  pick one , </option>
             {INDUSTRY_OPTIONS.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
         </Field>
@@ -335,7 +335,7 @@ function CompanyForm({ initial, onSubmit, onCancel }) {
           <select className="field-select" value={f.size}
                   onChange={(e) => set('size', e.target.value)}
                   style={{ width: '100%' }}>
-            <option value="">— pick one —</option>
+            <option value="">,  pick one , </option>
             {SIZE_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </Field>
@@ -365,7 +365,7 @@ function CompanyForm({ initial, onSubmit, onCancel }) {
       </div>
       <Field label="Notes">
         <textarea className="field-input" rows={3}
-                  placeholder="Anything worth remembering — founder background, key contacts, deal history…"
+                  placeholder="Anything worth remembering, founder background, key contacts, deal history…"
                   value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={2000} />
       </Field>
       {initial?.id ? (
@@ -421,13 +421,13 @@ function DealForm({ initial, contacts, companies, onSubmit, onCancel }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
         <Field label="Company">
           <select className="field-select" value={f.company_id || ''} onChange={(e) => set('company_id', e.target.value)} style={{ width: '100%' }}>
-            <option value="">— none —</option>
+            <option value="">,  none , </option>
             {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </Field>
         <Field label="Primary contact">
           <select className="field-select" value={f.contact_id || ''} onChange={(e) => set('contact_id', e.target.value)} style={{ width: '100%' }}>
-            <option value="">— none —</option>
+            <option value="">,  none , </option>
             {contacts.map((c) => <option key={c.id} value={c.id}>{(c.first_name + ' ' + c.last_name).trim()}</option>)}
           </select>
         </Field>
@@ -503,11 +503,11 @@ function DealColumn({ stage, deals, onEdit, onDelete, onMove, onOpen }) {
 // ── Main CRM page ───────────────────────────────────────────────────────────
 // Stale-while-revalidate cache so navigating back to /crm renders the last
 // snapshot instantly instead of flashing an empty contacts/companies/deals
-// table. Filtered/searched views aren't cached — only the unfiltered base.
+// table. Filtered/searched views aren't cached, only the unfiltered base.
 const CRM_CACHE_KEY = 'crm:page';
 
 
-// Pure sorter at module scope — moved out of the component so React
+// Pure sorter at module scope, moved out of the component so React
 // Compiler can memoize the consuming `reload` callback cleanly. The
 // closures inside the component scope used to capture state, which
 // confused the compiler's memoization analysis.
@@ -546,7 +546,7 @@ const _daysSince = (iso) => {
   if (Number.isNaN(t)) return Infinity;
   return (_now() - t) / 86400_000;
 };
-// Decision-maker title heuristic — used by the "Decision maker" contact preset.
+// Decision-maker title heuristic, used by the "Decision maker" contact preset.
 // Matches common Indian SMB seniority signals; case-insensitive.
 const _DECISION_MAKER_RE = /\b(founder|co[- ]?founder|ceo|cto|cfo|cmo|coo|chief|president|vp|vice\s*president|head|director|owner|partner|principal|managing\s+director|md|proprietor)\b/i;
 
@@ -720,7 +720,7 @@ function SmartFilterBar({
     setSmartFilters(new Set());
     setSelectedTagIds?.([]);
   };
-  // Primary chip: Source / Industry / Stage — single-value, click to clear
+  // Primary chip: Source / Industry / Stage, single-value, click to clear
   const primary = tab === 'contacts' ? sourceFilter
     : tab === 'companies' ? industryFilter
     : tab === 'deals'     ? stageFilter
@@ -789,7 +789,7 @@ function SmartFilterBar({
                     className="field-input"
                     style={{ width: '100%', fontSize: 12 }}
                   >
-                    <option value="">— any —</option>
+                    <option value="">,  any , </option>
                     {tab === 'contacts' && ['manual', 'website', 'referral', 'outbound', 'event', 'linkedin', 'email_paste', 'import']
                       .map(v => <option key={v} value={v}>{v.replace('_', ' ')}</option>)}
                     {tab === 'companies' && INDUSTRY_OPTIONS
@@ -826,7 +826,7 @@ function SmartFilterBar({
                   </div>
                 </div>
               ))}
-              {/* Tags — kept inside the popover so the list page stays
+              {/* Tags, kept inside the popover so the list page stays
                   uncluttered. Multi-select: matched rows must carry ALL
                   selected tags (AND semantics, matches filterItems). */}
               {allTags.length > 0 && (
@@ -864,7 +864,7 @@ function SmartFilterBar({
         )}
       </div>
 
-      {/* Active filter chips — small dismissable pills for what's
+      {/* Active filter chips, small dismissable pills for what's
           currently filtering, mirroring Zoho/Linear-style. Lets the
           user clear individual filters without reopening the panel. */}
       {primary && (
@@ -924,7 +924,7 @@ function SmartFilterBar({
 
 export default function CRM() {
   const navigate = useNavigate();
-  // Industry-aware vocabulary — same product, the user sees "Patients"
+  // Industry-aware vocabulary, same product, the user sees "Patients"
   // (Healthcare), "Listings" (Real estate), "Students" (Education), etc.
   // Fallback for businesses with no industry: generic CRM terms.
   const t = useTerm();
@@ -951,13 +951,13 @@ export default function CRM() {
   const [sourceFilter, setSourceFilter] = useState('');
   const [industryFilter, setIndustryFilter] = useState('');
   const [stageFilter, setStageFilter] = useState('');
-  // Multi-criteria smart filter set — held as a flat Set of pre-defined
+  // Multi-criteria smart filter set, held as a flat Set of pre-defined
   // preset keys. Each key maps to a row-level predicate in SMART_PRESETS
   // (defined at module scope). Example keys: "contacts:no_email",
   // "deals:closing_this_month".
   const [smartFilters, setSmartFilters] = useState(() => new Set());
   // Bake tab-switch sort reset into the click handler instead of a
-  // separate effect — react-compiler can't memoize an effect that
+  // separate effect, react-compiler can't memoize an effect that
   // setState's based on a piece of state it doesn't depend on.
   const switchTab = useCallback((next) => {
     setTab(next);
@@ -1092,7 +1092,7 @@ export default function CRM() {
     sortKey,
   );
 
-  // Selection is scoped per tab — easiest: re-bind on the currently visible list
+  // Selection is scoped per tab, easiest: re-bind on the currently visible list
   const selectionContacts  = useBulkSelection(visibleContacts);
   const selectionCompanies = useBulkSelection(visibleCompanies);
   const selectionDeals     = useBulkSelection(visibleDeals);
@@ -1177,7 +1177,7 @@ export default function CRM() {
               value: overview.open_deals_count,
               sub: `worth ${money(overview.open_deals_value)}`,
               icon: Briefcase, color: 'var(--color-warn)' },
-            // No sub-line — the label "Won this month" already carries
+            // No sub-line, the label "Won this month" already carries
             // the time window. Adding "this month" twice looked sloppy.
             { label: t('kpi_won'), value: money(overview.won_this_month),
               sub: null,
@@ -1258,11 +1258,11 @@ export default function CRM() {
         </div>
       </div>
 
-      {/* Smart filter pills — only render the chip for the ACTIVE
+      {/* Smart filter pills, only render the chip for the ACTIVE
           filter, plus the "Filter" trigger button. Full multi-criteria
           panel lives in SmartFilterPanel below. This replaces the
           earlier flat-chip-row design that became unwieldy. Tag filter
-          is folded inside the popover too — no persistent "Filter by
+          is folded inside the popover too, no persistent "Filter by
           tag" strip cluttering the page. */}
       <SmartFilterBar
         tab={tab}
@@ -1285,7 +1285,7 @@ export default function CRM() {
               <Inbox size={14} color="var(--color-accent)" />
               <div style={{ fontSize: 12, color: 'var(--color-text)', lineHeight: 1.45 }}>
                 <strong>{t('leads')}</strong> are contacts captured from outside
-                — public lead forms, forwarded emails, the Lead Hunter agent,
+               , public lead forms, forwarded emails, the Lead Hunter agent,
                 or website signups. Triage them here before they graduate to
                 Contacts.
               </div>
@@ -1299,7 +1299,7 @@ export default function CRM() {
               icon={Users}
               title={contacts.length === 0 ? `No ${t('contacts').toLowerCase()} yet` : `No ${t('contacts').toLowerCase()} match this filter`}
               description={contacts.length === 0
-                ? `Add your first ${t('primary_record')} manually or import a CSV — Arjun will start tracking your pipeline and Sage will prep meetings.`
+                ? `Add your first ${t('primary_record')} manually or import a CSV, Arjun will start tracking your pipeline and Sage will prep meetings.`
                 : "Try clearing the tag filter or search to see everyone."}
               primaryLabel={contacts.length === 0 ? t('contact_add') : undefined}
               onPrimary={contacts.length === 0 ? () => setModal({ kind: 'contact', record: null }) : undefined}
@@ -1344,14 +1344,14 @@ export default function CRM() {
                           <BulkCheckbox checked={selectionContacts.isSelected(c.id)} onChange={() => selectionContacts.toggle(c.id)} />
                         </td>
                         <td style={{ fontWeight: 500, color: 'var(--color-text)' }}>
-                          {(c.first_name + ' ' + c.last_name).trim() || '—'}
+                          {(c.first_name + ' ' + c.last_name).trim() || ', '}
                         </td>
-                        <td className="hide-on-mobile">{c.title || '—'}</td>
-                        <td className="hide-on-mobile">{c.company_name || '—'}</td>
+                        <td className="hide-on-mobile">{c.title || ', '}</td>
+                        <td className="hide-on-mobile">{c.company_name || ', '}</td>
                         <td className="hide-on-mobile" onClick={(e) => e.stopPropagation()}>
-                          {c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : '—'}
+                          {c.email ? <a href={`mailto:${c.email}`} style={{ color: 'var(--color-info)' }}>{c.email}</a> : ', '}
                         </td>
-                        <td>{c.phone || '—'}</td>
+                        <td>{c.phone || ', '}</td>
                         <td className="hide-on-mobile"><TagChips tags={tagsByContact[c.id] || []} size="xs" /></td>
                         <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
                           <ContactQuickActions contact={c} flash={flash} />
@@ -1390,7 +1390,7 @@ export default function CRM() {
               icon={Building2}
               title={companies.length === 0 ? `No ${t('companies').toLowerCase()} yet` : `No ${t('companies').toLowerCase()} match this filter`}
               description={companies.length === 0
-                ? `Add the ${t('companies').toLowerCase()} you work with — ${t('deals').toLowerCase()} and ${t('contacts').toLowerCase()} hang off them.`
+                ? `Add the ${t('companies').toLowerCase()} you work with, ${t('deals').toLowerCase()} and ${t('contacts').toLowerCase()} hang off them.`
                 : "Try clearing the tag filter or search."}
               primaryLabel={companies.length === 0 ? `Add ${t('company').toLowerCase()}` : undefined}
               onPrimary={companies.length === 0 ? () => setModal({ kind: 'company', record: null }) : undefined}
@@ -1408,10 +1408,10 @@ export default function CRM() {
                       title="Open company"
                     >
                       <td style={{ fontWeight: 500, color: 'var(--color-text)' }}>{c.name}</td>
-                      <td>{c.industry || '—'}</td>
-                      <td>{c.size || '—'}</td>
+                      <td>{c.industry || ', '}</td>
+                      <td>{c.size || ', '}</td>
                       <td onClick={(e) => e.stopPropagation()}>
-                        {c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-info)' }}>{c.website}</a> : '—'}
+                        {c.website ? <a href={c.website.startsWith('http') ? c.website : `https://${c.website}`} target="_blank" rel="noreferrer" style={{ color: 'var(--color-info)' }}>{c.website}</a> : ', '}
                       </td>
                       <td><TagChips tags={tagsByCompany[c.id] || []} size="xs" /></td>
                       <td style={{ display: 'flex', gap: 4 }} onClick={(e) => e.stopPropagation()}>
@@ -1433,7 +1433,7 @@ export default function CRM() {
             <EmptyState
               icon={Briefcase}
               title={`No ${t('deals').toLowerCase()} in the pipeline`}
-              description={`Create your first ${t('deal').toLowerCase()} — Arjun will flag it as stale if it hasn't moved in 2+ weeks, so the pipeline stays alive.`}
+              description={`Create your first ${t('deal').toLowerCase()}, Arjun will flag it as stale if it hasn't moved in 2+ weeks, so the pipeline stays alive.`}
               primaryLabel={`Add ${t('deal').toLowerCase()}`}
               onPrimary={() => setModal({ kind: 'deal', record: null })}
             />
@@ -1516,7 +1516,7 @@ export default function CRM() {
 }
 
 
-// ── Leads tab — inbound lead-gen home ───────────────────────────────────────
+// ── Leads tab, inbound lead-gen home ───────────────────────────────────────
 // Surfaces every contact whose `source` isn't 'manual' (i.e. came from the
 // public form, email forwarder, WhatsApp, AI prospecting, etc.) plus the
 // public-form key management UI that used to live in Settings.
@@ -1524,7 +1524,7 @@ export default function CRM() {
 // Two reasons this tab exists:
 //   1. People doing lead-gen work shouldn't have to bounce between Settings
 //      and CRM. Everything lead-related is now one click away.
-//   2. The source breakdown band makes attribution legible — "30% from the
+//   2. The source breakdown band makes attribution legible, "30% from the
 //      website form, 50% from email forwards, 20% from referrals."
 function LeadsTab({ contacts, navigate, flash }) {
   const [emailModalOpen, setEmailModalOpen] = useState(false);
@@ -1635,7 +1635,7 @@ function LeadsTab({ contacts, navigate, flash }) {
             <button
               className="btn-primary btn-sm"
               onClick={() => setEmailModalOpen(true)}
-              title="Paste a forwarded email — AI extracts the sender and creates a scored lead"
+              title="Paste a forwarded email, AI extracts the sender and creates a scored lead"
             >
               <Mail size={11} /> Capture from email
             </button>
@@ -1649,7 +1649,7 @@ function LeadsTab({ contacts, navigate, flash }) {
           </div>
         </div>
 
-        {/* Filter + sort bar — only when there's enough data to make filtering useful */}
+        {/* Filter + sort bar, only when there's enough data to make filtering useful */}
         {inboundAll.length > 3 && (
           <div style={{
             display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
@@ -1756,17 +1756,17 @@ function LeadsTab({ contacts, navigate, flash }) {
             ))}
             {recent.length > 12 && (
               <div style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center', padding: '6px 0' }}>
-                + {recent.length - 12} more inbound leads — switch to the Contacts tab to see them all.
+                + {recent.length - 12} more inbound leads, switch to the Contacts tab to see them all.
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Hosted lead-capture forms — the user-facing way to mint a share link */}
+      {/* Hosted lead-capture forms, the user-facing way to mint a share link */}
       <LeadFormsCard flash={flash} />
 
-      {/* Future channels — placeholders that link to the doc */}
+      {/* Future channels, placeholders that link to the doc */}
       <div className="panel" style={{ background: 'var(--color-surface-1)' }}>
         <div className="section-h" style={{ margin: '0 0 10px' }}>
           <h2>Other lead channels</h2>
@@ -1807,7 +1807,7 @@ function LeadsTab({ contacts, navigate, flash }) {
           onClose={() => setForgeOpen(false)}
           onSaved={(count) => {
             setForgeOpen(false);
-            flash?.(`${count} candidate${count === 1 ? '' : 's'} added — verify each in the Leads tab.`);
+            flash?.(`${count} candidate${count === 1 ? '' : 's'} added, verify each in the Leads tab.`);
           }}
           flash={flash}
         />
@@ -1820,7 +1820,7 @@ function LeadsTab({ contacts, navigate, flash }) {
 // ── Capture-from-email modal ────────────────────────────────────────────────
 // Three-step flow in one modal:
 //   1. paste raw email content (textarea)
-//   2. click Extract — LLM parses, regex falls back if parsing failed
+//   2. click Extract, LLM parses, regex falls back if parsing failed
 //   3. user edits the preview fields, clicks Save → contact created + scored
 function CaptureFromEmailModal({ onClose, onSaved, flash }) {
   const [step, setStep] = useState('paste');  // 'paste' | 'preview'
@@ -1862,7 +1862,7 @@ function CaptureFromEmailModal({ onClose, onSaved, flash }) {
         summary: extracted.summary || '',
       });
       flash?.(r.deduped
-        ? 'Already in your CRM — logged this email as an interaction.'
+        ? 'Already in your CRM, logged this email as an interaction.'
         : 'Lead captured + auto-scored against your ICP.');
       onSaved?.(r.contact_id);
     } catch (e) {
@@ -1913,7 +1913,7 @@ function CaptureFromEmailModal({ onClose, onSaved, flash }) {
             </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
               {step === 'paste'
-                ? 'Paste a forwarded email — AI extracts the sender'
+                ? 'Paste a forwarded email, AI extracts the sender'
                 : 'Review the extracted fields, edit anything, then save'}
             </div>
           </div>
@@ -1945,7 +1945,7 @@ function CaptureFromEmailModal({ onClose, onSaved, flash }) {
           {step === 'paste' && (
             <>
               <div style={{ fontSize: 11, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
-                Paste anything — a forwarded chain, a raw <code>From: …</code> header,
+                Paste anything, a forwarded chain, a raw <code>From: …</code> header,
                 or just the body. The AI will pull out who it's from and what they want.
               </div>
               <textarea
@@ -1969,7 +1969,7 @@ function CaptureFromEmailModal({ onClose, onSaved, flash }) {
                   borderRadius: 'var(--r-sm)',
                   fontSize: 11.5, color: 'var(--color-warn)',
                 }}>
-                  AI parsing didn't land cleanly — these fields came from a regex fallback.
+                  AI parsing didn't land cleanly, these fields came from a regex fallback.
                   Edit anything that looks off before saving.
                 </div>
               )}
@@ -2145,7 +2145,7 @@ function ForgeModal({ onClose, onSaved, flash }) {
             </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
               {step === 'brief'
-                ? 'Describe who you want to reach — AI brainstorms candidate companies'
+                ? 'Describe who you want to reach, AI brainstorms candidate companies'
                 : 'Review the suggestions, verify them, save the keepers'}
             </div>
           </div>
@@ -2177,7 +2177,7 @@ function ForgeModal({ onClose, onSaved, flash }) {
             <>
               <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', lineHeight: 1.55 }}>
                 Forge suggests candidate companies that <em>might</em> match your brief. These
-                are <strong>AI suggestions, not verified leads</strong> — each comes with a Google
+                are <strong>AI suggestions, not verified leads</strong>, each comes with a Google
                 query you can run to confirm. Save the ones that check out, ignore the rest.
               </div>
               <textarea
@@ -2185,12 +2185,12 @@ function ForgeModal({ onClose, onSaved, flash }) {
                 rows={6}
                 value={brief}
                 onChange={(e) => setBrief(e.target.value)}
-                placeholder={"e.g. D2C brands in Bangalore with 20-100 staff that raised funding in the last 18 months — focus on health & wellness niches."}
+                placeholder={"e.g. D2C brands in Bangalore with 20-100 staff that raised funding in the last 18 months, focus on health & wellness niches."}
                 style={{ fontSize: 12.5, lineHeight: 1.55 }}
               />
               {!icpUsed && (
                 <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-                  Tip: set an Ideal Customer Profile in Settings — Forge will use it
+                  Tip: set an Ideal Customer Profile in Settings, Forge will use it
                   alongside this brief to sharpen the suggestions.
                 </div>
               )}
@@ -2416,7 +2416,7 @@ function ScoreBadge({ score }) {
   const bucket = scoreBucket(score);
   if (bucket === null) {
     return (
-      <span className="pill-base pill-muted" title="Not scored yet — open the contact and click Rescore.">
+      <span className="pill-base pill-muted" title="Not scored yet, open the contact and click Rescore.">
         ?
       </span>
     );
@@ -2490,7 +2490,7 @@ function LeadRow({ contact: c, onClick }) {
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 500 }}>{fullName}</div>
         <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-          {c.email || c.phone || '—'}{c.company_name ? ` · ${c.company_name}` : ''}
+          {c.email || c.phone || ', '}{c.company_name ? ` · ${c.company_name}` : ''}
         </div>
       </div>
       <ScoreBadge score={c.lead_score} />
@@ -2566,7 +2566,7 @@ function IntakeKeyCard({ flash }) {
 
   const copyText = (txt) => {
     try { navigator.clipboard.writeText(txt); flash?.('Copied.'); }
-    catch { flash?.('Copy failed — select manually.'); }
+    catch { flash?.('Copy failed, select manually.'); }
   };
 
   const activeKey = justCreated || keys.find(k => !k.revoked_at);
@@ -2587,7 +2587,7 @@ function IntakeKeyCard({ flash }) {
         }),
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      flash?.('Test lead sent — refresh CRM in a moment to see it in Inbound.');
+      flash?.('Test lead sent, refresh CRM in a moment to see it in Inbound.');
       reload();
     } catch (e) { flash?.(`Test failed: ${e.message || e}`); }
     finally { setBusy(false); }
@@ -2600,7 +2600,7 @@ function IntakeKeyCard({ flash }) {
         <span className="meta">capture leads from any website into this workspace</span>
       </div>
 
-      {/* How it works — short, scannable, removes the "what does this even do" gap */}
+      {/* How it works, short, scannable, removes the "what does this even do" gap */}
       <div style={{
         padding: '10px 12px', marginBottom: 12,
         background: 'var(--color-surface-1)',
@@ -2613,7 +2613,7 @@ function IntakeKeyCard({ flash }) {
                       marginBottom: 6 }}>
           How this works
         </div>
-        <div><b style={{ color: 'var(--color-text)' }}>1.</b> Generate a key below — it's a per-workspace token (we store only its hash).</div>
+        <div><b style={{ color: 'var(--color-text)' }}>1.</b> Generate a key below, it's a per-workspace token (we store only its hash).</div>
         <div><b style={{ color: 'var(--color-text)' }}>2.</b> Click <b>Show embed snippet</b> and drop the 5-line HTML form on any website (your landing page, footer, partner site).</div>
         <div><b style={{ color: 'var(--color-text)' }}>3.</b> When someone submits, it lands here as a scored lead. Use <b>Send test lead</b> on an active key to see it work right now.</div>
       </div>
@@ -2631,7 +2631,7 @@ function IntakeKeyCard({ flash }) {
             fontSize: 11, fontWeight: 600, color: 'var(--color-accent)',
             letterSpacing: 0.5, textTransform: 'uppercase',
           }}>
-            <Check size={11} /> New key — copy it now
+            <Check size={11} /> New key, copy it now
           </div>
           <div style={{
             display: 'flex', gap: 6, alignItems: 'center',
@@ -2647,7 +2647,7 @@ function IntakeKeyCard({ flash }) {
             </button>
           </div>
           <div style={{ fontSize: 10.5, color: 'var(--color-text-dim)', marginTop: 6 }}>
-            We don't store the raw key — only its hash. Save it somewhere safe.
+            We don't store the raw key, only its hash. Save it somewhere safe.
           </div>
           <button className="btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => setJustCreated(null)}>
             Got it
@@ -2774,19 +2774,19 @@ document.getElementById('lead-form').addEventListener('submit', async (e) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
   });
-  alert(r.ok ? 'Thanks — we\\'ll be in touch.' : 'Send failed, please email us.');
+  alert(r.ok ? 'Thanks, we\\'ll be in touch.' : 'Send failed, please email us.');
   e.target.reset();
 });
 </script>`;
 }
 
 
-// ── Lead-capture forms — share link + simple builder ────────────────────────
+// ── Lead-capture forms, share link + simple builder ────────────────────────
 // The user-facing way to mint a lead-capture surface. Wraps the intake-key
 // primitive entirely: from this UI a workspace owner creates a Form (title +
 // chosen fields), gets back a public URL like /f/<slug>, and shares it
 // anywhere (WhatsApp, Insta bio, email signature, QR-on-flyer). Submissions
-// land in Inbound automatically — the key never enters the user's view.
+// land in Inbound automatically, the key never enters the user's view.
 const CHANNEL_PRESETS = [
   { key: 'whatsapp',     label: 'WhatsApp',     icon: MessageSquare },
   { key: 'instagram',    label: 'Instagram',    icon: Sparkles },
@@ -2828,7 +2828,7 @@ function LeadFormsCard({ flash }) {
         <span className="meta">build a form → share the link → leads land in Inbound</span>
       </div>
 
-      {/* How it works — short, plain-language */}
+      {/* How it works, short, plain-language */}
       <div style={{
         padding: '10px 12px', marginBottom: 12,
         background: 'var(--color-surface-1)',
@@ -2839,9 +2839,9 @@ function LeadFormsCard({ flash }) {
         <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
                       textTransform: 'uppercase', color: 'var(--color-text-dim)',
                       marginBottom: 6 }}>How this works</div>
-        <div><b style={{ color: 'var(--color-text)' }}>1.</b> Build a form below — pick the fields you want (name, phone, what they need, etc.).</div>
+        <div><b style={{ color: 'var(--color-text)' }}>1.</b> Build a form below, pick the fields you want (name, phone, what they need, etc.).</div>
         <div><b style={{ color: 'var(--color-text)' }}>2.</b> You get a share link like <code>nexusagent.in/f/your-form</code>. Drop it in your WhatsApp Status, Instagram bio, email signature, or a QR on your flyer.</div>
-        <div><b style={{ color: 'var(--color-text)' }}>3.</b> Anyone who fills it lands here as a scored lead — with the form name + channel tagged for attribution.</div>
+        <div><b style={{ color: 'var(--color-text)' }}>3.</b> Anyone who fills it lands here as a scored lead, with the form name + channel tagged for attribution.</div>
       </div>
 
       {/* Form list */}
@@ -2924,7 +2924,7 @@ function LeadFormBuilderModal({ form, onClose, onSaved }) {
   const isEdit = !!form;
   const [title, setTitle] = useState(form?.title || '');
   const [description, setDescription] = useState(form?.description || '');
-  const [thankYou, setThankYou] = useState(form?.thank_you || "Thanks — we'll be in touch.");
+  const [thankYou, setThankYou] = useState(form?.thank_you || "Thanks, we'll be in touch.");
   const [accent, setAccent] = useState(form?.accent_color || '#8b5cf6');
   // fields state = array of {key, label, required}; key is unique
   const [fields, setFields] = useState(() => {
@@ -3012,7 +3012,7 @@ function LeadFormBuilderModal({ form, onClose, onSaved }) {
 
         <Field label="Description (optional)">
           <textarea className="field-input" rows={2}
-                    placeholder='Shown to visitors. e.g. "Tell us about your project — we usually reply within a day."'
+                    placeholder='Shown to visitors. e.g. "Tell us about your project, we usually reply within a day."'
                     value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} />
         </Field>
 
@@ -3093,8 +3093,8 @@ function LeadFormShareModal({ form, onClose, flash }) {
   const [selectedChannel, setSelectedChannel] = useState('');
   const url = formShareUrl(form.slug, selectedChannel);
 
-  // Use a hosted QR-code generator. The URL itself isn't sensitive — it's
-  // designed to be public-facing — so a 3rd-party render service is fine.
+  // Use a hosted QR-code generator. The URL itself isn't sensitive, it's
+  // designed to be public-facing, so a 3rd-party render service is fine.
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(url)}`;
 
   useEffect(() => {
@@ -3105,7 +3105,7 @@ function LeadFormShareModal({ form, onClose, flash }) {
 
   const copy = (txt) => {
     try { navigator.clipboard.writeText(txt); flash?.('Copied to clipboard.'); }
-    catch { flash?.('Copy failed — please select manually.'); }
+    catch { flash?.('Copy failed, please select manually.'); }
   };
 
   return (
@@ -3118,7 +3118,7 @@ function LeadFormShareModal({ form, onClose, flash }) {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--color-text)', margin: 0 }}>
-            Share &mdash; {form.title}
+            Share , {form.title}
           </h3>
           <button onClick={onClose} style={{ background: 'none', border: 'none',
                                               color: 'var(--color-text-dim)', cursor: 'pointer' }}>
@@ -3126,7 +3126,7 @@ function LeadFormShareModal({ form, onClose, flash }) {
           </button>
         </div>
 
-        {/* Channel picker — tags the URL with ?via=<channel> for attribution */}
+        {/* Channel picker, tags the URL with ?via=<channel> for attribution */}
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
                         textTransform: 'uppercase', color: 'var(--color-text-dim)',
@@ -3200,7 +3200,7 @@ function LeadFormShareModal({ form, onClose, flash }) {
           <div style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: 0.5,
                         textTransform: 'uppercase', color: '#666',
                         marginBottom: 8 }}>
-            QR code &mdash; print on flyers, business cards, posters
+            QR code , print on flyers, business cards, posters
           </div>
           <img src={qrSrc} alt="QR code" width={240} height={240}
                style={{ display: 'block', margin: '0 auto' }} />

@@ -1,5 +1,5 @@
 /**
- * WhatsApp multi-tenant API client — talks to the backend, NOT directly
+ * WhatsApp multi-tenant API client, talks to the backend, NOT directly
  * to the Node bridge. Backend handles auth + plan-gate + bridge routing.
  *
  * Flow used by the Settings/WhatsAppConnect component:

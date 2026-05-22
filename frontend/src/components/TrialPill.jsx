@@ -1,12 +1,12 @@
 /**
- * Trial pill — small, non-dismissible badge in the sidebar showing
+ * Trial pill, small, non-dismissible badge in the sidebar showing
  * how many trial days are left.
  *
  * Sibling of TrialBanner. They have different jobs:
  *   - TrialBanner is a dismissible top-of-page strip with a big "Upgrade"
  *     CTA. The customer can hide it for 24 hours when they're in flow.
  *   - TrialPill is small, always-on, non-dismissible. It's the answer to
- *     "how long do I have left?" — the customer can glance at the sidebar
+ *     "how long do I have left?", the customer can glance at the sidebar
  *     any time and know. No surprise expirations.
  *
  * Renders nothing for non-trial accounts (paid, free, expired).
@@ -49,7 +49,7 @@ export default function TrialPill({ collapsed = false }) {
   useEffect(() => {
     if (!isLoggedIn()) return;
 
-    // Hydrate from the shared cache — TrialBanner may have already fetched.
+    // Hydrate from the shared cache, TrialBanner may have already fetched.
     try {
       const cached = sessionStorage.getItem(CACHE_KEY);
       if (cached) setSub(JSON.parse(cached));
@@ -71,7 +71,7 @@ export default function TrialPill({ collapsed = false }) {
   const days = sub.trial_days_remaining;
   if (days === null || days === undefined) return null;
 
-  // Urgency tones — match the banner's so the two read as one system.
+  // Urgency tones, match the banner's so the two read as one system.
   const tone =
     days >= 7 ? { bg: 'rgba(99,102,241,0.12)',  bd: 'rgba(99,102,241,0.35)', fg: '#a5b4fc' } :
     days >= 3 ? { bg: 'rgba(245,158,11,0.14)',  bd: 'rgba(245,158,11,0.40)', fg: '#fbbf24' } :
@@ -86,7 +86,7 @@ export default function TrialPill({ collapsed = false }) {
     return (
       <Link
         to="/pricing"
-        title={`${sub.label || 'Pro'} trial — ${dayText}`}
+        title={`${sub.label || 'Pro'} trial, ${dayText}`}
         style={{
           display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
           width: 28, height: 28, borderRadius: 8,

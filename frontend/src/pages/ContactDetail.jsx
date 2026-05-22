@@ -1,11 +1,11 @@
 /**
- * Contact detail page — the single source of truth for one person.
+ * Contact detail page, the single source of truth for one person.
  *
  * Shows: identity (name/email/phone/title), the company relationship, notes,
  * tags, recent interactions, open deals where they're the primary contact,
  * and invoices addressed to them. Plus first-class action buttons that
- * actually do things — log a call, send an email, create a task, draft an
- * invoice for this person — instead of forcing the user to leave for
+ * actually do things, log a call, send an email, create a task, draft an
+ * invoice for this person, instead of forcing the user to leave for
  * another page and re-enter the same context.
  */
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -43,7 +43,7 @@ const INTERACTION_TONES = {
 
 
 function formatWhen(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   try {
     return new Date(iso).toLocaleString([], {
       month: 'short', day: 'numeric',
@@ -124,7 +124,7 @@ export default function ContactDetail() {
 
   const fullName = useMemo(() => {
     if (!contact) return '';
-    return [contact.first_name, contact.last_name].filter(Boolean).join(' ') || '—';
+    return [contact.first_name, contact.last_name].filter(Boolean).join(' ') || ', ';
   }, [contact]);
 
   const openDeals = useMemo(
@@ -141,7 +141,7 @@ export default function ContactDetail() {
 
   // ── Follow-up nudge: contact has interaction history, last touch is
   // 7+ days old, and the relationship is still "live" (no deals yet OR at
-  // least one open deal — skip when everything's already won/lost).
+  // least one open deal, skip when everything's already won/lost).
   const followUp = useMemo(() => {
     if (!interactions || interactions.length === 0) return null;
     const last = interactions[0];  // listInteractions returns newest-first
@@ -156,7 +156,7 @@ export default function ContactDetail() {
 
   // ── Forge verification: AI-prospected contacts land with first_name set
   // to "(unknown)". Surface a banner so the user can fill in the actual
-  // person before reaching out — Forge only suggests *roles*, not real
+  // person before reaching out, Forge only suggests *roles*, not real
   // names, so this is the explicit verification step.
   const needsVerify = useMemo(() => {
     if (!contact) return false;
@@ -252,7 +252,7 @@ export default function ContactDetail() {
       flash('No email on file for this contact.');
       return;
     }
-    // Open the user's mail client. Using mailto: keeps it simple — the
+    // Open the user's mail client. Using mailto: keeps it simple, the
     // alternative is to route through the agent's send_email tool, but
     // that requires SMTP config which not every workspace has.
     window.open(`mailto:${contact.email}`, '_blank');
@@ -281,7 +281,7 @@ export default function ContactDetail() {
       if (!r?.ok || !r.precall_url) throw new Error(r?.error || 'Could not prepare call.');
       window.open(r.precall_url, '_blank', 'noopener');
       setCallModal(null);
-      flash(`Opened call config in new tab — pick a combo and place the call.`);
+      flash(`Opened call config in new tab, pick a combo and place the call.`);
       // Refresh history once the lab eventually posts the callback.
       setTimeout(() => reload(), 30000);
     } catch (e) {
@@ -335,11 +335,11 @@ export default function ContactDetail() {
     // multiple, we surface a friendly note pointing them to the deal page.
     const target = openDeals[0];
     if (!target) {
-      flash('No open deal on this contact yet — create one from the Actions panel.');
+      flash('No open deal on this contact yet, create one from the Actions panel.');
       return;
     }
     if (openDeals.length > 1) {
-      flash(`Advanced "${target.name}" to ${stage}. (You have ${openDeals.length} open deals — use the Deal pages for the others.)`);
+      flash(`Advanced "${target.name}" to ${stage}. (You have ${openDeals.length} open deals, use the Deal pages for the others.)`);
     }
     try {
       await updateDeal(target.id, { stage });
@@ -359,7 +359,7 @@ export default function ContactDetail() {
       // Reload the contact so the badge updates with the new score.
       reload();
       if (!r.icp_set) {
-        flash('No Ideal Customer Profile set yet — head to Settings to define one.');
+        flash('No Ideal Customer Profile set yet, head to Settings to define one.');
       } else if (r.score == null) {
         flash(r.reason || 'Scoring did not return a usable result.');
       } else {
@@ -476,7 +476,7 @@ export default function ContactDetail() {
         {/* ── Left column ──────────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* Forge verification banner — shown when this is an AI-prospected
+          {/* Forge verification banner, shown when this is an AI-prospected
               contact whose first_name is still the "(unknown)" placeholder.
               Filling in the real person flips them from "candidate" to
               "actual lead" before any outreach goes out. */}
@@ -491,7 +491,7 @@ export default function ContactDetail() {
             />
           )}
 
-          {/* Smart follow-up nudge — last interaction is 7+ days old and
+          {/* Smart follow-up nudge, last interaction is 7+ days old and
               the relationship is still active (no deals yet OR an open deal).
               One-click drafts an outreach so leads don't go cold silently. */}
           {followUp && (
@@ -563,7 +563,7 @@ export default function ContactDetail() {
             )}
           </div>
 
-          {/* Unified timeline — the conversation-stitch view. Combines
+          {/* Unified timeline, the conversation-stitch view. Combines
               interactions + stage transitions (best-effort) + invoices into
               one chronological feed. Below it, the structured per-type
               panels still render so users can drill into a specific deal
@@ -574,7 +574,7 @@ export default function ContactDetail() {
             invoices={invoices}
           />
 
-          {/* BANT card — only when extracted */}
+          {/* BANT card, only when extracted */}
           {contact.bant_signals && (() => {
             try {
               const b = typeof contact.bant_signals === 'string'
@@ -591,7 +591,7 @@ export default function ContactDetail() {
             } catch { return null; }
           })()}
 
-          {/* AI fit reasoning — only when scored */}
+          {/* AI fit reasoning, only when scored */}
           {contact.lead_score != null && contact.lead_score_reason && (
             <div className="panel" style={{
               borderColor: 'color-mix(in srgb, var(--color-accent) 22%, var(--color-border))',
@@ -696,7 +696,7 @@ export default function ContactDetail() {
             </div>
           )}
 
-          {/* Vox call history — distinct from logged interactions because
+          {/* Vox call history, distinct from logged interactions because
               these have transcripts, lead scores, and lab cockpit replay. */}
           <VoxCallsPanel
             calls={voxCalls}
@@ -745,7 +745,7 @@ export default function ContactDetail() {
               <textarea
                 className="field-input"
                 rows={2}
-                placeholder="Summary — what got discussed?"
+                placeholder="Summary, what got discussed?"
                 value={newInter.summary}
                 onChange={(e) => setNewInter({ ...newInter, summary: e.target.value })}
                 maxLength={2000}
@@ -811,7 +811,7 @@ export default function ContactDetail() {
           </div>
         </div>
 
-        {/* ── Right column — Actions ────────────────────────────────────── */}
+        {/* ── Right column, Actions ────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div className="panel">
             <div className="section-h" style={{ margin: '0 0 10px' }}>
@@ -933,7 +933,7 @@ export default function ContactDetail() {
         />
       )}
 
-      {/* Vox dial modal — captures purpose then triggers the lab. */}
+      {/* Vox dial modal, captures purpose then triggers the lab. */}
       {callModal && (
         <VoxDialModal
           contact={contact}
@@ -944,7 +944,7 @@ export default function ContactDetail() {
         />
       )}
 
-      {/* Vox call detail modal — shows transcript + summary fields. */}
+      {/* Vox call detail modal, shows transcript + summary fields. */}
       {callDetail && (
         <VoxCallDetailModal
           state={callDetail}
@@ -960,7 +960,7 @@ export default function ContactDetail() {
 // Renders the three variants returned by /api/crm/contacts/{id}/draft-outreach
 // in a tabbed view. Each variant is editable in place; the user can copy
 // to clipboard or open in their mail client (mailto:) without sending
-// through the agent — keeps the privacy story simple (no SMTP needed).
+// through the agent, keeps the privacy story simple (no SMTP needed).
 function DraftOutreachModal({ state, contact, smtpConfigured, onRegenerate, onClose, onCopied, onSent }) {
   const [active, setActive] = useState(0);
   const [edits, setEdits] = useState({});  // tone -> {subject, body}
@@ -1448,7 +1448,7 @@ function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClo
               Qualify {fullName}'s reply
             </div>
             <div style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
-              Paste their reply — AI extracts Budget · Authority · Need · Timing
+              Paste their reply, AI extracts Budget · Authority · Need · Timing
             </div>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: 'var(--color-text-dim)', cursor: 'pointer', padding: 4 }} aria-label="Close">
@@ -1476,7 +1476,7 @@ function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClo
             rows={r ? 4 : 12}
             value={state.replyText}
             onChange={(e) => onChangeReply(e.target.value)}
-            placeholder="Paste their reply here. The fuller the better — full email or just the body, both work."
+            placeholder="Paste their reply here. The fuller the better, full email or just the body, both work."
             style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: 12, lineHeight: 1.55 }}
           />
 
@@ -1519,7 +1519,7 @@ function BantModal({ state, contact, openDealsCount, onChangeReply, onRun, onClo
 // ── AI reply drafter modal ──────────────────────────────────────────────────
 // Shown after BANT extraction (or anywhere we want to draft a contextual
 // response). Editable subject + body, copy or open in mail client. Same
-// privacy posture as the rest — backend forces sensitive=True.
+// privacy posture as the rest, backend forces sensitive=True.
 function ReplyDraftModal({ state, contact, smtpConfigured, onClose, onCopied, onSent, onRegenerate, onChangeDraft }) {
   const draft = state.draft;
   const fullName = [contact?.first_name, contact?.last_name].filter(Boolean).join(' ') || 'this contact';
@@ -1713,7 +1713,7 @@ function ReplyDraftModal({ state, contact, smtpConfigured, onClose, onCopied, on
 
 
 // ── Smart follow-up nudge ───────────────────────────────────────────────────
-// "Last touch was N days ago — draft a follow-up?". Yellow tone since this
+// "Last touch was N days ago, draft a follow-up?". Yellow tone since this
 // is a soft prompt, not an error. Hides itself once the user logs a fresh
 // interaction (recomputed from the interactions list).
 function FollowUpNudge({ days, lastSubject, lastType, hasEmail, onDraft }) {
@@ -1758,7 +1758,7 @@ function FollowUpNudge({ days, lastSubject, lastType, hasEmail, onDraft }) {
 
 // ── Forge verification banner ───────────────────────────────────────────────
 // Shown when contact.source === 'ai_outbound' and first_name is empty/unknown.
-// Inline form right where the placeholder lives — fill in name + email and
+// Inline form right where the placeholder lives, fill in name + email and
 // the banner disappears. Saves directly to the contact, no modal.
 function ForgeVerifyBanner({ contact, edit, onStart, onChange, onCancel, onSave }) {
   const targetRole = contact?.title || 'this role';
@@ -1783,7 +1783,7 @@ function ForgeVerifyBanner({ contact, edit, onStart, onChange, onCancel, onSave 
             Verify before reaching out
           </div>
           <div style={{ fontSize: 11.5, color: 'var(--color-text-muted)', marginTop: 2 }}>
-            Forge suggested {targetRole} at {contact?.company_name || 'this company'} — fill in the actual person before any outreach goes out.
+            Forge suggested {targetRole} at {contact?.company_name || 'this company'}, fill in the actual person before any outreach goes out.
           </div>
         </div>
         <button className="btn-primary btn-sm" onClick={onStart}>
@@ -2017,7 +2017,7 @@ function Pill({ tone, children }) {
 }
 
 function fmtDur(sec) {
-  if (sec == null) return '—';
+  if (sec == null) return ', ';
   const s = Number(sec) | 0;
   return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 }

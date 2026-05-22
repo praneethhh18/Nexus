@@ -10,13 +10,13 @@ import {
 const STATUS_META = {
   unconfigured: { label: 'Not set up',         tone: 'dim',  Icon: AlertTriangle, sub: 'Sensitive prompts go to cloud (with PII redaction).' },
   registered:   { label: 'Registered',         tone: 'warn', Icon: Wifi,          sub: 'Waiting for first health check…' },
-  healthy:      { label: 'Active — local AI',  tone: 'good', Icon: ShieldCheck,   sub: 'Sensitive prompts compute on your laptop.' },
+  healthy:      { label: 'Active, local AI',  tone: 'good', Icon: ShieldCheck,   sub: 'Sensitive prompts compute on your laptop.' },
   down:         { label: 'Bridge offline',     tone: 'bad',  Icon: WifiOff,       sub: 'Falling back to cloud (with PII redaction). Restart the installer on your laptop.' },
   revoked:      { label: 'Disabled',           tone: 'dim',  Icon: Power,         sub: 'Issue a new token to re-enable.' },
 };
 
 function timeAgo(iso) {
-  if (!iso) return '—';
+  if (!iso) return ', ';
   const t = new Date(iso).getTime();
   if (!t) return iso;
   const s = Math.max(0, Math.floor((Date.now() - t) / 1000));
@@ -223,10 +223,10 @@ export default function PrivacyMode() {
             <Detail icon={<Laptop size={13} />} label="Endpoint" value={
               state?.endpoint_url
                 ? state.endpoint_url.replace('https://', '').slice(0, 42) + (state.endpoint_url.length > 50 ? '…' : '')
-                : '—'
+                : ', '
             } />
             <Detail icon={<Cpu size={13} />} label="Models" value={
-              (state?.ollama_models || []).slice(0, 3).join(', ') || '—'
+              (state?.ollama_models || []).slice(0, 3).join(', ') || ', '
             } />
             <Detail icon={<RefreshCw size={13} />} label="Last check" value={timeAgo(state?.last_pinged_at)} />
             <Detail icon={<KeyRound size={13} />} label="Registered" value={timeAgo(state?.registered_at)} />
@@ -310,7 +310,7 @@ export default function PrivacyMode() {
                 </button>
               </div>
               <div style={{ marginTop: 6, fontSize: 11, color: 'var(--color-text-dim)' }}>
-                Paste this into the installer when it asks. We'll only show it once — keep it safe.
+                Paste this into the installer when it asks. We'll only show it once, keep it safe.
               </div>
             </div>
           )}
