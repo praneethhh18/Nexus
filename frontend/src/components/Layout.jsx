@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, MessageSquare, Database, FileText, Clock, Settings, Plus, Trash2, ChevronLeft, ChevronRight, GitBranch, Bell, LogOut, Terminal, Sun, Moon, Command, Briefcase, ChevronDown, Check, Users, CheckSquare, Receipt, FileType2, ShieldCheck, Brain, BarChart3, Shield, Activity, Search, Bot, Inbox, Plug, Sparkles, Mail, X } from 'lucide-react';
 import { getHealth, getNotifications, markAllNotificationsRead, listBusinesses, createBusiness } from '../services/api';
+import { getBusiness } from '../services/businesses';
 import { markNotificationRead, deleteNotification, getOnboardingState } from '../services/onboarding';
 import { approvalsPendingCount } from '../services/agent';
 import { getUser, logout, getBusinesses, getBusinessId, switchBusiness, getCurrentBusiness } from '../services/auth';
@@ -28,31 +29,50 @@ import { prefetchData } from '../services/dataPrefetch';
 // few labels change. Industry-aware terminology already runs through every
 // page header via useTerm(), so renaming "CRM" → "Customers" here is the
 // universal default for businesses without a specific industry override.
+// Each nav item can declare a `minRole`: the lowest role that should see
+// it. Order: viewer < member < admin < owner. Items without minRole
+// show to everyone (including viewers).
+//
+// Role mental model in the product copy:
+//   owner   = founder / business creator       (full access incl. billing)
+//   admin   = "Manager" in the UI              (full ops, no billing)
+//   member  = "Employee"                       (their own + assigned work)
+//   viewer  = "Read-only / contractor"         (browse but not edit)
+const ROLE_RANK = { viewer: 1, member: 2, admin: 3, owner: 4 };
+const canSee = (item, role) => {
+  if (!item.minRole) return true;
+  return (ROLE_RANK[role] || 0) >= (ROLE_RANK[item.minRole] || 0);
+};
+
 const NAV_PRIMARY = [
   { to: '/',                icon: LayoutDashboard, label: 'Home' },
   { to: '/inbox',           icon: Inbox,           label: 'Inbox',     badge: 'approvals' },
   { to: '/crm',             icon: Users,           label: 'Customers' },
   { to: '/tasks',           icon: CheckSquare,     label: 'Tasks' },
-  { to: '/invoices',        icon: Receipt,         label: 'Invoices' },
+  { to: '/invoices',        icon: Receipt,         label: 'Invoices',     minRole: 'member' },
   { to: '/documents',       icon: FileType2,       label: 'Documents' },
   { to: '/chat',            icon: MessageSquare,   label: 'Chat with AI' },
 ];
 
 // Analytics is intentionally NOT in the sidebar, it lives as a tab on
-// the Home dashboard (Overview / Analytics toggle). Having it in both
-// places was a duplicate surface that confused users about where to
-// go for the same charts.
+// the Home dashboard (Overview / Analytics toggle).
+// Power-user surfaces (Agents, Workflows, Reports, Integrations, Email
+// templates) require manager-or-above. An employee shouldn't be able to
+// spin up workflows that hit company billing or fire emails from a
+// shared inbox without a manager OK first.
 const NAV_MORE = [
-  { to: '/agents',          icon: Bot,             label: 'AI Agents' },
-  { to: '/workflows',       icon: GitBranch,       label: 'Workflows' },
-  { to: '/reports',         icon: FileText,        label: 'Reports' },
-  { to: '/integrations',    icon: Plug,            label: 'Integrations' },
-  { to: '/email-templates', icon: Mail,            label: 'Email templates' },
+  { to: '/agents',          icon: Bot,             label: 'AI Agents',      minRole: 'admin' },
+  { to: '/workflows',       icon: GitBranch,       label: 'Workflows',      minRole: 'admin' },
+  { to: '/reports',         icon: FileText,        label: 'Reports',        minRole: 'admin' },
+  { to: '/integrations',    icon: Plug,            label: 'Integrations',   minRole: 'admin' },
+  { to: '/email-templates', icon: Mail,            label: 'Email templates', minRole: 'admin' },
 ];
 
+// Workspace settings + billing are admin-and-up. Members never see plan
+// & billing (Stripe-sensitive); only owners can change the plan.
 const NAV_WORKSPACE = [
-  { to: '/settings',        icon: Settings,        label: 'Settings' },
-  { to: '/pricing',         icon: Sparkles,        label: 'Plan & billing' },
+  { to: '/settings',        icon: Settings,        label: 'Settings',       minRole: 'admin' },
+  { to: '/pricing',         icon: Sparkles,        label: 'Plan & billing', minRole: 'owner' },
 ];
 
 const NAV_DEV = [
@@ -88,6 +108,10 @@ export default function Layout() {
   const [devMode, setDevMode] = useState(localStorage.getItem('nexus_dev_mode') === '1');
   const [showOnboarding, setShowOnboarding] = useState(shouldShowOnboarding());
   const [pendingApprovals, setPendingApprovals] = useState(0);
+  // User's role on the active business. Drives sidebar visibility:
+  // employees (member) and contractors (viewer) see a slimmer nav so
+  // they aren't tempted to click into Settings/Pricing/Workflows.
+  const [myRole, setMyRole] = useState('owner');
   const bizRef = useRef(null);
   // Hover-intent debounce for sidebar prefetch, a 250ms threshold filters
   // out "brushing past" the sidebar while still firing ahead of a real click
@@ -117,6 +141,19 @@ export default function Layout() {
     getHealth().then(setHealth).catch(() => {});
     approvalsPendingCount().then((d) => setPendingApprovals(d.pending_count || 0)).catch(() => {});
   }, []);
+
+  // Fetch myRole on the active business. Drives sidebar visibility so
+  // employees don't see Settings/Plan/Workflows. Default 'owner' until
+  // the call resolves so we don't flash a stripped sidebar to actual
+  // owners on first render.
+  useEffect(() => {
+    if (!currentBizId) return;
+    let cancelled = false;
+    getBusiness(currentBizId)
+      .then((b) => { if (!cancelled) setMyRole(b?.my_role || 'owner'); })
+      .catch(() => { if (!cancelled) setMyRole('owner'); });
+    return () => { cancelled = true; };
+  }, [currentBizId]);
 
   // Warm the route JS chunks (Vite compile + transfer) in the background
   // after Layout mounts. This is local CPU + network work; doesn't touch
@@ -346,7 +383,7 @@ export default function Layout() {
 
         <nav className="nav-section">
           {/* Tier 1, daily, no group label (these are the obvious ones) */}
-          {NAV_PRIMARY.map((item) => (
+          {NAV_PRIMARY.filter((item) => canSee(item, myRole)).map((item) => (
             <SidebarItem
               key={item.to} item={item} collapsed={collapsed}
               pendingApprovals={pendingApprovals}
@@ -356,34 +393,48 @@ export default function Layout() {
 
           {/* Tier 2, weekly tools. Group label visually separates without
               hiding. On collapsed sidebar the label disappears but the
-              divider stays so the visual rhythm is preserved. */}
-          <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
-            {!collapsed && <div className="nav-group-label">More</div>}
-            {collapsed && <div className="nav-group-divider" />}
-            {NAV_MORE.map((item) => (
-              <SidebarItem
-                key={item.to} item={item} collapsed={collapsed}
-                pendingApprovals={pendingApprovals}
-                onHover={onNavHover} onLeave={onNavLeave}
-              />
-            ))}
-          </div>
+              divider stays so the visual rhythm is preserved.
+              For employees/viewers the whole group may be empty, in
+              which case we drop the heading too. */}
+          {(() => {
+            const items = NAV_MORE.filter((item) => canSee(item, myRole));
+            if (items.length === 0) return null;
+            return (
+              <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
+                {!collapsed && <div className="nav-group-label">More</div>}
+                {collapsed && <div className="nav-group-divider" />}
+                {items.map((item) => (
+                  <SidebarItem
+                    key={item.to} item={item} collapsed={collapsed}
+                    pendingApprovals={pendingApprovals}
+                    onHover={onNavHover} onLeave={onNavLeave}
+                  />
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Tier 3, workspace admin. Settings + Plan & billing only;
               Team / Memory / Security / Privacy / Audit / Metrics / History
               live INSIDE the Settings hub page instead of cluttering the
               sidebar. Their direct URLs still work for deep links. */}
-          <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
-            {!collapsed && <div className="nav-group-label">Workspace</div>}
-            {collapsed && <div className="nav-group-divider" />}
-            {NAV_WORKSPACE.map((item) => (
-              <SidebarItem
-                key={item.to} item={item} collapsed={collapsed}
-                pendingApprovals={pendingApprovals}
-                onHover={onNavHover} onLeave={onNavLeave}
-              />
-            ))}
-          </div>
+          {(() => {
+            const items = NAV_WORKSPACE.filter((item) => canSee(item, myRole));
+            if (items.length === 0) return null;
+            return (
+              <div className={`nav-group ${collapsed ? 'is-collapsed' : ''}`}>
+                {!collapsed && <div className="nav-group-label">Workspace</div>}
+                {collapsed && <div className="nav-group-divider" />}
+                {items.map((item) => (
+                  <SidebarItem
+                    key={item.to} item={item} collapsed={collapsed}
+                    pendingApprovals={pendingApprovals}
+                    onHover={onNavHover} onLeave={onNavLeave}
+                  />
+                ))}
+              </div>
+            );
+          })()}
 
           {/* Dev mode, only when explicitly toggled. Power tools that the
               SMB owner should never see by default. */}
