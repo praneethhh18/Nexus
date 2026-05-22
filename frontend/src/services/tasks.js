@@ -35,6 +35,16 @@ export const updateTask = (id, body) => req(`/${id}`, { method: 'PATCH', body: J
 export const deleteTask = (id) => req(`/${id}`, { method: 'DELETE' });
 export const taskSummary = (mine = false) => req(`/summary${mine ? '?mine=true' : ''}`);
 
+// Task thread: structured activity log + comments interleaved
+// chronologically. The detail page renders this as a right-hand
+// history pane. New comments go through addComment() so the backend
+// gets a chance to fire the assignee notification side effect.
+export const getTaskThread = (id) => req(`/${id}/thread`);
+export const addTaskComment = (id, body) =>
+  req(`/${id}/comments`, { method: 'POST', body: JSON.stringify({ body }) });
+export const deleteTaskComment = (taskId, commentId) =>
+  req(`/${taskId}/comments/${commentId}`, { method: 'DELETE' });
+
 // Extract action items from pasted meeting notes / transcript.
 // Returns { items: [{title, description, priority, due_hint, owner_hint}], summary, raw_count }.
 // Preview-only, caller still needs to POST /api/tasks per accepted item.

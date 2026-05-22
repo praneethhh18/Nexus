@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat, Check, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, extractFromNotes, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
@@ -228,7 +229,7 @@ function initialsOf(label) {
 }
 
 
-function TaskRow({ task, selected, onToggleSelect, tagChips, assignee, meId, onToggle, onEdit, onDelete }) {
+function TaskRow({ task, selected, onToggleSelect, tagChips, assignee, meId, onToggle, onDelete }) {
   const done = task.status === 'done';
   const overdue = task.due_date && task.due_date < todayStr() && !done && task.status !== 'cancelled';
   const isRecurring = task.recurrence && task.recurrence !== 'none';
@@ -339,7 +340,10 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, assignee, meId, onT
         </div>
       </div>
       <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-        <button className="btn-ghost btn-sm" onClick={() => onEdit(task)}>Edit</button>
+        {/* "Open" navigates to the new task detail page with the
+            activity timeline + comment thread. The legacy Edit modal
+            is gone; quick edits happen inline on that detail page. */}
+        <Link to={`/tasks/${task.id}`} className="btn-ghost btn-sm">Open</Link>
         <button className="btn-ghost btn-sm" style={{ color: 'var(--color-err)' }} onClick={() => onDelete(task)} title="Delete task" aria-label="Delete task"><Trash2 size={12} /></button>
         {/* Bulk-select lives at the far right (hidden until hover / bulk
             mode) so it's spatially separated from the round "mark done"
@@ -789,7 +793,6 @@ export default function Tasks() {
                 assignee={t.assignee_id ? memberById[t.assignee_id] : null}
                 meId={meId}
                 onToggle={handleToggle}
-                onEdit={(record) => setModal({ record })}
                 onDelete={handleDelete}
               />
             ))}

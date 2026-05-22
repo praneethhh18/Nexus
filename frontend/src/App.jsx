@@ -24,6 +24,7 @@ const Dashboard     = lazy(() => import('./pages/Dashboard'));
 const Chat          = lazy(() => import('./pages/Chat'));
 const CRM           = lazy(() => import('./pages/CRM'));
 const Tasks         = lazy(() => import('./pages/Tasks'));
+const TaskDetail    = lazy(() => import('./pages/TaskDetail'));
 const Invoices      = lazy(() => import('./pages/Invoices'));
 const Documents     = lazy(() => import('./pages/Documents'));
 const Inbox         = lazy(() => import('./pages/Inbox'));
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/crm/companies/:id"            element={L(CompanyDetail)} />
             <Route path="/crm/deals/:id"                element={L(DealDetail)} />
             <Route path="/tasks"         element={L(Tasks)} />
+            <Route path="/tasks/:id"     element={L(TaskDetail)} />
             <Route path="/invoices"      element={L(Invoices)} />
             <Route path="/invoices/:id"  element={L(InvoiceDetail)} />
             <Route path="/documents"     element={L(Documents)} />
