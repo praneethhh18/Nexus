@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from api.auth import get_current_context
+from api.auth import get_current_context, require_manager
 
 router = APIRouter(tags=["workflows"])
 
@@ -68,7 +68,7 @@ def get_workflow(wf_id: str, ctx: dict = Depends(get_current_context)):
 
 
 @router.post("/api/workflows")
-def save_workflow_api(wf: dict, ctx: dict = Depends(get_current_context)):
+def save_workflow_api(wf: dict, ctx: dict = Depends(require_manager)):
     from workflows.storage import save_workflow as sw, load_workflow
     # If updating, verify ownership
     if wf.get("id"):
@@ -80,7 +80,7 @@ def save_workflow_api(wf: dict, ctx: dict = Depends(get_current_context)):
 
 
 @router.delete("/api/workflows/{wf_id}")
-def delete_workflow_api(wf_id: str, ctx: dict = Depends(get_current_context)):
+def delete_workflow_api(wf_id: str, ctx: dict = Depends(require_manager)):
     from workflows.storage import delete_workflow
     ok = delete_workflow(wf_id, business_id=ctx["business_id"])
     if not ok:
@@ -89,7 +89,7 @@ def delete_workflow_api(wf_id: str, ctx: dict = Depends(get_current_context)):
 
 
 @router.post("/api/workflows/{wf_id}/toggle")
-def toggle_workflow(wf_id: str, body: dict, ctx: dict = Depends(get_current_context)):
+def toggle_workflow(wf_id: str, body: dict, ctx: dict = Depends(require_manager)):
     from workflows.storage import toggle_enabled
     enabled = bool(body.get("enabled", False))
     ok = toggle_enabled(wf_id, enabled, business_id=ctx["business_id"])

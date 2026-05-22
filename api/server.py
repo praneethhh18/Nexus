@@ -315,6 +315,7 @@ class ReportRequest(BaseModel):
 from api.auth import (
     ensure_default_admin, decode_token,
     get_current_context, get_user_by_id,
+    require_manager, require_employee,
 )
 from api.businesses import (
     list_user_businesses, assert_member,
@@ -1029,7 +1030,7 @@ def entity_import_commit(body: dict, ctx: dict = Depends(get_current_context)):
 #   REPORTS
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.post("/api/reports/generate")
-def generate_report(req: ReportRequest, ctx: dict = Depends(get_current_context)):
+def generate_report(req: ReportRequest, ctx: dict = Depends(require_manager)):
     """Direct report pipeline: NL -> SQL -> dataframe -> chart -> narrative -> PDF.
 
     We bypass the orchestrator graph here because the multi-agent path

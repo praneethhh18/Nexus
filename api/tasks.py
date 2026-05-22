@@ -158,6 +158,28 @@ def create_task(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
     except Exception:
         pass
 
+    # If the task was assigned to someone OTHER than the creator, give
+    # them a heads-up via the in-app notification bell. Without this the
+    # employee has no way to know a new task landed in their queue
+    # short of refreshing the tasks page.
+    if assignee_id and assignee_id != user_id:
+        try:
+            from api import notifications as _notifs
+            _notifs.push(
+                business_id=business_id,
+                user_id=assignee_id,
+                title=f"New task assigned: {title[:80]}",
+                message=(
+                    f"{(data.get('description') or '').strip()[:160]}"
+                    or "Open the Tasks page to see details."
+                ),
+                severity="info",
+                type="task_assigned",
+                metadata={"task_id": tid, "link": f"/tasks?focus={tid}"},
+            )
+        except Exception as e:
+            logger.debug(f"[tasks] notification push failed: {e}")
+
     return get_task(business_id, tid)
 
 
@@ -234,7 +256,9 @@ def list_tasks(
 
 
 def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict:
-    get_task(business_id, task_id)
+    # Capture the pre-update task so we can notice an assignee change
+    # and fire a notification to the new owner.
+    existing = get_task(business_id, task_id)
     allowed = {"title", "description", "status", "priority", "due_date",
                "assignee_id", "contact_id", "company_id", "deal_id", "tags",
                "recurrence"}
@@ -297,6 +321,29 @@ def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict
             spawn_next_if_recurring(business_id, task_id)
         except Exception as e:
             logger.warning(f"[tasks] spawn_next_if_recurring failed for {task_id}: {e}")
+
+    # Reassignment notification: if the assignee just changed to
+    # someone new, give them a heads-up in the notification bell.
+    new_assignee = fields.get("assignee_id")
+    if (
+        new_assignee
+        and new_assignee != existing.get("assignee_id")
+        and new_assignee != existing.get("created_by")
+    ):
+        try:
+            from api import notifications as _notifs
+            t = get_task(business_id, task_id)
+            _notifs.push(
+                business_id=business_id,
+                user_id=new_assignee,
+                title=f"Reassigned to you: {(t.get('title') or '')[:80]}",
+                message=(t.get("description") or "")[:160] or "Open Tasks to see details.",
+                severity="info",
+                type="task_reassigned",
+                metadata={"task_id": task_id, "link": f"/tasks?focus={task_id}"},
+            )
+        except Exception as e:
+            logger.debug(f"[tasks] reassignment notification failed: {e}")
 
     return get_task(business_id, task_id)
 

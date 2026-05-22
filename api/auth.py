@@ -635,6 +635,43 @@ def require_business_role(*roles: str):
     return check
 
 
+# ── Friendly aliases for the two most common gates ──────────────────────────
+# These map the "owner/admin/member/viewer" roles in the DB to the
+# product mental model the rest of the codebase reads with:
+#
+#   require_manager  = admin or owner (can spend money, change company config,
+#                                       run workflows, generate reports, invite
+#                                       teammates, edit other people's stuff)
+#   require_employee = member, admin, or owner (a real seat, not just a viewer)
+#
+# Viewer is intentionally write-blocked everywhere except adding comments
+# on items they're tagged on, so they can collaborate without being able
+# to delete or mutate company data.
+def require_manager(ctx: dict = Depends(get_current_context)):
+    """Manager-or-above gate. Use on endpoints that touch company-wide
+    config, spend cloud tokens, or fire external messages."""
+    if ctx["business_role"] not in ("owner", "admin"):
+        raise HTTPException(
+            403,
+            "This action is for managers and owners only. "
+            "Ask your manager to grant you admin access from the Team page."
+        )
+    return ctx
+
+
+def require_employee(ctx: dict = Depends(get_current_context)):
+    """Excludes viewers. Use on every write endpoint that isn't already
+    manager-gated, so contractors with read-only access can't mutate
+    state."""
+    if ctx["business_role"] == "viewer":
+        raise HTTPException(
+            403,
+            "Your account has view-only access. Ask your manager to upgrade "
+            "your role from the Team page if you need to make changes."
+        )
+    return ctx
+
+
 # ── Bootstrap ─────────────────────────────────────────────────────────────────
 def ensure_default_admin():
     """
