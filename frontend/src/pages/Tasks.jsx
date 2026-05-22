@@ -3,6 +3,8 @@ import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, B
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, extractFromNotes, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
 import { listContacts, listCompanies, listDeals } from '../services/crm';
+import { listMembers, getBusiness } from '../services/businesses';
+import { getCurrentBusiness, getUser } from '../services/auth';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
 import FilterPopover from '../components/FilterPopover';
@@ -52,11 +54,12 @@ function Modal({ title, onClose, children }) {
   );
 }
 
-function TaskForm({ initial, onSubmit, onCancel }) {
+function TaskForm({ initial, onSubmit, onCancel, members = [] }) {
   const [f, setF] = useState({
     title: '', description: '', priority: 'normal', status: 'open',
     due_date: '', tags: '', recurrence: 'none',
     contact_id: '', company_id: '', deal_id: '',
+    assignee_id: '',
     ...(initial || {}),
   });
   const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
@@ -157,6 +160,37 @@ function TaskForm({ initial, onSubmit, onCancel }) {
         </div>
       </div>
 
+      {/* Assignment, the manager-to-employee handoff that lets this
+          tool actually be used by a team rather than a solo founder.
+          Defaults to "unassigned" so the creator can leave it generic
+          for personal todos. */}
+      {members.length > 0 && (
+        <>
+          <div className="divider-h">Assignment</div>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ display: 'block', fontSize: 10, color: 'var(--color-text-muted)', marginBottom: 4 }}>
+              Assigned to
+            </label>
+            <select
+              className="field-select"
+              value={f.assignee_id || ''}
+              onChange={(e) => set('assignee_id', e.target.value)}
+              style={{ width: '100%' }}
+            >
+              <option value="">Unassigned</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {(m.name || m.email || m.user_id) + (m.role ? ` (${m.role})` : '')}
+                </option>
+              ))}
+            </select>
+            <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 4 }}>
+              The assignee sees this in their "Assigned to me" tab and gets a notification.
+            </p>
+          </div>
+        </>
+      )}
+
       {/* Tags */}
       {initial?.id ? (
         <div style={{ marginBottom: 12 }}>
@@ -177,10 +211,27 @@ function TaskForm({ initial, onSubmit, onCancel }) {
   );
 }
 
-function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, onDelete }) {
+function TaskRow({ task, selected, onToggleSelect, tagChips, assignee, meId, onToggle, onEdit, onDelete }) {
   const done = task.status === 'done';
   const overdue = task.due_date && task.due_date < todayStr() && !done && task.status !== 'cancelled';
   const isRecurring = task.recurrence && task.recurrence !== 'none';
+  const assigneeLabel = assignee
+    ? (
+        (assignee.user_id === meId)
+          ? 'You'
+          : (
+              (assignee.name && assignee.name.trim())
+              || (assignee.email && assignee.email.split('@')[0])
+              || assignee.user_id
+            )
+      )
+    : null;
+  const initials = (label) => {
+    if (!label) return '?';
+    if (label === 'You') return 'Yo';
+    const parts = label.trim().split(/\s+/).slice(0, 2);
+    return parts.map(p => p[0]).join('').toUpperCase();
+  };
   return (
     <div
       className="panel row"
@@ -253,6 +304,35 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
               <Calendar size={10} /> {isoToDateLabel(task.due_date)}
             </span>
           )}
+          {/* Assignee avatar + name chip. The whole point of multi-
+              user mode, lets a manager see at a glance who owns each
+              task without opening it. "You" replaces your own name so
+              your queue reads naturally. */}
+          {assigneeLabel && (
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              padding: '2px 8px 2px 3px',
+              background: 'var(--color-surface-2)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 999,
+              color: assigneeLabel === 'You' ? 'var(--color-accent)' : 'var(--color-text-muted)',
+              fontWeight: assigneeLabel === 'You' ? 600 : 500,
+            }} title={assignee?.email || assignee?.user_id}>
+              <span style={{
+                width: 16, height: 16, borderRadius: '50%',
+                background: 'color-mix(in srgb, var(--color-accent) 25%, var(--color-surface-1))',
+                color: 'var(--color-text)',
+                fontSize: 8, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              }}>{initials(assigneeLabel)}</span>
+              {assigneeLabel}
+            </span>
+          )}
+          {!assigneeLabel && task.assignee_id && (
+            <span style={{ color: 'var(--color-text-dim)', fontStyle: 'italic' }}>
+              assigned
+            </span>
+          )}
           {tagChips && tagChips.length > 0 && <TagChips tags={tagChips} size="xs" />}
           {task.tags && <span>· {task.tags}</span>}
         </div>
@@ -292,6 +372,13 @@ export default function Tasks() {
   const [tagsByTask, setTagsByTask] = useState({});
   const [undoToast, setUndoToast] = useState(null);
   const undoTimerRef = useRef(null);
+  // Team members + my own id. Powers the assignee picker in the
+  // TaskForm and the "Assigned to me" filter pill. The id -> name
+  // lookup also lets every task row show "Assigned: Praneeth" instead
+  // of a raw user_id.
+  const [members, setMembers] = useState([]);
+  const [meId, setMeId] = useState(null);
+  const [scope, setScope] = useState('all'); // all | mine | created_by_me
   // "From notes" modal: { notes, busy, error, extracted, summary, picked, creating }
   //, extracted is the items array from the LLM, picked is a Set of indices
   // the user has chosen to commit. Stays null until the user opens the modal.
@@ -330,6 +417,23 @@ export default function Tasks() {
     window.addEventListener('nexus-business-changed', h);
     return () => window.removeEventListener('nexus-business-changed', h);
   }, [reload]);
+
+  // Load team members + my own user id so the assignee picker has
+  // someone to pick, and the row chip can resolve user_id -> name.
+  useEffect(() => {
+    const u = getUser();
+    setMeId(u?.id || u?.user_id || null);
+    const biz = getCurrentBusiness();
+    if (biz?.id) {
+      listMembers(biz.id).then(setMembers).catch(() => setMembers([]));
+    }
+  }, []);
+
+  // id -> { name, email } for fast lookup on each row.
+  const memberById = members.reduce((acc, m) => {
+    acc[m.user_id] = m;
+    return acc;
+  }, {});
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -593,27 +697,73 @@ export default function Tasks() {
         data-bulk-active={selection.any || undefined}
         style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}
       >
-        {tasks.length === 0 ? (
-          <EmptyState
-            icon={CheckSquare}
-            title="No tasks here"
-            description="Create a task directly, or ask the AI to generate tasks from a meeting note or a document."
-            primaryLabel="Add task"
-            onPrimary={() => setModal({ record: null })}
-            secondaryLabel="Ask the AI"
-            onSecondary={() => window.location.assign('/chat')}
-          />
-        ) : (
-          <>
-            {tasks.map((t) => (
-              <TaskRow key={t.id} task={t}
-                selected={selection.isSelected(t.id)}
-                onToggleSelect={selection.toggle}
-                tagChips={tagsByTask[t.id] || []}
-                onToggle={handleToggle}
-                onEdit={(t) => setModal({ record: t })}
-                onDelete={handleDelete} />
+        {/* Scope pills, choose whose tasks you're looking at. Only
+            renders when this business has more than one human so a
+            solo founder doesn't see a pointless filter row. */}
+        {members.length > 1 && (
+          <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
+            {[
+              { id: 'all', label: 'All' },
+              { id: 'mine', label: 'Assigned to me' },
+              { id: 'created_by_me', label: 'Created by me' },
+              { id: 'unassigned', label: 'Unassigned' },
+            ].map(opt => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setScope(opt.id)}
+                className={scope === opt.id ? 'btn-primary' : 'btn-ghost'}
+                style={{ fontSize: 11, padding: '4px 12px' }}
+              >
+                {opt.label}
+              </button>
             ))}
+          </div>
+        )}
+
+        {(() => {
+          // Apply the scope pill in-memory so the existing API stays
+          // unchanged. When we wire backend filtering, the pills will
+          // also send ?assigned_to=me to /api/tasks.
+          const scoped = tasks.filter((t) => {
+            if (scope === 'mine') return meId && t.assignee_id === meId;
+            if (scope === 'created_by_me') return meId && t.created_by === meId;
+            if (scope === 'unassigned') return !t.assignee_id;
+            return true;
+          });
+          if (tasks.length === 0) {
+            return (
+              <EmptyState
+                icon={CheckSquare}
+                title="No tasks here"
+                description="Create a task directly, or ask the AI to generate tasks from a meeting note or a document."
+                primaryLabel="Add task"
+                onPrimary={() => setModal({ record: null })}
+                secondaryLabel="Ask the AI"
+                onSecondary={() => window.location.assign('/chat')}
+              />
+            );
+          }
+          if (scoped.length === 0) {
+            return (
+              <div style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 13 }}>
+                Nothing matches "{scope}" right now. Try another filter.
+              </div>
+            );
+          }
+          return (
+            <>
+              {scoped.map((t) => (
+                <TaskRow key={t.id} task={t}
+                  selected={selection.isSelected(t.id)}
+                  onToggleSelect={selection.toggle}
+                  tagChips={tagsByTask[t.id] || []}
+                  assignee={t.assignee_id ? memberById[t.assignee_id] : null}
+                  meId={meId}
+                  onToggle={handleToggle}
+                  onEdit={(t) => setModal({ record: t })}
+                  onDelete={handleDelete} />
+              ))}
 
             <BulkActionBar count={selection.count} onCancel={selection.clear}>
               <button onClick={() => doBulkStatus('done')} className="btn-ghost" style={{ fontSize: 11 }}>
@@ -627,7 +777,8 @@ export default function Tasks() {
               </button>
             </BulkActionBar>
           </>
-        )}
+          );
+        })()}
       </div>
 
       {undoToast && (
@@ -645,7 +796,12 @@ export default function Tasks() {
               <SuggestionPanel entityType="task" entityId={modal.record.id} compact />
             </div>
           )}
-          <TaskForm initial={modal.record} onSubmit={handleSubmit} onCancel={() => setModal(null)} />
+          <TaskForm
+            initial={modal.record}
+            members={members}
+            onSubmit={handleSubmit}
+            onCancel={() => setModal(null)}
+          />
         </Modal>
       )}
 
