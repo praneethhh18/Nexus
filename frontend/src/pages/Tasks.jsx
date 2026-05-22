@@ -220,7 +220,32 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, onToggle, onEdit, o
           {isRecurring && <Repeat size={11} color="var(--color-accent)" title={`Repeats ${task.recurrence}`} />}
           {task.title}
         </div>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 2, fontSize: 10, color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
+        {/* One-line description preview. Without this, two tasks called
+            'Send email: Your info' looked identical and the user had no
+            idea what they were until they clicked Edit. Pull the most
+            informative line: skip blank lines and the "Vox drafted ..."
+            preamble so the snippet starts with the actual subject/body
+            line that explains the task. */}
+        {(() => {
+          const desc = (task.description || '').trim();
+          if (!desc) return null;
+          const lines = desc.split('\n').map(l => l.trim()).filter(Boolean);
+          // Prefer the Subject/To/email-body line over the canned preamble.
+          const interesting = lines.find(l =>
+            /^(to|subject|with|reason):/i.test(l) ||
+            (l.length > 12 && !/^vox|^voice agent/i.test(l) && !l.startsWith('-----'))
+          ) || lines[0];
+          return (
+            <div style={{
+              fontSize: 11, color: 'var(--color-text-muted)', marginTop: 3,
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              maxWidth: '95%',
+            }} title={desc}>
+              {interesting}
+            </div>
+          );
+        })()}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 4, fontSize: 10, color: 'var(--color-text-dim)', flexWrap: 'wrap' }}>
           <span style={{ color: PRIORITY_COLORS[task.priority], fontWeight: 600 }}>{task.priority}</span>
           <span style={{ color: STATUS_COLORS[task.status] }}>{task.status.replace('_', ' ')}</span>
           {task.due_date && (
