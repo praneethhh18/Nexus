@@ -109,18 +109,41 @@ async def voice_agent_schedule_callback(
     except Exception:
         raise HTTPException(400, f"when_iso must be valid ISO 8601, got {when_iso!r}")
 
+    # Resolve contact so the task is readable in the list view.
+    contact_label = ""
+    if contact_id:
+        try:
+            from api import crm as _crm
+            c = _crm.get_contact(business_id, contact_id) or {}
+            name = (
+                (c.get("first_name") or "").strip()
+                + " "
+                + (c.get("last_name") or "").strip()
+            ).strip()
+            contact_label = name or (c.get("email") or "").strip()
+        except Exception:
+            pass
+
+    when_human = when_dt.strftime("%a %d %b at %H:%M")
+    title = (
+        f"Call back {contact_label}: {reason}" if contact_label
+        else f"Callback: {reason}"
+    )[:200]
+    description = (
+        f"Vox scheduled a callback for {when_human}.\n\n"
+        f"With: {contact_label or '(unknown contact)'}\n"
+        f"Reason: {reason}\n\n"
+        f"Source: voice call {call_sid or '(unknown sid)'}."
+    )
+
     try:
         from api import tasks as _tasks
         task = _tasks.create_task(
             business_id=business_id,
-            user_id="vox",  # synthetic user — Vox is the creator
+            user_id="vox",  # synthetic user, Vox is the creator
             data={
-                "title": f"Callback: {reason}"[:200],
-                "description": (
-                    f"Voice agent (Vox) scheduled a callback for "
-                    f"{when_dt.isoformat()}. Reason: {reason}. "
-                    f"Source call: {call_sid}."
-                ),
+                "title": title,
+                "description": description,
                 "due_date": when_dt.isoformat(),
                 "contact_id": contact_id or None,
                 "tags": "vox,callback",
@@ -171,22 +194,104 @@ async def voice_agent_send_email(
     if not business_id or not subject:
         raise HTTPException(400, "business_id and subject are required")
 
+    # Resolve the contact so the task title reads "Email Praneeth: Your info"
+    # instead of "Send email: Your info". Without this, every Vox-created
+    # task looks identical in the tasks list.
+    contact_label = "(unknown contact)"
+    contact_email = ""
+    if contact_id:
+        try:
+            from api import crm as _crm
+            c = _crm.get_contact(business_id, contact_id) or {}
+            name = (
+                (c.get("first_name") or "").strip()
+                + " "
+                + (c.get("last_name") or "").strip()
+            ).strip()
+            contact_email = (c.get("email") or "").strip()
+            if name:
+                contact_label = name
+            elif contact_email:
+                contact_label = contact_email
+        except Exception as e:
+            logger.debug(f"[voice-agent-tools] contact resolve failed: {e}")
+
+    # De-dupe: if Vox already created an identical-subject email task for
+    # the same contact in the last 10 minutes, update that one instead
+    # of stacking a near-duplicate. Caller probably said "send me that
+    # info again" mid-call.
     try:
         from api import tasks as _tasks
+        all_recent = _tasks.list_tasks(
+            business_id=business_id,
+            status="active",
+            limit=40,
+        )
+        # Manually filter by contact since list_tasks doesn't take it.
+        existing = [
+            t for t in (all_recent or [])
+            if (not contact_id) or t.get("contact_id") == contact_id
+        ]
+    except Exception:
+        existing = []
+
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    dedupe_window = now - timedelta(minutes=10)
+    title = f"Email {contact_label}: {subject}"[:200]
+    description = (
+        f"Vox drafted this email during the call. Review and send (or "
+        f"edit) from the Inbox approvals queue.\n\n"
+        f"To: {contact_label}"
+        + (f" <{contact_email}>" if contact_email else "")
+        + "\n"
+        f"Subject: {subject}\n\n"
+        f"-----\n{email_body}\n-----\n\n"
+        f"Source: voice call {call_sid or '(unknown sid)'} at "
+        f"{now.strftime('%Y-%m-%d %H:%M')}.\n"
+        f"Note: body was AI-generated; review for accuracy before sending."
+    )
+
+    dup_id = None
+    for t in existing or []:
+        if (t.get("title") or "").strip().lower() != title.lower():
+            continue
+        if "vox" not in (t.get("tags") or ""):
+            continue
+        # Parse created_at — store may give string or datetime
+        ts = t.get("created_at") or t.get("updated_at")
+        if isinstance(ts, str):
+            try:
+                ts_dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+            except Exception:
+                ts_dt = None
+        else:
+            ts_dt = ts
+        if ts_dt and ts_dt >= dedupe_window:
+            dup_id = t.get("id")
+            break
+
+    try:
+        from api import tasks as _tasks
+        if dup_id:
+            _tasks.update_task(
+                business_id=business_id,
+                task_id=dup_id,
+                updates={"description": description},
+            )
+            logger.info(
+                f"[voice-agent-tools] email dedupe: refreshed task={dup_id} "
+                f"contact={contact_id!r} subject={subject!r}"
+            )
+            return {"ok": True, "task_id": dup_id, "queued": True, "deduped": True}
+
         task = _tasks.create_task(
             business_id=business_id,
             user_id="vox",
             data={
-                "title": f"Send email: {subject}"[:200],
-                "description": (
-                    f"Voice agent (Vox) wants to send this email after the call.\n\n"
-                    f"To: contact {contact_id or '(unknown)'}\n"
-                    f"Subject: {subject}\n\n"
-                    f"---\n{email_body}\n---\n\n"
-                    f"Source call: {call_sid}.\n"
-                    f"REVIEW BEFORE SENDING — content was AI-generated."
-                ),
-                "due_date": datetime.now(timezone.utc).isoformat(),
+                "title": title,
+                "description": description,
+                "due_date": now.isoformat(),
                 "contact_id": contact_id or None,
                 "tags": "vox,email",
                 "priority": "normal",
