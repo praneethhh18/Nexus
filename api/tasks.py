@@ -324,11 +324,13 @@ def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict
 
     # Reassignment notification: if the assignee just changed to
     # someone new, give them a heads-up in the notification bell.
+    # We deliberately notify even when the new assignee was the
+    # original creator, getting a task bounced back to you is exactly
+    # the moment you want the bell to light up.
     new_assignee = fields.get("assignee_id")
     if (
         new_assignee
         and new_assignee != existing.get("assignee_id")
-        and new_assignee != existing.get("created_by")
     ):
         try:
             from api import notifications as _notifs
