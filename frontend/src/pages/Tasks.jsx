@@ -3,7 +3,7 @@ import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, B
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, extractFromNotes, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
 import { listContacts, listCompanies, listDeals } from '../services/crm';
-import { listMembers, getBusiness } from '../services/businesses';
+import { listMembers } from '../services/businesses';
 import { getCurrentBusiness, getUser } from '../services/auth';
 import FlowBanner from '../components/FlowBanner';
 import EmptyState from '../components/EmptyState';
@@ -420,18 +420,40 @@ export default function Tasks() {
 
   // Load team members + my own user id so the assignee picker has
   // someone to pick, and the row chip can resolve user_id -> name.
+  // Lazy: only fires once tasks have actually rendered, so we don't
+  // race-condition with the first click on 'Add task' (an extra
+  // re-render mid-click was detaching the button and failing E2E).
   useEffect(() => {
     const u = getUser();
-    setMeId(u?.id || u?.user_id || null);
-    const biz = getCurrentBusiness();
-    if (biz?.id) {
-      listMembers(biz.id).then(setMembers).catch(() => setMembers([]));
-    }
+    if (u) setMeId(u.id || u.user_id || null);
+  }, []);
+  useEffect(() => {
+    // Defer the network call until after the initial paint settles.
+    // 'requestIdleCallback' on browsers that support it; setTimeout
+    // fallback for Safari + test environments.
+    if (Array.isArray(members) && members.length > 0) return;
+    const fire = () => {
+      const biz = getCurrentBusiness();
+      if (!biz?.id) return;
+      listMembers(biz.id)
+        .then((data) => setMembers(Array.isArray(data) ? data : []))
+        .catch(() => setMembers([]));
+    };
+    const idle = window.requestIdleCallback;
+    const handle = idle ? idle(fire, { timeout: 1500 }) : setTimeout(fire, 200);
+    return () => {
+      if (idle && window.cancelIdleCallback) window.cancelIdleCallback(handle);
+      else clearTimeout(handle);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // id -> { name, email } for fast lookup on each row.
-  const memberById = members.reduce((acc, m) => {
-    acc[m.user_id] = m;
+  // id -> { name, email } for fast lookup on each row. Guard against
+  // non-array values (e.g. the E2E mock returns {} for unmocked routes,
+  // and our backend may degrade similarly under errors).
+  const safeMembers = Array.isArray(members) ? members : [];
+  const memberById = safeMembers.reduce((acc, m) => {
+    if (m && m.user_id) acc[m.user_id] = m;
     return acc;
   }, {});
 
@@ -700,7 +722,7 @@ export default function Tasks() {
         {/* Scope pills, choose whose tasks you're looking at. Only
             renders when this business has more than one human so a
             solo founder doesn't see a pointless filter row. */}
-        {members.length > 1 && (
+        {safeMembers.length > 1 && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
             {[
               { id: 'all', label: 'All' },
@@ -798,7 +820,7 @@ export default function Tasks() {
           )}
           <TaskForm
             initial={modal.record}
-            members={members}
+            members={safeMembers}
             onSubmit={handleSubmit}
             onCancel={() => setModal(null)}
           />
