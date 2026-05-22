@@ -49,7 +49,11 @@ def update_task_api(task_id: str, body: dict, ctx: dict = Depends(get_current_co
     if body.get("assignee_id") and body["assignee_id"] != ctx["user"]["id"]:
         from api.businesses import assert_member
         assert_member(ctx["business_id"], body["assignee_id"])
-    return _tasks.update_task(ctx["business_id"], task_id, body)
+    # Pass actor_id so the activity feed can stamp who made each
+    # change ('Praneeth changed status to in_progress').
+    return _tasks.update_task(
+        ctx["business_id"], task_id, body, actor_id=ctx["user"]["id"]
+    )
 
 
 @router.delete("/api/tasks/{task_id}")
@@ -69,3 +73,51 @@ def bulk_status_tasks_api(body: dict, ctx: dict = Depends(get_current_context)):
     ids = body.get("ids") or []
     status = body.get("status") or ""
     return {"updated": _tasks.bulk_update_status(ctx["business_id"], ids, status)}
+
+
+# ── Task thread: merged activity log + comments ────────────────────────────
+# The task detail page reads /api/tasks/{id}/thread to render the
+# right-hand history pane in chronological order. Comments are POSTed
+# to the same id with a separate endpoint so they get the validation
+# and notification side effects in api.task_threads.add_comment.
+@router.get("/api/tasks/{task_id}/thread")
+def get_task_thread_api(task_id: str, ctx: dict = Depends(get_current_context)):
+    # Reading the thread requires reading the task first (cheap auth
+    # check, raises 404 if the task isn't this tenant's).
+    _tasks.get_task(ctx["business_id"], task_id)
+    from api import task_threads as _threads
+    return _threads.list_thread(ctx["business_id"], task_id)
+
+
+@router.post("/api/tasks/{task_id}/comments")
+def post_task_comment_api(task_id: str, body: dict, ctx: dict = Depends(get_current_context)):
+    # Viewers are write-blocked elsewhere; we let them through here
+    # for now so a contractor can leave a note, then tighten when we
+    # have the role-on-write story sorted across the rest of the app.
+    _tasks.get_task(ctx["business_id"], task_id)
+    from api import task_threads as _threads
+    return _threads.add_comment(
+        business_id=ctx["business_id"],
+        task_id=task_id,
+        author_id=ctx["user"]["id"],
+        body=body.get("body", ""),
+    )
+
+
+@router.delete("/api/tasks/{task_id}/comments/{comment_id}")
+def delete_task_comment_api(task_id: str, comment_id: str,
+                             ctx: dict = Depends(get_current_context)):
+    from api import task_threads as _threads
+    # Managers/owners can delete anyone's comments; everyone else only
+    # their own. We pass actor_id=None to bypass the author check for
+    # managers, otherwise the user's own id so the SQL gate enforces.
+    is_manager = ctx["business_role"] in ("owner", "admin")
+    ok = _threads.delete_comment(
+        business_id=ctx["business_id"],
+        comment_id=comment_id,
+        actor_id=None if is_manager else ctx["user"]["id"],
+    )
+    if not ok:
+        from fastapi import HTTPException
+        raise HTTPException(404, "Comment not found or you don't have permission to delete it.")
+    return {"ok": True}

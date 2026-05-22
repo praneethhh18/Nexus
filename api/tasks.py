@@ -175,10 +175,28 @@ def create_task(business_id: str, user_id: str, data: Dict[str, Any]) -> Dict:
                 ),
                 severity="info",
                 type="task_assigned",
-                metadata={"task_id": tid, "link": f"/tasks?focus={tid}"},
+                metadata={"task_id": tid, "link": f"/tasks/{tid}"},
             )
         except Exception as e:
             logger.debug(f"[tasks] notification push failed: {e}")
+
+    # Record the create as the first row in the task's activity feed.
+    # 'assigned' kind also fires here when the creator handed the task
+    # to someone else on creation, so the timeline shows both moves.
+    try:
+        from api import task_threads as _threads
+        _threads.log_activity(
+            business_id, tid, user_id, _threads.KIND_CREATED,
+            {"title": title, "priority": priority, "status": status,
+             "due_date": due, "assignee_id": assignee_id},
+        )
+        if assignee_id and assignee_id != user_id:
+            _threads.log_activity(
+                business_id, tid, user_id, _threads.KIND_ASSIGNED,
+                {"to": assignee_id},
+            )
+    except Exception as e:
+        logger.debug(f"[tasks] activity log on create failed: {e}")
 
     return get_task(business_id, tid)
 
@@ -255,7 +273,12 @@ def list_tasks(
     return [dict(r) for r in rows]
 
 
-def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict:
+def update_task(business_id: str, task_id: str, updates: Dict[str, Any],
+                actor_id: Optional[str] = None) -> Dict:
+    """Edit a task's mutable fields. actor_id is the user making the
+    change; it's stamped into the activity feed so the case-page can
+    show 'Praneeth changed status to in_progress'. Optional for backward
+    compat with internal callers (the recurring-task spawner, Vox)."""
     # Capture the pre-update task so we can notice an assignee change
     # and fire a notification to the new owner.
     existing = get_task(business_id, task_id)
@@ -328,10 +351,8 @@ def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict
     # original creator, getting a task bounced back to you is exactly
     # the moment you want the bell to light up.
     new_assignee = fields.get("assignee_id")
-    if (
-        new_assignee
-        and new_assignee != existing.get("assignee_id")
-    ):
+    prev_assignee = existing.get("assignee_id")
+    if new_assignee and new_assignee != prev_assignee:
         try:
             from api import notifications as _notifs
             t = get_task(business_id, task_id)
@@ -342,10 +363,52 @@ def update_task(business_id: str, task_id: str, updates: Dict[str, Any]) -> Dict
                 message=(t.get("description") or "")[:160] or "Open Tasks to see details.",
                 severity="info",
                 type="task_reassigned",
-                metadata={"task_id": task_id, "link": f"/tasks?focus={task_id}"},
+                metadata={"task_id": task_id, "link": f"/tasks/{task_id}"},
             )
         except Exception as e:
             logger.debug(f"[tasks] reassignment notification failed: {e}")
+
+    # Activity feed: emit one row per *meaningful* change so the task
+    # detail page renders a readable history. We compare each tracked
+    # field against the pre-update snapshot.
+    try:
+        from api import task_threads as _threads
+
+        if "status" in fields and fields["status"] != existing.get("status"):
+            kind = _threads.KIND_COMPLETED if fields["status"] == "done" else (
+                _threads.KIND_REOPENED if existing.get("status") == "done"
+                else _threads.KIND_STATUS_CHANGED
+            )
+            _threads.log_activity(
+                business_id, task_id, actor_id, kind,
+                {"from": existing.get("status"), "to": fields["status"]},
+            )
+
+        if "priority" in fields and fields["priority"] != existing.get("priority"):
+            _threads.log_activity(
+                business_id, task_id, actor_id, _threads.KIND_PRIORITY_CHANGED,
+                {"from": existing.get("priority"), "to": fields["priority"]},
+            )
+
+        if "due_date" in fields and fields["due_date"] != existing.get("due_date"):
+            _threads.log_activity(
+                business_id, task_id, actor_id, _threads.KIND_DUE_CHANGED,
+                {"from": existing.get("due_date"), "to": fields["due_date"]},
+            )
+
+        if "assignee_id" in fields and fields["assignee_id"] != prev_assignee:
+            if not fields["assignee_id"]:
+                kind = _threads.KIND_UNASSIGNED
+            elif prev_assignee:
+                kind = _threads.KIND_REASSIGNED
+            else:
+                kind = _threads.KIND_ASSIGNED
+            _threads.log_activity(
+                business_id, task_id, actor_id, kind,
+                {"from": prev_assignee, "to": fields["assignee_id"]},
+            )
+    except Exception as e:
+        logger.debug(f"[tasks] activity log on update failed: {e}")
 
     return get_task(business_id, task_id)
 
