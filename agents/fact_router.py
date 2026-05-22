@@ -199,18 +199,71 @@ def _count(business_id: str, table: str) -> int:
 
 
 def _rows(business_id: str, table: str, columns: str, order_by: str,
-          limit: int, offset: int = 0) -> List[dict]:
+          limit: int, offset: int = 0,
+          extra_where: str = "", extra_params: tuple = ()) -> List[dict]:
     conn = get_conn()
     conn.row_factory = sqlite3.Row
     try:
         cur = conn.execute(
-            f"SELECT {columns} FROM {table} WHERE business_id = ? "
+            f"SELECT {columns} FROM {table} "
+            f"WHERE business_id = ? {extra_where} "
             f"ORDER BY {order_by} LIMIT ? OFFSET ?",
-            (business_id, limit, offset),
+            (business_id, *extra_params, limit, offset),
         )
         return [dict(r) for r in cur.fetchall()]
     finally:
         conn.close()
+
+
+# ── Status filter detection ──────────────────────────────────────────────────
+# When the user says "pending tasks" / "open invoices" / "paid invoices",
+# pin the list query to that status. Without this, _try_list would return
+# every task regardless of status, which makes the answer look broken.
+_TASK_STATUS_FILTERS = {
+    "pending":     ("open", "pending"),
+    "open":        ("open", "pending"),
+    "in progress": ("in_progress",),
+    "in-progress": ("in_progress",),
+    "ongoing":     ("in_progress",),
+    "active":      ("open", "pending", "in_progress"),
+    "incomplete":  ("open", "pending", "in_progress"),
+    "todo":        ("open", "pending"),
+    "to do":       ("open", "pending"),
+    "to-do":       ("open", "pending"),
+    "done":        ("done", "completed"),
+    "completed":   ("done", "completed"),
+    "finished":    ("done", "completed"),
+    "closed":      ("done", "completed"),
+}
+_INVOICE_STATUS_FILTERS = {
+    "open":     ("open", "sent"),
+    "pending":  ("open", "sent"),
+    "unpaid":   ("open", "sent", "overdue"),
+    "overdue":  ("overdue",),
+    "paid":     ("paid",),
+    "draft":    ("draft",),
+    "sent":     ("sent",),
+}
+
+
+def _status_filter_for(entity_key: str, question: str) -> Optional[Tuple[str, tuple]]:
+    """Inspect the question for a status word relevant to this entity.
+    Returns (where_fragment, params) suitable for splicing into _rows().
+    Longest-match wins so 'in progress' beats 'in'."""
+    q = " " + question.lower() + " "
+    table = {"task": _TASK_STATUS_FILTERS, "invoice": _INVOICE_STATUS_FILTERS}.get(entity_key)
+    if not table:
+        return None
+    best: Tuple[int, Optional[Tuple[str, ...]]] = (0, None)
+    for word, statuses in table.items():
+        # Match the status word as a whole token in the question.
+        if f" {word} " in q or f" {word}?" in q or f" {word}." in q or q.endswith(f" {word}"):
+            if len(word) > best[0]:
+                best = (len(word), statuses)
+    if not best[1]:
+        return None
+    placeholders = ", ".join(["?"] * len(best[1]))
+    return (f"AND LOWER(status) IN ({placeholders})", tuple(best[1]))
 
 
 # ── Pattern detectors ──────────────────────────────────────────────────────
@@ -255,6 +308,20 @@ def _try_count(question: str, business_id: str, entity_key: str) -> Optional[str
     if not _COUNT_RE.search(question):
         return None
     e = ENTITIES[entity_key]
+    status_filter = _status_filter_for(entity_key, question)
+    if status_filter:
+        extra_where, extra_params = status_filter
+        conn = get_conn()
+        try:
+            row = conn.execute(
+                f"SELECT COUNT(*) AS n FROM {e['table']} "
+                f"WHERE business_id = ? {extra_where}",
+                (business_id, *extra_params),
+            ).fetchone()
+            n = int(row[0]) if row else 0
+        finally:
+            conn.close()
+        return f"You have {n} matching {e['singular'] if n == 1 else e['plural']}."
     n = _count(business_id, e["table"])
     return f"You have {n} {e['singular'] if n == 1 else e['plural']} in your CRM."
 
@@ -367,12 +434,33 @@ def _try_list(question: str, business_id: str, entity_key: str) -> Optional[str]
       - an explicit slice ('first 5 contacts', 'top 10 deals',
         'next 3 invoices') — without this, 'first 5 contacts' was
         getting hijacked by _try_ordinal which captured '5' as the
-        ordinal and returned a single 5th-contact answer."""
+        ordinal and returned a single 5th-contact answer.
+
+    Honors a status filter when present ('pending tasks', 'paid
+    invoices', etc.) — without this we'd return ALL tasks for
+    'show me my pending tasks' which makes the bot look broken."""
     if not _LIST_RE.search(question) and not _TOP_N_RE.search(question):
         return None
     e = ENTITIES[entity_key]
-    total = _count(business_id, e["table"])
+    status_filter = _status_filter_for(entity_key, question)
+    extra_where, extra_params = (status_filter or ("", ()))
+
+    # Total count — respect the status filter so the header says
+    # "5 pending tasks" not "5 of 14".
+    conn = get_conn()
+    try:
+        row = conn.execute(
+            f"SELECT COUNT(*) AS n FROM {e['table']} "
+            f"WHERE business_id = ? {extra_where}",
+            (business_id, *extra_params),
+        ).fetchone()
+        total = int(row[0]) if row else 0
+    finally:
+        conn.close()
+
     if total == 0:
+        if status_filter:
+            return f"You don't have any matching {e['plural']} right now."
         return (f"You don't have any {e['plural']} yet. "
                 f"Add your first {e['singular']} from the {e['plural'].title()} page.")
 
@@ -383,12 +471,25 @@ def _try_list(question: str, business_id: str, entity_key: str) -> Optional[str]
         requested = min(max(int(m.group(2)), 1), 50)
 
     rows = _rows(business_id, e["table"], e["columns"], e["order_by"],
-                 limit=requested, offset=0)
+                 limit=requested, offset=0,
+                 extra_where=extra_where, extra_params=extra_params)
     lines = [f"{i + 1}. {e['row_fmt'](r)}" for i, r in enumerate(rows)]
+    qualifier = ""
+    if status_filter:
+        # Pull the user's chosen word verbatim back into the header so
+        # they see we honored their filter ("Here are your pending tasks…").
+        q_low = " " + question.lower() + " "
+        for word in sorted(
+            list((_TASK_STATUS_FILTERS if entity_key == "task" else _INVOICE_STATUS_FILTERS).keys()),
+            key=len, reverse=True,
+        ):
+            if f" {word} " in q_low or f" {word}?" in q_low or f" {word}." in q_low or q_low.endswith(f" {word}"):
+                qualifier = f"{word} "
+                break
     header = (
-        f"Here are all {total} of your {e['plural']}:"
+        f"Here are all {total} of your {qualifier}{e['plural']}:"
         if len(rows) >= total
-        else f"Showing the first {len(rows)} of {total} {e['plural']} "
+        else f"Showing the first {len(rows)} of {total} {qualifier}{e['plural']} "
              f"(open the {e['plural'].title()} page for the full list):"
     )
     return header + "\n\n" + "\n".join(lines)

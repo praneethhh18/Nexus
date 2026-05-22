@@ -245,7 +245,11 @@ def chitchat_node(state: State) -> State:
 
     try:
         response = llm_invoke("\n\n".join(prompt_parts), max_tokens=512)
-        state["chitchat_answer"] = response.strip()
+        # Strip stray JSON envelopes — Mistral on Bedrock occasionally
+        # returns `{"message": "Hello!"}` because of the tool-calling
+        # prompts we use elsewhere. Users shouldn't see the wire format.
+        from utils.llm_unwrap import unwrap_llm_reply
+        state["chitchat_answer"] = unwrap_llm_reply(response).strip()
     except Exception as e:
         logger.error(f"[Chitchat Node] Error: {e}")
         state["chitchat_answer"] = f"Connection error: {e}"
@@ -402,7 +406,8 @@ Answer:"""
 
     try:
         answer = llm_invoke(prompt, max_tokens=1024)
-        state["final_answer"] = answer.strip()
+        from utils.llm_unwrap import unwrap_llm_reply
+        state["final_answer"] = unwrap_llm_reply(answer).strip()
     except Exception as e:
         logger.error(f"[Synthesizer] LLM failed: {e}")
         state["final_answer"] = context_block[:1000]

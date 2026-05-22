@@ -563,7 +563,13 @@ def _list_interactions(ctx, args):
 
 register_tool(
     name="list_interactions",
-    description="Fetch past interactions for a contact, company, or deal.",
+    description=(
+        "Fetch past interactions (sent emails, logged calls, meeting notes) "
+        "for a contact, company, or deal. Use this for ANY question about "
+        "EMAIL HISTORY: 'what was the last email I sent', 'show me sent "
+        "emails', 'when did I last contact X', etc. Pass no contact_id to "
+        "get the most recent interactions across the whole CRM."
+    ),
     input_schema={
         "type": "object",
         "properties": {

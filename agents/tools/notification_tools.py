@@ -211,8 +211,12 @@ def _send_email(ctx, args):
 register_tool(
     name="send_email",
     description=(
-        "Send an email to someone. Always requires approval. "
-        "The agent should draft the subject and body for the user to review."
+        "Compose and send a NEW outbound email. Always requires approval. "
+        "Use ONLY when the user explicitly asks to send/draft/email someone. "
+        "DO NOT call this for questions about past emails or email history — "
+        "for 'what was the last mail sent', 'show me sent emails', etc., use "
+        "list_interactions with type=email instead. "
+        "The 'to' field is REQUIRED — never call this without a recipient."
     ),
     input_schema={
         "type": "object",
