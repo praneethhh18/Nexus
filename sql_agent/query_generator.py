@@ -89,15 +89,16 @@ def _normalize_question(question: str) -> str:
     return " ".join(question.lower().split())
 
 
-def generate_sql(question: str, schema: str = None) -> Dict[str, Any]:
+def generate_sql(question: str, schema: str = None, business_id: str = None) -> Dict[str, Any]:
     """
     Convert a natural language question to SQL.
 
     Returns:
         {sql, intent_type, confidence, raw_response, error}
     """
-    # Check cache
-    cache_key = _normalize_question(question)
+    # Cache key includes business_id so two tenants asking the same
+    # question don't share results.
+    cache_key = _normalize_question(question) + f"|biz={business_id or '_'}"
     if cache_key in _query_cache:
         logger.info(f"[QueryGen] Cache hit for: '{question[:50]}'")
         return _query_cache[cache_key]
@@ -105,9 +106,6 @@ def generate_sql(question: str, schema: str = None) -> Dict[str, Any]:
     if schema is None:
         schema = get_schema_string()
 
-    # Pick the right SQL dialect for whatever backend is actually live.
-    # Without this, the LLM emits SQLite-isms (strftime, backticks, ||
-    # for concat) and Postgres rejects them with cryptic syntax errors.
     from config.db import is_postgres
     if is_postgres():
         dialect = "PostgreSQL"
@@ -122,14 +120,41 @@ def generate_sql(question: str, schema: str = None) -> Dict[str, Any]:
         dialect = "SQLite"
         dialect_rules = (
             "Use SQLite syntax. Identifiers can be bare; if quoting use "
-            "double quotes \"\". Use strftime for date formatting, and "
-            "REAL for numeric casts."
+            "double quotes \"\". Use strftime for date formatting."
+        )
+
+    # Tenant scoping. Every business-scoped table (nexus_contacts,
+    # nexus_invoices, nexus_deals, nexus_tasks, nexus_companies, etc.)
+    # has a business_id column. Without this, the LLM either returns
+    # cross-tenant data or no rows at all. We literally hand it the
+    # filter clause so it can't forget.
+    scope_rules = ""
+    if business_id:
+        scope_rules = (
+            f"\nCRITICAL TENANT SCOPING:\n"
+            f"- This user's business_id is '{business_id}'.\n"
+            f"- EVERY table whose name starts with 'nexus_' has a "
+            f"business_id column. You MUST add WHERE business_id = "
+            f"'{business_id}' (or AND business_id = '{business_id}' "
+            f"on joined tables) to every such reference, otherwise the "
+            f"query returns either nothing or another tenant's data.\n"
+            f"- For joins, qualify with the alias, e.g. c.business_id = "
+            f"'{business_id}' AND i.business_id = '{business_id}'.\n"
         )
 
     prompt = f"""Write a {dialect} query to answer this question. Output ONLY the SQL in ```sql``` fences.
 
 Rules: SELECT only, use aliases, LIMIT 50, ROUND monetary values, ORDER BY meaningfully.
 {dialect_rules}
+{scope_rules}
+COMMON TABLE HINTS (use these names verbatim, they exist):
+- nexus_contacts  (id, first_name, last_name, email, phone, business_id, ...)
+- nexus_companies (id, name, industry, website, business_id, ...)
+- nexus_deals     (id, name, stage, value, contact_id, business_id, ...)
+- nexus_invoices  (id, number, status, total, contact_id, company_id, issue_date, business_id, ...)
+- nexus_tasks     (id, title, status, due_date, contact_id, business_id, ...)
+- nexus_interactions (id, type, subject, summary, contact_id, business_id, created_at, ...)
+Customer = contact (in nexus_contacts). Revenue = SUM(nexus_invoices.total).
 
 SCHEMA:
 {schema}

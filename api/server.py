@@ -1039,6 +1039,7 @@ def generate_report(req: ReportRequest, ctx: dict = Depends(get_current_context)
     the unified llm_provider so it works whether Ollama is up or not.
     """
     from sql_agent.executor import execute_query
+    from sql_agent.query_generator import clear_cache as clear_sql_cache
     from report_generator.narrative import generate_narrative
     from report_generator.chart_selector import select_chart_type
     from report_generator.chart_builder import build_chart
@@ -1049,20 +1050,29 @@ def generate_report(req: ReportRequest, ctx: dict = Depends(get_current_context)
     if not question:
         raise HTTPException(400, "query is required")
 
-    # 1) NL -> SQL -> dataframe. execute_query already self-corrects on
-    # invalid SQL up to MAX_SQL_RETRIES, so we just trust its verdict.
+    # 1) NL -> SQL -> dataframe. Bust the SQL cache so dialect/schema
+    # changes are always honored on a fresh report ask. execute_query
+    # already self-corrects up to MAX_SQL_RETRIES on its own.
+    clear_sql_cache()
     try:
-        sql_result = execute_query(question)
+        sql_result = execute_query(question, business_id=ctx["business_id"])
     except Exception as e:
         logger.exception(f"[reports] SQL execution failed: {e}")
         raise HTTPException(500, f"Could not query the data: {e}")
 
     df = sql_result.get("dataframe")
     if df is None or getattr(df, "empty", True):
+        sql_used = sql_result.get("query_used") or "(no SQL generated)"
+        sql_error = sql_result.get("error") or "the query returned no rows"
+        logger.warning(
+            f"[reports] empty/failed result for question={question!r} | "
+            f"sql={sql_used[:200]!r} | error={sql_error!r}"
+        )
         raise HTTPException(
             422,
-            "I couldn't find any data to report on for that question. "
-            "Try a different timeframe or entity (e.g. 'top 5 customers by revenue this quarter').",
+            f"I couldn't pull data for that question. Reason: {sql_error}. "
+            f"Try rephrasing or naming the entity explicitly "
+            f"(e.g. 'top 5 customers by total invoice amount this quarter').",
         )
 
     # 2) Build a short, human title from the question. Drop the verb

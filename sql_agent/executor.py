@@ -244,11 +244,17 @@ def execute_query(
     sql: str = None,
     intent_type: str = "mixed",
     log_to_audit: bool = True,
+    business_id: str = None,
 ) -> Dict[str, Any]:
     """
     Execute a SQL query against the local database.
     If SQL is not provided, generates it from the question.
     Self-corrects on error up to MAX_SQL_RETRIES times with error history tracking.
+
+    `business_id` is forwarded into the SQL generator so it can scope
+    queries to the right tenant; without it the LLM tends to omit
+    WHERE business_id = ? and either leaks cross-tenant data or
+    returns zero rows.
 
     Returns:
         {dataframe, explanation, query_used, retries_needed, intent_type, success, error}
@@ -262,7 +268,7 @@ def execute_query(
 
     # Generate SQL if not provided
     if not sql:
-        gen = generate_sql(question, schema)
+        gen = generate_sql(question, schema, business_id=business_id)
         sql = gen.get("sql", "")
         intent_type = gen.get("intent_type", intent_type)
         if gen.get("error") or not sql:
