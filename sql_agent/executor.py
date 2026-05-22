@@ -264,7 +264,11 @@ def execute_query(
         from sql_agent.db_setup import setup_database
         setup_database()
 
-    schema = get_schema_string()
+    # Use the curated 6-table cheat sheet rather than the 80 KB dump.
+    # The full schema confuses the LLM into hallucinating column
+    # names (e.g. 'contact_id' on invoices instead of 'customer_contact_id').
+    from sql_agent.query_generator import _focused_business_schema
+    schema = _focused_business_schema()
 
     # Generate SQL if not provided
     if not sql:
@@ -300,10 +304,12 @@ def execute_query(
                 _install_timeout(conn, deadline)
             # Enforce a hard row cap so a pathological query doesn't exhaust memory.
             # We wrap the user's query in a subquery; only applied to SELECTs.
-            capped_sql = query_used
-            if SQL_MAX_ROWS > 0 and capped_sql.strip().lower().startswith("select"):
-                # Use a LIMIT on top; if the query already has LIMIT it will still be respected as an outer bound.
-                capped_sql = f"SELECT * FROM ({query_used}) AS _capped LIMIT {SQL_MAX_ROWS + 1}"
+            # Strip trailing semicolons FIRST — a trailing ; inside the
+            # subquery wrapper produces 'syntax error at or near ";"'
+            # on Postgres (the wrap becomes `SELECT * FROM (... ;) AS _capped`).
+            capped_sql = query_used.strip().rstrip(";").strip()
+            if SQL_MAX_ROWS > 0 and capped_sql.lower().startswith("select"):
+                capped_sql = f"SELECT * FROM ({capped_sql}) AS _capped LIMIT {SQL_MAX_ROWS + 1}"
             try:
                 df = pd.read_sql_query(capped_sql, conn)
             except sqlite3.OperationalError as oe:

@@ -89,6 +89,53 @@ def _normalize_question(question: str) -> str:
     return " ".join(question.lower().split())
 
 
+def _focused_business_schema() -> str:
+    """A hand-curated schema describing the 6 business tables a report
+    or chat query is realistically going to touch. The full 78-table
+    dump is ~80 KB and confuses the LLM into hallucinating column
+    names like 'contact_id' on invoices (the real column is
+    'customer_contact_id'). This shorter, accurate cheat-sheet keeps
+    SQL generation on rails."""
+    return """TABLE nexus_contacts (a CUSTOMER / lead / person)
+  id (text PK), business_id (text), first_name, last_name, email, phone,
+  title, company_name, source, lifecycle_stage, owner_id, created_at
+
+TABLE nexus_companies (an ACCOUNT / company / org)
+  id (text PK), business_id, name, industry, website, owner_id, created_at
+
+TABLE nexus_deals (a sales opportunity)
+  id (text PK), business_id, name, stage, value (numeric), currency,
+  contact_id (FK to nexus_contacts.id), company_id (FK to nexus_companies.id),
+  expected_close_date, created_at
+
+TABLE nexus_invoices (a billing record)
+  id (text PK), business_id, number, status (draft|sent|paid|overdue),
+  customer_contact_id (FK to nexus_contacts.id, OFTEN NULL),
+  customer_company_id (FK to nexus_companies.id, OFTEN NULL),
+  customer_name (text, ALWAYS populated, denormalized customer label),
+  currency, issue_date, due_date, paid_at,
+  subtotal, tax_amount, total (numeric) -- the line-item total per invoice,
+  line_items (text, JSON)
+  IMPORTANT: To group invoices by customer, use customer_name directly --
+  do NOT join to nexus_contacts (customer_contact_id is usually NULL on
+  B2B invoices). customer_name is the source of truth on the invoice row.
+
+TABLE nexus_tasks (a todo)
+  id (text PK), business_id, title, description, status (open|in_progress|done|cancelled),
+  priority, due_date, contact_id, company_id, deal_id, assignee_id, created_at
+
+TABLE nexus_interactions (a logged touchpoint: email/call/meeting/note)
+  id (text PK), business_id, type, subject, summary, contact_id, company_id,
+  deal_id, created_at, created_by
+
+USEFUL SHORTHAND:
+- "customer" = a row in nexus_contacts. Their "name" = first_name || ' ' || last_name (or use nexus_invoices.customer_name for invoice-side labelling).
+- "revenue", "billed amount", "total invoiced" = SUM(nexus_invoices.total).
+- "won revenue" = SUM(nexus_deals.value) WHERE stage = 'won'.
+- "top N customers by revenue / by invoice amount / by spend" = SELECT customer_name, SUM(total) AS total FROM nexus_invoices WHERE business_id = '...' GROUP BY customer_name ORDER BY total DESC LIMIT N. (No join needed.) Do NOT filter by status unless the user explicitly says 'paid only', 'overdue', etc., because draft/sent invoices still count toward 'invoice amount' totals.
+"""
+
+
 def generate_sql(question: str, schema: str = None, business_id: str = None) -> Dict[str, Any]:
     """
     Convert a natural language question to SQL.
@@ -103,8 +150,11 @@ def generate_sql(question: str, schema: str = None, business_id: str = None) -> 
         logger.info(f"[QueryGen] Cache hit for: '{question[:50]}'")
         return _query_cache[cache_key]
 
+    # Prefer the curated 6-table cheat-sheet over the 80 KB dump for
+    # business questions. The full schema is only used if the caller
+    # explicitly passes one (e.g. the dev SQL editor).
     if schema is None:
-        schema = get_schema_string()
+        schema = _focused_business_schema()
 
     from config.db import is_postgres
     if is_postgres():
