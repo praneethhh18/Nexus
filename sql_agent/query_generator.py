@@ -105,9 +105,31 @@ def generate_sql(question: str, schema: str = None) -> Dict[str, Any]:
     if schema is None:
         schema = get_schema_string()
 
-    prompt = f"""Write a SQLite query to answer this question. Output ONLY the SQL in ```sql``` fences.
+    # Pick the right SQL dialect for whatever backend is actually live.
+    # Without this, the LLM emits SQLite-isms (strftime, backticks, ||
+    # for concat) and Postgres rejects them with cryptic syntax errors.
+    from config.db import is_postgres
+    if is_postgres():
+        dialect = "PostgreSQL"
+        dialect_rules = (
+            "Use PostgreSQL syntax. Quote identifiers with double quotes \"\" "
+            "(never backticks). Use CAST(x AS NUMERIC) for casting, NOT "
+            "CAST(x AS REAL). For dates use date_trunc('month', col) / EXTRACT, "
+            "NOT strftime. For string concat use CONCAT() or ||. Trailing "
+            "semicolons are fine but optional, never use multiple statements."
+        )
+    else:
+        dialect = "SQLite"
+        dialect_rules = (
+            "Use SQLite syntax. Identifiers can be bare; if quoting use "
+            "double quotes \"\". Use strftime for date formatting, and "
+            "REAL for numeric casts."
+        )
+
+    prompt = f"""Write a {dialect} query to answer this question. Output ONLY the SQL in ```sql``` fences.
 
 Rules: SELECT only, use aliases, LIMIT 50, ROUND monetary values, ORDER BY meaningfully.
+{dialect_rules}
 
 SCHEMA:
 {schema}

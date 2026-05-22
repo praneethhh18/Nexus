@@ -50,7 +50,23 @@ def _fix_sql_with_llm(original_question: str, broken_sql: str,
             + "\nDo NOT repeat the same mistakes.\n"
         )
 
-    prompt = f"""The following SQLite query failed with an error. Fix it.
+    # Use the live backend's dialect; without this we hand the LLM a
+    # 'SQLite' label even when the executor will run the SQL on
+    # Postgres, and the fix loop just keeps regenerating the same
+    # broken SQLite-isms.
+    from config.db import is_postgres
+    if is_postgres():
+        dialect = "PostgreSQL"
+        dialect_hint = (
+            "Use PostgreSQL syntax. Quote identifiers with double quotes "
+            "\"\" (never backticks). Use date_trunc/EXTRACT for dates, "
+            "NOT strftime. Use || or CONCAT() for string concat."
+        )
+    else:
+        dialect = "SQLite"
+        dialect_hint = "Use proper SQLite syntax (e.g., strftime for dates, || for string concatenation)."
+
+    prompt = f"""The following {dialect} query failed with an error. Fix it.
 
 SCHEMA:
 {schema}
@@ -66,7 +82,7 @@ ERROR MESSAGE:
 RULES:
 - Fix ONLY the SQL error. Do not change the intent of the query.
 - Make sure all table and column names exist in the schema above.
-- Use proper SQLite syntax (e.g., strftime for dates, || for string concatenation).
+- {dialect_hint}
 - Write ONLY the corrected SQL query wrapped in ```sql ... ``` fences. No explanations."""
 
     try:
