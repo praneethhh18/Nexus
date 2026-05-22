@@ -1031,125 +1031,19 @@ def entity_import_commit(body: dict, ctx: dict = Depends(get_current_context)):
 # ═══════════════════════════════════════════════════════════════════════════════
 @app.post("/api/reports/generate")
 def generate_report(req: ReportRequest, ctx: dict = Depends(require_manager)):
-    """Direct report pipeline: NL -> SQL -> dataframe -> chart -> narrative -> PDF.
-
-    We bypass the orchestrator graph here because the multi-agent path
-    routes through PlannerAgent/RAG-synthesizer which adds 60-90s of
-    LLM overhead and brittle Ollama deps that don't add anything for
-    a 'top N rows + chart' style report. The narrative step still uses
-    the unified llm_provider so it works whether Ollama is up or not.
-    """
-    from sql_agent.executor import execute_query
-    from sql_agent.query_generator import clear_cache as clear_sql_cache
-    from report_generator.narrative import generate_narrative
-    from report_generator.chart_selector import select_chart_type
-    from report_generator.chart_builder import build_chart
-    from report_generator.pdf_builder import build_pdf
-    import re
-
-    question = (req.query or "").strip()
-    if not question:
-        raise HTTPException(400, "query is required")
-
-    # 1) NL -> SQL -> dataframe. Bust the SQL cache so dialect/schema
-    # changes are always honored on a fresh report ask. execute_query
-    # already self-corrects up to MAX_SQL_RETRIES on its own.
-    clear_sql_cache()
+    """Generate a NL -> SQL -> chart -> PDF report. The actual pipeline
+    lives in report_generator/runner.py so it stays testable; this
+    endpoint is just auth + body parsing + HTTP error mapping."""
+    from report_generator.runner import generate_report_pdf, ReportError
     try:
-        sql_result = execute_query(question, business_id=ctx["business_id"])
-    except Exception as e:
-        logger.exception(f"[reports] SQL execution failed: {e}")
-        raise HTTPException(500, f"Could not query the data: {e}")
-
-    df = sql_result.get("dataframe")
-    if df is None or getattr(df, "empty", True):
-        sql_used = sql_result.get("query_used") or "(no SQL generated)"
-        sql_error = sql_result.get("error") or "the query returned no rows"
-        logger.warning(
-            f"[reports] empty/failed result for question={question!r} | "
-            f"sql={sql_used[:200]!r} | error={sql_error!r}"
+        pdf_path = generate_report_pdf(
+            question=req.query or "",
+            business_id=ctx["business_id"],
         )
-        raise HTTPException(
-            422,
-            f"I couldn't pull data for that question. Reason: {sql_error}. "
-            f"Try rephrasing or naming the entity explicitly "
-            f"(e.g. 'top 5 customers by total invoice amount this quarter').",
-        )
-
-    # 2) Build a short, human title from the question. Drop the verb
-    # prefix so it reads like a headline, not a command.
-    title = re.sub(
-        r"^(generate|show|build|create|give|make)\s+(me\s+)?(a\s+|an\s+|the\s+)?(report\s+(on|of|about|for)\s+)?",
-        "",
-        question,
-        flags=re.IGNORECASE,
-    ).strip().capitalize()[:80] or "Custom report"
-
-    # 3) Chart + narrative in parallel-ish (both are fast). Each step
-    # is best-effort, the PDF still ships if a step degrades.
-    try:
-        chart_type, _reason = select_chart_type(df, question)
-    except Exception as e:
-        logger.warning(f"[reports] chart selection failed: {e}")
-        chart_type = "table"
-
-    chart_path = None
-    if chart_type != "table":
-        try:
-            _fig, chart_path = build_chart(df, chart_type, title=title, save=True)
-        except Exception as e:
-            logger.warning(f"[reports] chart build failed: {e}")
-
-    try:
-        narrative = generate_narrative(question, df)
-    except Exception as e:
-        logger.warning(f"[reports] narrative failed: {e}")
-        narrative = {"narrative": "", "aggregates": {"row_count": len(df)}, "mode": "error"}
-
-    # Pull the four narrative sections that the generator already
-    # parsed: summary / metrics / breakdown / recommendation. Falling
-    # back to a synthetic summary when the model didn't follow format.
-    sections = narrative.get("sections") or {}
-    executive_summary = (sections.get("summary") or "").strip()
-    if not executive_summary:
-        executive_summary = (
-            f"This report covers {len(df)} records across {len(df.columns)} fields."
-        )
-
-    key_insights: list[str] = []
-    for m in sections.get("metrics") or []:
-        if m and m.strip():
-            key_insights.append(m.strip())
-    # If the model put recommendations as its own section, append them
-    # so the user sees the 'so what' at the bottom of the insights list.
-    rec = (sections.get("recommendation") or "").strip()
-    if rec:
-        for ln in rec.split("\n"):
-            ln = ln.lstrip("- ").strip()
-            if ln:
-                key_insights.append(ln)
-    # Breakdown joins the exec summary if present, since the PDF only has
-    # one prose slot today.
-    breakdown = (sections.get("breakdown") or "").strip()
-    if breakdown:
-        executive_summary = (executive_summary + "\n\n" + breakdown).strip()
-
-    # 4) Build the PDF.
-    try:
-        pdf_path = build_pdf(
-            title=title,
-            executive_summary=executive_summary,
-            dataframe=df,
-            chart_image_path=chart_path,
-            key_insights=key_insights[:8],
-            subtitle=f"Generated from: {question[:120]}",
-        )
-    except Exception as e:
-        logger.exception(f"[reports] PDF build failed: {e}")
-        raise HTTPException(500, f"Could not assemble the PDF: {e}")
-
-    if not pdf_path or not Path(pdf_path).exists():
-        raise HTTPException(500, "Report generation failed")
+    except ReportError as e:
+        # 'empty' = data didn't support the question; 'sql_error' or
+        # 'failed' = something went wrong on our side.
+        raise HTTPException(422 if e.kind == "empty" else 500, str(e))
     return {"path": pdf_path, "filename": Path(pdf_path).name}
 
 

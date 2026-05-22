@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { CheckSquare, Square, Plus, Calendar, AlertTriangle, Clock, Trash2, X, Briefcase, Repeat, Check, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 import { listTasks, createTask, updateTask, deleteTask, taskSummary, extractFromNotes, STATUSES, PRIORITIES } from '../services/tasks';
 import { bulkDeleteTasks, bulkTaskStatus, bulkTagsFor } from '../services/tags';
@@ -211,27 +211,28 @@ function TaskForm({ initial, onSubmit, onCancel, members = [] }) {
   );
 }
 
+// What we show on the assignee chip. Centralized so future surfaces
+// (task detail page, inbox previews) display the same name.
+function assigneeDisplay(assignee, meId) {
+  if (!assignee) return null;
+  if (assignee.user_id === meId) return 'You';
+  if (assignee.name && assignee.name.trim()) return assignee.name.trim();
+  if (assignee.email) return assignee.email.split('@')[0];
+  return assignee.user_id;
+}
+
+function initialsOf(label) {
+  if (!label) return '?';
+  if (label === 'You') return 'Yo';
+  return label.trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
+
 function TaskRow({ task, selected, onToggleSelect, tagChips, assignee, meId, onToggle, onEdit, onDelete }) {
   const done = task.status === 'done';
   const overdue = task.due_date && task.due_date < todayStr() && !done && task.status !== 'cancelled';
   const isRecurring = task.recurrence && task.recurrence !== 'none';
-  const assigneeLabel = assignee
-    ? (
-        (assignee.user_id === meId)
-          ? 'You'
-          : (
-              (assignee.name && assignee.name.trim())
-              || (assignee.email && assignee.email.split('@')[0])
-              || assignee.user_id
-            )
-      )
-    : null;
-  const initials = (label) => {
-    if (!label) return '?';
-    if (label === 'You') return 'Yo';
-    const parts = label.trim().split(/\s+/).slice(0, 2);
-    return parts.map(p => p[0]).join('').toUpperCase();
-  };
+  const assigneeLabel = assigneeDisplay(assignee, meId);
   return (
     <div
       className="panel row"
@@ -324,7 +325,7 @@ function TaskRow({ task, selected, onToggleSelect, tagChips, assignee, meId, onT
                 color: 'var(--color-text)',
                 fontSize: 8, fontWeight: 700,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              }}>{initials(assigneeLabel)}</span>
+              }}>{initialsOf(assigneeLabel)}</span>
               {assigneeLabel}
             </span>
           )}
@@ -451,11 +452,36 @@ export default function Tasks() {
   // id -> { name, email } for fast lookup on each row. Guard against
   // non-array values (e.g. the E2E mock returns {} for unmocked routes,
   // and our backend may degrade similarly under errors).
-  const safeMembers = Array.isArray(members) ? members : [];
-  const memberById = safeMembers.reduce((acc, m) => {
-    if (m && m.user_id) acc[m.user_id] = m;
-    return acc;
-  }, {});
+  const safeMembers = useMemo(
+    () => (Array.isArray(members) ? members : []),
+    [members],
+  );
+  const memberById = useMemo(
+    () => safeMembers.reduce((acc, m) => {
+      if (m && m.user_id) acc[m.user_id] = m;
+      return acc;
+    }, {}),
+    [safeMembers],
+  );
+
+  // Scope pill applied in-memory (the API call stays unchanged). When
+  // we wire backend filtering this becomes ?assigned_to=me in the
+  // task list fetch and the in-memory filter can go away.
+  const scopedTasks = useMemo(() => {
+    return tasks.filter((t) => {
+      if (scope === 'mine')          return meId && t.assignee_id === meId;
+      if (scope === 'created_by_me') return meId && t.created_by === meId;
+      if (scope === 'unassigned')    return !t.assignee_id;
+      return true; // 'all'
+    });
+  }, [tasks, scope, meId]);
+
+  const SCOPE_OPTIONS = [
+    { id: 'all',            label: 'All' },
+    { id: 'mine',           label: 'Assigned to me' },
+    { id: 'created_by_me',  label: 'Created by me' },
+    { id: 'unassigned',     label: 'Unassigned' },
+  ];
 
   const flash = (m) => { setMsg(m); setTimeout(() => setMsg(''), 2500); };
 
@@ -719,17 +745,11 @@ export default function Tasks() {
         data-bulk-active={selection.any || undefined}
         style={{ flex: 1, overflow: 'auto', padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}
       >
-        {/* Scope pills, choose whose tasks you're looking at. Only
-            renders when this business has more than one human so a
-            solo founder doesn't see a pointless filter row. */}
+        {/* Scope pills, only render when the business has more than
+            one human, a solo founder doesn't need a filter row. */}
         {safeMembers.length > 1 && (
           <div style={{ display: 'flex', gap: 6, marginBottom: 6, flexWrap: 'wrap' }}>
-            {[
-              { id: 'all', label: 'All' },
-              { id: 'mine', label: 'Assigned to me' },
-              { id: 'created_by_me', label: 'Created by me' },
-              { id: 'unassigned', label: 'Unassigned' },
-            ].map(opt => (
+            {SCOPE_OPTIONS.map((opt) => (
               <button
                 key={opt.id}
                 type="button"
@@ -743,49 +763,36 @@ export default function Tasks() {
           </div>
         )}
 
-        {(() => {
-          // Apply the scope pill in-memory so the existing API stays
-          // unchanged. When we wire backend filtering, the pills will
-          // also send ?assigned_to=me to /api/tasks.
-          const scoped = tasks.filter((t) => {
-            if (scope === 'mine') return meId && t.assignee_id === meId;
-            if (scope === 'created_by_me') return meId && t.created_by === meId;
-            if (scope === 'unassigned') return !t.assignee_id;
-            return true;
-          });
-          if (tasks.length === 0) {
-            return (
-              <EmptyState
-                icon={CheckSquare}
-                title="No tasks here"
-                description="Create a task directly, or ask the AI to generate tasks from a meeting note or a document."
-                primaryLabel="Add task"
-                onPrimary={() => setModal({ record: null })}
-                secondaryLabel="Ask the AI"
-                onSecondary={() => window.location.assign('/chat')}
+        {tasks.length === 0 ? (
+          <EmptyState
+            icon={CheckSquare}
+            title="No tasks here"
+            description="Create a task directly, or ask the AI to generate tasks from a meeting note or a document."
+            primaryLabel="Add task"
+            onPrimary={() => setModal({ record: null })}
+            secondaryLabel="Ask the AI"
+            onSecondary={() => window.location.assign('/chat')}
+          />
+        ) : scopedTasks.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 13 }}>
+            Nothing matches "{scope}" right now. Try another filter.
+          </div>
+        ) : (
+          <>
+            {scopedTasks.map((t) => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                selected={selection.isSelected(t.id)}
+                onToggleSelect={selection.toggle}
+                tagChips={tagsByTask[t.id] || []}
+                assignee={t.assignee_id ? memberById[t.assignee_id] : null}
+                meId={meId}
+                onToggle={handleToggle}
+                onEdit={(record) => setModal({ record })}
+                onDelete={handleDelete}
               />
-            );
-          }
-          if (scoped.length === 0) {
-            return (
-              <div style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-dim)', fontSize: 13 }}>
-                Nothing matches "{scope}" right now. Try another filter.
-              </div>
-            );
-          }
-          return (
-            <>
-              {scoped.map((t) => (
-                <TaskRow key={t.id} task={t}
-                  selected={selection.isSelected(t.id)}
-                  onToggleSelect={selection.toggle}
-                  tagChips={tagsByTask[t.id] || []}
-                  assignee={t.assignee_id ? memberById[t.assignee_id] : null}
-                  meId={meId}
-                  onToggle={handleToggle}
-                  onEdit={(t) => setModal({ record: t })}
-                  onDelete={handleDelete} />
-              ))}
+            ))}
 
             <BulkActionBar count={selection.count} onCancel={selection.clear}>
               <button onClick={() => doBulkStatus('done')} className="btn-ghost" style={{ fontSize: 11 }}>
@@ -799,8 +806,7 @@ export default function Tasks() {
               </button>
             </BulkActionBar>
           </>
-          );
-        })()}
+        )}
       </div>
 
       {undoToast && (
