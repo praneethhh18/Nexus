@@ -164,14 +164,51 @@ def update_business(business_id: str, user_id: str, updates: Dict) -> Dict:
     # voice_language: the BCP-47ish code the Vox phone agent will
     # speak in when calling this business's contacts. Picker lives in
     # Settings > Voice. See voice_agent/languages.py for the catalog.
-    allowed = {"name", "industry", "description", "voice_language"}
-    # Validate the language code if present to a known-good list so
-    # we don't ship a typo all the way down to the LiveKit worker.
+    allowed = {
+        "name", "industry", "description", "voice_language",
+        # India billing profile
+        "gstin", "state_code", "upi_vpa", "default_gst_rate",
+    }
     if "voice_language" in updates:
         v = (updates.get("voice_language") or "en").strip().lower()
         if v not in ("en", "hi", "ta", "mr"):
             raise HTTPException(400, f"Unsupported language: {v}")
         updates["voice_language"] = v
+
+    # GSTIN must be either empty (un-registered business) or a real
+    # 15-char structure. We do NOT validate the checksum — format is
+    # enough to catch typos.
+    if "gstin" in updates:
+        g = (updates.get("gstin") or "").strip().upper()
+        if g:
+            from api.gst import validate_gstin
+            if not validate_gstin(g):
+                raise HTTPException(400, f"Invalid GSTIN format: {g}")
+        updates["gstin"] = g
+
+    if "state_code" in updates:
+        s = (updates.get("state_code") or "").strip()
+        if s and not (len(s) == 2 and s.isdigit()):
+            raise HTTPException(400, f"state_code must be a 2-digit string ({s!r})")
+        updates["state_code"] = s
+
+    if "upi_vpa" in updates:
+        v = (updates.get("upi_vpa") or "").strip()
+        if v:
+            from api.gst import validate_upi_vpa
+            if not validate_upi_vpa(v):
+                raise HTTPException(400, f"Invalid UPI VPA: {v}")
+        updates["upi_vpa"] = v
+
+    if "default_gst_rate" in updates:
+        try:
+            r = float(updates.get("default_gst_rate") or 0)
+        except (TypeError, ValueError):
+            raise HTTPException(400, "default_gst_rate must be a number")
+        from api.gst import SUPPORTED_GST_RATES
+        if r not in SUPPORTED_GST_RATES:
+            raise HTTPException(400, f"default_gst_rate {r} is not a GST slab")
+        updates["default_gst_rate"] = r
     fields = {k: v for k, v in updates.items() if k in allowed}
     if not fields:
         raise HTTPException(400, "No editable fields provided")

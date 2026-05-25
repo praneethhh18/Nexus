@@ -69,9 +69,12 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
   const [f, setF] = useState({
     customer_name: '', customer_email: '', customer_address: '',
     customer_company_id: '', customer_contact_id: '',
+    // customer_state_code drives the GST split (intra vs inter-state).
+    // Auto-populated when a CRM contact is picked; manually overridable.
+    customer_state_code: '',
     currency: 'INR', issue_date: today,
     due_date: defaultDue, notes: '', tax_pct: '',
-    line_items: [{ description: '', quantity: 1, unit_price: '' }],
+    line_items: [{ description: '', quantity: 1, unit_price: '', hsn_sac: '', gst_rate: 18 }],
     status: 'draft',
     ...(initial || {}),
   });
@@ -85,7 +88,18 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
       return { ...p, line_items: items };
     });
   };
-  const addLine = () => setF((p) => ({ ...p, line_items: [...p.line_items, { description: '', quantity: 1, unit_price: '' }] }));
+  const addLine = () => setF((p) => ({
+    ...p,
+    line_items: [
+      ...p.line_items,
+      // New lines inherit the GST rate of the previous line so the
+      // common case (entire invoice at one rate) is one click.
+      {
+        description: '', quantity: 1, unit_price: '', hsn_sac: '',
+        gst_rate: (p.line_items[p.line_items.length - 1]?.gst_rate ?? 18),
+      },
+    ],
+  }));
   const removeLine = (idx) => setF((p) => ({ ...p, line_items: p.line_items.filter((_, i) => i !== idx) }));
 
   // Auto-fill from CRM picks, the user shouldn't have to retype data.
@@ -107,11 +121,26 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
       const fullName = `${c.first_name || ''} ${c.last_name || ''}`.trim();
       if (!f.customer_name && fullName) set('customer_name', fullName);
       if (!f.customer_email && c.email) set('customer_email', c.email);
+      if (!f.customer_state_code && c.state_code) set('customer_state_code', c.state_code);
     }
   };
 
+  // GST split — IGST when supplier and customer states differ, else
+  // CGST + SGST. Supplier state isn't on the form; we approximate by
+  // assuming intra-state (CGST+SGST) when customer_state is blank.
+  // The backend recomputes authoritatively against business.state_code
+  // on save, so this is purely a preview.
   const subtotal = f.line_items.reduce((s, it) => s + (Number(it.quantity) * Number(it.unit_price) || 0), 0);
-  const taxAmount = subtotal * (Number(f.tax_pct) / 100);
+  const taxAmount = f.line_items.reduce(
+    (s, it) => s + ((Number(it.quantity) * Number(it.unit_price) || 0) * (Number(it.gst_rate) || 0) / 100),
+    0,
+  );
+  // Without the supplier state on the form we can't authoritatively
+  // tell IGST vs CGST+SGST. We default to CGST+SGST (50/50) for the
+  // preview and let the backend correct on save.
+  const igstPreview = 0;
+  const cgstPreview = taxAmount / 2;
+  const sgstPreview = taxAmount - cgstPreview;
   const total = subtotal + taxAmount;
   const lineValid = f.line_items.length > 0 && f.line_items.every(it => it.description.trim() && Number(it.quantity) > 0);
 
@@ -162,9 +191,20 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
             <input className="field-input" type="email" value={f.customer_email} onChange={(e) => set('customer_email', e.target.value)} maxLength={200} placeholder="billing@acme.com" />
           </Field>
         </div>
-        <Field label="Billing address" helper="Free-form, newlines are kept as-is in the PDF.">
-          <textarea className="field-input" rows={2} value={f.customer_address} onChange={(e) => set('customer_address', e.target.value)} maxLength={500} placeholder={'2nd Floor, Building 9\nKoramangala, Bangalore 560034\nIndia'} />
-        </Field>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
+          <Field label="Billing address" helper="Free-form, newlines are kept as-is in the PDF.">
+            <textarea className="field-input" rows={2} value={f.customer_address} onChange={(e) => set('customer_address', e.target.value)} maxLength={500} placeholder={'2nd Floor, Building 9\nKoramangala, Bangalore 560034\nIndia'} />
+          </Field>
+          <Field label="Customer state code" helper="GSTIN first 2 digits. Drives IGST vs CGST+SGST split. Blank = intra-state.">
+            <input
+              className="field-input"
+              value={f.customer_state_code}
+              onChange={(e) => set('customer_state_code', e.target.value.replace(/\D/g, '').slice(0, 2))}
+              maxLength={2}
+              placeholder="29"
+            />
+          </Field>
+        </div>
       </div>
 
       {/* Dates + Currency. Status is intentionally NOT user-editable here , 
@@ -200,7 +240,7 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
       <div style={{ marginBottom: 14 }}>
         {/* Header row, column labels so the per-line inputs stay slim. */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px',
+          display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 0.8fr 0.9fr 30px',
           gap: 6, marginBottom: 4,
           fontSize: 10, fontWeight: 600, letterSpacing: 0.5,
           textTransform: 'uppercase', color: 'var(--color-text-dim)',
@@ -209,10 +249,12 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
           <span>Qty / Hours *</span>
           <span>Rate / Price</span>
           <span>Amount</span>
+          <span>HSN/SAC</span>
+          <span>GST %</span>
           <span></span>
         </div>
         {f.line_items.map((it, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 30px', gap: 6, marginBottom: 6 }}>
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr 1fr 0.8fr 0.9fr 30px', gap: 6, marginBottom: 6 }}>
             <input className="field-input" placeholder="e.g. Q1 retainer, strategy" value={it.description} onChange={(e) => setLine(i, 'description', e.target.value)} maxLength={400} required />
             <input className="field-input" type="number" step="0.01" min={0} placeholder="1"
                    value={it.quantity === 0 ? '' : it.quantity}
@@ -223,6 +265,19 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
             <div style={{ display: 'flex', alignItems: 'center', fontSize: 11.5, color: 'var(--color-text-muted)', padding: '0 6px', fontFeatureSettings: '"tnum"' }}>
               {money(Number(it.quantity) * Number(it.unit_price), f.currency)}
             </div>
+            <input className="field-input" placeholder="998314"
+                   value={it.hsn_sac || ''}
+                   onChange={(e) => setLine(i, 'hsn_sac', e.target.value.replace(/\D/g, '').slice(0, 8))}
+                   maxLength={8}
+                   title="HSN (goods) or SAC (services) code — required for GSTR-1 filing" />
+            <select className="field-select"
+                    value={String(it.gst_rate ?? 18)}
+                    onChange={(e) => setLine(i, 'gst_rate', Number(e.target.value))}
+                    style={{ padding: '4px 6px' }}>
+              {[0, 0.25, 3, 5, 12, 18, 28].map(r => (
+                <option key={r} value={r}>{r}%</option>
+              ))}
+            </select>
             <button
               type="button"
               onClick={() => removeLine(i)}
@@ -260,26 +315,23 @@ function InvoiceForm({ initial, companies, contacts, onSubmit, onCancel }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: 6 }}>
             <span>Subtotal</span><span>{money(subtotal, f.currency)}</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <span style={{ color: 'var(--color-text-muted)' }}>Tax</span>
-            <input
-              type="number"
-              step="0.01" min={0} max={100}
-              placeholder="0"
-              value={f.tax_pct === 0 ? '' : f.tax_pct}
-              onChange={(e) => set('tax_pct', e.target.value === '' ? '' : (parseFloat(e.target.value) || 0))}
-              style={{
-                width: 56, fontSize: 11.5, padding: '3px 6px',
-                background: 'var(--color-bg)',
-                border: '1px solid var(--color-border)',
-                borderRadius: 'var(--r-sm)',
-                color: 'var(--color-text)', textAlign: 'right',
-              }}
-              title="Tax percentage (0–100)"
-            />
-            <span style={{ color: 'var(--color-text-muted)', fontSize: 11 }}>%</span>
-            <span style={{ marginLeft: 'auto', color: 'var(--color-text-muted)' }}>{money(taxAmount, f.currency)}</span>
-          </div>
+          {/* CGST + SGST preview — the backend recomputes IGST instead
+              when supplier and customer states differ. The preview is
+              accurate for the common same-state case; cross-state
+              invoices will re-render after save. */}
+          {taxAmount > 0 && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: 4 }}>
+                <span>CGST</span><span>{money(cgstPreview, f.currency)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                <span>SGST</span><span>{money(sgstPreview, f.currency)}</span>
+              </div>
+              <div style={{ fontSize: 10, color: 'var(--color-text-dim)', fontStyle: 'italic', marginBottom: 6 }}>
+                If customer is in another state, this becomes IGST {money(taxAmount, f.currency)} on save.
+              </div>
+            </>
+          )}
           <div style={{
             display: 'flex', justifyContent: 'space-between',
             fontWeight: 700, color: 'var(--color-text)', fontSize: 14,
@@ -385,7 +437,35 @@ export default function Invoices() {
           <h1>{t('invoices')}</h1>
           <p>Create, track, and send {t('invoices').toLowerCase()} to your customers</p>
         </div>
-        <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> {t('invoice_new')}</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {/* GSTR-1 export. Pops a tiny month picker; defaults to last
+              month (the accountant's filing window). */}
+          <button
+            className="btn-ghost"
+            onClick={() => {
+              const last = new Date(); last.setDate(1); last.setMonth(last.getMonth() - 1);
+              const defaultMonth = last.toISOString().slice(0, 7);
+              const month = window.prompt(
+                'Export GSTR-1 for which month? (YYYY-MM)',
+                defaultMonth,
+              );
+              if (!month || !/^\d{4}-\d{2}$/.test(month)) return;
+              // Stream the CSV via a hidden anchor so we don't need to
+              // load the file into memory.
+              const url = `/api/invoices/export/gstr1?month=${encodeURIComponent(month)}`;
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `gstr1_${month}.csv`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+            }}
+            title="Download a GSTR-1 CSV for your accountant"
+          >
+            <Download size={13} /> Export GSTR-1
+          </button>
+          <button className="btn-primary" onClick={() => setModal({ record: null })}><Plus size={13} /> {t('invoice_new')}</button>
+        </div>
       </div>
 
       {msg && <div style={{ padding: '4px 24px', fontSize: 12, color: 'var(--color-info)' }}>{msg}</div>}

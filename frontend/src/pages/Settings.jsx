@@ -43,6 +43,14 @@ export default function Settings() {
   const [voiceLanguages, setVoiceLanguages] = useState([
     { code: 'en', display_name: 'English' },
   ]);
+  // GST + UPI billing profile. GSTIN is validated on save; state_code
+  // auto-fills from the first two GSTIN chars if the user pastes a
+  // valid GSTIN, but is independently editable for businesses without
+  // GST registration.
+  const [bizGstin, setBizGstin] = useState('');
+  const [bizStateCode, setBizStateCode] = useState('');
+  const [bizUpiVpa, setBizUpiVpa] = useState('');
+  const [bizGstRate, setBizGstRate] = useState(18);
   const [calStatus, setCalStatus] = useState(null);
   const [etAccount, setEtAccount] = useState(null);
   const [etForm, setEtForm] = useState({ imap_host: 'imap.gmail.com', imap_port: 993, username: '', password: '', folder: 'INBOX', enabled: true, auto_draft_reply: true });
@@ -91,6 +99,10 @@ export default function Settings() {
         setBizIndustry(b.industry || '');
         setBizDescription(b.description || '');
         setBizVoiceLang(b.voice_language || 'en');
+        setBizGstin(b.gstin || '');
+        setBizStateCode(b.state_code || '');
+        setBizUpiVpa(b.upi_vpa || '');
+        setBizGstRate(typeof b.default_gst_rate === 'number' ? b.default_gst_rate : 18);
       }).catch(() => {});
     }
   }, [current?.id]);
@@ -113,6 +125,10 @@ export default function Settings() {
         industry: bizIndustry,
         description: bizDescription,
         voice_language: bizVoiceLang,
+        gstin: bizGstin.trim().toUpperCase(),
+        state_code: bizStateCode.trim(),
+        upi_vpa: bizUpiVpa.trim(),
+        default_gst_rate: Number(bizGstRate),
       });
       setBizDetail(updated);
       flash('Business saved.');
@@ -229,6 +245,90 @@ export default function Settings() {
                   Language Vox will speak in on calls. Affects greeting, voice, and conversation style. Per-call override is available via the dial API.
                 </p>
               </div>
+
+              {/* ── GST + UPI billing profile ──────────────────────── */}
+              <div style={{
+                marginTop: 4, paddingTop: 14,
+                borderTop: '1px dashed var(--color-border)',
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text)', marginBottom: 8 }}>
+                  GST &amp; UPI (India)
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>
+                      GSTIN
+                    </label>
+                    <input
+                      className="field-input"
+                      value={bizGstin}
+                      onChange={(e) => {
+                        const v = e.target.value.toUpperCase();
+                        setBizGstin(v);
+                        // Auto-fill the state code from the first two
+                        // GSTIN chars once they look valid. Doesn't
+                        // overwrite a state the user already set manually.
+                        if (v.length >= 2 && /^\d{2}/.test(v) && !bizStateCode) {
+                          setBizStateCode(v.slice(0, 2));
+                        }
+                      }}
+                      disabled={!canEditBiz}
+                      placeholder="29ABCDE1234F1Z5"
+                      maxLength={15}
+                      style={{ textTransform: 'uppercase' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>
+                      State code
+                    </label>
+                    <input
+                      className="field-input"
+                      value={bizStateCode}
+                      onChange={(e) => setBizStateCode(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                      disabled={!canEditBiz}
+                      placeholder="29"
+                      maxLength={2}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>
+                      UPI VPA (where customers pay)
+                    </label>
+                    <input
+                      className="field-input"
+                      value={bizUpiVpa}
+                      onChange={(e) => setBizUpiVpa(e.target.value)}
+                      disabled={!canEditBiz}
+                      placeholder="yourbusiness@okicici"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 10, color: 'var(--color-text-dim)', display: 'block', marginBottom: 2 }}>
+                      Default GST rate
+                    </label>
+                    <select
+                      className="field-select"
+                      value={String(bizGstRate)}
+                      onChange={(e) => setBizGstRate(Number(e.target.value))}
+                      disabled={!canEditBiz}
+                      style={{ width: '100%' }}
+                    >
+                      {[0, 0.25, 3, 5, 12, 18, 28].map((r) => (
+                        <option key={r} value={r}>{r}%</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <p style={{ fontSize: 10, color: 'var(--color-text-dim)', marginTop: 6, lineHeight: 1.5 }}>
+                  Used on every invoice. GSTIN stamps "TAX INVOICE" header and
+                  the GST split (CGST+SGST for same-state customers, IGST for
+                  inter-state). UPI VPA is encoded as a QR on each invoice
+                  PDF — customers scan to pay you directly. Leave blank if
+                  you're not GST-registered or don't take UPI.
+                </p>
+              </div>
+
               {canEditBiz && (
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="btn-ghost" onClick={saveBiz}>Save</button>

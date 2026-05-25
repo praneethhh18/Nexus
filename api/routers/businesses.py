@@ -36,6 +36,13 @@ class BusinessUpdate(BaseModel):
     # Language the Vox phone agent uses on this business's calls.
     # Validated against the languages.py catalog in update_business().
     voice_language: Optional[str] = None
+    # GST + UPI billing profile. GSTIN validated in update_business
+    # (15-char format); state_code is 2 digits; default_gst_rate must
+    # be one of the supported GST slabs.
+    gstin: Optional[str] = None
+    state_code: Optional[str] = None
+    upi_vpa: Optional[str] = None
+    default_gst_rate: Optional[float] = None
 
 
 class MemberAdd(BaseModel):
