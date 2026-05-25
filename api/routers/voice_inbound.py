@@ -281,6 +281,34 @@ async def twilio_status(
     )
     inbound_calls.finish_session(CallSid, summary=summary, status="completed")
     logger.info(f"[voice_inbound] finalised call_sid={CallSid} outcome={summary.get('outcome')}")
+
+    # Missed-call rescue: if the call never connected to Vox (no-answer,
+    # busy, failed, canceled, or a 0-3s drop), shoot the caller a
+    # WhatsApp in the business's language so we don't lose the lead.
+    # Best-effort, swallowed exceptions, status webhook must still 204.
+    try:
+        from api import missed_call_rescue
+        if missed_call_rescue.is_missed(CallStatus, duration):
+            result = missed_call_rescue.fire_rescue(
+                business_id=sess["business_id"],
+                from_phone=sess.get("from_number", ""),
+                call_sid=CallSid,
+                call_status=CallStatus,
+                duration_sec=duration,
+            )
+            if result.get("fired"):
+                logger.info(
+                    f"[voice_inbound] missed-call rescue sent for "
+                    f"call_sid={CallSid} → {sess.get('from_number','?')}"
+                )
+            else:
+                logger.debug(
+                    f"[voice_inbound] missed-call rescue skipped "
+                    f"call_sid={CallSid} reason={result.get('reason')}"
+                )
+    except Exception as e:
+        logger.warning(f"[voice_inbound] missed-call rescue threw: {e}")
+
     return Response(status_code=204)
 
 
