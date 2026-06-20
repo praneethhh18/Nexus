@@ -137,7 +137,7 @@ export default function WhatsAppConnect() {
     } catch (e) {
       const m = String(e?.message || '');
       if (/requires the .* plan/i.test(m)) {
-        setMsg('WhatsApp is a Starter plan feature. Upgrade at /pricing.');
+        setMsg('WhatsApp is a Starter plan feature. Contact us at /pricing.');
       } else if (/bridge unreachable/i.test(m)) {
         setMsg('WhatsApp bridge isn\'t running. Start it: cd whatsapp_bridge && npm start');
       } else {

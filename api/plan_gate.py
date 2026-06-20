@@ -56,7 +56,7 @@ def require_plan(business_id: str, required: str) -> None:
             status_code=402,
             detail=(f"This feature requires the {req_label} plan or higher. "
                     f"You're currently on {cur_label}. "
-                    f"Upgrade at /pricing."),
+                    f"Contact us at /pricing."),
         )
 
 
@@ -95,7 +95,8 @@ def plan_summary(business_id: str) -> dict[str, Any]:
     limits + boolean feature flags + trial info. Settings/Pricing/Layout
     all read from this so they don't drift from each other."""
     sub = get_subscription(business_id)
-    plan_key = sub.get("plan") or "free"
+    trial_active = bool(sub.get("status") == "trial" and sub.get("trial_active"))
+    plan_key = get_plan(business_id)
     plan = PLANS.get(plan_key) or PLANS["free"]
     return {
         "plan_key":              plan_key,
@@ -106,11 +107,12 @@ def plan_summary(business_id: str) -> dict[str, Any]:
         "current_period_end":    sub.get("current_period_end"),
         # Trial fields — null when not on trial. Frontend uses these
         # to render the persistent "X days left" banner.
-        "is_trial":              sub.get("status") == "trial",
+        "is_trial":              trial_active,
+        "trial_expired":          sub.get("status") == "trial" and not trial_active,
         "trial_started_at":      sub.get("trial_started_at"),
         "trial_ends_at":         sub.get("trial_ends_at"),
         "trial_days_remaining":  sub.get("trial_days_remaining"),
-        "trial_active":          sub.get("trial_active"),
+        "trial_active":          trial_active,
         "limits":                plan.get("limits") or {},
         "features":              plan.get("features") or [],
     }

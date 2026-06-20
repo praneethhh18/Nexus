@@ -103,7 +103,7 @@ export default function TrialPill({ collapsed = false }) {
   return (
     <Link
       to="/pricing"
-      title="Upgrade to lock in your trial days"
+      title="Contact us to continue after the trial"
       style={{
         display: 'flex', alignItems: 'center', gap: 8,
         margin: '8px 12px 0',

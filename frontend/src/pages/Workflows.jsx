@@ -343,7 +343,7 @@ export default function Workflows() {
       // Backend uses 402 Payment Required for plan gates; service.js bubbles
       // the detail string through. Detect it and route the user to /pricing.
       if (/requires the .* plan/i.test(msg) || /HTTP 402/.test(msg)) {
-        flash('Magic Workflows is a Pro feature. Upgrade at /pricing.');
+        flash('Magic Workflows is a Pro feature. Contact us at /pricing.');
       } else {
         flash(`Failed: ${msg}`);
       }

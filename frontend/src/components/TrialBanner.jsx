@@ -119,8 +119,7 @@ export default function TrialBanner() {
       <span style={{ flex: 1 }}>
         <strong>{planLabel} trial</strong> ends {dayLabel}.{' '}
         <span style={{ opacity: 0.9 }}>
-          Subscribe now and your remaining trial days are added on top , 
-          you don't lose them.
+          Contact us before it ends to discuss the right continuation plan.
         </span>
       </span>
       <Link
@@ -135,7 +134,7 @@ export default function TrialBanner() {
           flexShrink: 0,
         }}
       >
-        Upgrade <ArrowRight size={12} />
+        Contact <ArrowRight size={12} />
       </Link>
       <button
         onClick={handleDismiss}

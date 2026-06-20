@@ -108,10 +108,15 @@ def get_plan(business_id: str) -> str:
     """Convenience — just the plan key. Used by feature gates throughout
     the codebase: `if check_plan(get_plan(biz), 'pro'): ...`
 
-    During trial, returns the trialled plan ('pro' typically) so feature
-    gates unlock the trial experience. Trial expiry handled by reap_expired.
+    During an active trial, returns the trialled plan ('pro' typically) so
+    feature gates unlock the trial experience. If the trial has expired but
+    the daily reaper has not run yet, return Free immediately. This closes
+    the "expired row still says pro" bypass window.
     """
-    return (get_subscription(business_id) or {}).get("plan") or "free"
+    sub = get_subscription(business_id) or {}
+    if sub.get("status") == "trial" and not sub.get("trial_active"):
+        return "free"
+    return sub.get("plan") or "free"
 
 
 # ── Trial lifecycle ───────────────────────────────────────────────────────
