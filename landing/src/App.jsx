@@ -9,7 +9,17 @@ import Aurora, { AuroraErrorBoundary } from './components/Aurora';
 
 const APP_URL = import.meta.env.VITE_APP_URL || 'https://app.nexusagent.in';
 const MAIL    = 'hi@nexusagent.in';
+const WHATSAPP_NUMBER = '919483240597';
+const WHATSAPP_DISPLAY = '+91 94832 40597';
 const GITHUB  = 'https://github.com/praneethhh18/Nexus';
+const trialSignupHref = (tier = 'Pro') =>
+  `${APP_URL}/login?view=signup&next=${encodeURIComponent(`/pricing?plan=${tier.toLowerCase()}`)}`;
+
+const contactMailHref = (tier = 'NexusAgent') =>
+  `mailto:${MAIL}?subject=${encodeURIComponent(`NexusAgent ${tier} pricing discussion`)}`;
+
+const whatsappHref = (tier = 'NexusAgent') =>
+  `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hi, I want to discuss NexusAgent ${tier} pricing and trial.`)}`;
 
 // ── Early-access modal ────────────────────────────────────────────────────────
 
@@ -89,6 +99,44 @@ function EarlyAccessModal({ tier, onClose }) {
   );
 }
 
+function ContactModal({ tier, onClose }) {
+  useEffect(() => {
+    const fn = e => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, [onClose]);
+
+  return (
+    <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="modal-box">
+        <button className="modal-close" onClick={onClose}><X size={16} /></button>
+        <div className="modal-tier-badge">{tier}</div>
+        <h3 className="modal-title">Contact us</h3>
+        <p className="modal-sub">
+          Tell us what you want to build with NexusAgent. We can discuss pricing,
+          onboarding, trial extension, and Razorpay payment links when needed.
+        </p>
+        <div className="contact-options">
+          <a className="contact-option" href={contactMailHref(tier)}>
+            <Mail size={18} />
+            <span>
+              <strong>Email</strong>
+              <em>{MAIL}</em>
+            </span>
+          </a>
+          <a className="contact-option" href={whatsappHref(tier)} target="_blank" rel="noreferrer">
+            <Phone size={18} />
+            <span>
+              <strong>WhatsApp</strong>
+              <em>{WHATSAPP_DISPLAY}</em>
+            </span>
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Logo Mark SVG ─────────────────────────────────────────────────────────────
 
 function LogoMark({ size = 32 }) {
@@ -142,39 +190,33 @@ const COMPARE_ROWS = [
   { feature: 'Scheduled AI workflows',     nexus: true,       zoho: 'Partial',      salesforce: 'Partial'     },
   { feature: 'Outbound voice (SIP)',        nexus: true,       zoho: 'Add-on',       salesforce: 'Add-on'      },
   { feature: 'Deploy on YOUR cloud (VPC)', nexus: true,       zoho: false,          salesforce: false         },
-  { feature: 'Starting price',             nexus: 'Free',     zoho: '₹1,400/mo',   salesforce: '₹6,000/mo'   },
+  { feature: 'Starting price',             nexus: 'Contact us', zoho: '₹1,400/mo', salesforce: '₹6,000/mo'   },
 ];
 
-// Pricing source of truth: api/routers/billing.py PLANS dict.
-// Update there + here in the same PR — landing must always reflect what
-// Razorpay actually charges. Tiers with a `plan` field hand off to the
-// signup → in-app /pricing?plan=X auto-checkout funnel.
+// Public plan cards. Fixed prices are hidden while NexusAgent is early.
+// Every plan can start the same 14-day trial; pricing moves to contact.
 const TIERS = [
-  { name: 'Free',        price: '₹0',       period: 'forever',  featured: false,
-    desc: 'Try NexusAgent with a couple of agents on your own machine.',
-    items: ['1 user', '2 AI agents', 'Local LLM only', '100 documents in RAG', 'GitHub-issue support'],
-    cta: 'Get started',        href: `${APP_URL}/setup` },
-  { name: 'Starter',     price: '₹1,499',   period: '/month',   featured: false,
-    desc: 'For solo operators with a small list and modest WhatsApp volume.',
+  { name: 'Starter',     price: 'Free trial', period: 'then contact us', featured: false,
+    desc: 'For solo operators with a small list and guided onboarding.',
     items: ['2 users', '5 AI agents', '500 documents', '100 WhatsApp/mo', '30 voice mins/mo', 'Email support'],
-    cta: 'Subscribe',          plan: 'starter' },
-  { name: 'Pro',         price: '₹5,999',   period: '/month',   featured: true,
-    desc: 'All 8 agents + cloud LLM for a 5-person team — the obvious one.',
+  },
+  { name: 'Pro',         price: 'Free trial', period: 'then contact us', featured: true,
+    desc: 'All 8 agents + cloud LLM for a 5-person team during evaluation.',
     items: ['14-day free trial · no card required', 'Up to 5 users', 'All 8 AI agents',
             '2,000 documents', '500 WhatsApp/mo', '100 voice mins/mo',
             'Cloud LLM (Claude / Bedrock)', 'AI proposals + Calendar + Email'],
-    cta: 'Start 14-day free trial',  plan: 'pro' },
-  { name: 'Privacy',     price: '₹14,999',  period: '/month',   featured: false,
+  },
+  { name: 'Privacy',     price: 'Free trial', period: 'then contact us', featured: false,
     desc: 'Sensitive prompts run on YOUR laptop via the Privacy Bridge.',
     items: ['Up to 10 users', '10,000 documents', '2,000 WhatsApp/mo', '300 voice mins/mo',
             'Privacy Bridge (data on your laptop)', 'Cloud LLM with PII redaction', 'Priority 24h support'],
-    cta: 'Subscribe',          plan: 'privacy' },
-  { name: 'Enterprise',  price: 'Custom',   period: 'contact us', featured: false,
+  },
+  { name: 'Enterprise',  price: 'Free trial', period: 'then contact us', featured: false,
     desc: 'We deploy on YOUR cloud. Dedicated infra, custom SLA, your data never touches ours.',
     items: ['We deploy on your AWS / Azure / GCP', 'Unlimited users + documents',
             'Privacy Bridge included', 'SSO (Okta / Google / Microsoft)',
             'Dedicated infra + isolated data', '24/7 priority support + onboarding'],
-    cta: 'Talk to sales',      href: `mailto:${MAIL}` },
+  },
 ];
 
 const FAQS = [
@@ -442,7 +484,7 @@ function Hero() {
           </a>
         </div>
         <div className="hero-trial-note">
-          No credit card required · cancel anytime · Pro plan ₹5,999/mo after trial
+          No credit card required · after the trial, contact us to continue
         </div>
 
         <div className="hero-trust">
@@ -1378,48 +1420,18 @@ function CompareTable() {
 
 function Pricing() {
   const [active,  setActive]  = useState('Pro');
-  const [modal,   setModal]   = useState(null); // tier name or null
+  const [modal,   setModal]   = useState(null);
   const tier = TIERS.find(t => t.name === active);
-
-  const handleCta = t => {
-    // Razorpay-eligible tiers: hand off to the in-app pricing page with
-    // ?plan=X. The /login redirect chain ensures the visitor is auth'd
-    // before the Razorpay modal can open (we need a business_id on the
-    // backend to attach the order to).
-    if (t.plan) {
-      // Pro routes through the dedicated /trial info page (guidance + FAQ
-      // + day-by-day timeline) before signup. Starter / Privacy are paid
-      // immediately so they continue straight to the Sign Up tab + Razorpay
-      // auto-checkout on the in-app /pricing page.
-      if (t.plan === 'pro') {
-        window.location.href = '/trial';
-        return;
-      }
-      const next = encodeURIComponent('/pricing?plan=' + t.plan);
-      window.location.href = `${APP_URL}/login?view=signup&next=${next}`;
-      return;
-    }
-    if (t.href && t.href.startsWith('mailto:')) {
-      window.location.href = t.href;
-      return;
-    }
-    if (t.name === 'Free' || (t.href && t.href.includes('/setup'))) {
-      window.location.href = t.href || `${APP_URL}/setup`;
-      return;
-    }
-    // Fallback: legacy "early access" waitlist modal.
-    setModal(t.name);
-  };
 
   return (
     <section id="pricing" className="section">
-      {modal && <EarlyAccessModal tier={modal} onClose={() => setModal(null)} />}
+      {modal && <ContactModal tier={modal} onClose={() => setModal(null)} />}
       <div className="container">
         <div className="section-header section-header-c">
           <span className="eyebrow">Pricing</span>
-          <h2 className="section-h2">Free to start. Simple to scale.</h2>
+          <h2 className="section-h2">Start with a trial. Talk to us to continue.</h2>
           <p className="section-sub">
-            <strong>14-day free trial on Pro — no card required.</strong> Prices in ₹. USD available at checkout. GST as applicable.
+            <strong>14-day free trial on Pro — no card required.</strong> Since NexusAgent is new, plan pricing is discussed directly with you.
           </p>
         </div>
 
@@ -1448,9 +1460,14 @@ function Pricing() {
                 <span className="price-period">{tier.period}</span>
               </div>
               <p className="price-desc">{tier.desc}</p>
-              <button className="btn btn-primary btn-lg price-detail-cta" onClick={() => handleCta(tier)}>
-                {tier.cta} <ArrowRight size={14} />
-              </button>
+              <div className="price-detail-actions">
+                <a className="btn btn-primary btn-lg" href={trialSignupHref(tier.name)}>
+                  Start free trial <ArrowRight size={14} />
+                </a>
+                <button className="btn btn-outline btn-lg" onClick={() => setModal(tier.name)}>
+                  <Mail size={14} /> Contact us
+                </button>
+              </div>
             </div>
             <div className="price-detail-divider" />
             <ul className="price-detail-list">
@@ -1464,7 +1481,7 @@ function Pricing() {
           </div>
         )}
 
-        <p className="price-fine">Prices in ₹ · GST as applicable · USD available at checkout</p>
+        <p className="price-fine">Contact us for pricing, onboarding, extensions, and Razorpay payment links when needed.</p>
       </div>
     </section>
   );
@@ -1486,12 +1503,12 @@ const TRIAL_TIMELINE = [
   { range: 'Day 11',      icon: Mail,      title: 'Gentle email',
     text: '"Day 11 of 14" reminder. We tell you what your agents did this week so you can decide if it earned a spot in your stack.' },
   { range: 'Day 14',      icon: Calendar,  title: 'Decide',
-    text: 'Keep going? Pick a plan from ₹1,499/mo. Not for you? Account drops to Free — your data stays put, nothing is auto-charged.' },
+    text: 'Keep going? Contact us and we will discuss the right plan. Not for you? Account drops to Free — your data stays put, nothing is auto-charged.' },
 ];
 
 const TRIAL_FAQS = [
   { q: 'Will my card be charged after 14 days?',
-    a: 'No. We don\'t collect a card to start the trial. On day 14 your account simply drops to the Free tier unless you choose a paid plan yourself.' },
+    a: 'No. We don\'t collect a card to start the trial. On day 14 your account drops to the Free tier unless we have agreed on a paid or custom plan with you.' },
   { q: 'Can I cancel anytime?',
     a: 'Yes — Settings → Billing → "End trial" closes it instantly. No emails to chase, no retention dance.' },
   { q: 'What email address can I use?',
@@ -1591,7 +1608,7 @@ function TrialPage() {
               <li><CheckCircle2 size={14} className="icon-ok" /> No auto-charge — we don't have a card.</li>
               <li><CheckCircle2 size={14} className="icon-ok" /> Your data stays. Logins still work.</li>
               <li><CheckCircle2 size={14} className="icon-ok" /> Account drops to Free (2 agents, local LLM).</li>
-              <li><CheckCircle2 size={14} className="icon-ok" /> Upgrade anytime from Settings → Billing.</li>
+              <li><CheckCircle2 size={14} className="icon-ok" /> Contact us from Settings → Plan & billing to continue.</li>
               <li><CheckCircle2 size={14} className="icon-ok" /> Export everything to CSV if you leave.</li>
             </ul>
           </div>
@@ -1627,7 +1644,7 @@ function TrialPage() {
             Start my 14-day trial <ArrowRight size={14} />
           </a>
           <div className="hero-trial-note" style={{ marginTop: 18 }}>
-            No credit card required · Pro plan ₹5,999/mo only if you stay
+            No credit card required · contact us after the trial to continue
           </div>
         </div>
       </section>

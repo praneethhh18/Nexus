@@ -2077,7 +2077,13 @@ img, svg { display: block; }
   background: var(--border);
   align-self: stretch;
 }
-.price-detail-cta { margin-top: 12px; }
+.price-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+.price-detail-actions .btn { flex: 1 1 170px; }
 
 .price-detail-list {
   list-style: none;
@@ -2274,6 +2280,37 @@ img, svg { display: block; }
   border-radius: var(--r-sm);
 }
 .modal-close:hover { color: var(--text); background: var(--bg-1); }
+
+.contact-options {
+  display: grid;
+  gap: 10px;
+  margin-top: 20px;
+}
+.contact-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+  color: var(--text);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: border-color .15s, background .15s;
+}
+.contact-option:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.contact-option span { display: grid; min-width: 0; gap: 2px; }
+.contact-option strong { font-size: 14px; }
+.contact-option em {
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+}
 .modal-tier-badge {
   display: inline-block;
   font-size: 11px;
