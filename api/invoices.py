@@ -54,15 +54,27 @@ def _get_conn():
         paid_at TEXT,
         created_at TEXT,
         updated_at TEXT,
-        created_by TEXT
+        created_by TEXT,
+        recurrence TEXT DEFAULT 'none',
+        recurrence_parent_id TEXT,
+        igst_amount REAL DEFAULT 0,
+        cgst_amount REAL DEFAULT 0,
+        sgst_amount REAL DEFAULT 0,
+        place_of_supply TEXT DEFAULT '',
+        upi_link TEXT DEFAULT ''
     )""")
     conn.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_invoice_biz_number ON {INVOICES_TABLE}(business_id, number)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_invoice_status ON {INVOICES_TABLE}(business_id, status)")
 
-    # Additive migration for recurring invoices — safe to re-run.
+    # Additive migrations — safe to re-run.
     for col, decl in [
         ("recurrence", "TEXT DEFAULT 'none'"),
         ("recurrence_parent_id", "TEXT"),
+        ("igst_amount", "REAL DEFAULT 0"),
+        ("cgst_amount", "REAL DEFAULT 0"),
+        ("sgst_amount", "REAL DEFAULT 0"),
+        ("place_of_supply", "TEXT DEFAULT ''"),
+        ("upi_link", "TEXT DEFAULT ''"),
     ]:
         existing = list_columns(conn, INVOICES_TABLE)
         if col not in existing:

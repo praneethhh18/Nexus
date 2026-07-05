@@ -33,14 +33,19 @@ def _fresh(db_path: str):
 
 
 def _seed_invoice(invoices_mod, business_id: str, total: float, status: str):
-    """Create an invoice via the public API so the schema migration runs."""
+    """Create an invoice via the public API so the schema migration runs.
+
+    gst_rate=0 keeps the stored `total` == unit_price so test assertions
+    on revenue figures don't depend on the business's default GST slab.
+    """
     inv = invoices_mod.create_invoice(business_id, "u", {
         "customer_name": "Test customer",
         "currency": "USD",
         "issue_date": "2026-04-01",
         "due_date":   "2026-05-01",
         "line_items": [
-            {"description": "Service", "quantity": 1, "unit_price": total},
+            {"description": "Service", "quantity": 1, "unit_price": total,
+             "gst_rate": 0},
         ],
     })
     if status != "draft":
