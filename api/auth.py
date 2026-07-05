@@ -394,7 +394,13 @@ def authenticate_user(email: str, password: str, request: Optional[Request] = No
         conn.close()
 
     _clear_failures(email, request)
-    return {"id": row["id"], "email": row["email"], "name": row["name"], "role": row["role"]}
+    return {
+        "id": row["id"],
+        "email": row["email"],
+        "name": row["name"],
+        "role": row["role"],
+        "email_verified": bool(row["email_verified"]) if "email_verified" in row.keys() else True,
+    }
 
 
 def request_password_reset(email: str) -> Optional[tuple[str, dict]]:
@@ -675,8 +681,12 @@ def require_employee(ctx: dict = Depends(get_current_context)):
 # ── Bootstrap ─────────────────────────────────────────────────────────────────
 def ensure_default_admin():
     """
-    Create a default admin account if no users exist, and ensure at least one business.
+    Create a default admin account only when explicitly enabled for local/dev.
     """
+    enabled = (os.getenv("ENABLE_DEFAULT_ADMIN") or "0").strip().lower()
+    if enabled not in ("1", "true", "yes", "on"):
+        return
+
     conn = _get_conn()
     try:
         count = conn.execute("SELECT COUNT(*) FROM nexus_users").fetchone()[0]
@@ -684,16 +694,21 @@ def ensure_default_admin():
         conn.close()
 
     if count == 0:
+        admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@example.local")
+        admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "")
+        if len(admin_password) < MIN_PASSWORD_LEN:
+            logger.warning(
+                "[Auth] ENABLE_DEFAULT_ADMIN is on, but DEFAULT_ADMIN_PASSWORD "
+                "is missing or too short; skipping default admin creation."
+            )
+            return
         admin = create_user(
-            email="admin@nexusagent.local",
+            email=admin_email,
             name="Admin",
-            password="admin1234",  # min length satisfied; user should change immediately
+            password=admin_password,
             role="admin",
         )
-        logger.warning(
-            "[Auth] Default admin created: admin@nexusagent.local / admin1234 — "
-            "CHANGE THIS PASSWORD IMMEDIATELY in production."
-        )
+        logger.warning("[Auth] Default admin created from DEFAULT_ADMIN_EMAIL; rotate after local bootstrap.")
         # Give the admin a starter business
         from api.businesses import ensure_business_for_user
         ensure_business_for_user(admin["id"], admin["name"])

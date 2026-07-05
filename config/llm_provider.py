@@ -26,13 +26,14 @@ from config import llm_router
 # ── Provider detection ──────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
 CLAUDE_MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-20250514")
+PROVIDER_PREF = (os.getenv("NEXUS_LLM_PROVIDER") or "").strip().lower()
 
-USE_CLAUDE = bool(ANTHROPIC_API_KEY)
+USE_CLAUDE = bool(ANTHROPIC_API_KEY) and PROVIDER_PREF not in ("bedrock", "nim")
 
 # Bedrock is only considered if Anthropic direct isn't set
 try:
     from config.llm_bedrock import bedrock_available as _bedrock_available
-    USE_BEDROCK = (not USE_CLAUDE) and _bedrock_available()
+    USE_BEDROCK = (PROVIDER_PREF == "bedrock" or not USE_CLAUDE) and _bedrock_available()
 except Exception:
     USE_BEDROCK = False
 
@@ -111,8 +112,8 @@ def _stream_claude(prompt: str, system: str, max_tokens: int) -> Generator[str, 
 
 # ── Ollama ───────────────────────────────────────────────────────────────────
 def _invoke_ollama(prompt: str) -> str:
-    from config.llm_config import get_llm
-    llm = get_llm()
+    from config.llm_config import get_local_llm
+    llm = get_local_llm()
     privacy.note_call("ollama", cloud=False, redactions=0)
     return llm.invoke(prompt)
 

@@ -159,6 +159,22 @@ def get_llm(temperature: float = 0.1):
     return _power_llm
 
 
+def get_local_llm(temperature: float = 0.1):
+    """Return a real Ollama LLM or raise if Ollama is unavailable.
+
+    llm_provider's local path uses this to avoid recursively falling back into
+    the cloud shim returned by get_llm() when Ollama is down.
+    """
+    healthy, message = health_check(force=True)
+    if not healthy:
+        raise RuntimeError(message)
+
+    chosen = OLLAMA_MODEL
+    if not _model_available(OLLAMA_MODEL):
+        chosen = OLLAMA_FALLBACK_MODEL
+    return Ollama(base_url=OLLAMA_BASE_URL, model=chosen, temperature=temperature)
+
+
 def get_fast_llm(temperature: float = 0.1):
     """Return the FAST model (1.5-3B) for chat, classification, intent detection.
     Same Ollama-then-cloud fallback as get_llm()."""

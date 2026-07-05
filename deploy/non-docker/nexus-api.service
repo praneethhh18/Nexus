@@ -1,0 +1,17 @@
+[Unit]
+Description=NexusAgent FastAPI backend
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/nexusagent
+EnvironmentFile=/opt/nexusagent/.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/nexusagent/venv/bin/python -m uvicorn api.server:app --host 127.0.0.1 --port 8000 --proxy-headers
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

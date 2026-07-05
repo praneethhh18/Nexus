@@ -191,6 +191,17 @@ def login(req: LoginRequest, request: Request):
     user = authenticate_user(req.email, req.password, request=request)
     if not user:
         raise HTTPException(401, "Invalid email or password")
+    if require_email_verification() and not user.get("email_verified", True):
+        try:
+            token = create_email_verification_token(user["id"], user["email"])
+            from api.verification_emails import send_verification_email
+            send_verification_email(to_email=user["email"], name=user["name"], token=token)
+        except Exception as e:
+            logger.warning(f"[Auth] login blocked for unverified user; resend failed for {user['email']}: {e}")
+        raise HTTPException(
+            403,
+            "Please verify your email before signing in. We sent a fresh verification link.",
+        )
 
     if _sec.is_2fa_required(user["id"]):
         if not req.totp_code:

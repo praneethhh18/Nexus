@@ -245,7 +245,7 @@ Before going live, make sure these are set in `.env`:
 - [ ] `APP_BASE_URL` — your public HTTPS URL (used in password reset emails, invite links)
 - [ ] `ANTHROPIC_API_KEY` **or** `AWS_ACCESS_KEY_ID`+`AWS_SECRET_ACCESS_KEY`+`AWS_REGION` — so the LLM works
 - [ ] `GMAIL_USER` + `GMAIL_APP_PASSWORD` — if you want outgoing emails (invites, invoices, password resets)
-- [ ] Admin password changed from default `admin1234`
+- [ ] `ENABLE_DEFAULT_ADMIN=0` in production, or any temporary bootstrap admin has been removed/rotated
 - [ ] `ANOMALY_THRESHOLD` and `SQL_QUERY_TIMEOUT_SECONDS` reviewed for your data volume
 - [ ] HTTPS in front of the app (Caddy / Let's Encrypt / Cloudflare)
 - [ ] Daily backups enabled (`docker compose --profile backup up -d`)

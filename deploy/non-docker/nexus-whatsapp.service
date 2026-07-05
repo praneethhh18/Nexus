@@ -1,0 +1,17 @@
+[Unit]
+Description=NexusAgent WhatsApp bridge
+After=network.target nexus-api.service
+Requires=nexus-api.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/nexusagent/whatsapp_bridge
+EnvironmentFile=/opt/nexusagent/whatsapp_bridge/.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

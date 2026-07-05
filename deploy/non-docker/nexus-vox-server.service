@@ -1,0 +1,19 @@
+[Unit]
+Description=NexusCaller Vox precall server
+After=network.target nexus-api.service
+Requires=nexus-api.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/nexuscaller-lab
+EnvironmentFile=/opt/nexuscaller-lab/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=VOX_SERVER_APP=voice_agent.server:app
+ExecStart=/bin/bash -lc 'exec /opt/nexuscaller-lab/venv/bin/python -m uvicorn "${VOX_SERVER_APP}" --host 127.0.0.1 --port 8765 --proxy-headers'
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

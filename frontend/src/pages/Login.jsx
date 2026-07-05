@@ -698,21 +698,6 @@ export default function Login() {
             </p>
           )}
 
-          {/* Default credentials hint */}
-          {view === 'login' && (
-            <div style={{
-              marginTop: 20, padding: '10px 13px', borderRadius: 8,
-              background: 'var(--color-surface-2)',
-              border: '1px solid var(--color-border)',
-            }}>
-              <p style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center' }}>
-                Default: <span style={{ color: 'var(--color-text-muted)' }}>admin@nexusagent.local</span>
-                {' / '}
-                <span style={{ color: 'var(--color-text-muted)' }}>admin1234</span>
-              </p>
-            </div>
-          )}
-
           {/* Sign up prompt for signup view */}
           {view === 'signup' && (
             <p style={{ textAlign: 'center', marginTop: 20, fontSize: 12.5, color: 'var(--color-text-dim)' }}>

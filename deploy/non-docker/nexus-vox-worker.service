@@ -1,0 +1,19 @@
+[Unit]
+Description=NexusCaller Vox LiveKit worker
+After=network.target nexus-vox-server.service
+Requires=nexus-vox-server.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/nexuscaller-lab
+EnvironmentFile=/opt/nexuscaller-lab/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=LOCAL_OSS_PREWARM=0
+ExecStart=/opt/nexuscaller-lab/venv/bin/python -m voice_agent.agent start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
