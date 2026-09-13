@@ -54,7 +54,7 @@ def _conn():
 
 def _suggestion_id(entity_type: str, entity_id: str, rule_key: str) -> str:
     raw = f"{entity_type}:{entity_id}:{rule_key}"
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
 def _is_dismissed(business_id: str, sid: str) -> bool:
